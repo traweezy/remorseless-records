@@ -10,13 +10,14 @@ artifact Railway is running; verify Railway separately with the sequence below.
 
 - Branch: `staging`
 - Current accepted implementation head:
-  `5b6588fc9ae7f9ed8854f202dd129753f149a82a`. It includes the accepted Next.js
-  16.3.3 build split, the Storefront's five-package TanStack Query 5.102.7
-  patch cohort, the shared Redis 6.2.1 client cohort, upstream `qs` 6.16.0,
-  and Storefront Trusted Types enforcement. Complete local,
-  exact-SHA CI, runtime-image, and Railway staging evidence is recorded below.
+  `912525b1248087a759e089e4917366e1b1e10eab`. It includes the accepted Next.js
+  16.3.3 build split, Redis 6.2.1, upstream `qs` 6.16.0, Trusted Types
+  enforcement, and the combined Form/Resend/PostHog/Pacer/Query/Virtual/Sonner
+  batch. Complete local, exact-SHA CI, runtime-image, and Railway staging
+  evidence is recorded below. The next AWS/Stripe/OpenTelemetry batch is
+  locally validated and does not yet supersede this deployed revision.
 - Latest exact runtime-image validation SHA:
-  `5b6588fc9ae7f9ed8854f202dd129753f149a82a`
+  `912525b1248087a759e089e4917366e1b1e10eab`
 - Original implementation/runtime-image acceptance SHA
   `61fd86889a4adca23e1e9704e11c889a1fd986a9` is pushed to
   `origin/staging`. Backend source deployment acceptance is documented at
@@ -783,31 +784,103 @@ the combined batch. Keep commits logical and preserve the cooling policy,
 security/coverage thresholds, and production/cutover boundaries. Do not push
 documentation-only checkpoints between dependency families.
 
-The combined batch contains Form 1.33.5 in both apps, Resend 6.25.0, PostHog
-5.51.4, Pacer 0.22.0, five Storefront Query 5.102.8 packages, Virtual 3.14.10,
-and Sonner 2.0.8. Frozen install, peers/security, lint/typecheck, both coverage
-suites, and both builds pass. Final gates use pinned Node 26.5.0, not the
+The accepted combined batch contains Form 1.33.5 in both apps, Resend 6.25.0,
+PostHog 5.51.4, Pacer 0.22.0, five Storefront Query 5.102.8 packages, Virtual
+3.14.10, and Sonner 2.0.8. Frozen install, peers/security, lint/typecheck, both
+coverage suites, and both builds pass. Final gates use pinned Node 26.5.0, not the
 workstation login default. Backend passes 274 suites / 2,074 tests; the
 compiled Admin matrix passes 12/12 with zero findings. New tests cover form
-deletion/reset, Contact recovery, real email transport/idempotency, debounce
-cancellation, notification delivery/cleanup, and virtual-list resize/recovery.
-The Admin mutation guard and installed-CLI build launcher are separate commits
-to push together with the dependency batch. The latter prevents the observed
-pnpm nested-workspace auto-install; no nested lock or shadow dependency graph
-remains. Final pinned-runtime browsers pass 60 responsive (two expected skips),
-14 launch, and 27 three-engine critical tests. Exact-SHA CI and staging
-acceptance remain pending. Details are in the combined-batch and Form sections of
+deletion/reset, Contact recovery, actual-SDK email transport/idempotency with
+injected responses, debounce cancellation, notification delivery/cleanup, and
+virtual-list resize/recovery.
+The Admin mutation guard and installed-CLI build launcher were pushed as
+separate logical commits together with the dependency batch. The latter
+prevents the observed pnpm nested-workspace auto-install; no nested lock or
+shadow dependency graph remains. Final pinned-runtime browsers pass 60
+responsive (two expected skips), 14 launch, and 27 three-engine critical tests. Exact-SHA CI and staging
+acceptance are complete at `912525b1248087a759e089e4917366e1b1e10eab`.
+Details are in the combined-batch and Form sections of
 `DEPENDENCY_MIGRATION_AUDIT_2026-07-23.md` and
 `PRODUCTION_HARDENING_PLAN.md`.
+
+### Exact combined-batch acceptance
+
+All four workflows passed: Root `34053342906`, Backend `34053342877`,
+Storefront `34053342915`, and Runtime Images `34053342907`. Exact-revision
+image subjects and retained SBOM artifacts are recorded in the dependency
+audit; those GitHub validation images are distinct from Railway's source builds.
+
+- Backend deployment `48ff91c0-6463-4500-b74a-f38ed077f5c9` reached `SUCCESS`
+  with source-image digest
+  `sha256:38ab66c11d5e51d9e865b58792a3b06a96cdb27945c7572c83b54821ab48ae2d`.
+  At `2026-09-06T19:16:44Z`, `/live`, `/ready`, `/health/scheduler`, and
+  `/health/operations` returned 200. Readiness dependencies and all seven
+  capability checks were healthy. A repeat at `19:18:39Z` verified a completed
+  scheduler heartbeat from `19:18:00.131Z` carrying the exact target SHA:
+  62 scanned, zero attempted/failed, lock released, no cap or incident reasons.
+  Operations remained healthy; retention snapshots came from earlier daily
+  jobs, not newly executed jobs at this revision.
+- Health probes intentionally do not emit runtime completion events. Their
+  Railway HTTP IDs matched the exact deployment and running instance. A
+  separate unauthenticated read-only catalog request returned the expected
+  400 missing-publishable-key guard, not an invalid-query response. Its request
+  `98f1b621-f300-4862-b4d6-30eec66f4e89` and trace
+  `83ad2703c43417406b877324377d5776` matched the exact-SHA runtime completion.
+  The bounded Backend observation contained 348 runtime rows, 28 completions
+  with no forbidden keys, and no structured failure events. One error-level
+  row was only the release command echo. The exact-deployment HTTP sample
+  contained 33 successful responses and that deliberate 400, with no 429,
+  503, or 5xx responses.
+- Storefront deployment `c1663b0c-d9ac-4bb8-8113-2313c3204fce` reached
+  `SUCCESS` with source-image digest
+  `sha256:1fc6955638491c1a1802d9715e22029601f57fc94cd108543efd5e46a57dff1b`.
+  At `19:14:45Z`, exact-SHA liveness/readiness, root/catalog HTML, security
+  headers, enforced plus report-only Trusted Types, and a 7,837-byte AVIF
+  optimizer response passed. Its deliberate invalid-query 400 correlated
+  request `f62e5bec-7e44-4049-ac69-778a0a8c30f1` and trace
+  `16aaef4b41aef983076de60d6f6cfc48` with the exact runtime revision. The
+  deployed responsive matrix passed 60 tests with two expected skips.
+  Provider requests remained intercepted; new local-only Stripe fixtures
+  were excluded from this deployed run. The bounded 355-row runtime sample
+  contained 325 completions, no Trusted Types reports, and two known stream
+  cancellation events (`2234947129`). The 2,000-row HTTP sample contained
+  1,980 × 200, two redirects, three fixture 404s, and 15 client-disconnect
+  499s, with no 5xx responses.
+
+These are bounded staging observations and fixture-based compatibility checks,
+not real payment, email, analytics, or production-provider acceptance. No
+provider writes, production changes, or image-source cutover were performed.
+
+### Next combined batch
+
+The AWS/Smithy, Stripe server/browser, and OpenTelemetry cohort has passed
+local acceptance on the shared frozen graph at implementation `9cf9338`.
+Its exact targets, patch/override
+reviews, injected-transport regressions, and remaining gates are tracked in
+the dependency audit. Do not count it as deployed or accepted until its own
+exact-SHA CI, image, Railway, health/log, and browser acceptance completes.
+
+The final local gates include 275 Backend suites / 2,090 tests, both production
+builds and coverage suites, root lint/typecheck/security/peer checks, and
+Storefront responsive 66 (two expected skips), launch 14, and critical 33
+browser tests. Push the implementation and this evidence together.
+
+The rebuilt Admin passed the final 12-case matrix under Node 26.5.0 with
+`ADMIN_ACCEPTANCE_BASE_URL` unset: zero axe violations/incomplete checks,
+findings, review codes, or case errors. Screenshots are retained at
+`/tmp/remorseless-storage-payment-telemetry-admin.zUO2kX`; inspected Product
+validation (800 px), offerings (1,440 px), authoring (1,920 px), News and
+Merchandising dialogs (760 px) show no visible layout regression. These are
+rendered Chromium fixture screenshots, not desktop or live-provider evidence.
 
 1. Re-evaluate Next.js 16.3.4 no earlier than
    `2026-09-07T20:00:51.381Z`. Keep it isolated from the `qs`, Medusa, TanStack,
    Stripe, AWS SDK, OpenTelemetry, and small-patch cohorts documented in
    `DEPENDENCY_MIGRATION_AUDIT_2026-07-23.md`.
-2. Complete the combined compatible-dependency batch and its final staging
-   acceptance. Redis 6.2.1 is complete. Keep Stripe, AWS SDK, OpenTelemetry,
-   and Medusa changes subject to their specific compatibility and migration
-   reviews; batching is not permission to skip those checks.
+2. Complete the next AWS/Stripe/OpenTelemetry batch and its final staging
+   acceptance. The Form/Resend/PostHog/Pacer/Query/Virtual/Sonner batch and
+   Redis 6.2.1 are complete. Keep Medusa changes subject to their separate
+   migration review; batching is not permission to skip compatibility checks.
 
 ## Railway and GHCR cutover boundary
 

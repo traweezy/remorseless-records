@@ -476,6 +476,54 @@ The collector returns `204 No Content`, uses `Cache-Control: no-store`, rejects
 cross-site requests, caps the body at 8 KiB, accepts at most 20 reports per
 batch, and applies a 60-request-per-minute fallback limit.
 
+### 1.11 Grouped storage, payment, and telemetry acceptance
+
+Review each dependency family's release notes and cooling eligibility, then
+collect compatible upgrades into one root lockfile and one release acceptance
+pass. Keep logical commits, but do not push documentation-only checkpoints or
+deploy each small family separately. Use the `.nvmrc` runtime, root frozen
+installation, and installed test binaries; nested-workspace `pnpm exec` can
+silently install an unrelated graph.
+
+The storage provider contract suite exercises the actual installed SDK with
+injected HTTP responses. It must reject quiet bulk-delete responses containing
+per-object errors even when HTTP status is 200. Streaming tests must cover an
+unfinished producer, a finished producer with an in-flight request, concurrent
+upload isolation, and multipart part/completion cancellation. Verify that
+cleanup uses a separate bounded signal, no shared client is mutated, and
+timers/streams are released. `S3 file provider request failed.` and
+`S3 multipart cleanup failed.` are fixed diagnostic messages; never add object
+keys, credentials, URLs, or provider payloads to these logs. Cancellation and
+multipart cleanup cannot prove remote rollback after response loss. Investigate
+cleanup failures and use the documented managed-media ownership/reconciliation
+boundary, not a broad bucket deletion or blind destructive retry.
+
+`qa:observability-bootstrap` runs the preload contract and real in-memory SDK
+tests. Database/Redis spans may retain trace IDs, timing, status, and bounded
+operation attributes, but not SQL literals, bound values, database/host names,
+or raw errors. Check metric labels independently from spans. Preserve duration,
+error, connection, and runtime measurements without enabling a new exporter or
+global instrumentation. PostgreSQL pool labels use opaque process-local
+groups capped at 32 plus overflow; do not restore raw names or hashes. The
+upstream multi-pool delta-baseline limitation exists before this upgrade, so
+pool counters are not authoritative connection inventory. Use database
+readiness/operational probes for health decisions. Confirm disabled startup
+and shutdown remain quiet.
+
+The Stripe SDK transport suite validates actual serialized API requests and
+response-body timeouts with an injected Fetch implementation. The browser
+`Stripe loader` tests in both CI and critical configurations serve the installed
+loader under enforced CSP and fulfill all external scripts locally. Keep
+`remorseless-stripe-js` as the only Stripe policy, with its exact URL allowlist,
+and preserve lazy/concurrent loading and failed-load recovery. These offline
+checks supplement, but do not replace, the test-mode payment matrix below.
+
+After final full local gates, verify all four workflows at the pushed SHA,
+validate each image record against its SBOM, and independently confirm each
+Railway service's deployed SHA, health, correlated logs, and browser behavior.
+Retain cancellation diagnostics and expected fixture failures explicitly;
+passing tests do not imply an entirely error-free observation window.
+
 ---
 
 ## 2. Stripe Payment Element Matrix

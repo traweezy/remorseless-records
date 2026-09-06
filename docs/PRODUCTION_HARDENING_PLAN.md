@@ -46,14 +46,16 @@ September 3 live read remained healthy with Redis `ok`, a completed heartbeat,
 no incident latch, and no alert reason.
 
 The accepted implementation head
-`5b6588fc9ae7f9ed8854f202dd129753f149a82a` includes the accepted Storefront
-TanStack Query 5.102.7 cohort, both direct Redis clients and the shared Redis
-6.2.1 graph, upstream `qs` 6.16.0, and Storefront Trusted Types enforcement.
+`912525b1248087a759e089e4917366e1b1e10eab` includes Storefront Query 5.102.8,
+both direct Redis clients and the shared Redis 6.2.1 graph, upstream `qs`
+6.16.0, Storefront Trusted Types enforcement, and the accepted combined
+Form/Resend/PostHog/Pacer/Virtual/Sonner cohort.
 The Backend/Admin Query 5.64.2 graph remains
 isolated and unchanged. Full local acceptance, all four exact-SHA GitHub
 workflows, both runtime-image validations, and both Railway staging deployments
-passed for each cohort. Query 5.102.8 was not folded into the reviewed 5.102.7
-cohort; any later update still requires isolated compatibility acceptance.
+passed for the combined batch after each family's compatibility review.
+The next AWS/Stripe/OpenTelemetry batch has passed local acceptance; it
+does not yet supersede the accepted deployment revision.
 
 The Trusted Types report-only window and deployed browser observation are
 complete, and non-development documents now enforce the three named policies.
@@ -88,13 +90,14 @@ environment exists.
   slices when the bundled controls share one security or release boundary.
 - Before each push, pass the focused tests plus repository lint, strict
   typecheck, relevant coverage, security checks, and production builds.
-- Work one named backlog section at a time. Complete every locally executable
-  objective in that section, update its documentation, and run focused local
-  checks after each objective plus the full local section gates before pushing.
-- Push the completed local section as cohesive atomic commits, then watch all
+- Batch compatible families as explicitly requested on September 6. Review
+  each family's risks independently, complete its focused checks and docs,
+  then run the combined full local gates before pushing. Do not push
+  documentation-only checkpoints between families.
+- Push the completed batch as cohesive atomic commits, then watch all
   GitHub Actions jobs and affected Railway staging deployments to `SUCCESS`
-  and run the section's health, route, API, log, and browser acceptance before
-  starting another section.
+  and run the batch's health, route, API, log, and browser acceptance before
+  accepting the next batch. Batching does not waive compatibility reviews.
 - Do not change production traffic, paid services, credentials, domains,
   replicas, data, or destructive migrations without explicit approval.
 
@@ -103,16 +106,16 @@ environment exists.
 - Git branches: `staging` is the default/integration branch; `master` is the
   protected production-candidate branch. Retired `main` was deleted.
 - Latest implementation/runtime-image validation SHA accepted:
-  `5b6588fc9ae7f9ed8854f202dd129753f149a82a`.
+  `912525b1248087a759e089e4917366e1b1e10eab`.
 - Original documentation-only staging acceptance:
   `060af53115ed1ae85d2f8d02d6fd0590c8e6a02d`.
 - Railway project: `store`; only the `staging` environment exists.
 - Application acceptance Backend deployment:
-  `4c546c93-6530-43bd-bf1e-a7d488ceb7e5` (`SUCCESS`,
-  `5b6588fc9ae7f9ed8854f202dd129753f149a82a`).
+  `48ff91c0-6463-4500-b74a-f38ed077f5c9` (`SUCCESS`,
+  `912525b1248087a759e089e4917366e1b1e10eab`).
 - Application acceptance Storefront deployment:
-  `021c17af-b8a9-429c-b653-86f30a111971` (`SUCCESS`,
-  `5b6588fc9ae7f9ed8854f202dd129753f149a82a`).
+  `c1663b0c-d9ac-4bb8-8113-2313c3204fce` (`SUCCESS`,
+  `912525b1248087a759e089e4917366e1b1e10eab`).
 - Backend and Storefront `/live` and `/ready` checks return HTTP 200.
 - The public storefront route/API smoke matrix passes. `/products`
   intentionally redirects to `/catalog`.
@@ -4042,7 +4045,7 @@ security-header, AVIF, structured-event, and bounded error-log checks passed.
 
 At the user's request, batch compatible work before pushing rather than
 deploying each small family or documentation checkpoint separately. The
-current batch contains Form 1.33.5, Resend 6.25.0, PostHog Node 5.51.4,
+accepted batch contains Form 1.33.5, Resend 6.25.0, PostHog Node 5.51.4,
 Pacer 0.22.0, the five Storefront Query 5.102.8 packages, React Virtual
 3.14.10, Sonner 2.0.8, the read-only Admin test-harness guard, and the
 installed-CLI Backend build launcher that prevents implicit nested installs.
@@ -4058,13 +4061,62 @@ installed-CLI Backend build launcher that prevents implicit nested installs.
       gates, and the 12-case compiled Admin matrix.
 - [x] Complete the final responsive, launch, and three-engine browser gates:
       60 (two expected skips), 14, and 27 tests respectively.
-- [ ] Push the logical commits together and accept all exact-SHA CI workflows,
+- [x] Push the logical commits together and accept all exact-SHA CI workflows,
       runtime image scans/SBOMs, and both Railway staging deployments.
+
+Exact SHA `912525b1248087a759e089e4917366e1b1e10eab` passed Root
+`34053342906`, Backend `34053342877`, Storefront `34053342915`, and Runtime
+Images `34053342907`. Both Railway source deployments reached `SUCCESS`:
+Backend `48ff91c0-6463-4500-b74a-f38ed077f5c9`, digest
+`sha256:38ab66c11d5e51d9e865b58792a3b06a96cdb27945c7572c83b54821ab48ae2d`;
+Storefront `c1663b0c-d9ac-4bb8-8113-2313c3204fce`, digest
+`sha256:1fc6955638491c1a1802d9715e22029601f57fc94cd108543efd5e46a57dff1b`.
+The retained GitHub image subjects/SBOMs are separately recorded in the
+dependency audit and must not be confused with these Railway source images.
+
+Both exact-revision liveness/readiness pairs and Backend scheduler/operations
+passed. The fresh Backend heartbeat at `2026-09-06T19:18:00.131Z` carried this
+revision with zero failures and a released lock; the `19:18:39Z` operations
+read was healthy. Daily retention evidence remained from earlier scheduled
+runs. Operational probes intentionally have no runtime completion events;
+Railway HTTP IDs tied them to this deployment. A separate read-only catalog
+400 (missing publishable key) proved exact request/trace/runtime correlation.
+The bounded Backend sample contained 348 runtime rows, 28 redacted
+completions, no structured failure events, and one error-level command echo;
+34 HTTP records contained 33 × 200 and that deliberate 400, with no 5xx.
+
+Storefront root/catalog, security/Trusted Types headers, AVIF optimization,
+and deliberate invalid-query correlation passed. Its deployed responsive
+matrix passed 60 tests with two expected skips using intercepted providers;
+new local-only Stripe fixtures were excluded. The bounded runtime sample
+retained two known Next stream cancellations (`2234947129`) and no Trusted
+Types reports; the HTTP sample retained fixture 404s/client 499s but no 5xx.
+These results are not live payment/email/analytics acceptance or a claim of
+zero diagnostic logs. Exact IDs and observations are in
+`NEXT_SESSION_HANDOFF.md`.
 
 The detailed per-family evidence and remaining holds are maintained in
 `DEPENDENCY_MIGRATION_AUDIT_2026-07-23.md`. Production promotion and image
 source cutover remain separate boundaries. The Form-only evidence below is
 the initial local baseline, not a separate deployment requirement.
+
+### Next storage, payment, and telemetry batch
+
+AWS/Smithy, Stripe server/browser, and OpenTelemetry pass local validation
+together on the shared frozen graph at implementation `9cf9338`, with exact targets and family-specific
+patch, override, transport, and privacy evidence in the dependency audit.
+Local checks and the rebuilt Admin matrix do not establish deployment
+acceptance. Both production builds and coverage suites pass, including 275
+Backend suites / 2,090 tests and Storefront responsive 66 (two expected skips),
+launch 14, and critical 33 browser tests. Keep this batch pending until its
+exact-SHA CI and runtime-image checks and both Railway staging observations pass. The
+accepted implementation remains `912525b1248087a759e089e4917366e1b1e10eab`.
+
+The final rebuilt Admin matrix passes 12/12 under Node 26.5.0 with the live
+base URL unset, zero axe violations/incomplete checks, and no findings or
+review codes. Five inspected Product/News/Merchandising browser screenshots
+show no visible regression across 760–1,920 px. This remains deterministic
+local fixture evidence; artifact paths are in the next-session handoff.
 
 ## TanStack Form patch compatibility
 
@@ -4083,7 +4135,7 @@ the initial local baseline, not a separate deployment requirement.
       coverage, production builds, and Storefront browser matrices locally.
 - [x] Complete the compiled Admin acceptance matrix after enforcing its
       documented read-only request boundary.
-- [ ] Accept the exact implementation SHA in all GitHub workflows and both
+- [x] Accept the exact implementation SHA in all GitHub workflows and both
       Railway staging deployments, then verify live health/routes/logs.
 
 The local Backend suite passes 273 suites / 2,068 tests at 91.58% statements
@@ -4094,7 +4146,8 @@ Responsive, launch, and critical browser suites pass 54 (two expected skips),
 zero axe or other findings; inspected browser screenshots show no regression.
 No rendered application source changed. See
 `DEPENDENCY_MIGRATION_AUDIT_2026-07-23.md` for the upstream comparison and
-publication evidence. This cohort is not yet marked as staged/accepted.
+publication evidence. Final staging acceptance is complete as part of the
+combined batch at `912525b1248087a759e089e4917366e1b1e10eab` above.
 
 ## Redis client 6.2.1 compatibility
 

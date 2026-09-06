@@ -490,9 +490,133 @@ Final pinned-runtime browsers pass: responsive 60 tests (two expected skips),
 launch 14, and critical 27 across Chromium, Firefox, and WebKit. The new
 virtual-list cases run in all three engines. Fixture search fallback and
 navigation stream-cancellation diagnostics remain visible; these passing
-tests are not a zero-error-log or live-provider acceptance claim. Exact-SHA
-GitHub workflows, runtime image evidence, and Railway deployment acceptance
-remain pending for the combined batch.
+tests are not a zero-error-log or live-provider acceptance claim.
+
+The three logical commits were pushed together at
+`912525b1248087a759e089e4917366e1b1e10eab`. All four exact-SHA workflows pass:
+Root `34053342906`, Backend `34053342877`, Storefront `34053342915`, and
+Runtime Images `34053342907`. Backend CI passes 274 suites / 2,074 tests;
+Storefront CI includes responsive 60 (two expected skips), launch 14, and
+three-engine critical 27 browser checks, plus accessibility and Lighthouse.
+Both runtime-image scans pass the unchanged HIGH/CRITICAL policy. Downloaded
+records and CycloneDX SBOMs verify the exact revision and image subjects:
+Backend `sha256:dab1f3d30c5bb84a2bc7759a36331ff8da87735135531e1bfad06765f56f285f`
+(1,183 components; artifact `9995267808`) and Storefront
+`sha256:79b1829238509fce06cebbfc53b33f6c7e5618ad969e89e1399222085b8a102f`
+(122 components; artifact `9995253342`). These are GitHub validation images,
+not proof of Railway's separately built source deployment.
+
+Storefront Railway deployment `c1663b0c-d9ac-4bb8-8113-2313c3204fce` succeeds
+with source-image digest
+`sha256:1fc6955638491c1a1802d9715e22029601f57fc94cd108543efd5e46a57dff1b`.
+Exact-SHA `/live` and `/ready`, Backend/Redis readiness, root/catalog HTML,
+enforced/report-only Trusted Types, security headers, and a 7,837-byte AVIF
+response pass. A deliberate read-only invalid-query response correlates to
+the exact runtime log and revision. The deployed matrix passes 60 tests with
+two expected skips. Its bounded log observation retains two existing Next
+stream-cancellation events (`2234947129`), fixture 404s, client-disconnect
+499s, and the intentional 400; there are no HTTP 5xx or Trusted Types reports.
+Backend Railway deployment `48ff91c0-6463-4500-b74a-f38ed077f5c9` also succeeds
+at this SHA with source-image digest
+`sha256:38ab66c11d5e51d9e865b58792a3b06a96cdb27945c7572c83b54821ab48ae2d`;
+all four health routes return 200. The fresh `19:18:00.131Z` scheduler
+heartbeat completes at the target SHA with zero failures and a released lock;
+operations remain healthy at `19:18:39Z`. A deliberate unauthenticated Store
+GET returns the expected 400 publishable-key guard and correlates to the exact
+runtime completion/deployment instance. Health probes are intentionally
+excluded from application completion logs and are checked through Railway
+HTTP IDs instead. The bounded 348-row runtime sample has 28 completions, no
+structured failures or forbidden completion fields, and only the command
+echo at error level. Its 34 HTTP records contain 33 successful requests and
+the deliberate 400, without 429, 503, or other 5xx responses. This combined
+batch is accepted; the next batch below remains independently gated.
+
+## Storage, payment, and telemetry batch — 2026-09-06
+
+The next shared resolution groups ten direct upgrades across three reviewed
+families. It retains the one-week cooling policy and existing security
+backports; no release-age exception or audit suppression is added. Root
+frozen installation and peer checks pass. Structural lockfile review limits
+new package records to AWS/Smithy, OpenTelemetry, and Stripe; the only
+unchanged-version metadata adjustment is the compatible `@vercel/otel` peer
+set. Medusa remains 2.18.0, with its separate Stripe 15.12.0/19.1.0 and
+PostgreSQL instrumentation 0.52.0 consumers left intact.
+
+Independent final audit verifies all 61 newly resolved package versions
+against official registry publication times and integrity values: every
+version is over seven days old (youngest 9.02 days), with 58 Apache-2.0 and
+three MIT license declarations. All 73 protected package versions and all
+16 patch hashes match their intended identities; no unrelated dependency
+edges or security/cooling-policy changes were found.
+
+| Family | Reviewed target | Boundary and evidence |
+| ------ | --------------- | --------------------- |
+| AWS/Smithy | S3 client, multipart upload, presigner 3.1121.0; AWS core 3.977.9; Smithy core 3.33.3, Node handler 4.11.3, Fetch handler 5.7.2, types 4.17.2 | S3 published `2026-08-28T19:01:10.061Z`, core `2026-08-21T19:12:55.198Z`; both cooled. [S3 release history](https://github.com/aws/aws-sdk-js-v3/blob/v3.1121.0/clients/client-s3/CHANGELOG.md) and [Smithy handler history](https://github.com/smithy-lang/smithy-typescript/blob/%40smithy%2Fnode-http-handler%404.11.3/packages/node-http-handler/CHANGELOG.md) retain the used transport contracts. Keep MinIO path-style addressing, disabled ACLs, bounded attempts/deadlines, and read-only readiness. The shared AWS graph, including Medusa's DynamoDB transitive, stays on the same compatible cooled line. Apache-2.0 licensing and Node requirements remain compatible. |
+| Stripe server | 22.3.2 → 22.6.0 | Published `2026-08-27T04:22:11.448Z`. The [release](https://github.com/stripe/stripe-node/releases/tag/v22.6.0) updates the default API header from `2026-06-24.dahlia` to `2026-08-26.dahlia` and extends request timeouts through response-body consumption. [Stripe's versioning contract](https://docs.stripe.com/api/versioning) distinguishes compatible monthly releases from breaking named versions; this does not change webhook endpoint configuration. Six actual-SDK, injected-Fetch tests cover exact headers/body/idempotency, stable retries, provider failure classification, and stalled/truncated responses without contacting Stripe. |
+| Stripe browser | React 6.8.0 → 6.8.2; Stripe.js 9.12.0 → 9.14.0 | Published August 20 and cooled August 27. [React comparison](https://github.com/stripe/react-stripe-js/compare/v6.8.0...v6.8.2) and [loader comparison](https://github.com/stripe/stripe-js/compare/v9.12.0...v9.14.0) preserve used runtime behavior; published runtime files match after version-string normalization. The exact four-file Trusted Types patch is rebased, not removed or broadened. Real-browser tests fulfill every Stripe request locally and prove lazy/concurrent loading, the fraud-signals URL, failed-load recovery, and reuse of the single named policy. Both Stripe packages retain MIT licensing. |
+| OpenTelemetry | SDK/experimental 0.217.0 → 0.221.0; stable core/SDK graph → 2.10.0; ioredis/Redis 0.69.0, Knex 0.65.0, PostgreSQL 0.73.0, runtime-node 0.34.0 | The cooled coherent set preserves API 1.9.1 and Storefront trace-base 2.10.0. All three workspace policies mirror experimental API/instrumentation and core overrides. Database instrumentations switch to stable semantic attributes; compatibility includes privacy review of SQL, error, and metric labels, not just successful startup. Keep SQL-comment/application-name propagation and runtime exception capture disabled. No exporter or extra instrumentation is enabled. Apache-2.0 licensing remains compatible. |
+
+Storage regressions reproduce two existing bugs before the patch: an HTTP 200
+bulk-delete response containing individual errors resolves successfully, and
+an unfinished upload leaves its producer stream open after its deadline.
+[S3 explicitly reports individual failures in quiet-mode response bodies](https://docs.aws.amazon.com/AmazonS3/latest/API/API_DeleteObjects.html).
+The provider now rejects those responses through its existing fixed-message
+error boundary, without exposing keys or adding retries, and always destroys
+the upload stream when its promise settles. Review also reproduced the SDK's
+missing in-flight multipart signal propagation and failed-completion cleanup.
+A per-upload client facade now forwards an isolated upload signal, preserves
+the shared client's configuration, and gives deduplicated multipart cleanup
+its own bounded signal. It emits a fixed diagnostic if cleanup fails. These
+are best-effort cancellation/cleanup boundaries, not a remote rollback
+guarantee after response loss. All 13 provider regressions pass after the
+final patch install, including finished-producer/stalled-transport cases,
+concurrent isolation, failed part/completion cleanup, quiet deletion, ACL
+omission, and timer cleanup. The earlier 25 focused Backend and 12
+release/backup tests also pass. No live storage writes or deletions are used.
+
+OpenTelemetry's [core release](https://github.com/open-telemetry/opentelemetry-js/releases/tag/v2.10.0),
+[experimental release](https://github.com/open-telemetry/opentelemetry-js/releases/tag/experimental%2Fv0.221.0),
+and [stable database semantic-attribute migration](https://github.com/open-telemetry/opentelemetry-js-contrib/commit/5b7dd0e102e940d653e04b08b5a1b721a8271037)
+were reviewed together. Merely disabling enhanced reporting does not remove
+SQL literals or raw exceptions. Narrow per-instrumentation span facades now
+filter those values before recording, and a PostgreSQL-only meter facade
+filters labels independently. Global/application providers and runtime metric
+lifecycles remain untouched. Opaque process-local pool groups preserve series
+without exporting names and cap cardinality at 32 groups plus overflow.
+The upstream PostgreSQL instrumentation's shared multi-pool delta baseline is
+pre-existing in both reviewed versions; tests preserve rather than conceal
+that behavior. Pool metrics are not authoritative connection inventory—use
+database readiness/operational probes for health decisions.
+
+All 16 real-SDK/instrumentation tests pass, covering span context, links,
+timing/status, real database/Redis module patches, metric values, pool-group
+limits/reset, disabled preload, and shutdown. Bootstrap coverage is 99.44%
+lines / 90.74% branches / 100% functions. A five-by-20,000-span synthetic
+no-exporter benchmark measured median raw 0.939 microseconds versus filtered
+0.996 microseconds per span; this is filter overhead, not a service-latency
+benchmark. Independent review found no remaining concrete facade issue.
+
+The Stripe response-body deadline regression fails on 22.3.2 and passes on
+22.6.0. Its transport/binding/evidence suites pass 93 tests; Storefront
+payment/Trusted Types regressions pass 17. Loader tests pass all six cases
+across Chromium, Firefox, and WebKit. They verify the installed loader with
+intercepted scripts, not live payments, tax, refunds, or webhook delivery.
+Full Storefront coverage/build and 66 responsive (two expected skips), 14
+launch, and 33 three-engine critical browser tests pass on the final SDK
+graph. Final Node 26.5.0 Backend coverage passes 275 suites / 2,090 tests at
+91.67% statements/lines, 85.49% branches, and 95.78% functions. Its direct
+build passes Backend compilation in 6.35 seconds and Admin in 15.55 seconds;
+the frozen generated runtime resolves 1,072 dependencies with the expected
+Medusa/SDK identities and an exact copy of the bootstrap. Root lint/typecheck,
+all boundary checks, peers, and the unchanged audit policy pass. Final Admin
+acceptance passes 12/12 with zero axe violations/incomplete checks, findings,
+review codes, or case errors. Five inspected rendered Chromium fixture
+screenshots across 760–1,920 px show no visible regression; artifacts are at
+`/tmp/remorseless-storage-payment-telemetry-admin.zUO2kX`. Implementation
+commit `9cf9338` and this evidence travel in one push. Exact-SHA CI and
+separate Railway acceptance remain required before closing this batch.
+Newer Stripe, AWS, and OpenTelemetry releases still within seven days remain
+held; this batch does not waive the separate Medusa migration.
 
 ## Compatibility upgrade plan — 2026-09-03, batching revised 2026-09-06
 
@@ -512,8 +636,8 @@ cooling holds, and provider-specific acceptance requirements remain in force.
 | 2 | `qs` | Complete: root, Backend, and Storefront use one exact 6.16.0 graph after the cooling expiry; both advisory ignores, all three patch copies, and the temporary verifier were removed together. |
 | 3 | Medusa | Move every Backend and Storefront `@medusajs/*` package together from 2.18.0 to 2.19.0. The official [2.19 release](https://github.com/medusajs/medusa/releases/tag/v2.19.0) is a breaking Admin migration to Vite 7.3.6 and React Router 7.18.2. Audit removed SDK Product Option methods, `Response.json()` and `defer()` usage, `UIMatch.loaderData`, cart/order wildcard totals, every Medusa patch, Admin browser/a11y contracts, migrations, and complete checkout/refund/tax behavior before staging. |
 | 4 | TanStack | Completed the five Query persistence/runtime package update to 5.102.7 with local, exact-SHA CI, runtime-image, and Railway acceptance. Review Form 1.33.5, Pacer 0.22.0, and cooled Query patches individually, then include compatible results in the combined batch. Preserve validation/focus, debounce/cancellation, and cache/persistence regressions. Hold Table 9 for an explicit API migration. |
-| 5 | Stripe | Update `stripe` 22.6.0 separately from the browser pair. Its release pins a new API version and changes connection-error behavior. Update `@stripe/react-stripe-js` 6.8.2 with `@stripe/stripe-js` 9.14.0 only after rebasing or removing the exact Trusted Types loader patch, then rerun checkout, 3DS, response-loss, webhook, refund, CSP, and three-engine browser matrices. |
-| 6 | AWS SDK | Update the S3 client to 3.1119.0 with its compatible core graph. Recheck the locally patched abort/timeout behavior, MinIO path-style requests, release `HeadBucket`, upload compensation, media backup, and runtime image scan before removing any core override. |
+| 5 | Stripe | Review `stripe` 22.6.0 independently from the browser pair, then share the compatible batch above. Its release pins a new API version and changes connection-error behavior. Update `@stripe/react-stripe-js` 6.8.2 with `@stripe/stripe-js` 9.14.0 only after rebasing or removing the exact Trusted Types loader patch, then rerun checkout, 3DS, response-loss, webhook, refund, CSP, and three-engine browser matrices. |
+| 6 | AWS SDK | Update the S3 client to the newly reviewed cooled 3.1121.0 with its compatible core graph. Recheck the locally patched abort/timeout behavior, MinIO path-style requests, release `HeadBucket`, upload compensation, media backup, and runtime image scan before removing any core override. |
 | 7 | OpenTelemetry | Move the experimental SDK and matching instrumentations as one compatibility set: SDK Node 0.221.0 and the corresponding Redis, ioredis, Knex, PostgreSQL, and runtime packages. Keep stable API/trace packages on their compatible line; prove preload ordering, shutdown, redaction, trace correlation, RED metrics, and provider-disabled startup. |
 | 8 | Small runtime and tool patches | Redis 6.2.1 is complete with local, exact-SHA CI, runtime-image, Railway, and staging acceptance. Batch reviewed Resend, PostHog, and UI/test patches; recheck newest cooled versions instead of assuming the September 3 targets remain current. Preserve functional email, rate-limit, analytics, browser, and coverage tests. Exact GitHub Action updates still require immutable-action and egress-policy verification. |
 
