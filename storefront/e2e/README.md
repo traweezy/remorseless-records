@@ -89,6 +89,15 @@ Run the non-destructive CI smoke suite after building:
 pnpm run test:e2e --config=playwright.ci.config.ts
 ```
 
+Run the same Desktop Chrome, Pixel 7, and iPhone 15 Pro projects against a
+deployed HTTPS artifact by setting `PLAYWRIGHT_BASE_URL`. The deployed mode
+does not start the local Storefront or deterministic Medusa fixture:
+
+```sh
+PLAYWRIGHT_BASE_URL=https://example.test \
+  pnpm run test:e2e --config=playwright.ci.config.ts
+```
+
 Run the same non-destructive smoke journeys in Firefox and WebKit. Desktop
 projects cover pointer affordances, cart and quick-shop behavior, catalog
 stability and continuous loading, discography layout, and checkout. Chromium-

@@ -178,6 +178,12 @@ test("pins Browser Smoke to the local fixture before deployment", () => {
     assert.match(job, /MEILISEARCH_SEARCH_KEY: ci-launch-search-key-20260831/u)
   }
   assert.match(ciConfig, /ciMedusaFixtureWebServer/u)
+  assert.match(
+    ciConfig,
+    /process\.env\.PLAYWRIGHT_BASE_URL\?\.trim\(\) \|\| null/u
+  )
+  assert.match(ciConfig, /require an HTTPS PLAYWRIGHT_BASE_URL/u)
+  assert.match(ciConfig, /deployedBaseURL\s*\? \{\}/u)
   assert.match(criticalConfig, /ciMedusaFixtureWebServer/u)
   assert.match(launchConfig, /ciMedusaFixtureWebServer/u)
   assert.doesNotMatch(

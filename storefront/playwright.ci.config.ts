@@ -5,8 +5,23 @@ import {
   ciStorefrontProviderEnv,
 } from "./playwright.ci-provider"
 
-const baseURL = "http://127.0.0.1:3000"
+const localBaseURL = "http://127.0.0.1:3000"
+const deployedBaseURL = process.env.PLAYWRIGHT_BASE_URL?.trim() || null
+const baseURL = deployedBaseURL ?? localBaseURL
 const executablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH
+const isHttpsUrl = (value: string): boolean => {
+  try {
+    return new URL(value).protocol === "https:"
+  } catch {
+    return false
+  }
+}
+
+if (deployedBaseURL && !isHttpsUrl(deployedBaseURL)) {
+  throw new Error(
+    "Deployed browser smoke tests require an HTTPS PLAYWRIGHT_BASE_URL."
+  )
+}
 
 export default defineConfig({
   testDir: "./e2e/ci",
@@ -40,14 +55,18 @@ export default defineConfig({
       use: { ...devices["iPhone 15 Pro"], browserName: "chromium" },
     },
   ],
-  webServer: [
-    ciMedusaFixtureWebServer,
-    {
-      command: "pnpm run start --hostname 127.0.0.1 --port 3000",
-      env: ciStorefrontProviderEnv,
-      url: `${baseURL}/live`,
-      reuseExistingServer: false,
-      timeout: 120_000,
-    },
-  ],
+  ...(deployedBaseURL
+    ? {}
+    : {
+        webServer: [
+          ciMedusaFixtureWebServer,
+          {
+            command: "pnpm run start --hostname 127.0.0.1 --port 3000",
+            env: ciStorefrontProviderEnv,
+            url: `${localBaseURL}/live`,
+            reuseExistingServer: false,
+            timeout: 120_000,
+          },
+        ],
+      }),
 })

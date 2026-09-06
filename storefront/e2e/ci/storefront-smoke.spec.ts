@@ -317,6 +317,8 @@ const expectVisibleInteractiveTargets = async (page: Page): Promise<void> => {
 }
 
 const rejectNonEssentialCookies = async (page: Page): Promise<void> => {
+  await page.waitForLoadState("load")
+
   const reject = page.getByRole("button", { name: "Reject non-essential" })
   const appeared = await reject
     .waitFor({ state: "visible", timeout: 3_000 })
