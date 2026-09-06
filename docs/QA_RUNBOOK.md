@@ -292,9 +292,15 @@ pnpm run qa:admin:accessibility
 ```
 
 The matrix serves only the compiled Admin bundle and intercepts its GET and
-OPTIONS requests with bounded, deterministic fixtures. Any mutation request is
-rejected. Its 12 cases cover guided Product validation and offerings, existing
-Product authoring, the native Product list and Catalog workspace,
+OPTIONS requests with bounded, deterministic fixtures. Before fixture handling
+or network fallthrough, the browser aborts every request except GET, HEAD, and
+OPTIONS, regardless of origin. The local static server independently returns
+405 with `Allow: GET, HEAD, OPTIONS` for every other method; OPTIONS returns
+204 and HEAD never streams a body. A failed browser abort produces only
+`request:mutation_block_failed` and cannot fall through to the network.
+`qa:admin-accessibility-boundary` tests both layers and runs in the local lint
+gate and Root CI. Its 12 cases cover guided Product validation and offerings,
+existing Product authoring, the native Product list and Catalog workspace,
 Merchandising and its creation dialog, News and Discography creation dialogs,
 Tax Control, Media Cleanup, Refund Operations, and Tax Records. Viewports cover
 760-pixel narrow/mobile, 800-pixel 200%-equivalent, 1,440-pixel laptop, and

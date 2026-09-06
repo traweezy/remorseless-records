@@ -3,7 +3,10 @@ import { mkdir } from "node:fs/promises"
 import { createRequire } from "node:module"
 import { dirname, isAbsolute } from "node:path"
 
-import { startAdminStaticServer } from "./admin-static-server.mjs"
+import {
+  rejectAdminAcceptanceMutation,
+  startAdminStaticServer,
+} from "./admin-static-server.mjs"
 
 const require = createRequire(new URL("../package.json", import.meta.url))
 const puppeteer = require("puppeteer")
@@ -718,6 +721,9 @@ try {
 
   await page.setRequestInterception(true)
   page.on("request", (request) => {
+    if (rejectAdminAcceptanceMutation(request, (code) => issues.push(code))) {
+      return
+    }
     const url = new URL(request.url())
     if (url.href === mediaFixtureUrl && request.method() === "GET") {
       void request.respond({

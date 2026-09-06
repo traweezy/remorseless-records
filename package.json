@@ -21,7 +21,7 @@
     "qa:service-container-resolution": "node scripts/verify-service-container-resolution.mjs",
     "qa:storefront-response-boundary": "node scripts/verify-storefront-response-boundary.mjs",
     "qa:admin-browser-boundary": "node scripts/verify-admin-browser-boundary.mjs",
-    "qa:admin-accessibility-boundary": "node scripts/verify-admin-accessibility-boundary.mjs",
+    "qa:admin-accessibility-boundary": "node --test qa/admin-static-server.test.mjs && node scripts/verify-admin-accessibility-boundary.mjs",
     "qa:railway-iac": "node --no-warnings scripts/verify-railway-iac.mjs",
     "qa:database-release-boundary": "node --test scripts/release-prepare.test.mjs scripts/postgres-logical-backup.test.mjs scripts/media-backup.test.mjs",
     "qa:secure-artifacts": "node --test scripts/export-category-map.test.mjs",

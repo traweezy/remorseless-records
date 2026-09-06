@@ -17,6 +17,24 @@ const contentTypes = new Map([
   [".woff2", "font/woff2"],
 ])
 
+export const ADMIN_ACCEPTANCE_ALLOWED_METHODS = "GET, HEAD, OPTIONS"
+const readMethods = new Set(["GET", "HEAD", "OPTIONS"])
+
+export const isAdminAcceptanceReadMethod = (method) => readMethods.has(method)
+
+export const rejectAdminAcceptanceMutation = (request, onFailure) => {
+  if (isAdminAcceptanceReadMethod(request.method())) {
+    return false
+  }
+  const recordFailure = () => onFailure("request:mutation_block_failed")
+  try {
+    void Promise.resolve(request.abort("blockedbyclient")).catch(recordFailure)
+  } catch {
+    recordFailure()
+  }
+  return true
+}
+
 const listen = (server, { host, port }) =>
   new Promise((resolveListening, reject) => {
     server.once("error", reject)
@@ -44,6 +62,17 @@ export const startAdminStaticServer = async ({
   }
 
   const server = createServer((request, response) => {
+    response.setHeader("cache-control", "no-store")
+    if (!isAdminAcceptanceReadMethod(request.method)) {
+      response.writeHead(405, { Allow: ADMIN_ACCEPTANCE_ALLOWED_METHODS })
+      response.end()
+      return
+    }
+    if (request.method === "OPTIONS") {
+      response.writeHead(204, { Allow: ADMIN_ACCEPTANCE_ALLOWED_METHODS })
+      response.end()
+      return
+    }
     const pathname = decodeURIComponent(
       new URL(request.url ?? "/", "http://localhost").pathname
     )
@@ -61,12 +90,15 @@ export const startAdminStaticServer = async ({
         // SPA routes intentionally fall back to index.html.
       }
     }
-    response.setHeader("cache-control", "no-store")
     response.setHeader(
       "content-type",
       contentTypes.get(extname(file)) ?? "application/octet-stream"
     )
     response.setHeader("x-content-type-options", "nosniff")
+    if (request.method === "HEAD") {
+      response.end()
+      return
+    }
     createReadStream(file).pipe(response)
   })
 

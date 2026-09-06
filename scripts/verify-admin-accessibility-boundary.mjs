@@ -9,6 +9,7 @@ const readRepositoryFile = (relativePath) =>
 
 const [
   packageSource,
+  rootWorkflowSource,
   acceptanceSource,
   matrixSource,
   permissionBoundarySource,
@@ -23,6 +24,7 @@ const [
   selectPatchSource,
 ] = await Promise.all([
   readRepositoryFile("package.json"),
+  readRepositoryFile(".github/workflows/root.yml"),
   readRepositoryFile("qa/admin-visual-acceptance.mjs"),
   readRepositoryFile("qa/run-admin-accessibility-matrix.mjs"),
   readRepositoryFile(
@@ -47,6 +49,14 @@ assert.equal(
 assert.match(
   packageManifest.scripts?.["qa:lint"] ?? "",
   /pnpm run qa:admin-accessibility-boundary/u
+)
+assert.equal(
+  packageManifest.scripts?.["qa:admin-accessibility-boundary"],
+  "node --test qa/admin-static-server.test.mjs && node scripts/verify-admin-accessibility-boundary.mjs"
+)
+assert.match(
+  rootWorkflowSource,
+  /run: pnpm run qa:admin-accessibility-boundary/u
 )
 
 for (const findingCode of [
