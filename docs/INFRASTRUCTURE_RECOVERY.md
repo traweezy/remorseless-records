@@ -216,7 +216,9 @@ manifest containing byte length, SHA-256, tool version, timestamp, and a
 credential-free source fingerprint.
 
 Both PostgreSQL commands accept `--help` without credentials and reject unknown,
-duplicate, or incomplete arguments. `DATABASE_RECOVERY_TIMEOUT_MS` bounds the
+duplicate, or incomplete arguments. One optional leading `--` forwarded by
+`pnpm run` is normalized before parsing; repeated or interior separators still
+fail. `DATABASE_RECOVERY_TIMEOUT_MS` bounds the
 overall client/hash/copy workflow: default 30 minutes, minimum 100 milliseconds,
 maximum four hours. The connect timeout remains 10 seconds; `pg_dump` also
 limits initial lock waits to 10 seconds. SIGINT/SIGTERM cancel the active client
@@ -426,7 +428,10 @@ TCP/TLS handshake and an established socket. External endpoints require
 `rediss://` with certificate verification; plaintext is restricted to literal
 loopback or Railway private hostnames. Only database zero is accepted because
 the observation is server-wide. URL options/fragments and command arguments
-other than `--help` are rejected.
+other than `--help` are rejected after normalizing one optional leading
+package-manager separator. Both `pnpm run data:redis:audit --help` and the
+documented `pnpm run data:redis:audit -- --help` form are exercised through the
+real package manager without credentials.
 
 For Redis 7+, the exact [CONFIG GET](https://redis.io/docs/latest/commands/config-get/)
 allowlist is `maxmemory`, `maxmemory-policy`, `appendonly`, `appendfsync`,

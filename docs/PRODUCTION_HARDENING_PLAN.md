@@ -4310,7 +4310,7 @@ The grouped audit-tooling batch makes the documented Redis memory and
 persistence policy executable without changing live settings. It uses explicit
 service-memory input, exact read-only configuration/INFO commands, validated
 numeric/enum reports, credential-safe failures and real TCP/TLS cancellation.
-The 61 focused tests pass with 100% helper lines/functions and 98.90% branches
+The 67 focused tests pass with 100% helper lines/functions and 98.92% branches
 under an enforced 80% gate; eight real pinned-Redis read-only integration tests
 are wired into Backend CI. A synthetic noeviction/AOF drill retained its marker
 after rejected OOM writes and SIGKILL/restart following acknowledged fsync;
@@ -4318,11 +4318,15 @@ healthy audit recovery took 637 ms on this small local fixture. Its owned
 container and volume were removed. This does not close production capacity,
 durable-volume, queue reconciliation, RPO/RTO or live rollout requirements.
 
-Root QA over 1,312 files, strict typechecks, frozen install and both application
+Root QA over 1,314 files, strict typechecks, frozen install and both application
 builds pass. The existing CI fixture supplies local Storefront build secrets;
 no application secret or environment file changed. Detailed scope and
 limitations are in `INFRASTRUCTURE_RECOVERY.md`, and local evidence is in the
-handoff. Exact-SHA remote acceptance follows the single grouped push.
+handoff. A final package-entrypoint smoke exposed pnpm's forwarded `--`;
+Redis and PostgreSQL now normalize only one leading separator, with real
+pnpm-help and 30 PostgreSQL CLI regressions preserving strict validation.
+Exact-SHA remote acceptance must use that corrected head, not the initial
+`8f93c71` implementation push.
 
 ## TanStack Form patch compatibility
 

@@ -24,7 +24,7 @@
     "qa:admin-accessibility-boundary": "node --test qa/admin-static-server.test.mjs && node scripts/verify-admin-accessibility-boundary.mjs",
     "qa:railway-iac": "node --no-warnings scripts/verify-railway-iac.mjs",
     "qa:database-release-boundary": "node --test scripts/release-prepare.test.mjs scripts/postgres-logical-backup.test.mjs scripts/postgres-restore.test.mjs scripts/recovery-process.test.mjs scripts/postgres-recovery-cli.test.mjs scripts/media-backup.test.mjs scripts/media-object-checksum.test.mjs scripts/media-backup-cli.test.mjs && pnpm run qa:redis-capacity",
-    "qa:redis-capacity": "node --test --experimental-test-coverage --test-coverage-include=scripts/lib/redis-capacity-audit.mjs --test-coverage-include=scripts/lib/redis-audit-client.mjs --test-coverage-lines=80 --test-coverage-branches=80 --test-coverage-functions=80 scripts/redis-capacity-audit.test.mjs scripts/redis-audit-client.test.mjs scripts/redis-audit-cli.test.mjs",
+    "qa:redis-capacity": "node --test --experimental-test-coverage --test-coverage-include=scripts/lib/redis-capacity-audit.mjs --test-coverage-include=scripts/lib/redis-audit-client.mjs --test-coverage-include=scripts/lib/cli-arguments.mjs --test-coverage-lines=80 --test-coverage-branches=80 --test-coverage-functions=80 scripts/cli-arguments.test.mjs scripts/redis-capacity-audit.test.mjs scripts/redis-audit-client.test.mjs scripts/redis-audit-cli.test.mjs",
     "qa:secure-artifacts": "node --test scripts/export-category-map.test.mjs",
     "qa:browser-toolchain-security": "node scripts/verify-browser-toolchain-security.mjs",
     "qa:storefront-provider-fixture": "node --test storefront/scripts/ci-medusa-fixture.test.mjs",

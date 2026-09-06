@@ -1259,14 +1259,24 @@ counters. It never reads application keys, widens ACLs, or applies settings.
 The runbook distinguishes bounded policy evidence from volume/recovery/SLO
 acceptance and documents the accepted-response rather than wire-buffer cap.
 
-Local validation passes 61 focused cases at 100% helper lines/functions and
-98.90% branches (80% enforced), plus eight read-only tests against the real
+Local validation passes 67 focused cases at 100% helper lines/functions and
+98.92% branches (80% enforced), plus eight read-only tests against the real
 pinned Redis 8.10.1 fixture. Real RESP2 tests prove the exact command allowlist,
 one connection, denied-command/error redaction, and signal/deadline cleanup.
 Review reproduced a pending TLS handshake surviving ordinary client destroy;
 an underlying socket AbortSignal fixes it, with real peer-closure regressions
 for both timeout and external abort. DNS TLS endpoints also receive SNI while
 certificate verification remains mandatory.
+
+The first implementation push `8f93c71` was followed by a package-entrypoint
+correction before release acceptance: pnpm forwards `--`, while the strict
+Redis and PostgreSQL parsers initially rejected the documented invocation.
+All three commands now normalize exactly one leading separator, retaining
+strict rejection of duplicate/interior separators and all confirmation gates.
+Tests execute actual pnpm help invocations with and without the separator;
+the PostgreSQL CLI suite now passes 30 cases, including backup and restore
+dry-run/apply separator regressions. The combined database-release gate
+contains 84 existing/recovery cases plus the 67 Redis/shared-argument cases.
 
 A separate synthetic local drill used one owned 256 MiB container with 8 MiB
 maxmemory, noeviction, AOF everysec and a `60 1` RDB schedule. Five 1 MiB fill
@@ -1278,7 +1288,7 @@ restart; it was recovered in 505 ms and a healthy CLI audit completed in
 of an acknowledged write, not general RPO/RTO or crash-window-loss guarantees.
 The owned container/anonymous volume were removed and its port released.
 
-Frozen installation, the unchanged dependency policy, full root QA over 1,312
+Frozen installation, the unchanged dependency policy, full root QA over 1,314
 files, both strict typechecks and application builds pass. Backend/Admin
 builds took 6.56/15.91 seconds; Storefront compiled in 5.7 seconds and its
 131-asset secret/Trusted Types bundle scan passed. The initial Storefront
@@ -1286,7 +1296,7 @@ build correctly rejected an inadequate local secret; the successful rerun
 used the existing CI-only secret/provider fixtures, without modifying `.env`
 or live credentials. Existing fixture search/category fallbacks remain
 visible and are not claimed as live provider evidence. Final exact-SHA CI,
-runtime images and staging acceptance still follow the grouped push.
+runtime images and staging acceptance must use the final corrected head.
 
 ### Remaining release work
 

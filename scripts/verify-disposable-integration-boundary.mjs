@@ -83,6 +83,7 @@ for (const marker of [
   "--test-coverage-lines=80",
   "--test-coverage-branches=80",
   "--test-coverage-functions=80",
+  "scripts/cli-arguments.test.mjs",
   "scripts/redis-capacity-audit.test.mjs",
   "scripts/redis-audit-client.test.mjs",
   "scripts/redis-audit-cli.test.mjs",

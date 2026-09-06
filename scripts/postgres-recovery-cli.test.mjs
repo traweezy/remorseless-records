@@ -75,11 +75,12 @@ else process.exit(9);
     // Scope temporary snapshots to the fixture so cleanup can be asserted.
     const { mkdir } = await import("node:fs/promises")
     await mkdir(scratch, { mode: 0o700 })
-    const command = (kind, extra = [], overrides = {}) => ({
+    const command = (kind, extra = [], overrides = {}, prefix = []) => ({
       args: [
         resolve(
           `scripts/postgres-${kind === "backup" ? "logical-backup" : "restore-drill"}.mjs`
         ),
+        ...prefix,
         ...(kind === "backup"
           ? ["--output-dir", output]
           : ["--archive", archive, "--manifest", manifestPath]),
@@ -100,9 +101,15 @@ else process.exit(9);
     })
     const configure = (config) =>
       writeFile(join(directory, "config.json"), JSON.stringify(config))
-    const invoke = async (kind, config = {}, extra = [], overrides = {}) => {
+    const invoke = async (
+      kind,
+      config = {},
+      extra = [],
+      overrides = {},
+      prefix = []
+    ) => {
       await configure(config)
-      const input = command(kind, extra, overrides)
+      const input = command(kind, extra, overrides, prefix)
       const result = spawnSync(process.execPath, input.args, {
         env: input.env,
         encoding: "utf8",
@@ -150,6 +157,82 @@ for (const script of ["postgres-logical-backup", "postgres-restore-drill"]) {
     assert.match(result.stdout, /DATABASE_RECOVERY_TIMEOUT_MS/u)
     assert.match(result.stdout, /SIGINT\/SIGTERM/u)
   })
+  test(`${script} help accepts one leading package-manager separator without credentials`, () => {
+    const result = spawnSync(
+      process.execPath,
+      [resolve(`scripts/${script}.mjs`), "--", "--help"],
+      { env: {}, encoding: "utf8", timeout: 3000 }
+    )
+    assert.equal(result.status, 0, result.stderr)
+    assert.match(result.stdout, /DATABASE_RECOVERY_TIMEOUT_MS/u)
+    assert.match(result.stdout, /SIGINT\/SIGTERM/u)
+  })
+}
+
+test("backup accepts one leading separator and still verifies private artifacts", () =>
+  withFixture(async ({ invoke, calls }) => {
+    const result = await invoke("backup", {}, [], {}, ["--"])
+    assert.equal(result.status, 0, result.stderr)
+    const evidence = JSON.parse(result.stdout)
+    assert.equal(evidence.status, "verified")
+    assert.equal(await readFile(evidence.archivePath, "utf8"), fixtureContent)
+    assert.equal((await stat(evidence.archivePath)).mode & 0o777, 0o600)
+    assert.equal((await stat(evidence.manifestPath)).mode & 0o777, 0o600)
+    assert.deepEqual(
+      (await calls()).map((call) => call.tool),
+      ["pg_dump", "pg_dump", "pg_restore"]
+    )
+    assert.equal(
+      (await calls()).some((call) => call.args.includes("--")),
+      false
+    )
+  }))
+
+for (const apply of [false, true]) {
+  test(`restore ${apply ? "apply" : "dry-run"} accepts one leading separator`, () =>
+    withFixture(async ({ invoke, calls, directory }) => {
+      const result = await invoke("restore", {}, apply ? ["--apply"] : [], {}, [
+        "--",
+      ])
+      assert.equal(result.status, 0, result.stderr)
+      assert.equal(
+        JSON.parse(result.stdout).status,
+        apply ? "restore_verified" : "dry_run_verified"
+      )
+      const mutations = (await calls()).filter(
+        (call) => call.tool === "pg_restore" && !call.args.includes("--list")
+      )
+      assert.equal(mutations.length, apply ? 1 : 0)
+      if (apply) {
+        assert.equal(mutations[0].args.includes("--single-transaction"), true)
+        assert.equal(
+          await readFile(join(directory, "restored.dump"), "utf8"),
+          fixtureContent
+        )
+      }
+      assert.equal(
+        (await calls()).some((call) => call.args.includes("--")),
+        false
+      )
+    }))
+}
+
+for (const kind of ["backup", "restore"]) {
+  for (const [name, prefix, extra] of [
+    ["double leading", ["--", "--"], []],
+    ["interior", ["--"], ["--"]],
+  ]) {
+    test(`${kind} rejects a ${name} separator before starting clients`, () =>
+      withFixture(async ({ invoke, directory }) => {
+        const result = await invoke(kind, {}, extra, {}, prefix)
+        assert.equal(result.status, 1)
+        assert.equal(result.stdout, "")
+        assert.equal(JSON.parse(result.stderr).phase, "arguments")
+        await assert.rejects(access(join(directory, "calls.jsonl")), {
+          code: "ENOENT",
+        })
+      }))
+  }
 }
 
 test("backup publishes private valid evidence only after archive verification", () =>

@@ -266,6 +266,8 @@ test("CLI rejects unknown, duplicate, positional, and mixed-help arguments", asy
     ["--apply"],
     ["--help", "--help"],
     ["--help", "--apply"],
+    ["--", "--", "--help"],
+    ["--help", "--"],
     ["--url", `redis://audit:${credential}@localhost`],
     ["--"],
     [credential],
@@ -292,10 +294,10 @@ test("invalid configuration is unavailable without revealing endpoint details", 
     assertUnavailable(await invoke([], environment))
 })
 
-test("healthy CLI observes exact read-only commands on one closed connection", () =>
+test("healthy CLI accepts a package separator and observes exact read-only commands on one closed connection", () =>
   withServer(
     async ({ invoke: run, commands, connectionCount, closedCount }) => {
-      const result = await run()
+      const result = await run(["--"])
       assertRedacted(result)
       assert.equal(result.status, 0, result.stderr)
       assert.equal(result.stderr, "")

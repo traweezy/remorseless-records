@@ -1,5 +1,6 @@
 import { createRequire } from "node:module"
 import { performance } from "node:perf_hooks"
+import { normalizeScriptArguments } from "./lib/cli-arguments.mjs"
 import {
   collectRedisAudit,
   parseRedisAuditEnvironment,
@@ -36,7 +37,7 @@ const main = async () => {
   process.once("SIGINT", cancel)
   process.once("SIGTERM", cancel)
   try {
-    const args = process.argv.slice(2)
+    const args = normalizeScriptArguments(process.argv.slice(2))
     if (args.length === 1 && args[0] === "--help") {
       console.log(help)
       return

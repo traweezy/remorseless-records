@@ -2,6 +2,7 @@ import assert from "node:assert/strict"
 import { mkdtemp, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
+import { normalizeScriptArguments } from "./lib/cli-arguments.mjs"
 import { createPostgresClientEnvironment } from "./lib/postgres-logical-backup.mjs"
 import {
   parseRestoreInventory,
@@ -33,7 +34,8 @@ No live provider or application smoke-test acceptance is implied.
 `
 
 const main = async () => {
-  if (process.argv.length === 3 && process.argv[2] === "--help") {
+  const inputArguments = normalizeScriptArguments(process.argv.slice(2))
+  if (inputArguments.length === 1 && inputArguments[0] === "--help") {
     process.stdout.write(help)
     return
   }
@@ -44,7 +46,7 @@ const main = async () => {
   const startedAt = Date.now()
   try {
     const args = parseRecoveryArguments(
-      process.argv.slice(2),
+      inputArguments,
       ["--archive", "--manifest"],
       true
     )
