@@ -94,8 +94,8 @@ environment exists.
 
 ## Active grouped application-correctness follow-up
 
-The current local candidate groups three reproduced defects after the accepted
-`6f61520` release: late checkout reads overwriting authoritative writes;
+The grouped candidate was pushed at `3f9c533` after the accepted `6f61520`
+release: late checkout reads overwriting authoritative writes;
 Storefront completion/error identity collisions between concurrent requests
 sharing a trace; and Medusa's official payment webhook reflecting internal
 enqueue exceptions in public responses. Regression tests cover cancellation,
@@ -103,8 +103,14 @@ revision-scoped shipping options, exact root ownership/replay isolation and
 the installed 2.18 webhook contract. The actual built Next runtime also has a
 deterministic four-request provider barrier test in Browser Smoke CI. No
 payment provider, session key, dependency version or sampling policy changed.
-This candidate is not accepted until its combined local and exact-SHA staging
-gates complete; keep the accepted head above until then.
+All local and four exact-SHA CI workflows passed, as did both Railway
+deployments and 75 deployed browser cases. Live shared-trace validation then
+found three status-zero completion events for four successful HTTP requests:
+the Vercel tracing wrapper forcibly ended sibling roots before Next added
+their status. The original reverse-order runtime fixture hid this defect.
+The corrective standard Node provider and both completion-order regressions
+must pass fresh local and exact-SHA staging gates; keep the accepted head
+above until then. The handoff records the unaccepted candidate's evidence.
 
 The September 6 read-only Redis audit is now live evidence, not just a fixture:
 the verified Railway ceiling is 32,000,000,000 bytes, and the existing private

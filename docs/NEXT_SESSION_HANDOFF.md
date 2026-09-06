@@ -19,11 +19,13 @@ artifact Railway is running; verify Railway separately with the sequence below.
   PostgreSQL backup/restore execution, Redis observation and shared-CI
   contract parity batches.
 - Latest exact runtime-image validation SHA:
-  `6f61520fbd3677b15aeecb1052a86b8dffff0e9d`
+  `3f9c533fbea23fee6b300287f0e1ed3bc8cb7bd9`. CI image validation passed,
+  but application acceptance remains at `6f61520` pending the tracing
+  bootstrap correction below.
 - The prior PostgreSQL release's acceptance notes shipped with the substantive
   Redis batch; Redis acceptance notes shipped with the shared-CI contract
-  follow-up. Final CI-parity acceptance notes remain local for the next
-  substantive batch; no documentation-only push was made.
+  follow-up. Final CI-parity acceptance notes shipped with the substantive
+  `3f9c533` application batch; no documentation-only push was made.
 - Original implementation/runtime-image acceptance SHA
   `61fd86889a4adca23e1e9704e11c889a1fd986a9` is pushed to
   `origin/staging`. Backend source deployment acceptance is documented at
@@ -1468,7 +1470,8 @@ the next substantive batch; no documentation-only checkpoint push was made.
 
 ### Grouped checkout, request identity and webhook correctness follow-up
 
-Three reproduced application defects are grouped for the next staging push.
+Three reproduced application defects were grouped in one staging push at
+`3f9c533fbea23fee6b300287f0e1ed3bc8cb7bd9` (20 files, three logical commits).
 The accepted head remains `6f61520` until the candidate's exact-SHA acceptance
 is complete; do not confuse local verification with deployment evidence.
 
@@ -1546,6 +1549,71 @@ exact volume/deployment metadata is in `INFRASTRUCTURE_RECOVERY.md`. Do not
 restart/redeploy it without a verified backup and reviewed image/rollback
 path. A focused manual-backup approval request is separate from this code
 batch; no backup or live change is implied by these observations.
+
+### Staging discovery: premature sibling-span completion
+
+All four `3f9c533` workflows passed without reruns: Root `34066074212`,
+Backend `34066074181`, Storefront `34066074230` and Runtime Images
+`34066074226`. Root ran 71 parity plus 178 shared tests. Backend ran 278
+suites/2,162 tests, 97 service/recovery cases and three API contracts.
+Storefront ran 143 files/881 baseline tests (94.82% lines, 87.39% branches),
+38 files/344 transactional tests (84.10% lines, 76.45% branches), the original
+runtime regression, 81 responsive/two skipped, 14 launch and 48 cross-engine
+cases. Pa11y and all 18 Lighthouse samples passed unchanged budgets; retained
+artifact `9999162860` is private at
+`/tmp/remorseless-lighthouse-3f9c533.62BSJs`. Six requested URLs each have
+three reports, zero runtime/console errors and perfect accessibility and
+best-practices scores. Runtime artifacts `9999030852` (Backend, 1,166
+components) and `9999001774` (Storefront, 122 components) passed exact
+OCI/source/digest verification under `/tmp/remorseless-runtime-3f9c533.NEtpNq`;
+publication skipped.
+
+Railway Backend `ad2684ce-ccf2-49da-8212-60b54539984c` and Storefront
+`59787227-5630-4842-8a09-c51c80dbce04` both reached `SUCCESS` at that SHA.
+Backend dependencies, operations/catalog and the ordinary exact-SHA heartbeat
+at `23:28:03.455Z` passed. Storefront HTML/security/AVIF checks and 75 deployed
+browser cases/eight expected skips passed with zero retries in 1.8 minutes;
+private evidence is `/tmp/remorseless-3f9c533-deployed-browser.fdIPik/results`.
+Nevertheless, do not accept this release: live trace
+`1800d92f7ae008251b959b7160d5c064` returned four HTTP 200 responses with correct
+request IDs, but three completion logs recorded status zero.
+
+The installed `@vercel/otel` composite processor tracks open spans by trace
+and forcibly ends them when its first root ends. This closes sibling HTTP
+requests before Next attaches status. Direct installed-provider reproduction
+matched the live three-zero/one-200 pattern. The original runtime fixture
+released requests in reverse order, finishing the first root last and hiding
+the wrapper defect. The strengthened fixture checks both completion orders,
+holding siblings open and requiring exactly one completion after each release;
+the old build fails `4 !== 1` with the first-root-first order.
+
+The correction replaces the serverless wrapper with the standard Node provider
+and actual-provider lifecycle tests. Sampling, fixed completion fields and
+W3C propagation remain; no exporter, metric reader or broad instrumentation is
+added. The three direct OpenTelemetry 2.10.0 dependencies already exist in the
+frozen graph. Only the Vercel package/snapshot is removed; retained versions,
+integrities, other importers and patch metadata are unchanged. The new provider
+uses standard `OTEL_SDK_DISABLED` booleans (`false` does not disable it).
+Review also preserved the `OTEL_PROPAGATORS` privacy boundary: `none`,
+`tracecontext`, `baggage`, and `auto` retain their bounded behavior; unsupported
+values fail before registration without reflecting the input.
+Corrective local acceptance passed Root QA across 1,319 files and both strict
+typechecks. Backend passed 278 suites/2,162 tests at 91.83% lines and 85.72%
+branches; Backend/Admin builds and generated lock/patch verification passed.
+Storefront passed 143 files/908 baseline tests (94.96% lines, 87.75% branches)
+and 38 files/344 transactional tests (84.21% lines, 76.59% branches). The
+production build compiled in 13 seconds and passed the 131-asset secret/Trusted
+Types scan. Both actual-runtime completion orders passed in 613/595 ms. All
+48 three-engine browser cases passed with zero retries in 1.3 minutes under
+`/tmp/remorseless-tracing-final-browser.VPqVuV/results`.
+The preceding local browser invocation used the wrong working directory and
+failed six gallery fixture-file reads. Invoking Playwright from Storefront
+resolved those harness failures without changing gallery code, assertions or
+retry policy. Audit retains only the
+three existing moderate ignores. Final root lock SHA-256 is
+`a1f529fde28d2d0ac7042ca3677b14483cbb05dd865af0fc0885fa000e78eb95`.
+Exact-SHA CI and staging acceptance remain required. No live Redis backup,
+configuration, credentials or production settings changed.
 
 ### Remaining release work
 

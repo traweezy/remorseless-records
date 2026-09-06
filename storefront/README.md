@@ -46,9 +46,12 @@ Required values:
 Optional media origins and Bandcamp configuration are documented in
 `.env.local.template`.
 
-Server traces use `@vercel/otel`; optional OTLP export uses
-`OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_EXPORTER_OTLP_HEADERS`, and
-`OTEL_EXPORTER_OTLP_PROTOCOL`. These are server-only values. Browser telemetry
+Server traces use the standard OpenTelemetry Node provider with W3C
+trace/baggage propagation and parent-based sampling. Only the privacy-bounded
+request-completion processor is registered; this bootstrap does not install
+OTLP exporters, metric readers, or broad automatic instrumentation. Reserved
+OTLP configuration remains server-only and is not proof of collector delivery.
+Browser telemetry
 contains only bounded Web Vital values or normalized framework error digests
 and never sends cookies, URLs, customer fields, or raw exception text.
 

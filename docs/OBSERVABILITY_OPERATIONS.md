@@ -48,6 +48,10 @@ text.
   child-span associations use weak references. An unrelated pre-proxy root or
   replayed parent must not consume another request's completion. Missing
   `next.route` does not suppress an otherwise owned route completion.
+  The long-lived Node provider does not force-close other open spans when a
+  sibling request finishes. Runtime regression tests release the first-tracked
+  request both first and last while holding its siblings at a provider barrier;
+  every completion must retain its actual status and duration.
   The existing `parentbased_always_on` sampler remains unchanged: an incoming
   unsampled parent (`traceparent` flags `00`) can omit SDK spans and therefore
   these processor-derived completion metrics. Do not treat them as an
@@ -80,7 +84,7 @@ Undici, and AWS instrumentation is disabled because provider URLs can contain
 postal codes or credentials and object-storage attributes can contain private
 keys.
 
-Production exports over OTLP to a collector or compatible backend when
+The Backend exports over OTLP to a collector or compatible backend when
 configured. Railway preserves `OTEL_EXPORTER_OTLP_ENDPOINT`,
 `OTEL_EXPORTER_OTLP_HEADERS`, `OTEL_EXPORTER_OTLP_PROTOCOL`,
 `OTEL_TRACES_EXPORTER`, `OTEL_METRICS_EXPORTER`, and `OTEL_SDK_DISABLED` for
@@ -92,9 +96,23 @@ project recommends a collector for production and describes OTLP as the
 lossless, broadly supported transport:
 <https://opentelemetry.io/docs/languages/js/exporters/>.
 
+The Storefront registers only its fixed-schema completion processor with the
+standard Node tracer provider, W3C propagation and environment resource
+detection. `OTEL_PROPAGATORS` supports `none`, `tracecontext`, `baggage` and
+`auto`; unset/empty defaults to trace plus baggage. Unsupported values fail
+with a fixed startup error instead of silently enabling unwanted propagation.
+It does not install a network exporter, metric reader or
+broad auto-instrumentation; merely preserving OTLP variables is not evidence
+of collector delivery. This export boundary also applied to the previous
+custom-only Vercel processor configuration. `OTEL_SDK_DISABLED=true` disables
+the Storefront provider; `false` leaves it enabled, following standard boolean
+semantics. The prior wrapper treated any non-empty value as disabled.
+
 The Backend emits `rr.http.server.requests` and `rr.http.server.duration` by
-method and status class. Storefront emits the same HTTP pair, bounded provider
-read duration/count, and accepted browser-event count. A collector may derive
+method and status class. Storefront records the same HTTP pair, bounded
+provider read duration/count, and accepted browser-event count through the
+metrics API; exported samples require a separately configured and verified
+reader. A collector may derive
 span metrics for PostgreSQL/Knex and Redis, but alerts must continue to use only
 low-cardinality operation names and must not enable query parameters or full
 SQL/Redis arguments.

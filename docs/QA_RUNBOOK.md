@@ -206,9 +206,11 @@ retroactively add CI evidence to earlier commits.
 After a fixture-backed Storefront build, run
 `pnpm --filter remorseless-records-storefront run test:runtime:observability`.
 Browser Smoke CI runs the same test against its existing build. It starts
-owned ephemeral loopback Next/provider processes, holds four health requests
-at a provider barrier with the same incoming trace and parent, and checks one
-correct, redacted completion per request plus a request with no incoming trace.
+owned ephemeral loopback Next/provider processes and holds four health requests
+at a provider barrier with the same incoming trace and parent. Separate cases
+finish the first-tracked root first and last, checking after each release that
+held siblings have not completed. Both require the actual status, one correct
+redacted completion per request and a request with no incoming trace.
 The fixture deliberately has no Redis, so its health responses are 503; this
 is correlation acceptance, not live readiness. Output capture is bounded and
 raw runtime logs are not printed. Unit/real-SDK tests separately cover reverse

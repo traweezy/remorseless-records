@@ -19,9 +19,7 @@ const waitFor = async (predicate, message, timeout = 5_000) => {
   }
 }
 
-test("built Next isolates concurrent request completion within one trace", {
-  timeout: 30_000,
-}, async (t) => {
+const verifyConcurrentCompletion = async (t, completionOrder) => {
   const pending = []
   const backend = http.createServer((request, response) => {
     if (request.method === "GET" && request.url === "/ready") {
@@ -174,7 +172,28 @@ test("built Next isolates concurrent request completion within one trace", {
       0,
       "No target request may complete before the provider barrier releases"
     )
-    for (const response of pending.toReversed()) response.writeHead(200).end()
+    const releases =
+      completionOrder === "first-root-first" ? pending : pending.toReversed()
+    for (const [index, response] of releases.entries()) {
+      response.writeHead(200).end()
+      await waitFor(
+        () =>
+          completionEvents().filter((event) => event.trace_id === traceId)
+            .length >=
+          index + 1,
+        "Released request did not complete"
+      )
+      assert.equal(
+        completionEvents().filter((event) => event.trace_id === traceId).length,
+        index + 1,
+        "Completing one request must not end held sibling requests"
+      )
+      assert.ok(
+        releases
+          .slice(index + 1)
+          .every((held) => !held.destroyed && !held.writableEnded)
+      )
+    }
     const responses = await allRequests
     assert.equal(
       new Set(responses.map((response) => response.traceparent)).size,
@@ -242,4 +261,14 @@ test("built Next isolates concurrent request completion within one trace", {
     await new Promise((resolve) => backend.close(resolve))
     await stopChild()
   }
-})
+}
+
+for (const completionOrder of ["first-root-first", "first-root-last"]) {
+  test(
+    `built Next isolates concurrent request completion (${completionOrder})`,
+    {
+      timeout: 30_000,
+    },
+    (t) => verifyConcurrentCompletion(t, completionOrder)
+  )
+}
