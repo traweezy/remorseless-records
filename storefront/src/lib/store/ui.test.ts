@@ -1,5 +1,5 @@
 import { faker } from "@faker-js/faker"
-import { beforeEach, describe, expect, it } from "vitest"
+import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import { uiStore } from "@/lib/store/ui"
 
@@ -37,5 +37,30 @@ describe("uiStore", () => {
 
     uiStore.getState().setMenuOpen(false)
     expect(uiStore.getState().isMenuOpen).toBe(false)
+  })
+
+  it("notifies once per actual change and stops after unsubscribe", () => {
+    uiStore.getState().setSearchOpen(false)
+    uiStore.getState().setMenuOpen(false)
+    const before = uiStore.getState()
+    const listener = vi.fn()
+    const unsubscribe = uiStore.subscribe(listener)
+    try {
+      before.setMenuOpen(false)
+      before.setSearchOpen(false)
+      expect(listener).not.toHaveBeenCalled()
+      expect(uiStore.getState()).toBe(before)
+
+      before.setSearchOpen(true)
+      const after = uiStore.getState()
+      expect(listener).toHaveBeenCalledExactlyOnceWith(after, before)
+      expect(after.setSearchOpen).toBe(before.setSearchOpen)
+      expect(after.setMenuOpen).toBe(before.setMenuOpen)
+      expect(before.isSearchOpen).toBe(false)
+    } finally {
+      unsubscribe()
+    }
+    uiStore.getState().setSearchOpen(false)
+    expect(listener).toHaveBeenCalledTimes(1)
   })
 })

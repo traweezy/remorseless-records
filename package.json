@@ -63,10 +63,10 @@
   "devDependencies": {
     "@axe-core/playwright": "4.13.0",
     "@axe-core/puppeteer": "4.12.1",
-    "@biomejs/biome": "2.5.10",
+    "@biomejs/biome": "2.5.11",
     "@lhci/cli": "0.15.1",
     "@railway/cli": "5.45.0",
-    "esbuild": "^0.28.1",
+    "esbuild": "^0.28.2",
     "lefthook": "^2.1.10",
     "pa11y": "^9.1.1",
     "proxy-agent": "8.0.2",

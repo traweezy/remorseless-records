@@ -7,7 +7,7 @@ import {
 
 const baseURL = "http://127.0.0.1:3000"
 const criticalFlowPattern =
-  /homepage hydrates|cart drawer stays usable|adding from quick shop|desktop filters preserve position|music release detail exposes|checkout remains accessible|virtual (catalog|discography)|Stripe loader/
+  /homepage hydrates|cart drawer stays usable|adding from quick shop|desktop filters preserve position|music release detail exposes|checkout remains accessible|virtual (catalog|discography)|Stripe loader|UI runtime/
 
 export default defineConfig({
   testDir: "./e2e/ci",

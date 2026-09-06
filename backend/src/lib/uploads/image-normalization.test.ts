@@ -3,6 +3,7 @@ import { createHash } from "node:crypto"
 import { MedusaError } from "@medusajs/framework/utils"
 import sharp from "sharp"
 
+import { MAX_IMAGE_OUTPUT_DIMENSION } from "./constraints"
 import {
   buildImageSandboxCommand,
   normalizeManagedImageUpload,
@@ -161,6 +162,73 @@ describe("managed image normalization", () => {
     await expect(
       normalizeManagedImageUpload(upload({ buffer: source }))
     ).rejects.toThrow("exceeds the safe dimension, pixel, frame")
+  })
+
+  it.each([
+    { height: 2, width: MAX_IMAGE_OUTPUT_DIMENSION * 2 },
+    { height: MAX_IMAGE_OUTPUT_DIMENSION * 2, width: 2 },
+  ])(
+    "bounds an extreme $width by $height image without changing its aspect",
+    async ({ height, width }) => {
+      const source = await sharp({
+        create: {
+          background: { b: 30, g: 20, r: 10 },
+          channels: 3,
+          height,
+          width,
+        },
+      })
+        .png()
+        .toBuffer()
+
+      const result = await normalizeManagedImageUpload(
+        upload({ buffer: source })
+      )
+      expect(result).toMatchObject({
+        height: height / 2,
+        width: width / 2,
+        source: { height, width, frames: 1 },
+      })
+      const metadata = await sharp(result.buffer).metadata()
+      expect(metadata).toMatchObject({
+        format: "webp",
+        height: height / 2,
+        width: width / 2,
+      })
+      expect(metadata.pages ?? 1).toBe(1)
+    }
+  )
+
+  it("retains palette transparency when normalizing to a single-frame WebP", async () => {
+    const source = await sharp({
+      create: {
+        background: { alpha: 0.25, b: 90, g: 60, r: 30 },
+        channels: 4,
+        height: 4,
+        width: 4,
+      },
+    })
+      .png({ palette: true, colours: 2 })
+      .toBuffer()
+    expect(await sharp(source).metadata()).toMatchObject({ isPalette: true })
+
+    const result = await normalizeManagedImageUpload(upload({ buffer: source }))
+    const metadata = await sharp(result.buffer).metadata()
+    expect(metadata).toMatchObject({
+      format: "webp",
+      hasAlpha: true,
+      height: 4,
+      width: 4,
+    })
+    expect(metadata.pages ?? 1).toBe(1)
+    const { data, info } = await sharp(result.buffer)
+      .raw()
+      .toBuffer({ resolveWithObject: true })
+    expect(info.channels).toBe(4)
+    for (let offset = 3; offset < data.length; offset += info.channels) {
+      expect(data[offset]).toBeGreaterThan(0)
+      expect(data[offset]).toBeLessThan(255)
+    }
   })
 
   it("starts a resource-limited worker without ambient privileges or secrets", () => {

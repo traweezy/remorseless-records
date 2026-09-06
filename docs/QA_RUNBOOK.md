@@ -526,6 +526,47 @@ passing tests do not imply an entirely error-free observation window.
 
 ---
 
+### 1.12 UI, parser, and native-image compatibility
+
+The `UI runtime` browser cases run in the responsive and three-engine critical
+matrices. Their dedicated three-image product is available only from the
+local provider fixture's exact handle lookup, never the shared catalog list.
+Exercise rapid next/previous/thumbnail navigation, failed active-image removal,
+and a single Previous press after the image count shrinks. Both normal and
+reduced-motion paths must finish with one visible, fully loaded main image.
+
+Quick shop acceptance delays the detail response, closes/reopens while pending,
+then releases it and checks cache reuse, skeleton removal, and restored opener
+focus. Controlled drawers must also preserve nested/StrictMode/rapid-reopen
+behavior, explicit consumer autofocus handlers, and intentional external focus.
+Do not restore removed, disabled, hidden, inert, or navigated-away controls.
+Opacity alone does not make an opener unfocusable: Quick shop's trigger fades
+while the drawer owns focus and becomes visible again when focus returns.
+Check real cart and discography calendar icons, accessible names, keyboard
+selection, mobile layout, and a headed desktop screenshot after these changes.
+
+For deployed acceptance, name the exact spec files and report local-only
+gallery skips separately. The gallery handle is intentionally unavailable on
+staging. Intercepted Quick shop/cart/Stripe fixtures validate the deployed
+client behavior but are not proof of live provider writes or payment delivery.
+
+The real CSV parser regressions require `__proto__`, `constructor`, and
+`toString` headers to remain own data properties with an unchanged row
+prototype. Grouped duplicates also exercise the upstream parser fix, but
+application imports do not enable grouping; the string-only boundary must
+reject those grouped values. Keep the framework's separate parser major
+isolated, and do not describe a library reproducer as a demonstrated app exploit.
+
+Run the actual native image sandbox after Sharp/libvips updates. Preserve
+input/output size, pixel, dimension, channel and animation limits, metadata
+stripping, worker deadlines, and no-network/no-filesystem-write privileges.
+Cover extreme aspect ratios, palette transparency, corrupt images, declared
+type mismatch, and multi-frame rejection. Keep native-library license notices,
+runtime-image scans/SBOMs, and real AVIF optimizer smoke in the same acceptance
+batch; passing unit mocks alone is insufficient.
+
+---
+
 ## 2. Stripe Payment Element Matrix
 
 ### 2.1 Environment

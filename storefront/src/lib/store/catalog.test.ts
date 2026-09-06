@@ -1,5 +1,5 @@
 import { faker } from "@faker-js/faker"
-import { beforeEach, describe, expect, it } from "vitest"
+import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import { catalogStore } from "@/lib/store/catalog"
 
@@ -113,5 +113,56 @@ describe("catalogStore", () => {
       priceMin: 5,
       priceMax: null,
     })
+  })
+
+  it("keeps hydrated snapshots immutable and shares untouched arrays", () => {
+    resetStore()
+    const genres = ["death-metal"]
+    const artists = ["fixture-artist"]
+    catalogStore.getState().hydrateFromParams({ genres, artists })
+    const hydrated = catalogStore.getState()
+
+    hydrated.toggleGenre(" Grindcore ")
+    const added = catalogStore.getState()
+    expect(added.genres).toEqual(["death-metal", "grindcore"])
+    expect(added.genres).not.toBe(hydrated.genres)
+    expect(added.artists).toBe(hydrated.artists)
+    expect(added.formats).toBe(hydrated.formats)
+    expect(hydrated.genres).toEqual(["death-metal"])
+    expect(genres).toEqual(["death-metal"])
+
+    added.toggleGenre("DEATH-METAL")
+    const removed = catalogStore.getState()
+    expect(removed.genres).toEqual(["grindcore"])
+    expect(removed.artists).toBe(artists)
+    expect(added.genres).toEqual(["death-metal", "grindcore"])
+    expect(hydrated.genres).toEqual(["death-metal"])
+  })
+
+  it("does not notify subscribers for unchanged or rejected draft updates", () => {
+    resetStore()
+    const before = catalogStore.getState()
+    const listener = vi.fn()
+    const unsubscribe = catalogStore.subscribe(listener)
+    try {
+      before.toggleGenre("  ")
+      before.toggleArtist("\t")
+      before.setQuery(before.query)
+      before.setSort(before.sort)
+      before.setPriceRange(null, null)
+      before.hydrateFromParams({})
+
+      expect(catalogStore.getState()).toBe(before)
+      expect(listener).not.toHaveBeenCalled()
+
+      before.toggleFormat("Vinyl")
+      const after = catalogStore.getState()
+      expect(listener).toHaveBeenCalledExactlyOnceWith(after, before)
+      expect(after.formats).toEqual(["Vinyl"])
+      expect(before.formats).toEqual([])
+      expect(after.genres).toBe(before.genres)
+    } finally {
+      unsubscribe()
+    }
   })
 })

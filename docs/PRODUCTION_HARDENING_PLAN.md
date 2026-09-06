@@ -46,16 +46,28 @@ September 3 live read remained healthy with Redis `ok`, a completed heartbeat,
 no incident latch, and no alert reason.
 
 The accepted implementation head
-`912525b1248087a759e089e4917366e1b1e10eab` includes Storefront Query 5.102.8,
+`c20efbebed1ef328388ced0f99edd8ac3dacc7ed` includes Storefront Query 5.102.8,
 both direct Redis clients and the shared Redis 6.2.1 graph, upstream `qs`
 6.16.0, Storefront Trusted Types enforcement, and the accepted combined
-Form/Resend/PostHog/Pacer/Virtual/Sonner cohort.
+Form/Resend/PostHog/Pacer/Virtual/Sonner and AWS/Stripe/OpenTelemetry cohorts.
 The Backend/Admin Query 5.64.2 graph remains
 isolated and unchanged. Full local acceptance, all four exact-SHA GitHub
 workflows, both runtime-image validations, and both Railway staging deployments
 passed for the combined batch after each family's compatibility review.
-The next AWS/Stripe/OpenTelemetry batch has passed local acceptance; it
-does not yet supersede the accepted deployment revision.
+The next UI/parser/image/tooling batch has passed local unit, build, browser,
+and policy gates plus headed desktop inspection; exact-SHA remote acceptance
+remains pending. Standalone pa11y cannot launch the workstation's Chromium
+sandbox, so local mobile/Lighthouse passes are not claimed. Keep the sandbox
+enabled and require the sandboxed GitHub accessibility/performance gates.
+It does not yet supersede the accepted deployment revision.
+
+Medusa 2.19.0 is separately blocked by its [Enterprise license](https://raw.githubusercontent.com/medusajs/medusa/v2.19.0/ENTERPRISE-LICENSE.md):
+listed RBAC/SSO materials, including policies, permission checks, and compiled
+forms, require a commercial agreement. Because RBAC is active here, retain
+Medusa 2.18.0, its authorization guards, and Admin UI 4.2.0 until the user
+confirms licensing or separately approves an authorization migration. Earlier
+MIT grants are expressly preserved. The current 15-direct batch does not
+cross this boundary.
 
 The Trusted Types report-only window and deployed browser observation are
 complete, and non-development documents now enforce the three named policies.
@@ -106,16 +118,16 @@ environment exists.
 - Git branches: `staging` is the default/integration branch; `master` is the
   protected production-candidate branch. Retired `main` was deleted.
 - Latest implementation/runtime-image validation SHA accepted:
-  `912525b1248087a759e089e4917366e1b1e10eab`.
+  `c20efbebed1ef328388ced0f99edd8ac3dacc7ed`.
 - Original documentation-only staging acceptance:
   `060af53115ed1ae85d2f8d02d6fd0590c8e6a02d`.
 - Railway project: `store`; only the `staging` environment exists.
 - Application acceptance Backend deployment:
-  `48ff91c0-6463-4500-b74a-f38ed077f5c9` (`SUCCESS`,
-  `912525b1248087a759e089e4917366e1b1e10eab`).
+  `6de89656-1d77-4c0e-9e35-5ec12c0a53b4` (`SUCCESS`,
+  `c20efbebed1ef328388ced0f99edd8ac3dacc7ed`).
 - Application acceptance Storefront deployment:
-  `c1663b0c-d9ac-4bb8-8113-2313c3204fce` (`SUCCESS`,
-  `912525b1248087a759e089e4917366e1b1e10eab`).
+  `7dd9459c-4ea7-4ec5-ac03-8e403745e4d5` (`SUCCESS`,
+  `c20efbebed1ef328388ced0f99edd8ac3dacc7ed`).
 - Backend and Storefront `/live` and `/ready` checks return HTTP 200.
 - The public storefront route/API smoke matrix passes. `/products`
   intentionally redirects to `/catalog`.
@@ -4100,23 +4112,81 @@ The detailed per-family evidence and remaining holds are maintained in
 source cutover remain separate boundaries. The Form-only evidence below is
 the initial local baseline, not a separate deployment requirement.
 
-### Next storage, payment, and telemetry batch
+### Accepted storage, payment, and telemetry batch
 
-AWS/Smithy, Stripe server/browser, and OpenTelemetry pass local validation
-together on the shared frozen graph at implementation `9cf9338`, with exact targets and family-specific
+AWS/Smithy, Stripe server/browser, and OpenTelemetry are accepted at
+`c20efbebed1ef328388ced0f99edd8ac3dacc7ed`, containing implementation
+`9cf9338` and its initial evidence, with exact targets and family-specific
 patch, override, transport, and privacy evidence in the dependency audit.
-Local checks and the rebuilt Admin matrix do not establish deployment
-acceptance. Both production builds and coverage suites pass, including 275
+Both production builds and coverage suites pass, including 275
 Backend suites / 2,090 tests and Storefront responsive 66 (two expected skips),
-launch 14, and critical 33 browser tests. Keep this batch pending until its
-exact-SHA CI and runtime-image checks and both Railway staging observations pass. The
-accepted implementation remains `912525b1248087a759e089e4917366e1b1e10eab`.
+launch 14, and critical 33 browser tests. Root `34054918470`, Backend
+`34054918518`, Storefront `34054918476`, and Runtime Images `34054918453`
+pass at the exact SHA. Both retained image records/SBOMs were verified under
+the unchanged HIGH/CRITICAL policy; source-built Railway images were checked
+separately rather than treated as the candidate image artifacts.
 
 The final rebuilt Admin matrix passes 12/12 under Node 26.5.0 with the live
 base URL unset, zero axe violations/incomplete checks, and no findings or
 review codes. Five inspected Product/News/Merchandising browser screenshots
 show no visible regression across 760–1,920 px. This remains deterministic
 local fixture evidence; artifact paths are in the next-session handoff.
+
+Both exact-SHA Railway deployments pass. Backend liveness, readiness,
+scheduler, and operations are healthy, including a fresh exact-SHA completed
+heartbeat (62 scanned, zero attempted/failed, lock released) and healthy
+catalog projections. The bounded runtime sample contains 325 rows with no
+structured failures; nine correlated HTTP probes contain eight 200s and the
+deliberate missing-publishable-key 400. Older daily retention evidence is not
+claimed as newly executed at this revision.
+
+Storefront liveness/readiness, root/catalog HTML, enforced and report-only
+Trusted Types, and the 7,837-byte AVIF optimizer check pass. The browser run
+passes 66 with two expected skips: 60 deployed smoke checks plus six fully
+intercepted local Stripe-loader fixtures; next-batch UI fixtures are excluded.
+Three inspected catalog/discography screenshots show no visible regression.
+Bounded logs retain three known stream cancellations (`2234947129`), no
+Trusted Types reports, and expected fixture 404s/client disconnects, with no
+HTTP 5xx responses. Exact deployment digests, request/trace correlation, and
+separate sample counts are in `NEXT_SESSION_HANDOFF.md`.
+
+These checks do not establish real storage/payment/tax/refund/webhook or
+telemetry-export acceptance. No production changes or image-source cutover
+were performed.
+
+### Next UI, parser, image, and tooling batch
+
+Fifteen reviewed direct upgrades share the next frozen graph, preserving all
+16 patches and the protected Medusa/React 18/CSV 5.6.0 records. Exact targets,
+seven-day cooling evidence, native-image/license considerations, and remaining
+framework migration holds are recorded in the dependency audit. UI commit
+`ec66bb99618a170be8dd4e0a3f5e8f10833827db` restores controlled Drawer focus and
+fixes gallery navigation after the last image fails. This cohort has not yet
+passed its own exact-SHA CI, runtime-image, or staging acceptance.
+
+Actual-parser/import tests pass 28/28 on csv-parse 7.0.2 after four failures on
+7.0.1. Grouped-column prototype regressions exercise upstream behavior, not
+an enabled application option or a demonstrated application exploit. The
+string-only import boundary still rejects grouped values, and unknown-header
+preservation through subsequent normalization is not claimed.
+
+Local Backend coverage passes 275 suites / 2,099 tests; Storefront passes 142
+files / 857 tests plus the 36-file / 322-test transactional coverage subset.
+Both builds pass; the final cached Storefront compile takes 4.8 seconds with
+55 routes and 131 verified client assets. Focused UI acceptance passes 24/24
+at 100% lines / 91.30% branches, and the 15 new three-engine fixture cases
+pass. Full responsive, launch, and critical browser matrices pass 81 (two
+expected skips), 14, and 48 tests respectively, with no retries. Headed desktop
+Chromium keyboard flows and real desktop Flameshot cart/calendar/gallery
+captures were inspected and pass. Full desktop captures include unrelated
+windows and remain local/private; only app-specific artifact paths are
+recorded in the handoff, and no desktop capture is uploaded or committed.
+
+The rebuilt Admin fixture matrix passes 12/12 under Node 26.5.0 with the live
+base URL unset, zero axe violations/incomplete checks, findings, review codes,
+or errors. Five inspected Product/News/Merchandising Chromium screenshots at
+760–1,920 px show no visible regression. Artifact paths are in the handoff;
+these are local fixtures, not live-provider or production acceptance.
 
 ## TanStack Form patch compatibility
 

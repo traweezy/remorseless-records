@@ -125,6 +125,38 @@ test("fails closed for unsupported methods and routes", async () => {
   })
 })
 
+test("isolates local gallery artwork behind its exact product handle", async () => {
+  await withFixture(async (baseUrl) => {
+    const gallery = await fixtureFetch(
+      baseUrl,
+      "/store/products?handle=music-release-ci-gallery-artwork"
+    ).then((response) => response.json())
+    assert.equal(gallery.count, 1)
+    assert.equal(gallery.products[0].id, "prod_CIGALLERYRUNTIME")
+    assert.deepEqual(
+      gallery.products[0].images.map((image) => image.url),
+      [
+        "/remorseless-hero-logo.png",
+        "/remorseless-header-logo.png",
+        "/favicon.ico",
+      ]
+    )
+
+    const catalog = await fixtureFetch(baseUrl, "/store/products").then(
+      (response) => response.json()
+    )
+    assert.equal(catalog.count, 1)
+    assert.equal(catalog.products[0].id, "prod_CIPATHOLOGIST")
+    assert.deepEqual(catalog.products[0].images, [])
+
+    const unknown = await fixtureFetch(
+      baseUrl,
+      "/store/products?handle=music-release-ci-gallery-artwork-other"
+    ).then((response) => response.json())
+    assert.deepEqual(unknown.products, [])
+  })
+})
+
 test("calibrates Lighthouse CPU slowdown without changing budgets", () => {
   const localConfig = loadLighthouseConfig(undefined)
   const hostedRunnerConfig = loadLighthouseConfig("2")
@@ -200,7 +232,7 @@ test("pins Browser Smoke to the local fixture before deployment", () => {
     assert.match(config, /node node_modules\/next\/dist\/bin\/next start/u)
     assert.doesNotMatch(config, /command: "pnpm run start/u)
   }
-  assert.equal(packageJson.devDependencies["@playwright/test"], "1.62.0")
+  assert.equal(packageJson.devDependencies["@playwright/test"], "1.62.1")
   assert.match(criticalConfig, /ciMedusaFixtureWebServer/u)
   assert.match(launchConfig, /ciMedusaFixtureWebServer/u)
   assert.doesNotMatch(

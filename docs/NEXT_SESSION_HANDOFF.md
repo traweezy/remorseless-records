@@ -10,14 +10,14 @@ artifact Railway is running; verify Railway separately with the sequence below.
 
 - Branch: `staging`
 - Current accepted implementation head:
-  `912525b1248087a759e089e4917366e1b1e10eab`. It includes the accepted Next.js
+  `c20efbebed1ef328388ced0f99edd8ac3dacc7ed`. It includes the accepted Next.js
   16.3.3 build split, Redis 6.2.1, upstream `qs` 6.16.0, Trusted Types
-  enforcement, and the combined Form/Resend/PostHog/Pacer/Query/Virtual/Sonner
-  batch. Complete local, exact-SHA CI, runtime-image, and Railway staging
-  evidence is recorded below. The next AWS/Stripe/OpenTelemetry batch is
-  locally validated and does not yet supersede this deployed revision.
+  enforcement, the Form/Resend/PostHog/Pacer/Query/Virtual/Sonner batch, and
+  the AWS/Stripe/OpenTelemetry batch. Complete local, exact-SHA CI,
+  runtime-image, and Railway staging evidence is recorded below. The next
+  UI/parser/image/tooling batch does not yet supersede this deployed revision.
 - Latest exact runtime-image validation SHA:
-  `912525b1248087a759e089e4917366e1b1e10eab`
+  `c20efbebed1ef328388ced0f99edd8ac3dacc7ed`
 - Original implementation/runtime-image acceptance SHA
   `61fd86889a4adca23e1e9704e11c889a1fd986a9` is pushed to
   `origin/staging`. Backend source deployment acceptance is documented at
@@ -851,19 +851,18 @@ These are bounded staging observations and fixture-based compatibility checks,
 not real payment, email, analytics, or production-provider acceptance. No
 provider writes, production changes, or image-source cutover were performed.
 
-### Next combined batch
+### Accepted storage, payment, and telemetry batch
 
-The AWS/Smithy, Stripe server/browser, and OpenTelemetry cohort has passed
-local acceptance on the shared frozen graph at implementation `9cf9338`.
-Its exact targets, patch/override
-reviews, injected-transport regressions, and remaining gates are tracked in
-the dependency audit. Do not count it as deployed or accepted until its own
-exact-SHA CI, image, Railway, health/log, and browser acceptance completes.
+The AWS/Smithy, Stripe server/browser, and OpenTelemetry cohort is accepted at
+`c20efbebed1ef328388ced0f99edd8ac3dacc7ed`, containing implementation
+`9cf9338` and its initial evidence. Exact targets, patch/override reviews,
+injected-transport regressions, and provider-specific caveats are tracked in
+the dependency audit.
 
 The final local gates include 275 Backend suites / 2,090 tests, both production
 builds and coverage suites, root lint/typecheck/security/peer checks, and
 Storefront responsive 66 (two expected skips), launch 14, and critical 33
-browser tests. Push the implementation and this evidence together.
+browser tests. Implementation and evidence were pushed together.
 
 The rebuilt Admin passed the final 12-case matrix under Node 26.5.0 with
 `ADMIN_ACCEPTANCE_BASE_URL` unset: zero axe violations/incomplete checks,
@@ -873,14 +872,129 @@ validation (800 px), offerings (1,440 px), authoring (1,920 px), News and
 Merchandising dialogs (760 px) show no visible layout regression. These are
 rendered Chromium fixture screenshots, not desktop or live-provider evidence.
 
+Exact-SHA remote acceptance on September 6 is complete:
+
+- Root `34054918470`, Backend `34054918518`, Storefront `34054918476`, and
+  Runtime Images `34054918453` passed. Both retained image records/SBOMs were
+  downloaded and checked; Backend artifact `9995709792` contains 1,166
+  components, Storefront artifact `9995691958` contains 122. HIGH/CRITICAL
+  scans pass under the unchanged policy. These candidate images are separate
+  from Railway's source-built images; full digest evidence is in the audit.
+- Backend deployment `6de89656-1d77-4c0e-9e35-5ec12c0a53b4` reached
+  `SUCCESS` at `19:45:55Z`, source-image digest
+  `sha256:8f7e19c79171e2c22d2f205830e09edf59b257ca16738fcd697844fe53b929bf`.
+  At `19:46:22Z`, `/live`, `/ready`, `/health/scheduler`, and
+  `/health/operations` returned 200, with exact-SHA identity where exposed,
+  all four dependencies and seven capability checks healthy. The fresh
+  exact-SHA heartbeat at `19:46:06.108Z` completed: 62 scanned, zero attempted
+  or failed, lock released, no cap, alert reason, or incident. The bounded
+  authenticated operations monitor reported 461 products, 442 discography
+  entries, one handle page, and three shelves / 25 memberships. Older daily
+  retention snapshots remained healthy; those jobs were not rerun at this SHA.
+  The deliberate missing-publishable-key 400 (not query validation) correlated
+  request `090e434e-6550-4433-b361-f4769ce11aed` and trace
+  `7f0fcd6d52159378375badb4bc230867` with the exact runtime revision.
+  The final uncapped 325-row runtime sample through `19:47:25Z` contained five
+  exact-SHA completions, no structured failures or secret-assignment signals,
+  and only that deliberate warning. All nine HTTP probes matched instance
+  `d85cd737-463c-4db4-b2b5-7c54218eec89`: eight 200s and the expected 400,
+  without unexpected 429, 503, or 5xx responses.
+- Storefront deployment `7dd9459c-4ea7-4ec5-ac03-8e403745e4d5` reached
+  `SUCCESS`, source-image digest
+  `sha256:9ac4b9eade6f57c1320f079c117101635fbea6313b458e62f7f13f8c3cea0eec`.
+  Exact-SHA liveness/readiness passed, with Backend 43 ms and Redis 12 ms.
+  Root and products/catalog HTML returned 200; security headers and enforced
+  plus report-only Trusted Types retained the three exact policy names. The
+  explicit AVIF optimizer check returned 200 / 7,837 bytes. The deliberate
+  invalid-query 400 correlated request
+  `6e884a1a-15ea-4d9f-b103-341c3c0c8c88` and trace
+  `94ab5d9ced44b65b1451c37768943f7e` with the exact runtime revision.
+  The deployed browser invocation passed 66 tests with two expected skips in
+  1.1 minutes under Node 26.5.0. This comprises 60 deployed smoke passes and
+  six fully intercepted local Stripe-loader fixture cases, not 66 deployed
+  provider checks. Only the two existing baseline files ran; next-batch UI
+  fixtures were excluded. Playwright 1.62.1 was installed for the next batch,
+  with unchanged browser revisions. Three inspected catalog/discography
+  screenshots show no visible layout regression; artifacts are retained at
+  `/tmp/remorseless-c20efbe-deployed-browser.oLNaDM`.
+  The bounded runtime sample contained three known stream-cancellation
+  events (`2234947129`, `The destination stream closed early.`), no
+  additional errors, and no Trusted Types reports. The 2,000-row HTTP
+  sample contained 1,990 × 200, two redirects, five 404s, and three client
+  disconnects (499). A separate final error-filtered sample contained the
+  deliberate 400 and 13 fixture 404s; neither HTTP sample contained 5xx.
+
+These are bounded staging observations and injected/intercepted compatibility
+checks, not real storage writes, payments, tax/refunds, webhook delivery, or
+telemetry-export acceptance. No production or image-source cutover occurred.
+
+### Next UI, parser, image, and tooling batch
+
+The next shared frozen graph groups 15 reviewed direct upgrades: Lucide,
+Motion/Framer Motion, Zustand/Immer, the owned CSV parser, Sharp, PostCSS,
+esbuild, Biome, Vitest/coverage, Testing Library, and Playwright. The dependency
+audit records exact versions, official publication/cooling evidence, preserved
+patches and framework-owned holds. The UI corrections are committed at
+`ec66bb99618a170be8dd4e0a3f5e8f10833827db`; this next batch is not yet deployed.
+
+The actual CSV-parser/import checks pass 28/28 on 7.0.2; four of those checks
+failed on 7.0.1. Hostile headers become own data properties without prototype
+mutation. Grouped columns are not enabled by the application, and this does
+not establish an application exploit or end-to-end preservation of unknown
+headers. The separate Medusa 5.6.0 parser remains unchanged.
+
+The UI regressions cover controlled Drawer opener/focus restoration and a
+gallery Previous action after the final image fails. Focus restoration avoids
+removed, disabled, hidden, or unrelated targets and superseded close events;
+tests include StrictMode, rapid reopen, full unmount, and nested drawers.
+The focused UI suite passes 24/24 with 100% lines and 91.30% branches. The 15
+new Chromium/Firefox/WebKit fixture cases pass. Full responsive, launch, and
+critical matrices pass 81 (two expected skips), 14, and 48 tests respectively,
+all without retries. Headed Chromium keyboard flows and real desktop
+Flameshot screenshots of cart, calendar, and gallery were inspected and pass.
+Full desktop captures include unrelated windows and remain private/local;
+do not upload or commit them. App-only headed 1,920 × 1,080 captures are at
+`/tmp/remorseless-ui-cart-headed-20260906.png`,
+`/tmp/remorseless-ui-calendar-headed-20260906.png`, and
+`/tmp/remorseless-ui-gallery-headed-20260906.png`.
+
+Full local coverage passes Backend 275 suites / 2,099 tests, Storefront 142
+files / 857 tests, and the unchanged transactional subset 36 files / 322
+tests. Backend/Admin builds complete in 6.20/15.95 seconds with 1,072 frozen
+runtime dependencies. The final Storefront build compiles in 4.8 seconds
+(cached), with 55 routes and 131 verified client assets. Root
+lint/typecheck/security, strict frozen installation, and peer checks pass.
+Standalone pa11y fails before navigation because this workstation cannot
+launch the installed Chromium sandbox under its AppArmor/user-namespace
+policy. Separate mobile/Lighthouse runs are not claimed as local passes;
+no sandbox bypass or host change was used. Require the exact-SHA sandboxed
+GitHub accessibility and Lighthouse gates before accepting the next revision.
+
+The final rebuilt Admin passes 12/12 under Node 26.5.0 with
+`ADMIN_ACCEPTANCE_BASE_URL` unset, zero axe violations/incomplete checks,
+findings, review codes, or case errors. Five inspected Product, News, and
+Merchandising Chromium screenshots at 760–1,920 px show no visible regression;
+artifacts are at `/tmp/remorseless-tooling-admin-node265.SYThuV`. These remain
+deterministic local fixtures, not live Admin or provider acceptance.
+
+### Remaining release work
+
 1. Re-evaluate Next.js 16.3.4 no earlier than
    `2026-09-07T20:00:51.381Z`. Keep it isolated from the `qs`, Medusa, TanStack,
    Stripe, AWS SDK, OpenTelemetry, and small-patch cohorts documented in
    `DEPENDENCY_MIGRATION_AUDIT_2026-07-23.md`.
-2. Complete the next AWS/Stripe/OpenTelemetry batch and its final staging
-   acceptance. The Form/Resend/PostHog/Pacer/Query/Virtual/Sonner batch and
-   Redis 6.2.1 are complete. Keep Medusa changes subject to their separate
-   migration review; batching is not permission to skip compatibility checks.
+2. Finish the next UI/parser/image/tooling batch's exact-SHA CI, image, and
+   staging gates. Ship implementation and evidence
+   together; do not add documentation-only checkpoint pushes. Keep Medusa
+   changes subject to their separate migration review; batching is not
+   permission to skip compatibility checks.
+3. Hold Medusa 2.19.0: its [Enterprise license](https://raw.githubusercontent.com/medusajs/medusa/v2.19.0/ENTERPRISE-LICENSE.md)
+   requires a commercial agreement for the listed RBAC/SSO materials,
+   including policies, permission checks, and compiled forms. This app uses
+   RBAC. Retain Medusa 2.18.0, its authorization guards, and Admin UI 4.2.0
+   until the user confirms licensing or separately approves an authorization
+   migration. The notice preserves earlier MIT grants; this is a separate
+   hold, not a licensing change to the current 15-direct batch.
 
 ## Railway and GHCR cutover boundary
 

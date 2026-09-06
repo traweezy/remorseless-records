@@ -613,10 +613,146 @@ acceptance passes 12/12 with zero axe violations/incomplete checks, findings,
 review codes, or case errors. Five inspected rendered Chromium fixture
 screenshots across 760–1,920 px show no visible regression; artifacts are at
 `/tmp/remorseless-storage-payment-telemetry-admin.zUO2kX`. Implementation
-commit `9cf9338` and this evidence travel in one push. Exact-SHA CI and
-separate Railway acceptance remain required before closing this batch.
+commit `9cf9338` and its evidence traveled in one push at
+`c20efbebed1ef328388ced0f99edd8ac3dacc7ed`. Exact-SHA CI and separate
+Railway acceptance subsequently passed:
+
+- Root `34054918470`, Backend `34054918518`, Storefront `34054918476`, and
+  Runtime Images `34054918453` are green. Backend CI passes 275 suites /
+  2,090 tests plus both integration jobs; Storefront CI passes all unit,
+  coverage, browser, accessibility, and Lighthouse gates.
+- Private runtime artifacts `9995709792` (Backend, 1,166 components) and
+  `9995691958` (Storefront, 122 components) bind their CycloneDX records to
+  `sha256:fc34787b4956759086551cd7d47d4ce9515f4ebb6514b8d6a839336db3e4da3d`
+  and `sha256:9679fd327959d14e2ccea0803356fc44de00fb9a31ee21d2c6e3813ad6f55f49`,
+  respectively. HIGH/CRITICAL scans pass the unchanged policy. These are
+  GitHub-built images, not the distinct Railway source-build identities.
+- Backend source deployment `6de89656-1d77-4c0e-9e35-5ec12c0a53b4` is
+  `SUCCESS`, digest
+  `sha256:8f7e19c79171e2c22d2f205830e09edf59b257ca16738fcd697844fe53b929bf`.
+  All four health routes, four dependencies, seven capabilities, authenticated
+  bounded catalog/operations checks, and the fresh exact-SHA scheduler
+  heartbeat at `19:46:06.108Z` pass. A guarded read-only 400 preserves its
+  request/trace IDs and exact-SHA completion; all nine HTTP probes match the
+  deployment. The uncapped 325-row startup sample has no structured failure
+  events or error rows. Prior daily retention snapshots remain healthy;
+  they were not newly executed at this SHA.
+- Storefront source deployment `7dd9459c-4ea7-4ec5-ac03-8e403745e4d5` is
+  `SUCCESS`, digest
+  `sha256:9ac4b9eade6f57c1320f079c117101635fbea6313b458e62f7f13f8c3cea0eec`.
+  Exact-SHA health/readiness, complete home/catalog HTML, security headers,
+  enforced/report-only Trusted Types policies, actual AVIF optimization,
+  and a correlated read-only invalid-query 400 pass. Deployed browser
+  acceptance passes 66 with two expected skips: 60 deployed smoke checks
+  plus six fully intercepted Stripe-loader checks, not live payments.
+  The bounded error-only HTTP sample contains the deliberate 400 and 13
+  fixture 404s, with no 5xx. Runtime logs retain three known Next destination
+  stream cancellations (digest `2234947129`) and no Trusted Types reports;
+  this is not a zero-error claim.
+
 Newer Stripe, AWS, and OpenTelemetry releases still within seven days remain
 held; this batch does not waive the separate Medusa migration.
+
+## UI, parser, image, and test/build tooling batch — 2026-09-06
+
+The next planned shared resolution groups 15 direct upgrades, including the
+native image/parser boundaries and the UI regression work discovered during
+review. Publication times below come from official registry metadata; every
+target is past the unchanged seven-day cooling window. No audit exception,
+build-script permission, or unreviewed major migration is included. Strict
+root frozen installation and peer checks pass. Independent review verifies
+all 85 new package records against official age/integrity metadata (youngest
+8.51 days) and finds no unrelated dependency-edge changes. All 75 protected
+Medusa/React 18/CSV 5.6/unused-helper records and all 16 patches are unchanged.
+Five same-version peer metadata changes only reflect the intended PostCSS
+override normalization. Runtime-image and exact-SHA deployment acceptance
+remain pending.
+
+| Family | Reviewed targets | Compatibility and acceptance boundary |
+| ------ | ---------------- | ------------------------------------- |
+| Lucide | 1.27.0 → 1.37.0; published `2026-08-29T07:25:15Z` | [Upstream comparison](https://github.com/lucide-icons/lucide/compare/1.27.0...1.37.0) and integrity-verified tarballs preserve all 36 imported icons. ShoppingCart is redesigned and CalendarArrowDown/Up change artwork; shared rendering/accessibility helpers are unchanged. Retarget the exact optional React-type extension in all three workspace policies. Verify cart/Quick shop and discography sort glyphs with real screenshots, accessible names, keyboard focus, and mobile layout. ISC, unchanged React peer range. |
+| Motion | Owned motion/framer-motion and motion-dom 12.43.0; published July 28, cooled August 4 | [Release comparison](https://github.com/motiondivision/motion/compare/v12.42.2...v12.43.0) changes PopChild ref access, invalid custom-ref diagnostics, and SVG/background-color acceleration. Owned consumers use HTML elements, not those new acceleration paths. Shipped AnimatePresence child-order and reduced-motion modules are unchanged despite the changelog wording. Keep motion-utils 12.39.0 and Medusa's Motion 11.18.2 isolated; do not activate the unmounted PageTransition. MIT, unchanged optional React 18/19 peers. |
+| Zustand / Immer | 5.0.15 (`2026-08-13T00:39:55.466Z`) / 11.1.18 (`2026-08-19T07:25:22.934Z`) | [Zustand](https://github.com/pmndrs/zustand/compare/v5.0.14...v5.0.15) fixes devtools action parsing and async persist invalidation; the app does not use persist. [Immer](https://github.com/immerjs/immer/compare/v11.1.15...v11.1.18) fixes array structural sharing/patch keys and Iterator typing. Real catalog/UI tests cover normalized push/remove, hydration snapshot immutability, untouched-array sharing, no-op notifications, and unsubscribe behavior. Both MIT; compatible unchanged peers. |
+| CSV parser | Owned csv-parse 7.0.1 → 7.0.2; `2026-08-02T20:18:06.960Z` | [Upstream fix](https://github.com/adaltas/node-csv/compare/csv-parse@7.0.1...csv-parse@7.0.2) treats hostile column names as own data properties. Six actual-parser regressions exercise `__proto__`, `constructor`, and `toString`; four fail on 7.0.1. Grouped columns reproduce the upstream prototype issue but are not enabled by the application. The string-only import boundary must still reject grouped values. Do not claim an application exploit or preservation of unknown headers through subsequent normalization. Preserve the separate Medusa 5.6.0 parser. MIT; no runtime dependency/type change. |
+| Sharp | 0.35.3 → 0.35.4; `2026-08-26T09:42:27.903Z` | [Native-image changes](https://github.com/lovell/sharp/compare/v0.35.3...v0.35.4) tighten dimensions/coordinates and fix palette depth, output page counts, and finished input streams. Libvips packages move 1.3.2 → 1.3.3 (published August 26), with minimum libvips 8.18.6. Keep the resource-limited worker, dimension/pixel/frame limits, metadata removal, and no-network/no-write permissions unchanged. Real normalization tests add both extreme aspect ratios and palette transparency; retain animation rejection and actual AVIF optimizer/image smoke. Apache-2.0 and existing bundled LGPL-3.0-or-later notices remain required. |
+| PostCSS / esbuild | 8.5.26 (`2026-08-06T08:33:00.043Z`) / 0.28.2 (`2026-08-08T20:00:55.454Z`) | [PostCSS](https://github.com/postcss/postcss/compare/8.5.23...8.5.26) fixes source-map symlink escape, BOM handling, and visitor ordering; [esbuild](https://github.com/evanw/esbuild/releases/tag/v0.28.2) fixes CSS nesting/gamut, TypeScript alias tree-shaking, and output/deadlock edge cases. Mirror existing overrides in all three policies; preserve nanoid 3.3.18. Both builds, runtime images, Admin/browser rendering and bundle gates apply. MIT, unchanged engines. |
+| Biome | 2.5.11; `2026-08-27T20:48:36.074Z` | [Release notes](https://biomejs.dev/internals/changelog/version/2-5-11/) improve noFloatingPromises inference and parser handling. Update the schema URL; run non-writing checks before any targeted formatting. No blanket autofix, suppression, or newly enabled nursery rules. MIT OR Apache-2.0. |
+| Vitest / coverage | Both 4.1.11; August 18 | [Patch comparison](https://github.com/vitest-dev/vitest/compare/v4.1.10...v4.1.11) fixes concurrent lifecycle limits and browser-mock filesystem redirect restrictions. Keep all sibling packages coherent; jsdom runners and both unchanged coverage thresholds remain authoritative. No Vitest 5 or Vite migration. MIT. |
+| Testing Library | React 16.3.3 (`2026-08-27T17:41:18.735Z`), jest-dom 7.0.1 (`2026-08-09T23:44:33.598Z`) | [React comparison](https://github.com/testing-library/react-testing-library/compare/v16.3.2...v16.3.3) restores act state after nested event dispatch; [jest-dom](https://github.com/testing-library/jest-dom/compare/v7.0.0...v7.0.1) only adds an optional Vitest peer. Retain actual interaction/fake-timer regressions and React 18/19 isolation. MIT, unchanged runtime floors. |
+| Playwright | 1.62.1; `2026-07-30T16:36:55.324Z` | [Release](https://github.com/microsoft/playwright/releases/tag/v1.62.1) fixes tsconfig resolution, aria snapshots, and branded evaluate arguments. Published browser revisions are unchanged: Chromium 1234, Firefox 1538, WebKit 2336. Update the fixture's exact tool-version contract, retain read-only fixture guards, and run all three engines without a browser download or permission expansion. Apache-2.0. |
+
+The installed pre-upgrade baselines pass nine catalog/UI state tests and nine
+native image normalization tests. New gallery/Quick shop browser cases use
+an exact-handle-only local fixture, without changing the catalog list or
+calling media/payment providers. Keyboard checks also found an existing
+controlled Drawer focus-restoration gap: Quick shop/cart close can return
+focus to the document body. A bounded fix and regression acceptance belong
+in this batch, not in claims about the preceding SDK deployment.
+
+On the updated graph, all 28 parser/import tests pass, fixing the four
+pre-upgrade parser failures without changing the application import options.
+The gallery regression separately reproduces a stale active index after the
+last image fails; clamping the current index before decrement restores a
+single-press Previous action. Controlled Drawer restoration captures its
+actual opener before autofocus, preserves explicit consumer hooks, and avoids
+removed/disabled/hidden targets, navigation, unrelated focus, and superseded
+close events. Tests cover StrictMode, rapid reopen, full unmount, and nested
+drawers; this does not introduce a global focus manager.
+
+Final pinned-runtime Backend coverage passes 275 suites / 2,099 tests at
+91.67% statements/lines, 85.49% branches, and 95.78% functions. Backend/Admin
+builds complete in 6.20/15.95 seconds; the generated frozen runtime verifies
+1,813 entries and installs 1,072 dependencies without downloading a new graph.
+Storefront baseline coverage passes 142 files / 857 tests at 94.39% lines and
+86.41% branches; transactional coverage remains 36 files / 322 tests at
+83.86% lines and 76.50% branches, above its unchanged configured thresholds.
+The final production build compiles in 4.8 seconds with the existing build
+cache, 55 routes, and 131 verified client assets. Fixture category-fallback
+diagnostics remain visible and are
+not presented as zero-error runtime evidence. Root lint/typecheck, boundary
+checks, production Router backports, peers, and the existing audit policy pass.
+The rebuilt Admin matrix passes 12/12 with zero axe violations/incomplete
+checks, findings, review codes, or case errors. Five inspected rendered
+screenshots across 760–1,920 px show no visible regression; artifacts are at
+`/tmp/remorseless-tooling-admin-node265.SYThuV`. The focused Drawer/gallery
+suite passes 24 tests with 100% lines, 91.30% branches, and 100% functions;
+its aggregate coverage thresholds are unchanged. Final Storefront critical
+browser acceptance passes 48/48 with zero retries, and the responsive matrix
+passes 81 with two pre-existing desktop-only skips and zero retries. A
+test-only cart-bootstrap response barrier prevents typing into the search
+field before hydration; ten repeated WebKit checks also pass without retry.
+Launch acceptance also passes 14/14 with zero retries. Headed Chromium
+rendering and real desktop Flameshot captures verify the cart, calendar sort
+menu, and gallery at reduced motion; the gallery and drawer keyboard checks
+also pass. Screenshots remain local and are not committed or uploaded.
+Standalone pa11y cannot launch the installed Chromium sandbox on this
+workstation: all four configured paths fail before navigation with the
+existing AppArmor/user-namespace limitation. The separate mobile/Lighthouse
+runners are not claimed as local passes. No sandbox bypass or host-policy
+change was made; exact-SHA sandboxed GitHub pa11y and Lighthouse remain
+required before release acceptance.
+
+Hold Medusa UI 4.2.1: integrity-verified runtime files and patch inputs are
+unchanged, while its sole effective change pulls icons 2.19.0 across the
+separate Medusa migration boundary. Quicklink 3.0.2 and Tailwind Variants
+3.3.1 are cooled, but Quicklink's provider is unmounted and Tailwind Variants
+has no owned app consumer. This batch does not activate dormant helpers or
+undertake an unused resolver rewrite.
+Motion 13, Vitest 5, and recent uncooled releases remain out of scope.
+
+### Medusa 2.19 licensing hold
+
+The official [2.19 Enterprise license](https://raw.githubusercontent.com/medusajs/medusa/v2.19.0/ENTERPRISE-LICENSE.md)
+requires a separate commercial agreement for the newly licensed RBAC/SSO
+materials, including policy definitions, permission middleware, relevant
+Admin/SDK paths, and their compiled forms. It expressly preserves earlier
+MIT grants. This app registers the RBAC module, defines custom policies,
+and reads Admin permissions; disabling those guards is not an acceptable
+upgrade workaround. Keep the MIT-licensed 2.18 graph and compatible Admin
+UI until the owner confirms commercial rights or separately approves an
+authorization migration. No 2.19 install, feature-flag change, or license
+exception was made. The technical Vite/Router/SDK/patch review below is
+secondary to that unresolved licensing decision.
 
 ## Compatibility upgrade plan — 2026-09-03, batching revised 2026-09-06
 
@@ -634,7 +770,7 @@ cooling holds, and provider-specific acceptance requirements remain in force.
 | ----- | ------ | ------------------- |
 | 1 | Next.js | Complete the 16.3.3 critical security update above. Re-evaluate 16.3.4 only after its cooling expiry and rerun the image, nonce/CSP, Trusted Types, production-build, responsive browser, accessibility, and Lighthouse gates. |
 | 2 | `qs` | Complete: root, Backend, and Storefront use one exact 6.16.0 graph after the cooling expiry; both advisory ignores, all three patch copies, and the temporary verifier were removed together. |
-| 3 | Medusa | Move every Backend and Storefront `@medusajs/*` package together from 2.18.0 to 2.19.0. The official [2.19 release](https://github.com/medusajs/medusa/releases/tag/v2.19.0) is a breaking Admin migration to Vite 7.3.6 and React Router 7.18.2. Audit removed SDK Product Option methods, `Response.json()` and `defer()` usage, `UIMatch.loaderData`, cart/order wildcard totals, every Medusa patch, Admin browser/a11y contracts, migrations, and complete checkout/refund/tax behavior before staging. |
+| 3 | Medusa | Blocked first on the 2.19 RBAC/SSO licensing decision above. After that is resolved, move every Backend and Storefront `@medusajs/*` package together. The official [2.19 release](https://github.com/medusajs/medusa/releases/tag/v2.19.0) is a breaking Admin migration to Vite 7.3.6 and React Router 7.18.2. Audit removed SDK Product Option methods, `Response.json()` and `defer()` usage, `UIMatch.loaderData`, cart/order wildcard totals, every Medusa patch, Admin browser/a11y contracts, migrations, and complete checkout/refund/tax behavior before staging. |
 | 4 | TanStack | Completed the five Query persistence/runtime package update to 5.102.7 with local, exact-SHA CI, runtime-image, and Railway acceptance. Review Form 1.33.5, Pacer 0.22.0, and cooled Query patches individually, then include compatible results in the combined batch. Preserve validation/focus, debounce/cancellation, and cache/persistence regressions. Hold Table 9 for an explicit API migration. |
 | 5 | Stripe | Review `stripe` 22.6.0 independently from the browser pair, then share the compatible batch above. Its release pins a new API version and changes connection-error behavior. Update `@stripe/react-stripe-js` 6.8.2 with `@stripe/stripe-js` 9.14.0 only after rebasing or removing the exact Trusted Types loader patch, then rerun checkout, 3DS, response-loss, webhook, refund, CSP, and three-engine browser matrices. |
 | 6 | AWS SDK | Update the S3 client to the newly reviewed cooled 3.1121.0 with its compatible core graph. Recheck the locally patched abort/timeout behavior, MinIO path-style requests, release `HeadBucket`, upload compensation, media backup, and runtime image scan before removing any core override. |

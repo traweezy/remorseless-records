@@ -54,6 +54,23 @@ const fixtureProduct = {
   ],
 }
 
+// An exact-handle-only product exercises gallery transitions without changing
+// catalog, shelf, sitemap, or existing no-artwork acceptance fixtures.
+const galleryRuntimeProduct = {
+  ...fixtureProduct,
+  id: "prod_CIGALLERYRUNTIME",
+  handle: "music-release-ci-gallery-artwork",
+  title: "Gallery Runtime Pressing",
+  images: [
+    "/remorseless-hero-logo.png",
+    "/remorseless-header-logo.png",
+    "/favicon.ico",
+  ].map((url, index) => ({
+    id: `img_CIGALLERY_${index}`,
+    url,
+  })),
+}
+
 const fixtureShelves = {
   shelves: [
     {
@@ -149,9 +166,11 @@ const routePayload = (pathname, searchParams) => {
     case "/store/products": {
       const requestedHandle = searchParams.get("handle")
       const products =
-        requestedHandle && requestedHandle !== fixtureProduct.handle
-          ? []
-          : [fixtureProduct]
+        requestedHandle === galleryRuntimeProduct.handle
+          ? [galleryRuntimeProduct]
+          : requestedHandle && requestedHandle !== fixtureProduct.handle
+            ? []
+            : [fixtureProduct]
       return {
         products,
         count: products.length,

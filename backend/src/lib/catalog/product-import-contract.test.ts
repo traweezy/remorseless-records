@@ -1,4 +1,5 @@
 import { MedusaError } from "@medusajs/framework/utils"
+import { parse } from "csv-parse/sync"
 
 import {
   createProductImportPlan,
@@ -36,6 +37,23 @@ const storedPlan = (overrides: Record<string, unknown> = {}): Buffer =>
 
 const validPlan = () => parseProductImportPlan(storedPlan(), nowMs)
 
+const parseCsvRecord = (csv: string, groupColumnsByName = false): object => {
+  const rows: unknown = parse(csv, {
+    bom: true,
+    columns: true,
+    group_columns_by_name: groupColumnsByName,
+    skip_empty_lines: true,
+  })
+  if (!Array.isArray(rows) || rows.length !== 1) {
+    throw new Error("Expected exactly one parsed CSV fixture row.")
+  }
+  const row: unknown = rows[0]
+  if (typeof row !== "object" || row === null || Array.isArray(row)) {
+    throw new Error("Expected a parsed CSV fixture object.")
+  }
+  return row
+}
+
 describe("product import file boundaries", () => {
   it("normalizes a path-bearing filename and validates opaque file IDs", () => {
     expect(normalizeProductImportFilename(" ../exports/catalog.csv ")).toBe(
@@ -69,6 +87,48 @@ describe("product import file boundaries", () => {
 })
 
 describe("product import CSV boundaries", () => {
+  it.each(["__proto__", "constructor", "toString"])(
+    "parses %s headers as own data without replacing the row prototype",
+    (header) => {
+      const row = parseCsvRecord(
+        `\uFEFF${header},Product Title\nheader-value,Release\n`
+      )
+
+      expect(Object.getPrototypeOf(row)).toBe(Object.prototype)
+      expect(Object.getOwnPropertyDescriptor(row, header)).toEqual({
+        configurable: true,
+        enumerable: true,
+        value: "header-value",
+        writable: true,
+      })
+      expect(Object.keys(row)).toEqual([header, "Product Title"])
+      expect(readCsvRecords([row])[0]?.["Product Title"]).toBe("Release")
+    }
+  )
+
+  // Imports do not enable grouping; the shared row boundary must still reject
+  // grouped values rather than accepting data hidden in an inherited property.
+  it.each(["__proto__", "constructor", "toString"])(
+    "keeps grouped %s columns own and rejects them at the string-only boundary",
+    (header) => {
+      const row = parseCsvRecord(
+        `${header},${header},Product Title\nfirst,second,Release\n`,
+        true
+      )
+
+      expect(Object.getPrototypeOf(row)).toBe(Object.prototype)
+      expect(Object.getOwnPropertyDescriptor(row, header)).toEqual({
+        configurable: true,
+        enumerable: true,
+        value: ["first", "second"],
+        writable: true,
+      })
+      expect(Object.hasOwn(row, "0")).toBe(false)
+      expect(Object.hasOwn(row, "length")).toBe(false)
+      expect(() => readCsvRecords([row])).toThrow(MedusaError)
+    }
+  )
+
   it("accepts string matrices and string-valued record rows", () => {
     expect(readCsvMatrix([["Product Title"], ["Release"]])).toEqual([
       ["Product Title"],
