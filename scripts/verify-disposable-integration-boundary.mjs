@@ -67,8 +67,29 @@ assert.equal(
 )
 assert.equal(
   packageManifest.scripts?.["qa:disposable-integration:services"],
-  "pnpm --filter backend run test:integration && pnpm run qa:api-contract"
+  "pnpm --filter backend run test:integration && pnpm run qa:postgres-recovery:integration && pnpm run qa:api-contract"
 )
+assert.equal(
+  packageManifest.scripts?.["qa:postgres-recovery:integration"],
+  "node --test scripts/postgres-recovery.integration.test.mjs"
+)
+const recoveryTest = await read(
+  "scripts/postgres-recovery.integration.test.mjs"
+)
+for (const marker of [
+  'process.env.INTEGRATION_TESTS_ENABLED !== "1"',
+  'url.password !== "local_integration_only"',
+  'url.pathname !== "/postgres"',
+  "url.search ||",
+  "url.hash",
+  "DROP DATABASE",
+  "ROLLBACK",
+]) {
+  assert.ok(
+    recoveryTest.includes(marker),
+    `Recovery fixture guard lost: ${marker}`
+  )
+}
 assert.match(
   packageManifest.scripts?.["qa:lint"] ?? "",
   /pnpm run qa:disposable-integration-boundary/u

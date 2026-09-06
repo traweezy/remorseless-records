@@ -87,4 +87,40 @@ test("accepts a strict bounded backup manifest", () => {
     parseBackupManifest({ ...manifest, createdAt: "2026-08-30T20:00:00Z" })
   )
   assert.throws(() => parseBackupManifest({ ...manifest, unexpected: true }))
+  assert.throws(() =>
+    parseBackupManifest({
+      ...manifest,
+      pgDumpVersion: "pg_dump (PostgreSQL) 18.6\nprivate",
+    })
+  )
+})
+
+test("rejects ignored routing overrides, duplicate options, and unsafe libpq values", () => {
+  for (const url of [
+    "postgresql://user:password@localhost/db?host=another",
+    "postgresql://user:password@localhost/db?sslmode=require&sslmode=disable",
+    "postgresql://user:password@localhost/db?sslmode=invalid",
+    "postgresql://user:password@localhost/db?sslrootcert=%00",
+    "postgresql://user:pass%00word@localhost/db",
+    "postgresql://user%0Aname:password@localhost/db",
+    "postgresql://user:password@localhost",
+  ])
+    assert.throws(() =>
+      createPostgresClientEnvironment(url, "DATABASE_BACKUP_URL")
+    )
+})
+
+test("passes IPv6 hosts to libpq without URI brackets and normalizes endpoint fingerprints", () => {
+  const connection = createPostgresClientEnvironment(
+    "postgresql://user:password@[::1]/db",
+    "DATABASE_BACKUP_URL"
+  )
+  assert.equal(connection.environment.PGHOST, "::1")
+  assert.equal(
+    connection.fingerprint,
+    createPostgresClientEnvironment(
+      "postgresql://other:password@[::1]:5432/db",
+      "DATABASE_RESTORE_URL"
+    ).fingerprint
+  )
 })

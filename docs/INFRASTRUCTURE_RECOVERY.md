@@ -211,9 +211,29 @@ DATABASE_BACKUP_URL='<backup-role-url>' \
 ```
 
 The command uses `pg_dump --format=custom --no-owner --no-privileges`, verifies
-the archive with `pg_restore --list`, applies mode `0600`, and writes a bounded
+the archive with `pg_restore --format=custom --list`, applies mode `0600`, and writes a bounded
 manifest containing byte length, SHA-256, tool version, timestamp, and a
 credential-free source fingerprint.
+
+Both PostgreSQL commands accept `--help` without credentials and reject unknown,
+duplicate, or incomplete arguments. `DATABASE_RECOVERY_TIMEOUT_MS` bounds the
+overall client/hash/copy workflow: default 30 minutes, minimum 100 milliseconds,
+maximum four hours. The connect timeout remains 10 seconds; `pg_dump` also
+limits initial lock waits to 10 seconds. SIGINT/SIGTERM cancel the active client
+with SIGKILL, await process closure, and then remove owned temporary files.
+Success output is withheld until temporary cleanup completes. Subprocess
+stdout is capped at 20 MiB, stderr is discarded, and failures report only a
+fixed phase and elapsed time. Raw driver/tool errors, SQL, credentials, and
+connection strings must not be copied into logs.
+
+Use trusted client executables on `PATH`. Child environments contain only the
+reviewed runtime/libpq fields; ambient `PGOPTIONS`, connection overrides, and
+unrelated application secrets are not inherited. Connection URLs accept only
+one `sslmode` and one optional `sslrootcert`; unsupported or repeated options
+fail rather than being silently ignored. IPv6 hosts are normalized for libpq.
+Reserve sufficient local archive space before starting a dump; a deadline is
+not a disk quota. A failure during the final two-file publication can leave an
+orphan archive without its manifest; do not treat that as verified evidence.
 
 A restore drill must target a new, empty, disposable database. First run the
 read-only verification:
@@ -225,9 +245,36 @@ DATABASE_RESTORE_URL='<disposable-target-url>' \
   --manifest /absolute/path/postgres-....manifest.json
 ```
 
-The command verifies canonical regular files, manifest bounds, byte length,
-SHA-256, a distinct target fingerprint, and an empty target. It prints the
-target fingerprint required for the explicit apply:
+The command verifies canonical regular files, a manifest no larger than 64 KiB,
+byte length, SHA-256, a distinct endpoint fingerprint, and the target inventory.
+It copies the archive into an exclusive private `0600` snapshot and uses only
+that verified copy for both archive listing and restore. Replacing the original
+path after verification cannot change the restored bytes. Dry-run therefore
+writes local temporary files but performs no database mutation.
+
+`DATABASE_RESTORE_MAX_ARCHIVE_BYTES` bounds the declared snapshot size: default
+10 GiB and maximum 1 TiB. Reserve that space in the system temporary directory
+(or an approved private `TMPDIR`). The snapshot is removed on success/failure.
+The SHA-256 manifest establishes integrity, not authenticity or safety of SQL
+inside an archive: PostgreSQL warns that restoring a dump executes code chosen
+by source superusers. Use only a trusted source/archive and a dedicated target.
+See the [PostgreSQL restore warning](https://www.postgresql.org/docs/18/app-pgrestore.html).
+
+Preflight uses an explicit read-only transaction with `search_path=pg_catalog`,
+not privilege-filtered `information_schema.tables` or user-schema function lookup.
+It rejects user schemas, namespace-owned objects (including relations, routines,
+types, operators, and collations), non-default extensions, large objects,
+foreign servers/wrappers, event triggers, publications/subscriptions, custom
+casts/languages, and default grants. Counts are strict nonnegative integers;
+malformed output and inspection failures fail closed. The default `public`
+schema and built-in `plpgsql` extension are allowed. These checks are a bounded
+object inventory, not a complete security audit of database/role settings.
+
+The endpoint fingerprint cannot discover private/public aliases for the same
+database. Independently prove that the target is disposable and distinct from
+the source, and exclude concurrent writers throughout the drill: preflight and
+restore use separate connections and do not lock out other actors. The command
+prints the target fingerprint required for the explicit apply:
 
 ```bash
 DATABASE_RESTORE_URL='<disposable-target-url>' \
@@ -242,6 +289,21 @@ Record archive checksum, start/end time, restored application-table count,
 Medusa migration status, representative read-only queries, and destruction of
 the disposable target. A successful command without an application smoke test
 does not satisfy the drill.
+
+Apply keeps `--single-transaction --exit-on-error`, without `--clean` or
+`--create`; see [PostgreSQL's transaction guarantee](https://www.postgresql.org/docs/18/app-pgrestore.html).
+Cancellation, a lost response, or a failed post-restore inventory must not be
+interpreted as proof of rollback: the restore may already have committed.
+Inspect the isolated target before deciding whether to accept or discard it.
+Never retry against a populated target or repurpose this command for in-place
+production recovery.
+
+Regression gates: `pnpm run qa:database-release-boundary` covers process,
+input, snapshot, and CLI failures. `pnpm run qa:postgres-recovery:integration`
+requires the explicitly guarded disposable local PostgreSQL fixture and is
+included in `qa:disposable-integration:services`. It creates only its own
+randomly named database, rolls back each object fixture, and drops that owned
+database afterward. No real backup-provider setup or live restore is implied.
 
 ## Media backup and restore
 

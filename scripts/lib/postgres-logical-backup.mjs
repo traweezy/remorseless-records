@@ -35,7 +35,21 @@ export const createPostgresClientEnvironment = (raw, label) => {
   }
 
   const hostname = url.hostname.toLowerCase()
+  for (const key of url.searchParams.keys()) {
+    if (
+      !["sslmode", "sslrootcert"].includes(key) ||
+      url.searchParams.getAll(key).length !== 1
+    )
+      throw new Error(
+        `${label} contains unsupported or duplicate connection options.`
+      )
+  }
   const sslMode = url.searchParams.get("sslmode")?.toLowerCase()
+  if (
+    sslMode !== undefined &&
+    !new Set(["disable", "allow", "prefer", ...encryptedSslModes]).has(sslMode)
+  )
+    throw new Error(`${label} contains an invalid TLS mode.`)
   if (!isPrivateOrLoopback(hostname) && !encryptedSslModes.has(sslMode)) {
     throw new Error(`${label} must require TLS outside private networking.`)
   }
@@ -44,12 +58,23 @@ export const createPostgresClientEnvironment = (raw, label) => {
   const username = decodeUrlComponent(url.username, label)
   const password = decodeUrlComponent(url.password, label)
   if (
+    !database ||
     Buffer.byteLength(database, "utf8") > 256 ||
     /[\u0000-\u001f\u007f=]/u.test(database) ||
     database.includes("/")
   ) {
     throw new Error(`${label} contains an unsafe database name.`)
   }
+  if (
+    !username ||
+    !password ||
+    /[\u0000-\u001f\u007f]/u.test(
+      username + password + (url.searchParams.get("sslrootcert") ?? "")
+    )
+  )
+    throw new Error(
+      `${label} contains unsafe connection credentials or certificate options.`
+    )
   const fingerprint = createHash("sha256")
     .update(`${hostname}:${url.port || "5432"}/${database}`)
     .digest("hex")
@@ -59,7 +84,7 @@ export const createPostgresClientEnvironment = (raw, label) => {
       PGAPPNAME: "remorseless-recovery",
       PGCONNECT_TIMEOUT: "10",
       PGDATABASE: database,
-      PGHOST: hostname,
+      PGHOST: hostname.replace(/^\[|\]$/gu, ""),
       PGPASSWORD: password,
       PGPORT: url.port || "5432",
       PGSSLMODE: sslMode ?? "prefer",
@@ -72,9 +97,9 @@ export const createPostgresClientEnvironment = (raw, label) => {
   }
 }
 
-export const hashFileSha256 = async (path) => {
+export const hashFileSha256 = async (path, { signal } = {}) => {
   const hash = createHash("sha256")
-  for await (const chunk of createReadStream(path)) {
+  for await (const chunk of createReadStream(path, { signal })) {
     hash.update(chunk)
   }
   return hash.digest("hex")
@@ -103,6 +128,7 @@ export const parseBackupManifest = (value) => {
     new Date(value.createdAt).toISOString() !== value.createdAt ||
     typeof value.pgDumpVersion !== "string" ||
     value.pgDumpVersion.length > 128 ||
+    /[\u0000-\u001f\u007f]/u.test(value.pgDumpVersion) ||
     !/^pg_dump \(PostgreSQL\) \d+/u.test(value.pgDumpVersion) ||
     typeof value.sha256 !== "string" ||
     !/^[a-f0-9]{64}$/u.test(value.sha256) ||

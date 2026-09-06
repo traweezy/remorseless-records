@@ -10,14 +10,16 @@ artifact Railway is running; verify Railway separately with the sequence below.
 
 - Branch: `staging`
 - Current accepted implementation head:
-  `497a52a8c2aced3ba62e1e08e4c733bbe78b23fe`. It includes the accepted Next.js
+  `2354e7544c77c0c23f1486b9e3ef43e0740d51a9`. It includes the accepted Next.js
   16.3.3 build split, Redis 6.2.1, upstream `qs` 6.16.0, Trusted Types
   enforcement, the Form/Resend/PostHog/Pacer/Query/Virtual/Sonner batch, and
-  the AWS/Stripe/OpenTelemetry and UI/parser/image/tooling batches. Complete
-  local, exact-SHA CI, runtime-image, and Railway staging evidence is recorded
+  the AWS/Stripe/OpenTelemetry, UI/parser/image/tooling, and recovery batches.
+  Complete local, exact-SHA CI, runtime-image, and Railway staging evidence is recorded
   below, including the deployed test-only hydration correction.
 - Latest exact runtime-image validation SHA:
-  `497a52a8c2aced3ba62e1e08e4c733bbe78b23fe`
+  `2354e7544c77c0c23f1486b9e3ef43e0740d51a9`
+- The prior recovery release's acceptance notes are carried in the next
+  substantive PostgreSQL execution batch; no documentation-only push was made.
 - Original implementation/runtime-image acceptance SHA
   `61fd86889a4adca23e1e9704e11c889a1fd986a9` is pushed to
   `origin/staging`. Backend source deployment acceptance is documented at
@@ -1040,16 +1042,18 @@ The separate uncapped HTTP-error sample contained 116 client cancellations
 (499), 24 fixture 404s, and those two 400s; no HTTP 5xx was observed. This is
 not a zero-error-log claim; cancellation noise remains visible.
 
-### Next recovery-preparation batch
+### Accepted recovery-preparation batch
 
-The next combined batch changes recovery tooling only, without dependency
+The combined batch changes recovery tooling only, without dependency
 updates, provider grants, role cutovers, or live backup/restore drills. It also
 contains the bounded deployed-browser hydration synchronization correction.
+Commits `f82c489`, `29174bc`, `08ba93a`, and `2354e75` were pushed together:
+19 files, 2,030 insertions and 151 deletions, without an intermediate push.
 Root QA passes across 1,299 files; Backend coverage passes 277 suites / 2,146
 tests at 91.83% statements/lines, 85.72% branches, and 95.80% functions.
 Backend/Admin builds complete in 6.59/16.17 seconds. Corrected deployed-browser
-validation passes as recorded above; the combined recovery batch still needs
-its own exact-SHA remote acceptance. Frozen installation and peers pass;
+validation passes as recorded above; the combined recovery batch also passed
+its own exact-SHA remote acceptance below. Frozen installation and peers pass;
 the only audit findings are the existing three behaviorally patched moderate
 ignores, without new exceptions.
 
@@ -1076,24 +1080,116 @@ is not a production benchmark. These bounded checks do not certify all
 authorization. Scope and rollout prerequisites remain in
 `INFRASTRUCTURE_RECOVERY.md`; no live role change has been performed.
 
+Exact-SHA Root `34058004773`, Backend `34058004830`, Storefront `34058004778`,
+and Runtime Images `34058004813` all passed for
+`2354e7544c77c0c23f1486b9e3ef43e0740d51a9`. CI Backend coverage retained
+277 suites / 2,146 tests at 91.83% statements/lines, 85.76% branches and 95.80%
+functions; integrations passed 31 tests in two suites plus 41 in five suites.
+Storefront passed 142 files / 857 baseline tests and 36 files / 322
+transactional tests. CI responsive, launch and three-engine critical matrices
+passed 81 (two existing skips), 14 and 48 cases without retries. Sandbox-enabled
+pa11y and all Lighthouse assertions passed. The 18 independently inspected
+Lighthouse reports have no runtime errors, performance medians 0.87–0.88 and
+accessibility/best practices 1.00; worst median LCP is 4,077 ms, TBT 80 ms and
+CLS 0.000282 under unchanged calibration/budgets. Existing Checkout/Privacy
+SEO exceptions remain unchanged.
+
+Both private image records/SBOMs independently verify the exact revision;
+the unchanged high/critical scan gates passed and publication skipped:
+
+- Backend artifact `9996617539`, 1,166 components, digest
+  `sha256:16b3dc85f0889667bb62f2e2d199b09c5313a47af14cb11c659e77a62d492f25`;
+- Storefront artifact `9996597794`, 122 components, digest
+  `sha256:4f701a3b8bc4832491d0d922d94a4bf6834c911d6a0bc103dbfe24231add8fb0`.
+
+Evidence is retained at `/tmp/remorseless-runtime-2354e75.b0y1Tw`, including
+Lighthouse artifact `9996761382`. These validation images are not the Railway
+source images. Railway Backend `f0a7645b-cf89-4eff-906e-cdf150472b12` and
+Storefront `bf2f9773-1784-4f93-adba-c2791079bfc8` both reached `SUCCESS` on
+the exact SHA, with respective source digests
+`sha256:2b00a1a66fe92288334663ce31e9faa68fee8bb57c23ce758db9f5bf8736a2de`
+and `sha256:730c49feb16ef0b7fa9c25839ccecf788e2e3c3da75d83dfaf4b9caca7c232c5`.
+
+At `2026-09-06T20:46:36Z`, Backend liveness/readiness, scheduler and operations
+were healthy, with all four dependencies/seven capabilities OK. Its completed
+exact-SHA heartbeat was fresh at `20:46:00.088Z`, with no incident or alert
+reason. Catalog counts remained 461 products, 442 discography entries, one
+returned handle, and three shelves with 25 memberships. Retention snapshots
+remain healthy but were not newly run. The guarded GET returned Medusa's
+native `not_allowed` 400 envelope with matching request/trace headers:
+`aa71315f-a1aa-4030-a17f-deb000e84bf4` /
+`9d55b428cd41cff4b17bdff8e7ae6a08`. The exact-SHA runtime completion and
+Railway HTTP request `9nRxEtP6TyqmqvQGHn5Ytg` independently match the Backend
+deployment; the guarded request completed in 2.405 ms.
+
+Storefront exact-SHA liveness/readiness, complete Home/Catalog HTML, security
+and Trusted Types headers, and the actual 7,027-byte AVIF optimizer passed.
+Its guarded `invalid_query` 400 matched body/headers and the exact-SHA runtime
+event: request `182f89e3-52f9-417f-990d-6af7751d43f4`, trace
+`9bbeb812b6385b0a1f8baeb1bcd2ecf3`. Railway HTTP request
+`1QfgiEf8REmiRU0TU79b0g` independently matches the Storefront deployment.
+The deployed matrix passed 75 with eight
+expected skips and zero retries in 1.8 minutes; artifacts are at
+`/tmp/remorseless-2354e75-deployed-browser.mnN3RX`. The same local-gallery,
+desktop-header and intercepted-Stripe boundaries described above apply.
+
+Final uncapped log samples retain 398 Backend runtime rows with 77 successful
+request completions and two deliberately induced guard 400s; its HTTP-error
+filter contains only those two 400s. Storefront retained 306 runtime rows,
+eight known stream cancellations, 12 fixture product-not-found events and one
+deliberate 400. Its HTTP-error filter contains 100 client 499s, 12 fixture 404s
+and that 400, without HTTP 5xx. Neither runtime sample showed Trusted Types
+errors or credential-assignment signals. This remains bounded evidence, not
+a zero-error-log assertion or real provider/backup/role-cutover acceptance.
+
+### PostgreSQL recovery execution batch
+
+The next grouped change completes the PostgreSQL backup/restore execution
+boundary without dependencies, application features, database grants, or
+provider changes. Both CLIs now have credential-free help, strict argument and
+libpq option validation, a cancellable overall deadline, bounded child output,
+sanitized phase/duration failures, and child reaping before private cleanup.
+Restore verifies and reads a private archive snapshot, enforces a local-copy
+byte budget, lists the custom archive before connecting, and checks a broader
+privilege-independent catalog inventory. Existing transactional apply and
+confirmation boundaries remain in place.
+
+The expanded database-release gate passes 75 tests, including 40 PostgreSQL
+unit/CLI cases. Focused helper coverage passes at 95.50% lines, 95.20% branches, and 95.65%
+functions. Seventeen real PostgreSQL 18.6 integration cases pass, including
+reproductions of table-only false acceptance for routines/sequences and
+inaccessible tables, read-only transaction enforcement, and schema-shadowing
+prevention. These fixtures are wired into the existing disposable
+Backend CI job. A separate local synthetic end-to-end drill created a
+2,663-byte custom archive in 231 ms, completed preflight in 80 ms and restore
+in 262 ms, verified one table/three inventoried objects plus the exact row and
+routine result, and rejected a repeated apply to the populated target.
+Temporary snapshots and owned databases were cleaned. These are small local
+fixtures, not production recovery-time measurements or live restore evidence.
+
+`INFRASTRUCTURE_RECOVERY.md` documents the 30-minute default/four-hour maximum,
+10 GiB default/1 TiB maximum snapshot budget, supported connection options,
+archive trust, endpoint-alias limitations, concurrent-writer exclusion, and
+the possibility of a committed restore after a timeout/lost response.
+Full root QA passes across 1,305 files with both strict typechecks. Frozen
+installation and peers pass; the audit retains only the existing three
+behaviorally patched moderate ignores, without new exceptions. Exact-SHA
+remote release acceptance is pending for this batch.
+
 ### Remaining release work
 
 1. Re-evaluate Next.js 16.3.4 no earlier than
    `2026-09-07T20:00:51.381Z`. Keep it isolated from the `qs`, Medusa, TanStack,
    Stripe, AWS SDK, OpenTelemetry, and small-patch cohorts documented in
    `DEPENDENCY_MIGRATION_AUDIT_2026-07-23.md`.
-2. Finish the combined recovery-preparation batch's exact-SHA CI, image, and
-   staging gates. Ship implementation and evidence
-   together; do not add documentation-only checkpoint pushes. Keep Medusa
-   changes subject to their separate migration review; batching is not
-   permission to skip compatibility checks.
-3. Hold Medusa 2.19.0: its [Enterprise license](https://raw.githubusercontent.com/medusajs/medusa/v2.19.0/ENTERPRISE-LICENSE.md)
+2. Hold Medusa 2.19.0: its [Enterprise license](https://raw.githubusercontent.com/medusajs/medusa/v2.19.0/ENTERPRISE-LICENSE.md)
    requires a commercial agreement for the listed RBAC/SSO materials,
    including policies, permission checks, and compiled forms. This app uses
    RBAC. Retain Medusa 2.18.0, its authorization guards, and Admin UI 4.2.0
-   until the user confirms licensing or separately approves an authorization
-   migration. The notice preserves earlier MIT grants; this is a separate
-   hold, not a licensing change to the current 15-direct batch.
+   without assuming a paid Enterprise agreement or disabling permissions.
+   This optional upgrade does not block unrelated work. The notice preserves
+   earlier MIT grants; this is a separate hold, not a licensing change to the
+   accepted application dependencies.
 
 ## Railway and GHCR cutover boundary
 

@@ -1,122 +1,150 @@
 import assert from "node:assert/strict"
-import { spawnSync } from "node:child_process"
-import { lstat, readFile, realpath, stat } from "node:fs/promises"
-import { resolve } from "node:path"
-
+import { mkdtemp, rm } from "node:fs/promises"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
+import { createPostgresClientEnvironment } from "./lib/postgres-logical-backup.mjs"
 import {
-  createPostgresClientEnvironment,
-  hashFileSha256,
-  parseBackupManifest,
-} from "./lib/postgres-logical-backup.mjs"
+  parseRestoreInventory,
+  readBackupManifest,
+  restoreArchiveLimit,
+  RESTORE_TARGET_PREFLIGHT_SQL,
+  snapshotBackupArchive,
+} from "./lib/postgres-restore.mjs"
+import {
+  createRecoveryScope,
+  parseRecoveryArguments,
+  recoveryEnvironment,
+  recoveryTimeoutMs,
+  runRecoveryCommand,
+} from "./lib/recovery-process.mjs"
 
-const readFlag = (name) => {
-  const index = process.argv.indexOf(name)
-  return index >= 0 ? process.argv[index + 1] : undefined
-}
-const archivePath = readFlag("--archive")
-const manifestPath = readFlag("--manifest")
-assert.ok(
-  archivePath && manifestPath,
-  "Usage: postgres-restore-drill --archive <path> --manifest <path> [--apply]"
-)
-for (const path of [archivePath, manifestPath]) {
-  assert.equal(resolve(path), path, "Restore inputs must use absolute paths.")
-  const metadata = await lstat(path)
-  assert.equal(metadata.isSymbolicLink(), false, "Restore input is a symlink.")
-  assert.equal(metadata.isFile(), true, "Restore input is not a regular file.")
-  assert.equal(await realpath(path), path, "Restore input must be canonical.")
-}
+const help = `Usage: postgres-restore-drill --archive <absolute-path> --manifest <absolute-path> [--apply]
+Default: read-only database preflight; creates and removes a private local archive snapshot.
+Requires DATABASE_RESTORE_URL. Apply also requires DATABASE_RESTORE_CONFIRM from dry-run.
+Only use a trusted archive and an isolated, empty disposable target with no other writers.
+Checksums establish integrity, not archive trust or endpoint-alias identity.
+DATABASE_RECOVERY_TIMEOUT_MS: overall deadline (default 30 minutes, maximum 4 hours).
+DATABASE_RESTORE_MAX_ARCHIVE_BYTES: snapshot budget (default 10 GiB, maximum 1 TiB).
+Budget free space in the system temporary directory for one complete archive copy.
+SIGINT/SIGTERM cancel and reap the active client before temporary-file cleanup.
+Apply uses one transaction without --clean or --create. After a timeout or lost response,
+inspect the disposable target: a committed restore may require manual acceptance.
+No live provider or application smoke-test acceptance is implied.
+`
 
-const manifestStats = await stat(manifestPath)
-assert.ok(
-  manifestStats.size > 0 && manifestStats.size <= 64 * 1024,
-  "Backup manifest must be between 1 byte and 64 KiB."
-)
-
-const manifest = parseBackupManifest(
-  JSON.parse(await readFile(manifestPath, "utf8"))
-)
-const archiveStats = await stat(archivePath)
-assert.equal(archiveStats.size, manifest.bytes, "Backup byte length changed.")
-assert.equal(
-  await hashFileSha256(archivePath),
-  manifest.sha256,
-  "Backup checksum verification failed."
-)
-const connection = createPostgresClientEnvironment(
-  process.env.DATABASE_RESTORE_URL ?? "",
-  "DATABASE_RESTORE_URL"
-)
-assert.notEqual(
-  connection.fingerprint,
-  manifest.sourceFingerprint,
-  "Restore drills must target a different database service."
-)
-
-const commandEnvironment = {
-  HOME: process.env.HOME,
-  LANG: process.env.LANG ?? "C.UTF-8",
-  PATH: process.env.PATH,
-  ...connection.environment,
-}
-delete commandEnvironment.DATABASE_RESTORE_URL
-const run = (command, args) => {
-  const result = spawnSync(command, args, {
-    encoding: "utf8",
-    env: commandEnvironment,
-    maxBuffer: 20 * 1024 * 1024,
-    stdio: ["ignore", "pipe", "inherit"],
-  })
-  if (result.error) {
-    throw result.error
+const main = async () => {
+  if (process.argv.length === 3 && process.argv[2] === "--help") {
+    process.stdout.write(help)
+    return
   }
-  assert.equal(result.signal, null, `${command} terminated unexpectedly.`)
-  assert.equal(result.status, 0, `${command} failed.`)
-  return result.stdout.trim()
+  let phase = "arguments"
+  let scope
+  let directory
+  let evidence
+  const startedAt = Date.now()
+  try {
+    const args = parseRecoveryArguments(
+      process.argv.slice(2),
+      ["--archive", "--manifest"],
+      true
+    )
+    scope = createRecoveryScope(
+      recoveryTimeoutMs(process.env.DATABASE_RECOVERY_TIMEOUT_MS)
+    )
+    const maxBytes = restoreArchiveLimit(
+      process.env.DATABASE_RESTORE_MAX_ARCHIVE_BYTES
+    )
+    const connection = createPostgresClientEnvironment(
+      process.env.DATABASE_RESTORE_URL ?? "",
+      "DATABASE_RESTORE_URL"
+    )
+    if (args.apply)
+      assert.equal(process.env.DATABASE_RESTORE_CONFIRM, connection.fingerprint)
+    const run = (command, values) =>
+      runRecoveryCommand(command, values, {
+        environment: recoveryEnvironment(connection),
+        signal: scope.signal,
+      })
+    phase = "archive_verification"
+    const manifest = await readBackupManifest(args["--manifest"], scope.signal)
+    assert.ok(manifest.bytes <= maxBytes)
+    assert.notEqual(connection.fingerprint, manifest.sourceFingerprint)
+    directory = await mkdtemp(join(tmpdir(), "remorseless-restore-"))
+    const snapshot = join(directory, "verified.dump")
+    await snapshotBackupArchive(
+      args["--archive"],
+      snapshot,
+      manifest,
+      scope.signal
+    )
+    await run("pg_restore", ["--format=custom", "--list", snapshot])
+    const inventory = async () =>
+      parseRestoreInventory(
+        await run("psql", [
+          "--no-psqlrc",
+          "--no-password",
+          "--quiet",
+          "--set=ON_ERROR_STOP=1",
+          "--tuples-only",
+          "--no-align",
+          `--command=${RESTORE_TARGET_PREFLIGHT_SQL}`,
+        ])
+      )
+    phase = "target_preflight"
+    const before = await inventory()
+    assert.equal(before.objects, 0)
+    assert.equal(before.tables, 0)
+    if (!args.apply) {
+      evidence = {
+        confirmation: connection.fingerprint,
+        sourceChecksum: manifest.sha256,
+        status: "dry_run_verified",
+        targetTables: before.tables,
+        targetObjects: before.objects,
+      }
+    } else {
+      phase = "restore"
+      await run("pg_restore", [
+        "--format=custom",
+        "--no-password",
+        "--exit-on-error",
+        "--single-transaction",
+        "--no-owner",
+        "--no-privileges",
+        `--dbname=${connection.environment.PGDATABASE}`,
+        snapshot,
+      ])
+      phase = "target_verification"
+      const after = await inventory()
+      assert.ok(after.tables > 0)
+      evidence = {
+        sourceChecksum: manifest.sha256,
+        status: "restore_verified",
+        targetTables: after.tables,
+        targetObjects: after.objects,
+      }
+    }
+  } catch {
+    process.stderr.write(
+      `${JSON.stringify({ status: "failed", phase, durationMs: Date.now() - startedAt })}\n`
+    )
+    process.exitCode = 1
+  } finally {
+    scope?.close()
+    if (directory) {
+      try {
+        await rm(directory, { force: true, recursive: true })
+      } catch {
+        process.stderr.write(
+          '{"status":"failed","phase":"temporary_cleanup"}\n'
+        )
+        process.exitCode = 1
+      }
+    }
+  }
+  if (evidence && !process.exitCode)
+    process.stdout.write(
+      `${JSON.stringify({ ...evidence, durationMs: Date.now() - startedAt })}\n`
+    )
 }
-
-const applicationTableCount = () =>
-  Number.parseInt(
-    run("psql", [
-      "--no-psqlrc",
-      "--set=ON_ERROR_STOP=1",
-      "--tuples-only",
-      "--no-align",
-      "--command=select count(*) from information_schema.tables where table_schema not in ('pg_catalog', 'information_schema');",
-    ]),
-    10
-  )
-const beforeTables = applicationTableCount()
-assert.equal(
-  beforeTables,
-  0,
-  "Restore target is not an empty disposable database."
-)
-
-const apply = process.argv.includes("--apply")
-if (!apply) {
-  process.stdout.write(
-    `${JSON.stringify({ confirmation: connection.fingerprint, sourceChecksum: manifest.sha256, status: "dry_run_verified", targetTables: beforeTables })}\n`
-  )
-  process.exit(0)
-}
-assert.equal(
-  process.env.DATABASE_RESTORE_CONFIRM,
-  connection.fingerprint,
-  "DATABASE_RESTORE_CONFIRM must equal the dry-run target fingerprint."
-)
-
-const startedAt = Date.now()
-run("pg_restore", [
-  "--exit-on-error",
-  "--single-transaction",
-  "--no-owner",
-  "--no-privileges",
-  `--dbname=${connection.environment.PGDATABASE}`,
-  archivePath,
-])
-const afterTables = applicationTableCount()
-assert.ok(afterTables > 0, "Restore completed without application tables.")
-process.stdout.write(
-  `${JSON.stringify({ durationMs: Date.now() - startedAt, sourceChecksum: manifest.sha256, status: "restore_verified", targetTables: afterTables })}\n`
-)
+await main()

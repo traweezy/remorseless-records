@@ -46,11 +46,12 @@ September 3 live read remained healthy with Redis `ok`, a completed heartbeat,
 no incident latch, and no alert reason.
 
 The accepted implementation head
-`497a52a8c2aced3ba62e1e08e4c733bbe78b23fe` includes Storefront Query 5.102.8,
+`2354e7544c77c0c23f1486b9e3ef43e0740d51a9` includes Storefront Query 5.102.8,
 both direct Redis clients and the shared Redis 6.2.1 graph, upstream `qs`
 6.16.0, Storefront Trusted Types enforcement, and the accepted combined
 Form/Resend/PostHog/Pacer/Virtual/Sonner, AWS/Stripe/OpenTelemetry, and
-UI/parser/image/tooling cohorts.
+UI/parser/image/tooling cohorts, plus the recovery safeguards and deployed
+browser synchronization correction.
 The Backend/Admin Query 5.64.2 graph remains
 isolated and unchanged. Full local acceptance, all four exact-SHA GitHub
 workflows, both runtime-image validations, and both Railway staging deployments
@@ -121,16 +122,16 @@ environment exists.
 - Git branches: `staging` is the default/integration branch; `master` is the
   protected production-candidate branch. Retired `main` was deleted.
 - Latest implementation/runtime-image validation SHA accepted:
-  `497a52a8c2aced3ba62e1e08e4c733bbe78b23fe`.
+  `2354e7544c77c0c23f1486b9e3ef43e0740d51a9`.
 - Original documentation-only staging acceptance:
   `060af53115ed1ae85d2f8d02d6fd0590c8e6a02d`.
 - Railway project: `store`; only the `staging` environment exists.
 - Application acceptance Backend deployment:
-  `8a8eca56-5cce-41c8-a0a7-e8e7f422dd87` (`SUCCESS`,
-  `497a52a8c2aced3ba62e1e08e4c733bbe78b23fe`).
+  `f0a7645b-cf89-4eff-906e-cdf150472b12` (`SUCCESS`,
+  `2354e7544c77c0c23f1486b9e3ef43e0740d51a9`).
 - Application acceptance Storefront deployment:
-  `2f6f68b5-5538-44e2-a6d3-120fd79dd406` (`SUCCESS`,
-  `497a52a8c2aced3ba62e1e08e4c733bbe78b23fe`).
+  `bf2f9773-1784-4f93-adba-c2791079bfc8` (`SUCCESS`,
+  `2354e7544c77c0c23f1486b9e3ef43e0740d51a9`).
 - Backend and Storefront `/live` and `/ready` checks return HTTP 200.
 - The public storefront route/API smoke matrix passes. `/products`
   intentionally redirects to `/catalog`.
@@ -4211,16 +4212,16 @@ deliberate 400s, without HTTP 5xx; 45 known destination-stream cancellations
 remain visible in runtime logs with digest `2025024551`. This does not assert
 zero error logging or real payment-provider acceptance.
 
-### Next recovery-preparation batch
+### Accepted recovery-preparation batch
 
-Media checksum verification and database-role auditing form the next combined
+Media checksum verification and database-role auditing form the combined
 tooling batch alongside the deployed-browser hydration synchronization fix;
 dependencies remain unchanged. Root QA passes 1,299 files, Backend coverage
 passes 277 suites / 2,146 tests (91.83% statements/lines, 85.72% branches,
 95.80% functions), and Backend/Admin builds pass in 6.59/16.17 seconds.
-Corrected browser-harness validation passes; exact-SHA remote acceptance for
-the combined recovery batch remains pending. No provider grants, role cutover,
-or live backup/restore drill is claimed.
+Corrected browser-harness validation and exact-SHA remote acceptance pass for
+the combined recovery batch. No provider grants, role cutover, or live
+backup/restore drill is claimed.
 
 Media verification reads both source and target through bounded streaming
 SHA-256 checks, with an explicit two-times-source-byte planned-content budget
@@ -4241,6 +4242,40 @@ execution, not production latency. `SECURITY DEFINER`, extensions, future and
 default grants, and application-specific capabilities still require separate
 review. `INFRASTRUCTURE_RECOVERY.md` retains the operational approval and
 rollout boundaries; passing local tests is not a least-privilege cutover.
+
+The four logical commits were pushed together at
+`2354e7544c77c0c23f1486b9e3ef43e0740d51a9`: 19 files, 2,030 insertions and
+151 deletions. Root `34058004773`, Backend `34058004830`, Storefront
+`34058004778`, and Runtime Images `34058004813` all passed. CI retained
+2,146 Backend unit tests plus 72 integration tests, 857 Storefront baseline
+tests plus its 322-test transactional subset, and 81 responsive (two skips),
+14 launch and 48 three-engine critical browser cases. Sandbox-enabled pa11y,
+all Lighthouse assertions and image-security gates passed without policy
+changes; publication skipped. Both exact-SHA image/SBOM records independently
+verify. Full artifact IDs and separate Railway source digests are in the
+handoff.
+
+Both Railway services reached `SUCCESS` on that SHA. Deployed acceptance
+includes fresh Backend heartbeat `2026-09-06T20:46:00.088Z`, healthy
+dependencies/operations/catalog, Storefront HTML/security/Trusted Types/AVIF,
+and 75 deployed browser cases with eight expected skips and zero retries.
+The bounded HTTP-error samples contain only deliberate 400s, fixture 404s and
+client 499s, with no HTTP 5xx; known stream cancellations remain visible.
+Final acceptance notes stay local for the next substantive batch instead of
+triggering a documentation-only checkpoint push.
+
+## PostgreSQL recovery execution boundary
+
+The subsequent PostgreSQL recovery execution batch groups deadline/cancellation,
+credential-safe subprocess handling, strict CLI/libpq parsing, private verified
+restore snapshots, and catalog-based target inventory. No provider, role,
+credential, or live database change is included. Seventeen guarded PostgreSQL
+integration cases pass and now run with the existing disposable CI gate;
+helper coverage is 95.50% lines / 95.20% branches / 95.65% functions. A local
+synthetic archive round trip and non-empty retry rejection pass. See
+`NEXT_SESSION_HANDOFF.md` for measured fixture evidence and
+`INFRASTRUCTURE_RECOVERY.md` for operational limitations. The grouped change
+still requires its own final local and exact-SHA remote acceptance.
 
 ## TanStack Form patch compatibility
 
