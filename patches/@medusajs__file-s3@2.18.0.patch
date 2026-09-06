@@ -52,15 +52,19 @@ index 5012c3161b0906c4674cf687e1f0f5cb16cd8d73..a6d6c09d05ac028080c27a67fe366a31
              acl: options.acl ?? undefined,
          };
          this.logger_ = logger;
-@@ -78,6 +87,17 @@ class S3FileService extends utils_1.AbstractFileProviderService {
+@@ -78,6 +87,21 @@ class S3FileService extends utils_1.AbstractFileProviderService {
          };
          return new client_s3_1.S3Client(config);
      }
 +    async send(command) {
 +        try {
-+            return await this.client_.send(command, {
++            const response = await this.client_.send(command, {
 +                abortSignal: AbortSignal.timeout(this.config_.requestTimeoutMs),
 +            });
++            if (command instanceof client_s3_1.DeleteObjectsCommand && response.Errors?.length) {
++                throw new Error("S3 bulk deletion failed.");
++            }
++            return response;
 +        }
 +        catch {
 +            this.logger_.error(`S3 file provider request failed.`);
@@ -70,7 +74,7 @@ index 5012c3161b0906c4674cf687e1f0f5cb16cd8d73..a6d6c09d05ac028080c27a67fe366a31
      /**
       * Resolves the ACL to use for an upload. Returns undefined if ACLs are
       * disabled (config_.acl === false), which causes the SDK to omit the
-@@ -127,13 +147,7 @@ class S3FileService extends utils_1.AbstractFileProviderService {
+@@ -127,13 +151,7 @@ class S3FileService extends utils_1.AbstractFileProviderService {
                  "original-filename": encodeURIComponent(file.filename),
              },
          });
@@ -85,17 +89,49 @@ index 5012c3161b0906c4674cf687e1f0f5cb16cd8d73..a6d6c09d05ac028080c27a67fe366a31
          const encodedKey = fileKey
              .split("/")
              .map(encodeURIComponent)
-@@ -150,7 +164,9 @@ class S3FileService extends utils_1.AbstractFileProviderService {
+@@ -150,7 +168,40 @@ class S3FileService extends utils_1.AbstractFileProviderService {
          const parsedFilename = path_1.default.parse(fileData.filename);
          const fileKey = `${this.config_.prefix}${parsedFilename.name}-${(0, ulid_1.ulid)()}${parsedFilename.ext}`;
          const pass = new stream_1.PassThrough();
 +        const abortController = new AbortController();
++        // Upload.abort() alone does not cancel its in-flight client requests.
++        const client = this.client_;
++        let cleanupPromise;
++        const sendCleanup = (command) => {
++            cleanupPromise ??= client.send(command, {
++                abortSignal: AbortSignal.timeout(this.config_.requestTimeoutMs),
++            }).catch((error) => {
++                this.logger_.error("S3 multipart cleanup failed.");
++                throw error;
++            });
++            return cleanupPromise;
++        };
++        const uploadClient = {
++            config: client.config,
++            send: async (command) => {
++                if (command instanceof client_s3_1.AbortMultipartUploadCommand) {
++                    return sendCleanup(command);
++                }
++                try {
++                    return await client.send(command, { abortSignal: abortController.signal });
++                }
++                catch (error) {
++                    // lib-storage cleans up failed parts, but not failed completion.
++                    if (command instanceof client_s3_1.CompleteMultipartUploadCommand) {
++                        const { Bucket, Key, UploadId } = command.input;
++                        await sendCleanup(new client_s3_1.AbortMultipartUploadCommand({ Bucket, Key, UploadId })).catch(() => undefined);
++                    }
++                    throw error;
++                }
++            },
++        };
          const upload = new lib_storage_1.Upload({
 +            abortController,
-             client: this.client_,
+-            client: this.client_,
++            client: uploadClient,
              params: {
                  ACL: this.resolveAcl(fileData.access),
-@@ -168,10 +184,18 @@ class S3FileService extends utils_1.AbstractFileProviderService {
+@@ -168,10 +219,21 @@ class S3FileService extends utils_1.AbstractFileProviderService {
              .split("/")
              .map(encodeURIComponent)
              .join("/");
@@ -112,11 +148,14 @@ index 5012c3161b0906c4674cf687e1f0f5cb16cd8d73..a6d6c09d05ac028080c27a67fe366a31
 +            this.logger_.error(`S3 file provider request failed.`);
 +            throw new utils_1.MedusaError(utils_1.MedusaError.Types.UNEXPECTED_STATE, `Object storage request failed.`);
 +        })
-+            .finally(() => clearTimeout(timeout));
++            .finally(() => {
++            clearTimeout(timeout);
++            pass.destroy();
++        });
          return {
              writeStream: pass,
              promise,
-@@ -180,12 +204,11 @@ class S3FileService extends utils_1.AbstractFileProviderService {
+@@ -180,12 +242,11 @@ class S3FileService extends utils_1.AbstractFileProviderService {
          };
      }
      async delete(files) {
@@ -134,7 +173,7 @@ index 5012c3161b0906c4674cf687e1f0f5cb16cd8d73..a6d6c09d05ac028080c27a67fe366a31
                      Bucket: this.config_.bucket,
                      Delete: {
                          Objects: files.map((file) => ({
-@@ -193,18 +216,13 @@ class S3FileService extends utils_1.AbstractFileProviderService {
+@@ -193,18 +254,13 @@ class S3FileService extends utils_1.AbstractFileProviderService {
                          })),
                          Quiet: true,
                      },
@@ -158,7 +197,7 @@ index 5012c3161b0906c4674cf687e1f0f5cb16cd8d73..a6d6c09d05ac028080c27a67fe366a31
          }
      }
      async getPresignedDownloadUrl(fileData) {
-@@ -246,7 +264,7 @@ class S3FileService extends utils_1.AbstractFileProviderService {
+@@ -246,7 +302,7 @@ class S3FileService extends utils_1.AbstractFileProviderService {
              throw new utils_1.MedusaError(utils_1.MedusaError.Types.INVALID_DATA, `No fileKey provided`);
          }
          const fileKey = file.fileKey;
@@ -167,7 +206,7 @@ index 5012c3161b0906c4674cf687e1f0f5cb16cd8d73..a6d6c09d05ac028080c27a67fe366a31
              Key: fileKey,
              Bucket: this.config_.bucket,
          }));
-@@ -257,7 +275,7 @@ class S3FileService extends utils_1.AbstractFileProviderService {
+@@ -257,7 +313,7 @@ class S3FileService extends utils_1.AbstractFileProviderService {
              throw new utils_1.MedusaError(utils_1.MedusaError.Types.INVALID_DATA, `No fileKey provided`);
          }
          const fileKey = file.fileKey;

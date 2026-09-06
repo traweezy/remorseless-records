@@ -1,6 +1,8 @@
 import assert from "node:assert/strict"
 import { createRequire } from "node:module"
 import { readFile } from "node:fs/promises"
+import { execFileSync } from "node:child_process"
+import { fileURLToPath } from "node:url"
 
 const require = createRequire(import.meta.url)
 process.env.OTEL_SDK_DISABLED = "true"
@@ -62,4 +64,15 @@ assert.doesNotMatch(
 
 console.log(
   "Backend observability bootstrap verified: preloaded before Medusa with bounded DB, Redis, and runtime instrumentation."
+)
+
+execFileSync(
+  process.execPath,
+  [
+    "--test",
+    fileURLToPath(
+      new URL("./verify-observability-bootstrap.test.mjs", import.meta.url)
+    ),
+  ],
+  { stdio: "inherit" }
 )

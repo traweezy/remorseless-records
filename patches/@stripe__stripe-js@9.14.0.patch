@@ -1,5 +1,4 @@
 diff --git a/dist/index.js b/dist/index.js
-index 6cc871879991ec49b69e08a93ecef06ae77dc8f1..12843cad35b9341a5ef380da2de2630aee92573e 100644
 --- a/dist/index.js
 +++ b/dist/index.js
 @@ -33,4 +33,28 @@ var isStripeJSURL = function isStripeJSURL(url) {
@@ -41,7 +40,6 @@ index 6cc871879991ec49b69e08a93ecef06ae77dc8f1..12843cad35b9341a5ef380da2de2630a
  
    if (!headOrBody) {
 diff --git a/dist/pure.js b/dist/pure.js
-index 7a793a9..6915707 100644
 --- a/dist/pure.js
 +++ b/dist/pure.js
 @@ -37,6 +37,30 @@ var isStripeJSURL = function isStripeJSURL(url) {
@@ -85,7 +83,6 @@ index 7a793a9..6915707 100644
  
    if (!headOrBody) {
 diff --git a/dist/pure.mjs b/dist/pure.mjs
-index 1e49238..1184398 100644
 --- a/dist/pure.mjs
 +++ b/dist/pure.mjs
 @@ -33,6 +33,30 @@ var isStripeJSURL = function isStripeJSURL(url) {
@@ -129,7 +126,6 @@ index 1e49238..1184398 100644
  
    if (!headOrBody) {
 diff --git a/dist/index.mjs b/dist/index.mjs
-index 12d96d860179158021dad63275f0151152fc5818..7561fb566d0641e4f576a2558a05ce1cb3adb167 100644
 --- a/dist/index.mjs
 +++ b/dist/index.mjs
 @@ -29,4 +29,28 @@ var isStripeJSURL = function isStripeJSURL(url) {

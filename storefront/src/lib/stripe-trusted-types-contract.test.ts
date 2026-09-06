@@ -34,7 +34,7 @@ describe("pinned Stripe.js Trusted Types boundary", () => {
       "dist/pure.mjs",
     ].map((sourcePath) => readFileSync(join(stripeRoot, sourcePath), "utf8"))
 
-    expect(packageJson.version).toBe("9.12.0")
+    expect(packageJson.version).toBe("9.14.0")
     for (const source of loaderSources) {
       expect(source).toContain("remorseless-stripe-js")
       expect(source).toContain("createStripeScriptURL")
