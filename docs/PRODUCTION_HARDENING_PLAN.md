@@ -55,9 +55,9 @@ passed for each cohort. Query 5.102.8 stays outside its reviewed cohort until
 its cooling window ends at `2026-09-03T16:06:57.089Z`.
 
 The next time-gated security observations are the Trusted Types staging window
-after `2026-09-03T22:08:00Z`, `qs` 6.16.0 after
-`2026-09-05T23:50:15.803Z`, and Next.js 16.3.4 after
-`2026-09-07T20:00:51.381Z`. The immutable GHCR publication/attestation and
+after `2026-09-03T22:08:00Z` and Next.js 16.3.4 after
+`2026-09-07T20:00:51.381Z`. The cooled `qs` 6.16.0 cleanup is complete. The
+immutable GHCR publication/attestation and
 Railway image-source cutover remain a separate reviewed release decision; no
 source, credential, visibility, domain, traffic, or production setting
 changed.
@@ -2949,7 +2949,7 @@ floating support images, and the exact production cost/domain approval packet.
 
 The September 3 registry audit and official release review now define eight
 isolated cohorts in `DEPENDENCY_MIGRATION_AUDIT_2026-07-23.md`: Next.js
-security, the time-gated `qs` cleanup, coordinated Medusa 2.19/Admin framework,
+security, the completed `qs` cleanup, coordinated Medusa 2.19/Admin framework,
 TanStack, server/browser Stripe, AWS SDK, OpenTelemetry, and small runtime/tool
 patches. Each owns a separate lockfile diff, full local gate, exact-SHA CI, and
 watched-service staging acceptance. Major framework/runtime changes are not
@@ -4516,24 +4516,27 @@ added as bypasses.
 `scripts/security/dependency-supply-chain-policy.json` is the reviewed
 exception manifest. Its verifier rejects non-exact cooling selectors, missing
 evidence, policy weakening, configuration drift across workspaces, unreviewed
-audit ignores, or removal of the required CI checks. Five pnpm audit ignores
-remain: three are limited to the Medusa-compatible React Router 6 backports,
-and two are limited to the behaviorally verified `qs` 6.15.3 backport until
-6.16.0 completes the mandatory cooling window. Root, Backend, and Storefront
-security jobs execute the matching policy and behavioral checks.
+audit ignores, or removal of the required CI checks. Three pnpm audit ignores
+remain, all limited to the Medusa-compatible React Router 6 backports. The
+cooled `qs` 6.16.0 release replaces the 6.15.3 security backport in one coherent
+root, Backend, and Storefront graph; both `qs` ignores, all three patch copies,
+and the temporary verifier were removed together. Root, Backend, and
+Storefront security jobs execute the matching policy checks.
 
-Local acceptance passed the frozen 1,822-entry root install, the focused
-policy and Backend packager suites, all 273 Backend suites / 2,066 tests at
-91.58% statements, 85.31% branches, 95.78% functions, and 91.58% lines, all
+Local acceptance passed the frozen root install, the focused policy and
+Backend packager suites, all 273 Backend suites / 2,067 tests at 91.58%
+statements, 85.31% branches, 95.78% functions, and 91.58% lines, all
 139 Storefront baseline files / 829 tests at 94.37%, 86.06%, 95.83%, and
 94.39%, and all 36 Storefront transactional files / 322 tests at 83.73%,
 76.50%, 85.81%, and 83.86%. Both production builds passed. The generated
-Backend server performed a policy-verified frozen install of 1,085 production
+Backend server performed a policy-verified frozen install of 1,089 production
 packages, and the Storefront scanner verified 131 client assets. The
-production audit reports only the five documented, behaviorally patched
-findings and no unreviewed moderate, high, or critical finding. This section
-changes dependency resolution and packaging only, not rendered UI, so
-screenshot validation was not applicable.
+production audit reports only the three documented, behaviorally patched React
+Router findings and no unreviewed moderate, high, or critical finding. Direct
+checks through Backend and Storefront application paths verify both former
+`qs` exploit regressions on 6.16.0. This section changes dependency resolution
+and packaging only, not rendered UI, so screenshot validation was not
+applicable.
 
 ## CI runtime and egress boundary closure
 

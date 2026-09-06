@@ -148,10 +148,9 @@ the time of enforcement, so the repository uses the newest eligible releases,
 2.5.10 and 0.35.3. The sole remaining exact cooling exception is
 `@railway/cli@5.45.0`, whose release installer is locally patched to validate
 reviewed immutable SHA-256 asset digests. `pnpm run
-qa:dependency-supply-chain` binds that exception and the five current audit
-ignores to their evidence in all three CI workflows. Three ignores cover the
-React Router backport and two cover the separately verified `qs` backport
-described below.
+qa:dependency-supply-chain` binds that exception and the three current audit
+ignores to their evidence in all three CI workflows. All three ignores cover
+the behaviorally verified React Router backport described above.
 
 ## `sanitize-html` advisory remediation (2026-09-02)
 
@@ -187,24 +186,20 @@ seven-day cooling window, so every workspace now pins that release. This
 eliminates all four host-confusion and SSRF findings without an exception or
 audit ignore.
 
-`qs` 6.16.0 was published on 2026-08-29T23:50:15.803Z and was still inside the
-cooling window. The repository therefore retains exact 6.15.3 and backports
-only the two upstream security changes: the
+`qs` 6.16.0 was published on 2026-08-29T23:50:15.803Z and passed the strict
+seven-day cooling window on 2026-09-05T23:50:15.803Z. Root, Backend, and
+Storefront now pin that exact release through one coherent lockfile graph. The
+release includes the two previously backported security changes: the
 [`arrayLimit` fix](https://github.com/ljharb/qs/commit/8859c37470e11b42b547b275e4e9bd0bc8cc5464)
 for comma-split values under bracket-push keys, and the
 [`constructor.isBuffer` fix](https://github.com/ljharb/qs/commit/e83d321ffafb38cf210683ac31714fce6ce1c6c6)
-that calls the property only when it is a function. Identical patches are
-present for root, Backend, and Storefront standalone installs. `pnpm run
-qa:qs-security` verifies patch parity, both public exploit regressions through
-each application dependency path, the in-limit parser behavior, and real
-Buffer serialization.
-
-The two version-based pnpm audit findings are ignored only alongside that
-machine-readable patch evidence. The strict cooling window is unchanged and no
-new cooling exception was added. Once 6.16.0 has cooled on
-2026-09-05T23:50:15.803Z, replace the backport with the release and remove both
-GHSA ignores, all patch copies, and the temporary verifier in one reviewed
-change.
+that calls the property only when it is a function. The three workspace patch
+copies, temporary behavioral verifier, two version-based audit ignores, and
+their machine-readable exceptions have been removed together. Direct checks
+through both application dependency paths retain the two exploit regressions,
+in-limit parser behavior, and real Buffer serialization on the upstream
+release. The strict cooling window is unchanged and no new exception was
+added.
 
 ## Next.js critical security update (2026-09-03)
 
@@ -395,7 +390,7 @@ families must not be bundled into its lockfile diff.
 | Order | Cohort | Target and boundary |
 | ----- | ------ | ------------------- |
 | 1 | Next.js | Complete the 16.3.3 critical security update above. Re-evaluate 16.3.4 only after its cooling expiry and rerun the image, nonce/CSP, Trusted Types, production-build, responsive browser, accessibility, and Lighthouse gates. |
-| 2 | `qs` | Replace 6.15.3 with 6.16.0 no earlier than `2026-09-05T23:50:15.803Z`; remove both advisory ignores, all three patch copies, and the temporary verifier in the same commit. |
+| 2 | `qs` | Complete: root, Backend, and Storefront use one exact 6.16.0 graph after the cooling expiry; both advisory ignores, all three patch copies, and the temporary verifier were removed together. |
 | 3 | Medusa | Move every Backend and Storefront `@medusajs/*` package together from 2.18.0 to 2.19.0. The official [2.19 release](https://github.com/medusajs/medusa/releases/tag/v2.19.0) is a breaking Admin migration to Vite 7.3.6 and React Router 7.18.2. Audit removed SDK Product Option methods, `Response.json()` and `defer()` usage, `UIMatch.loaderData`, cart/order wildcard totals, every Medusa patch, Admin browser/a11y contracts, migrations, and complete checkout/refund/tax behavior before staging. |
 | 4 | TanStack | Completed the five Query persistence/runtime package update to 5.102.7 with local, exact-SHA CI, runtime-image, and Railway acceptance. Keep Form 1.33.5 and Pacer 0.22.0 in separate commits because forms own validation/focus behavior and Pacer is a pre-1.0 minor. Hold Table 9 for an explicit API migration instead of forcing it into a patch cohort. |
 | 5 | Stripe | Update `stripe` 22.6.0 separately from the browser pair. Its release pins a new API version and changes connection-error behavior. Update `@stripe/react-stripe-js` 6.8.2 with `@stripe/stripe-js` 9.14.0 only after rebasing or removing the exact Trusted Types loader patch, then rerun checkout, 3DS, response-loss, webhook, refund, CSP, and three-engine browser matrices. |
@@ -426,8 +421,8 @@ The migration is complete only after:
 
 1. `pnpm install --frozen-lockfile` and `pnpm peers check`
 2. lint, strict typecheck, unit/coverage, and production builds
-3. dependency cooling, audit, React Router and `qs` backport verification, and
-   hook validation
+3. dependency cooling, audit, React Router backport verification, and hook
+   validation
 4. Playwright device/browser smoke validation
 5. successful GitHub Actions and Railway staging deployments
 6. post-deploy route and API smoke checks

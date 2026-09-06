@@ -12,15 +12,10 @@ const policyPath = join(
 )
 const expectedAuditIgnores = [
   "GHSA-337j-9hxr-rhxg",
-  "GHSA-4mjr-xmp4-gh2g",
   "GHSA-jjmj-jmhj-qwj2",
   "GHSA-wrjc-x8rr-h8h6",
-  "GHSA-x5fp-wj9c-mxmx",
 ]
-const expectedStorefrontAuditIgnores = [
-  "GHSA-4mjr-xmp4-gh2g",
-  "GHSA-x5fp-wj9c-mxmx",
-]
+const expectedStorefrontAuditIgnores = []
 
 const parseYamlScalar = (source) => {
   const value = source.trim()
@@ -225,6 +220,17 @@ export const verifyDependencySupplyChainPolicy = () => {
     packageJson.scripts?.["qa:dependency-supply-chain"],
     "node --test scripts/verify-dependency-supply-chain-policy.test.mjs && node scripts/verify-dependency-supply-chain-policy.mjs"
   )
+  assert.equal(packageJson.scripts?.["qa:qs-security"], undefined)
+  assert.doesNotMatch(packageJson.scripts?.["qa:lint"] ?? "", /qs-security/u)
+
+  for (const [label, workspace] of [
+    ["root workspace", rootWorkspace],
+    ["Backend workspace", backendWorkspace],
+    ["Storefront workspace", storefrontWorkspace],
+  ]) {
+    assert.match(workspace, /^  qs: 6\.16\.0$/mu, `${label} must pin qs 6.16.0`)
+    assert.doesNotMatch(workspace, /qs@6\.15\.3|patches\/qs@/u)
+  }
 
   for (const entry of [
     ...policy.coolingWindowExceptions,
@@ -242,7 +248,7 @@ export const verifyDependencySupplyChainPolicy = () => {
     const workflow = readFileSync(join(root, workflowPath), "utf8")
     assert.match(workflow, /pnpm run qa:dependency-supply-chain/u)
     assert.match(workflow, /pnpm run qa:react-router-security/u)
-    assert.match(workflow, /pnpm run qa:qs-security/u)
+    assert.doesNotMatch(workflow, /pnpm run qa:qs-security/u)
   }
 
   const postBuild = readFileSync(

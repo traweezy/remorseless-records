@@ -94,7 +94,7 @@ overrides:
   posthog-node: ^5.46.1
   postcss: ^8.5.23
   protobufjs: ^7.6.5
-  qs: 6.15.3
+  qs: 6.16.0
   react-router: 6.30.4
   react-router-dom: 6.30.4
   rollup: ^4.60.4
@@ -113,16 +113,13 @@ overrides:
 auditConfig:
   ignoreGhsas:
     - GHSA-337j-9hxr-rhxg
-    - GHSA-4mjr-xmp4-gh2g
     - GHSA-jjmj-jmhj-qwj2
     - GHSA-wrjc-x8rr-h8h6
-    - GHSA-x5fp-wj9c-mxmx
 
 patchedDependencies:
   "@remix-run/router@1.23.3": patches/@remix-run__router@1.23.3.patch
   "@rokmohar/medusa-plugin-meilisearch@1.4.3": patches/@rokmohar__medusa-plugin-meilisearch@1.4.3.patch
   "react-router-dom@6.30.4": patches/react-router-dom@6.30.4.patch
-  "qs@6.15.3": patches/qs@6.15.3.patch
 
 minimumReleaseAge: 10080
 minimumReleaseAgeStrict: true
