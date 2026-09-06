@@ -88,6 +88,7 @@ const quickShopSearch: ProductSearchResponse = {
 
 const expectDecorativeIcons = async (control: Locator): Promise<void> => {
   const icons = control.locator("svg")
+  await expect(icons.first()).toBeAttached()
   expect(await icons.count()).toBeGreaterThan(0)
   for (const icon of await icons.all()) {
     await expect(icon).toHaveAttribute("aria-hidden", "true")
@@ -309,7 +310,16 @@ for (const reducedMotion of ["no-preference", "reduce"] as const) {
 test("UI runtime cart and calendar icons retain accessible controls", async ({
   page,
 }, testInfo) => {
+  // Wait for the mounted cart provider before sending keyboard input to
+  // server-rendered controls whose React handlers may not be attached yet.
+  const hydrated = page.waitForResponse(
+    (response) =>
+      new URL(response.url()).pathname === "/api/cart" &&
+      response.request().method() === "GET"
+  )
   await page.goto("/discography", { waitUntil: "domcontentloaded" })
+  await hydrated
+  await page.waitForLoadState("load")
   const cart = page.getByRole("button", {
     name: "Open cart, empty",
     exact: true,
