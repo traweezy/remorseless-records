@@ -23,7 +23,7 @@
     "qa:admin-browser-boundary": "node scripts/verify-admin-browser-boundary.mjs",
     "qa:admin-accessibility-boundary": "node --test qa/admin-static-server.test.mjs && node scripts/verify-admin-accessibility-boundary.mjs",
     "qa:railway-iac": "node --no-warnings scripts/verify-railway-iac.mjs",
-    "qa:database-release-boundary": "node --test scripts/release-prepare.test.mjs scripts/postgres-logical-backup.test.mjs scripts/media-backup.test.mjs",
+    "qa:database-release-boundary": "node --test scripts/release-prepare.test.mjs scripts/postgres-logical-backup.test.mjs scripts/media-backup.test.mjs scripts/media-object-checksum.test.mjs scripts/media-backup-cli.test.mjs",
     "qa:secure-artifacts": "node --test scripts/export-category-map.test.mjs",
     "qa:browser-toolchain-security": "node scripts/verify-browser-toolchain-security.mjs",
     "qa:storefront-provider-fixture": "node --test storefront/scripts/ci-medusa-fixture.test.mjs",

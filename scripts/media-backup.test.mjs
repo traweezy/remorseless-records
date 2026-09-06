@@ -5,8 +5,9 @@ import {
   mediaBackupConfirmation,
   parseMinioClientVersion,
   parseMediaInventory,
+  validateMediaDirections,
   validateMediaEndpoint,
-  verifyMediaMirror,
+  verifyMediaInventory,
 } from "./lib/media-backup.mjs"
 
 test("requires a MinIO Client release with mirror checksum support", () => {
@@ -30,6 +31,8 @@ test("accepts only credential-free mc alias and bucket paths", () => {
   for (const value of [
     "https://source/catalog",
     "source/../catalog",
+    "source/catalog/./prefix",
+    "source/catalog/.",
     "source//catalog",
     "source",
     " source/catalog?secret=value ",
@@ -64,9 +67,9 @@ test("accepts preserved target-only history while requiring current objects", ()
     ].join("\n")
   )
 
-  expectMirror(verifyMediaMirror(source, target), 1, target.sha256)
+  expectMirror(verifyMediaInventory(source, target), 1, target.sha256)
   assert.throws(
-    () => verifyMediaMirror(source, parseMediaInventory("")),
+    () => verifyMediaInventory(source, parseMediaInventory("")),
     /missing a current source object/u
   )
 })
@@ -133,5 +136,20 @@ test("requires a direction-specific backup confirmation", () => {
   assert.notEqual(
     mediaBackupConfirmation("source/catalog", "target/catalog"),
     mediaBackupConfirmation("target/catalog", "source/catalog")
+  )
+})
+
+test("rejects equal and nested endpoints before a mirror can target its source", () => {
+  for (const [source, target] of [
+    ["source/catalog", "source/catalog"],
+    ["source/catalog", "source/catalog/copy"],
+    ["source/catalog/copy", "source/catalog"],
+  ])
+    assert.throws(() => validateMediaDirections(source, target), /overlap/u)
+  assert.doesNotThrow(() =>
+    validateMediaDirections("source/catalog", "source/catalog-copy")
+  )
+  assert.doesNotThrow(() =>
+    validateMediaDirections("source/catalog", "target/catalog")
   )
 })
