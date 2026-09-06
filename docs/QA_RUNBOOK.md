@@ -144,6 +144,10 @@ Investigate a regression instead of relaxing a budget to match it.
 # Formatting, static analysis, and repository policies
 pnpm run qa:lint
 
+# Prove local/CI wiring, then run the ten shared contract gates
+pnpm run qa:ci-shared-contracts-boundary
+pnpm run qa:ci-shared-contracts
+
 # Explicit semantic type safety (Biome does not replace the TypeScript compiler)
 pnpm --filter remorseless-records-storefront run typecheck
 pnpm --filter backend exec tsc --noEmit
@@ -175,6 +179,29 @@ pnpm install --frozen-lockfile
 # Deterministic Medusa fixture endpoints and Browser Smoke release wiring
 pnpm run qa:storefront-provider-fixture
 ```
+
+`qa:lint` and Root CI share the same ten-contract aggregate: recovery/media
+unit and CLI tests (including Redis helper coverage), service-container
+resolution, Storefront response and Admin browser boundaries, provider-fixture
+tests, Dashboard product creation, scheduler timestamps, disposable-integration
+wiring, operations-observation tests, and observability bootstrap. The
+independent boundary check runs before the aggregate in both paths and rejects
+missing members or bypassed workflow execution. Its own line, branch, and
+function coverage floors are 80%, as are the Redis helper coverage floors.
+Its fixed completion event is
+`ci.shared_contracts.verified`; `serviceIntegration: false` explicitly excludes
+real service acceptance. The added aggregate targets under 60 seconds locally;
+the September 6 measurement was 18.05 seconds. The validator deliberately
+accepts the reviewed workflow layout, not arbitrary YAML. Changes to triggers,
+job controls, or command layout require an explicit policy/test update.
+
+These checks use local fixtures and static contracts, not staging credentials
+or live recovery operations. Actual disposable PostgreSQL/Redis integration
+remains a separate Backend CI job (section 1.6). Existing explicit security
+checks, application typechecks, and browser/coverage budgets stay separate.
+For historical releases, distinguish local/pre-push evidence from checks that
+their exact workflow SHA actually ran; the shared aggregate does not
+retroactively add CI evidence to earlier commits.
 
 The cooling gate covers the root, Backend, Storefront, and generated Backend
 server policies. It requires strict seven-day release aging, rejects missing

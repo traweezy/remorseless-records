@@ -69,6 +69,10 @@ jobs:
           skip-dirs: node_modules
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      - name: Verify shared contract CI parity
+        run: pnpm run qa:ci-shared-contracts-boundary
+      - name: Verify shared repository contracts
+        run: pnpm run qa:ci-shared-contracts
       - name: Verify dependency supply-chain policy
         run: pnpm run qa:dependency-supply-chain
       - name: Verify CI runtime security policy

@@ -126,7 +126,16 @@ for (const marker of [
     `Recovery fixture guard lost: ${marker}`
   )
 }
-assert.match(
-  packageManifest.scripts?.["qa:lint"] ?? "",
-  /pnpm run qa:disposable-integration-boundary/u
+const localCommands = packageManifest.scripts?.["qa:lint"]?.split(" && ") ?? []
+for (const command of [
+  "pnpm run qa:ci-shared-contracts-boundary",
+  "pnpm run qa:ci-shared-contracts",
+])
+  assert.equal(localCommands.filter((entry) => entry === command).length, 1)
+assert.equal(
+  packageManifest.scripts?.["qa:ci-shared-contracts"]
+    ?.split(" && ")
+    .filter((entry) => entry === "pnpm run qa:disposable-integration-boundary")
+    .length,
+  1
 )

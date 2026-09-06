@@ -46,12 +46,13 @@ September 3 live read remained healthy with Redis `ok`, a completed heartbeat,
 no incident latch, and no alert reason.
 
 The accepted implementation head
-`94d914a12bfc2f25952517ada9167c4d393e20f1` includes Storefront Query 5.102.8,
+`1f7558817584e174f3aaed51e26a6a3de9294bbf` includes Storefront Query 5.102.8,
 both direct Redis clients and the shared Redis 6.2.1 graph, upstream `qs`
 6.16.0, Storefront Trusted Types enforcement, and the accepted combined
 Form/Resend/PostHog/Pacer/Virtual/Sonner, AWS/Stripe/OpenTelemetry, and
 UI/parser/image/tooling cohorts, plus the recovery safeguards, deployed
-browser synchronization correction and bounded PostgreSQL recovery execution.
+browser synchronization correction, bounded PostgreSQL recovery execution and
+read-only Redis capacity/persistence observation.
 The Backend/Admin Query 5.64.2 graph remains
 isolated and unchanged. Full local acceptance, all four exact-SHA GitHub
 workflows, both runtime-image validations, and both Railway staging deployments
@@ -122,16 +123,16 @@ environment exists.
 - Git branches: `staging` is the default/integration branch; `master` is the
   protected production-candidate branch. Retired `main` was deleted.
 - Latest implementation/runtime-image validation SHA accepted:
-  `94d914a12bfc2f25952517ada9167c4d393e20f1`.
+  `1f7558817584e174f3aaed51e26a6a3de9294bbf`.
 - Original documentation-only staging acceptance:
   `060af53115ed1ae85d2f8d02d6fd0590c8e6a02d`.
 - Railway project: `store`; only the `staging` environment exists.
 - Application acceptance Backend deployment:
-  `f3a2ce11-24c5-4874-8814-a46275905c7a` (`SUCCESS`,
-  `94d914a12bfc2f25952517ada9167c4d393e20f1`).
+  `92f4638d-fc09-4dc6-87b7-15e6d57b3f12` (`SUCCESS`,
+  `1f7558817584e174f3aaed51e26a6a3de9294bbf`).
 - Application acceptance Storefront deployment:
-  `8d08d7c0-8c5f-4a8a-8f89-7b17f206d612` (`SUCCESS`,
-  `94d914a12bfc2f25952517ada9167c4d393e20f1`).
+  `5eb55dc0-6a1d-47fb-bbb8-ccbb9f52a1dd` (`SUCCESS`,
+  `1f7558817584e174f3aaed51e26a6a3de9294bbf`).
 - Backend and Storefront `/live` and `/ready` checks return HTTP 200.
 - The public storefront route/API smoke matrix passes. `/products`
   intentionally redirects to `/catalog`.
@@ -4325,8 +4326,39 @@ limitations are in `INFRASTRUCTURE_RECOVERY.md`, and local evidence is in the
 handoff. A final package-entrypoint smoke exposed pnpm's forwarded `--`;
 Redis and PostgreSQL now normalize only one leading separator, with real
 pnpm-help and 30 PostgreSQL CLI regressions preserving strict validation.
-Exact-SHA remote acceptance must use that corrected head, not the initial
-`8f93c71` implementation push.
+The corrected 17-file batch passed all four exact-SHA workflows and both
+Railway deployments at `1f7558817584e174f3aaed51e26a6a3de9294bbf`; the initial
+`8f93c71` implementation push is not the accepted head. CI runtime images and
+SBOMs passed with publication skipped. Storefront passed pa11y, 18 Lighthouse
+runs, 81 responsive/two skipped, 14 launch and 48 three-engine cases. Deployed
+acceptance passed 75 cases/eight expected skips with zero retries. Both health
+pairs, fresh `22:20:00.136Z` scheduler heartbeat, catalog checks, security
+headers, AVIF and exact-request runtime/HTTP correlations passed. Bounded
+Storefront HTTP errors contained 16 synthetic fixture 404s, 93 client 499s and
+the guard 400, with no 5xx; known cancellation noise remains visible. Root's
+84 + 67 unit/CLI cases were local-only evidence at this SHA, which prompted
+the next grouped CI-parity batch. No live Redis configuration or recovery
+acceptance is claimed; detailed evidence is in the handoff.
+
+## Shared local/CI contract parity
+
+Ten previously local-only root contracts now share one aggregate between
+`qa:lint` and Root CI's existing hardened security job. An independent parity
+guard runs first and rejects omission, duplicate execution, shell/conditional
+bypasses, trigger filters, YAML shadowing, future unmapped local gates and
+coverage relaxation. This is a strict regression policy for the reviewed YAML
+shape, not a general YAML security parser. Existing security steps, app
+typechecks, Backend service integration, dependencies, action pins, permissions
+and blocked-egress endpoints remain unchanged.
+
+The aggregate passed in 18.05 seconds (under the 60-second local target), with
+178 recovery/media/Redis/provider/operations/observability tests plus static
+checks. Its independent 71-case validator suite passed at 96.95% lines,
+95.56% branches and 94.44% functions with enforced 80% floors. Full root QA over
+1,316 files and fresh Backend/Admin/Storefront builds passed. Earlier release
+evidence still distinguishes local-only checks from exact-SHA CI; this change
+does not retroactively add remote coverage. The follow-up's exact-SHA remote
+acceptance is still required. No live settings, credentials or data changed.
 
 ## TanStack Form patch compatibility
 

@@ -10,18 +10,18 @@ artifact Railway is running; verify Railway separately with the sequence below.
 
 - Branch: `staging`
 - Current accepted implementation head:
-  `94d914a12bfc2f25952517ada9167c4d393e20f1`. It includes the accepted Next.js
+  `1f7558817584e174f3aaed51e26a6a3de9294bbf`. It includes the accepted Next.js
   16.3.3 build split, Redis 6.2.1, upstream `qs` 6.16.0, Trusted Types
   enforcement, the Form/Resend/PostHog/Pacer/Query/Virtual/Sonner batch, and
   the AWS/Stripe/OpenTelemetry, UI/parser/image/tooling, and recovery batches.
   Complete local, exact-SHA CI, runtime-image, and Railway staging evidence is recorded
   below, including the deployed test-only hydration correction and the bounded
-  PostgreSQL backup/restore execution batch.
+  PostgreSQL backup/restore execution and Redis observation batches.
 - Latest exact runtime-image validation SHA:
-  `94d914a12bfc2f25952517ada9167c4d393e20f1`
-- The prior recovery release's acceptance notes shipped with this substantive
-  PostgreSQL execution batch. Its final acceptance notes remain local for the
-  next substantive batch; no documentation-only push was made.
+  `1f7558817584e174f3aaed51e26a6a3de9294bbf`
+- The prior PostgreSQL release's acceptance notes shipped with the substantive
+  Redis batch. Redis acceptance notes are grouped with the shared-CI contract
+  follow-up; no documentation-only push was made.
 - Original implementation/runtime-image acceptance SHA
   `61fd86889a4adca23e1e9704e11c889a1fd986a9` is pushed to
   `origin/staging`. Backend source deployment acceptance is documented at
@@ -1295,8 +1295,102 @@ builds took 6.56/15.91 seconds; Storefront compiled in 5.7 seconds and its
 build correctly rejected an inadequate local secret; the successful rerun
 used the existing CI-only secret/provider fixtures, without modifying `.env`
 or live credentials. Existing fixture search/category fallbacks remain
-visible and are not claimed as live provider evidence. Final exact-SHA CI,
-runtime images and staging acceptance must use the final corrected head.
+visible and are not claimed as live provider evidence.
+
+The combined 17-file batch (2,639 insertions, 32 deletions) passed exact-SHA
+acceptance at `1f7558817584e174f3aaed51e26a6a3de9294bbf`, including the
+entrypoint correction after the initial implementation push. Root CI
+`34062668270`, Backend `34062668250`, Storefront `34062668244` and Runtime
+Images `34062668269` all passed. Backend passed 277 suites/2,146 tests with
+91.83% lines, 85.76% branches and 95.80% functions; its service/recovery gate
+passed 31 + 41 + 17 PostgreSQL + eight Redis tests, plus three API contracts.
+Backend/Admin CI builds took 14.98/35.02 seconds. The 84 + 67 root unit/CLI
+cases above were local/pre-push evidence at this SHA, not Root CI evidence;
+that discovered gap is addressed by the follow-up below.
+
+Storefront CI passed 142 baseline files/857 tests (94.28% lines, 86.20%
+branches), 36 transactional files/322 tests (83.75% lines, 76.35% branches),
+81 responsive cases/two skips, 14 launch cases, 48 three-engine cases, pa11y
+and all Lighthouse assertions. Private artifact `9998145724` is at
+`/tmp/remorseless-lighthouse-1f75588.4F4MmD`. All 18 reports were independently
+verified as six requested-URL groups of three, with no runtime/console-error
+reports and 100% accessibility/best-practices scores. Median performance/LCP
+milliseconds/TBT milliseconds/CLS were Home 87/4094.27/13/0, Cart
+87/3996.99/10/0, Catalog 89/3711.65/48.5/0.000282, Checkout
+88/3945.05/33/0, Product 89/3703.08/9.16/0 and Privacy 86/4186.64/20/0.
+Cart's redirect remained a distinct requested-URL group; no budget changed.
+
+Both runtime image/SBOM pairs and exact OCI revision labels passed independent
+verification. Backend artifact `9998008051` has 1,166 components and digest
+`sha256:877b1c13312c1b5116e5b3dab83be713e2fe60ae7efe925833c45ca0db5836d5`;
+Storefront artifact `9997995444` has 122 components and digest
+`sha256:318a8584d2ab25862d9a335964ca7b178b6e8f3f66800ad75dd39615464fb653`.
+Evidence is private at `/tmp/remorseless-runtime-1f75588.SrbyjZ`. Publication
+skipped; these are CI candidate digests, not Railway's source-build images.
+
+Railway Backend `92f4638d-fc09-4dc6-87b7-15e6d57b3f12` and Storefront
+`5eb55dc0-6a1d-47fb-bbb8-ccbb9f52a1dd` reached `SUCCESS` at the corrected
+SHA, with source-image digests respectively
+`sha256:4f63fece404ff0787118a589a83d660006675fb8e02e7faa5ade289b9a95dd26`
+and `sha256:1323c341a45182dbc1373ac34630d9642d40205b4ea08b8ed3bfe77e8c84620b`.
+Health/readiness, all dependencies/capabilities, scheduler and operations were
+healthy; the fresh exact-SHA heartbeat completed at `22:20:00.136Z` on
+September 6. Catalog counts remained 461 products, 442 discography entries,
+one handle probe, three shelves and 25 shelf memberships. Complete Home and
+Catalog HTML, enforced security headers and the 7,027-byte AVIF check passed.
+Deployed browser acceptance passed 75 cases/eight expected skips with zero
+retries in 2.0 minutes across three Chromium device projects. Private output:
+`/tmp/remorseless-1f75588-deployed-browser.Ul4Sts`.
+
+Exact Backend request `38f01547-9e23-4c7b-a6ac-53092165dbd6` / trace
+`c7ed91d2d67cf8274e306e7f92789890` and Storefront request
+`6ca57020-a4f7-4ee7-9673-2d7c299ca67d` / trace
+`62dd1297e38a27c34607feb740b305bb` matched the corrected SHA and native
+`not_allowed`/`invalid_query` guard events. Railway HTTP IDs
+`XsZPE5fJQ86ZUDnfH4GxDA` and `b9Qb9qe3TQKMWbINozsQ6Q` matched their exact
+deployments. Backend's event appeared on a later bounded log read; the same
+strict assertion then passed unchanged. Its 342 runtime rows had only the
+deliberate guard warning; the HTTP error sample contained that one 400.
+Storefront's 342 runtime rows retained nine known stream cancellations, while
+110 HTTP-error rows contained one guard 400, 16 synthetic browser-fixture
+404s and 93 client 499s, with no HTTP 5xx. Neither bounded sample showed
+Trusted Types errors or credential-assignment signals. No live Redis settings,
+keys, ACLs, persistence volumes or recovery policy were changed or certified.
+
+### Shared local/CI contract parity batch
+
+Release review found ten root QA contracts were enforced by local hooks but
+absent from workflow execution. The follow-up groups them into
+`qa:ci-shared-contracts`, invoked once by local `qa:lint` and once after frozen
+installation in Root CI's existing hardened job. An independent
+`qa:ci-shared-contracts-boundary` runs first in both paths. Existing explicit
+security checks, both local application typechecks, action identities,
+permissions, egress endpoints, dependencies and the lockfile are unchanged.
+Real disposable service integration stays in Backend CI.
+
+The aggregate covers recovery/media and Redis unit/CLI tests, service-container
+resolution, response/browser boundaries, provider fixtures, Dashboard creation,
+scheduler timestamps, integration wiring, operations observations and telemetry
+bootstrap. It passed in 18.05 seconds against an under-60-second local target:
+84 recovery/media, 67 Redis/shared-argument, five provider-fixture, six
+operations and 16 observability tests, plus static boundaries. This is not
+live Redis, recovery or provider acceptance.
+
+The 71 parity regressions reject omitted/duplicated/bypassed commands, future
+unmapped local gates, conditional/skipped jobs, error suppression, inherited
+shells, path-filtered triggers, YAML shadowing and lowered coverage. Independent
+review reproduced and closed the original bypasses. The strict validator
+accepts the repository's reviewed YAML shape, not arbitrary YAML. Coverage is
+96.95% lines, 95.56% branches and 94.44% functions, with 80% floors now enforced
+in its package command. Redis helper coverage floors remain unchanged.
+
+Combined root QA passed over 1,316 files with both strict typechecks. Fresh
+Backend/Admin builds passed in 6.82/17.52 seconds; the Storefront compiled in
+10.0 seconds, generated 55 static pages and passed the 131-asset secret/Trusted
+Types scan using the existing CI-only provider/secret fixtures. Expected local
+search/category fallback warnings remain visible. The owned in-process fixture
+closed after the build; no live environment file changed. Exact-SHA CI and
+staging acceptance for this follow-up remain required before its acceptance.
 
 ### Remaining release work
 
