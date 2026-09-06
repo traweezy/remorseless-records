@@ -27,6 +27,23 @@ const yamlScalar = (value) => {
 const sortedEntries = (mapping) =>
   Object.entries(mapping).sort(([left], [right]) => left.localeCompare(right))
 
+const parsePnpmConfigValue = (name, output) => {
+  const source = output.trim()
+  if (!source || source === "undefined") {
+    return undefined
+  }
+
+  try {
+    const value = JSON.parse(source)
+    // pnpm 11 serializes an unset config key as JSON null.
+    return value === null ? undefined : value
+  } catch (error) {
+    throw new Error(`pnpm returned invalid JSON for ${name}.`, {
+      cause: error,
+    })
+  }
+}
+
 const appendYamlMapping = (lines, mapping, indent = 0) => {
   const prefix = " ".repeat(indent)
 
@@ -224,6 +241,7 @@ const renderPnpmWorkspaceConfig = ({
 
 module.exports = {
   assertCanonicalPathInside,
+  parsePnpmConfigValue,
   renderPnpmWorkspaceConfig,
   rewriteLockfile,
 }

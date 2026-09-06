@@ -9,6 +9,7 @@ const {
 } = require("./secure-file-operations")
 const {
   assertCanonicalPathInside,
+  parsePnpmConfigValue,
   renderPnpmWorkspaceConfig,
   rewriteLockfile,
 } = require("./post-build-configuration")
@@ -133,18 +134,8 @@ const readPnpmConfigValue = (name) => {
     cwd: PNPM_CONFIG_CWD,
     encoding: "utf-8",
     stdio: ["ignore", "pipe", "pipe"],
-  }).trim()
-  if (!output || output === "undefined") {
-    return undefined
-  }
-
-  try {
-    return JSON.parse(output)
-  } catch (error) {
-    throw new Error(`pnpm returned invalid JSON for ${name}.`, {
-      cause: error,
-    })
-  }
+  })
+  return parsePnpmConfigValue(name, output)
 }
 
 const readPnpmConfigObject = (name) => {

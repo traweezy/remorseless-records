@@ -10,6 +10,7 @@ import { join } from "node:path"
 
 import {
   assertCanonicalPathInside,
+  parsePnpmConfigValue,
   renderPnpmWorkspaceConfig,
   rewriteLockfile,
 } from "./post-build-configuration"
@@ -41,6 +42,21 @@ packages:
 `
 
 describe("post-build configuration", () => {
+  it("normalizes pnpm's unset JSON value without widening invalid input", () => {
+    expect(parsePnpmConfigValue("onlyBuiltDependencies", "null\n")).toBe(
+      undefined
+    )
+    expect(parsePnpmConfigValue("onlyBuiltDependencies", "undefined\n")).toBe(
+      undefined
+    )
+    expect(
+      parsePnpmConfigValue("onlyBuiltDependencies", '["sharp"]\n')
+    ).toEqual(["sharp"])
+    expect(() =>
+      parsePnpmConfigValue("onlyBuiltDependencies", "not-json")
+    ).toThrow("pnpm returned invalid JSON for onlyBuiltDependencies")
+  })
+
   it("isolates the exact backend importer without guessing", () => {
     const rewritten = rewriteLockfile(lockfileFixture, "backend")
 
