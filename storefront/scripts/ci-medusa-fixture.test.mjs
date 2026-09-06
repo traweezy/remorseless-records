@@ -160,6 +160,9 @@ test("pins Browser Smoke to the local fixture before deployment", () => {
     "utf8"
   )
   const lighthouseConfig = fs.readFileSync("lighthouse/lhci.config.js", "utf8")
+  const packageJson = JSON.parse(
+    fs.readFileSync("storefront/package.json", "utf8")
+  )
 
   assert.match(workflow, /CI_MEDUSA_FIXTURE_URL: http:\/\/127\.0\.0\.1:4010/u)
   assert.match(workflow, /Start deterministic Medusa fixture/u)
@@ -184,6 +187,9 @@ test("pins Browser Smoke to the local fixture before deployment", () => {
   )
   assert.match(ciConfig, /require an HTTPS PLAYWRIGHT_BASE_URL/u)
   assert.match(ciConfig, /deployedBaseURL\s*\? \{\}/u)
+  assert.match(ciConfig, /node node_modules\/next\/dist\/bin\/next start/u)
+  assert.doesNotMatch(ciConfig, /command: "pnpm run start/u)
+  assert.equal(packageJson.devDependencies["@playwright/test"], "1.62.0")
   assert.match(criticalConfig, /ciMedusaFixtureWebServer/u)
   assert.match(launchConfig, /ciMedusaFixtureWebServer/u)
   assert.doesNotMatch(

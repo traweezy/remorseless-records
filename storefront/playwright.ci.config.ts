@@ -61,7 +61,8 @@ export default defineConfig({
         webServer: [
           ciMedusaFixtureWebServer,
           {
-            command: "pnpm run start --hostname 127.0.0.1 --port 3000",
+            command:
+              "node node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port 3000",
             env: ciStorefrontProviderEnv,
             url: `${localBaseURL}/live`,
             reuseExistingServer: false,
