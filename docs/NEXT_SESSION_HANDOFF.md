@@ -31,6 +31,12 @@ artifact Railway is running; verify Railway separately with the sequence below.
   it through Backend deployment `284bf79d-633c-4fdc-a29a-7a24f0660ec7` and
   Storefront deployment `66a85fa4-977c-4a56-8343-7008c817ba37`.
   Documentation commits do not supersede runtime-image evidence.
+- Documentation head `6d349ae64cd5226ca3a65882806625a915350c06` passed Root
+  `34041747473`, Backend `34041747478`, Storefront `34041747480`, and Runtime
+  Images `34041747482`. Railway correctly skipped Backend
+  `bb8ac9a6-6836-426f-871a-c67af21766ae` and Storefront
+  `3ceba04f-8d86-4152-a398-c862ed2585c3`; both services remained healthy on
+  implementation `5b6588fc9ae7f9ed8854f202dd129753f149a82a`.
 - Original Runtime Images run `33688896070` passed both services at
   `61fd86889a4adca23e1e9704e11c889a1fd986a9`; Backend job `100442798263`
   and Storefront job `100442798721` succeeded,
@@ -767,17 +773,41 @@ No rendered UI changed in this implementation, so a new desktop layout
 screenshot was not required. Existing `Default/` data remains untouched.
 No production state changed.
 
-## Remaining work for this slice
+## Active release batch and remaining work
+
+On 2026-09-06 the user explicitly requested larger batches before pushing.
+This supersedes the earlier one-family-per-push/deployment cadence below:
+review compatible families independently, collect their focused regressions,
+then run the full local gate and one exact-SHA CI/Railway acceptance pass for
+the combined batch. Keep commits logical and preserve the cooling policy,
+security/coverage thresholds, and production/cutover boundaries. Do not push
+documentation-only checkpoints between dependency families.
+
+The combined batch contains Form 1.33.5 in both apps, Resend 6.25.0, PostHog
+5.51.4, Pacer 0.22.0, five Storefront Query 5.102.8 packages, Virtual 3.14.10,
+and Sonner 2.0.8. Frozen install, peers/security, lint/typecheck, both coverage
+suites, and both builds pass. Final gates use pinned Node 26.5.0, not the
+workstation login default. Backend passes 274 suites / 2,074 tests; the
+compiled Admin matrix passes 12/12 with zero findings. New tests cover form
+deletion/reset, Contact recovery, real email transport/idempotency, debounce
+cancellation, notification delivery/cleanup, and virtual-list resize/recovery.
+The Admin mutation guard and installed-CLI build launcher are separate commits
+to push together with the dependency batch. The latter prevents the observed
+pnpm nested-workspace auto-install; no nested lock or shadow dependency graph
+remains. Final pinned-runtime browsers pass 60 responsive (two expected skips),
+14 launch, and 27 three-engine critical tests. Exact-SHA CI and staging
+acceptance remain pending. Details are in the combined-batch and Form sections of
+`DEPENDENCY_MIGRATION_AUDIT_2026-07-23.md` and
+`PRODUCTION_HARDENING_PLAN.md`.
 
 1. Re-evaluate Next.js 16.3.4 no earlier than
    `2026-09-07T20:00:51.381Z`. Keep it isolated from the `qs`, Medusa, TanStack,
    Stripe, AWS SDK, OpenTelemetry, and small-patch cohorts documented in
    `DEPENDENCY_MIGRATION_AUDIT_2026-07-23.md`.
-2. Continue cooled isolated cohorts with TanStack Form 1.33.5, Resend 6.24.0,
-   PostHog 5.51.3, UI/test patches, and exact GitHub Action commit updates.
-   Redis 6.2.1 is complete. Keep Pacer 0.22.0, Stripe, AWS SDK,
-   OpenTelemetry, and Medusa in their separately reviewed compatibility
-   cohorts.
+2. Complete the combined compatible-dependency batch and its final staging
+   acceptance. Redis 6.2.1 is complete. Keep Stripe, AWS SDK, OpenTelemetry,
+   and Medusa changes subject to their specific compatibility and migration
+   reviews; batching is not permission to skip those checks.
 
 ## Railway and GHCR cutover boundary
 

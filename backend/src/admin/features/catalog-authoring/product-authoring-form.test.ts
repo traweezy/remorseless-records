@@ -4,7 +4,7 @@ import {
   productAuthoringValidationIssues,
   type ProductAuthoringDraft,
 } from "./product-authoring-form"
-import { FormApi } from "@tanstack/react-form"
+import { FieldApi, FormApi } from "@tanstack/react-form"
 
 const draft = (): ProductAuthoringDraft => ({
   bundle: {
@@ -97,6 +97,61 @@ describe("Product authoring form", () => {
       expect(form.state.values).toEqual(hydrated)
     } finally {
       unmount()
+      jest.advanceTimersByTime(6_000)
+      jest.useRealTimers()
+    }
+  })
+
+  it("deletes only descendant fields while preserving prefix siblings", () => {
+    jest.useFakeTimers()
+    const form = new FormApi({
+      defaultValues: {
+        variant: { sku: "RR-001", skuPrefix: "RR" },
+        variantLabel: "First pressing",
+        variants: [{ sku: "RR-002" }],
+      },
+    })
+    const unmountForm = form.mount()
+    const sku = new FieldApi({ form, name: "variant.sku" })
+    const skuPrefix = new FieldApi({ form, name: "variant.skuPrefix" })
+    const variantLabel = new FieldApi({ form, name: "variantLabel" })
+    const arraySku = new FieldApi({ form, name: "variants[0].sku" })
+    const unmountFields = [
+      sku.mount(),
+      skuPrefix.mount(),
+      variantLabel.mount(),
+      arraySku.mount(),
+    ]
+
+    try {
+      skuPrefix.handleBlur()
+      const prefixMeta = form.state.fieldMeta["variant.skuPrefix"]
+      form.deleteField("variant.sku")
+
+      expect(form.getFieldValue("variant.sku")).toBeUndefined()
+      expect(form.getFieldValue("variant.skuPrefix")).toBe("RR")
+      expect(form.fieldInfo["variant.skuPrefix"]).toBeDefined()
+      expect(form.state.fieldMeta["variant.skuPrefix"]).toEqual(prefixMeta)
+
+      form.deleteField("variant")
+
+      expect(form.getFieldValue("variant")).toBeUndefined()
+      expect(form.fieldInfo["variant.skuPrefix"]).toBeUndefined()
+      expect(form.getFieldValue("variantLabel")).toBe("First pressing")
+      expect(form.fieldInfo.variantLabel).toBeDefined()
+      expect(form.getFieldValue("variants[0].sku")).toBe("RR-002")
+      expect(form.fieldInfo["variants[0].sku"]).toBeDefined()
+
+      form.deleteField("variants")
+
+      expect(form.getFieldValue("variants")).toBeUndefined()
+      expect(form.fieldInfo["variants[0].sku"]).toBeUndefined()
+      expect(form.getFieldValue("variantLabel")).toBe("First pressing")
+    } finally {
+      for (const unmount of unmountFields.toReversed()) {
+        unmount()
+      }
+      unmountForm()
       jest.advanceTimersByTime(6_000)
       jest.useRealTimers()
     }

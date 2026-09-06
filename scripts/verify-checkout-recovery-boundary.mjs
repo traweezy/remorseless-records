@@ -82,7 +82,7 @@ const [
 assert.equal(JSON.parse(coreFlowsPackageSource).version, "2.18.0")
 assert.equal(JSON.parse(notificationPackageSource).version, "2.18.0")
 assert.equal(JSON.parse(paymentPackageSource).version, "2.18.0")
-assert.equal(JSON.parse(resendPackageSource).version, "6.18.0")
+assert.equal(JSON.parse(resendPackageSource).version, "6.25.0")
 
 const assertOrdered = (source, markers) => {
   let priorIndex = -1

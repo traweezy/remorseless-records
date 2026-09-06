@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest"
+import { Debouncer } from "@tanstack/pacer"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import {
   mapHitToSummary,
@@ -35,6 +36,62 @@ const searchHit: ProductSearchHit = {
   ribbonLabel: "New Release",
   ribbonPriority: 10,
 }
+
+describe("catalog search pacing dependency contract", () => {
+  beforeEach(() => vi.useFakeTimers())
+  afterEach(() => vi.useRealTimers())
+
+  const createSearchDebouncer = () => {
+    const updateQuery = vi.fn<(query: string) => void>()
+    const debouncer = new Debouncer(updateQuery, {
+      key: "catalog-search-query-test",
+      wait: 250,
+    })
+    return { debouncer, updateQuery }
+  }
+
+  it("commits only the latest query after a full quiet interval", () => {
+    const { debouncer, updateQuery } = createSearchDebouncer()
+    try {
+      debouncer.maybeExecute("death")
+      vi.advanceTimersByTime(200)
+      debouncer.maybeExecute("death metal")
+      vi.advanceTimersByTime(249)
+      expect(updateQuery).not.toHaveBeenCalled()
+      vi.advanceTimersByTime(1)
+      expect(updateQuery).toHaveBeenCalledExactlyOnceWith("death metal")
+    } finally {
+      debouncer.cancel()
+    }
+  })
+
+  it("preserves a cleared search instead of dropping its empty value", () => {
+    const { debouncer, updateQuery } = createSearchDebouncer()
+    try {
+      debouncer.maybeExecute("vinyl")
+      debouncer.maybeExecute("")
+      vi.advanceTimersByTime(250)
+      expect(updateQuery).toHaveBeenCalledExactlyOnceWith("")
+    } finally {
+      debouncer.cancel()
+    }
+  })
+
+  it("cancels pending work on cleanup and allows a fresh subscription", () => {
+    const { debouncer, updateQuery } = createSearchDebouncer()
+    try {
+      debouncer.maybeExecute("obsolete")
+      debouncer.cancel()
+      vi.advanceTimersByTime(1_000)
+      expect(updateQuery).not.toHaveBeenCalled()
+      debouncer.maybeExecute("new release")
+      vi.advanceTimersByTime(250)
+      expect(updateQuery).toHaveBeenCalledExactlyOnceWith("new release")
+    } finally {
+      debouncer.cancel()
+    }
+  })
+})
 
 describe("mapHitToSummary", () => {
   it("preserves indexed merchandising context for the shared product card", () => {

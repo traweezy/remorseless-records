@@ -2953,9 +2953,12 @@ The September 3 registry audit and official release review now define eight
 isolated cohorts in `DEPENDENCY_MIGRATION_AUDIT_2026-07-23.md`: Next.js
 security, the completed `qs` cleanup, coordinated Medusa 2.19/Admin framework,
 TanStack, server/browser Stripe, AWS SDK, OpenTelemetry, and small runtime/tool
-patches. Each owns a separate lockfile diff, full local gate, exact-SHA CI, and
-watched-service staging acceptance. Major framework/runtime changes are not
-mixed. The first cohort upgrades the Storefront from Next.js 16.2.12 to the
+patches. On September 6 the user requested larger batches before pushing:
+compatible families now share a reviewed lockfile resolution, full local
+gate, exact-SHA CI, and watched-service staging acceptance. Family-specific
+upstream review and focused regressions remain required; major migrations,
+cooling, and production boundaries are unchanged. The first cohort upgraded
+the Storefront from Next.js 16.2.12 to the
 mature 16.3.3 security release; 16.3.4 remains cooling until
 `2026-09-07T20:00:51.381Z`.
 
@@ -4034,6 +4037,64 @@ Storefront, and Runtime Images runs `33744311233`, `33744311279`,
 `83071db0-cd2f-49a6-b957-1cd6b8d44bfa` both reached `SUCCESS` at that SHA.
 Exact health/readiness, Backend scheduler/operations, Storefront root/catalog,
 security-header, AVIF, structured-event, and bounded error-log checks passed.
+
+## Combined compatible-dependency release batch (2026-09-06)
+
+At the user's request, batch compatible work before pushing rather than
+deploying each small family or documentation checkpoint separately. The
+current batch contains Form 1.33.5, Resend 6.25.0, PostHog Node 5.51.4,
+Pacer 0.22.0, the five Storefront Query 5.102.8 packages, React Virtual
+3.14.10, Sonner 2.0.8, the read-only Admin test-harness guard, and the
+installed-CLI Backend build launcher that prevents implicit nested installs.
+
+- [x] Review official releases, publication cooling, compatibility, licenses,
+      actual consumers, and the complete resolved graph for each family.
+- [x] Preserve strict cooling, existing security fixes, React/Admin dependency
+      isolation, and mirrored service policies; pass frozen install and peers.
+- [x] Exercise real-library form, notification, debounce, email transport,
+      and analytics transport behavior without live provider writes.
+- [x] Pass combined Storefront coverage and production build/secret checks.
+- [x] Complete pinned Node 26.5.0 lint/type/security, both coverage/build
+      gates, and the 12-case compiled Admin matrix.
+- [x] Complete the final responsive, launch, and three-engine browser gates:
+      60 (two expected skips), 14, and 27 tests respectively.
+- [ ] Push the logical commits together and accept all exact-SHA CI workflows,
+      runtime image scans/SBOMs, and both Railway staging deployments.
+
+The detailed per-family evidence and remaining holds are maintained in
+`DEPENDENCY_MIGRATION_AUDIT_2026-07-23.md`. Production promotion and image
+source cutover remain separate boundaries. The Form-only evidence below is
+the initial local baseline, not a separate deployment requirement.
+
+## TanStack Form patch compatibility
+
+- [x] Move both direct Form consumers and the shared core from 1.33.2 to the
+      cooled 1.33.5 patch while preserving Admin React 18 and Storefront React
+      19 isolation. Its initial local validation kept other families unchanged;
+      final acceptance belongs to the user-requested compatible release batch.
+- [x] Review the upstream runtime delta and all four Storefront/eight Admin
+      form instances for validation, reset/hydration, state subscriptions,
+      focus, and submission compatibility.
+- [x] Reproduce the prefix-sibling deletion bug on the old core and verify
+      sibling preservation plus actual descendant removal on 1.33.5.
+- [x] Add Contact component validation, success/reset, pending duplicate-click,
+      and failure-recovery regressions; retain Privacy and Admin reset tests.
+- [x] Pass frozen install, peers, supply-chain/audit, strict typechecks, full
+      coverage, production builds, and Storefront browser matrices locally.
+- [x] Complete the compiled Admin acceptance matrix after enforcing its
+      documented read-only request boundary.
+- [ ] Accept the exact implementation SHA in all GitHub workflows and both
+      Railway staging deployments, then verify live health/routes/logs.
+
+The local Backend suite passes 273 suites / 2,068 tests at 91.58% statements
+and 85.31% branches. Storefront coverage remains above its unchanged gates;
+the build completes 55 routes and its 131-asset secret/Trusted Types scan.
+Responsive, launch, and critical browser suites pass 54 (two expected skips),
+14, and 21 tests respectively. The read-only Admin matrix passes 12/12 with
+zero axe or other findings; inspected browser screenshots show no regression.
+No rendered application source changed. See
+`DEPENDENCY_MIGRATION_AUDIT_2026-07-23.md` for the upstream comparison and
+publication evidence. This cohort is not yet marked as staged/accepted.
 
 ## Redis client 6.2.1 compatibility
 

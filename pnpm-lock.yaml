@@ -54,7 +54,7 @@ overrides:
   path-to-regexp@>=8.0.0 <8.4.0: ^8.4.2
   picomatch@<2.3.2: ^2.3.2
   picomatch@>=4.0.0 <4.0.4: ^4.0.4
-  posthog-node: ^5.46.1
+  posthog-node: ^5.51.4
   postcss: ^8.5.23
   protobufjs: ^7.6.5
   qs: 6.16.0
@@ -207,7 +207,7 @@ importers:
         version: 2.18.0
       '@medusajs/medusa':
         specifier: ^2.18.0
-        version: 2.18.0(patch_hash=10763c3d3f3c59419f829f49397343c1d81bc759031c9e21f5204f210001a3ee)(fa017b6f3548fce70aef74a391ec618b)
+        version: 2.18.0(patch_hash=10763c3d3f3c59419f829f49397343c1d81bc759031c9e21f5204f210001a3ee)(3801a8200edd0e928b619b3579eaa7c6)
       '@medusajs/notification':
         specifier: ^2.18.0
         version: 2.18.0(@medusajs/framework@2.18.0(patch_hash=f6165df7404f897a38f8273ceca54454c149d81f36a77544d050ec410fdfa6b1)(@medusajs/cli@2.18.0(@types/node@26.1.1)(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1))(@types/node@26.1.1)(debug@4.4.3(supports-color@8.1.1))(ioredis@5.11.1(supports-color@8.1.1))(supports-color@8.1.1)(vite@6.4.3(@types/node@26.1.1)(jiti@1.21.7)(lightningcss@1.32.0)(tsx@4.23.1)(yaml@2.9.0))(zod@4.4.3))
@@ -269,8 +269,8 @@ importers:
         specifier: ^1.4.3
         version: 1.4.3(patch_hash=cf9d879ce3e7d0ef5b3d4cc4207d53a5629d93bdb141423df6d9c56f044cec1e)(@medusajs/admin-sdk@2.18.0)(@medusajs/framework@2.18.0(patch_hash=f6165df7404f897a38f8273ceca54454c149d81f36a77544d050ec410fdfa6b1)(@medusajs/cli@2.18.0(@types/node@26.1.1)(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1))(@types/node@26.1.1)(debug@4.4.3(supports-color@8.1.1))(ioredis@5.11.1(supports-color@8.1.1))(supports-color@8.1.1)(vite@6.4.3(@types/node@26.1.1)(jiti@1.21.7)(lightningcss@1.32.0)(tsx@4.23.1)(yaml@2.9.0))(zod@4.4.3))(@medusajs/medusa@2.18.0)(@medusajs/ui@4.2.0(patch_hash=5d9cdcbe604e9df8c43bcbd4b2bd326d7076c065aa9bbbf4fcf51911b1a64e81)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.9.3))(@tanstack/react-query@5.64.2(react@18.3.1))(awilix@8.0.1)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@tanstack/react-form':
-        specifier: 1.33.2
-        version: 1.33.2(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        specifier: 1.33.5
+        version: 1.33.5(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       awilix:
         specifier: ^8.0.1
         version: 8.0.1
@@ -293,8 +293,8 @@ importers:
         specifier: ^8.22.0
         version: 8.22.0
       posthog-node:
-        specifier: ^5.46.1
-        version: 5.46.1(rxjs@7.8.2)
+        specifier: ^5.51.4
+        version: 5.51.4(rxjs@7.8.2)
       react:
         specifier: ^18.3.1
         version: 18.3.1
@@ -308,8 +308,8 @@ importers:
         specifier: ^6.2.1
         version: 6.2.1(@opentelemetry/api@1.9.1)
       resend:
-        specifier: 6.18.0
-        version: 6.18.0(@react-email/render@2.1.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1))
+        specifier: 6.25.0
+        version: 6.25.0(@react-email/render@2.1.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1))
       sanitize-html:
         specifier: 2.17.7
         version: 2.17.7
@@ -399,32 +399,32 @@ importers:
         specifier: ^9.12.0
         version: 9.12.0(patch_hash=114bc55302bdb00b68090bf7915ab94c9f3cae89f69afe5453367948a14fc0cb)
       '@tanstack/pacer':
-        specifier: ^0.21.1
-        version: 0.21.1
+        specifier: ^0.22.0
+        version: 0.22.0
       '@tanstack/query-persist-client-core':
-        specifier: ^5.102.7
-        version: 5.102.7
+        specifier: ^5.102.8
+        version: 5.102.8
       '@tanstack/query-sync-storage-persister':
-        specifier: ^5.102.7
-        version: 5.102.7
+        specifier: ^5.102.8
+        version: 5.102.8
       '@tanstack/react-form':
-        specifier: ^1.33.2
-        version: 1.33.2(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+        specifier: ^1.33.5
+        version: 1.33.5(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       '@tanstack/react-query':
-        specifier: ^5.102.7
-        version: 5.102.7(react@19.2.8)
+        specifier: ^5.102.8
+        version: 5.102.8(react@19.2.8)
       '@tanstack/react-query-devtools':
-        specifier: ^5.102.7
-        version: 5.102.7(@tanstack/react-query@5.102.7(react@19.2.8))(react@19.2.8)
+        specifier: ^5.102.8
+        version: 5.102.8(@tanstack/react-query@5.102.8(react@19.2.8))(react@19.2.8)
       '@tanstack/react-query-persist-client':
-        specifier: ^5.102.7
-        version: 5.102.7(@tanstack/react-query@5.102.7(react@19.2.8))(react@19.2.8)
+        specifier: ^5.102.8
+        version: 5.102.8(@tanstack/react-query@5.102.8(react@19.2.8))(react@19.2.8)
       '@tanstack/react-table':
         specifier: ^8.21.3
         version: 8.21.3(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       '@tanstack/react-virtual':
-        specifier: ^3.14.8
-        version: 3.14.8(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+        specifier: ^3.14.10
+        version: 3.14.10(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       '@vercel/otel':
         specifier: 2.1.3
         version: 2.1.3(@opentelemetry/api-logs@0.217.0)(@opentelemetry/api@1.9.1)(@opentelemetry/instrumentation@0.217.0(@opentelemetry/api@1.9.1)(supports-color@8.1.1))(@opentelemetry/resources@2.10.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-logs@0.217.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.7.1(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.10.0(@opentelemetry/api@1.9.1))
@@ -477,8 +477,8 @@ importers:
         specifier: ^16.27.0
         version: 16.27.0
       sonner:
-        specifier: ^2.0.7
-        version: 2.0.7(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+        specifier: ^2.0.8
+        version: 2.0.8(@types/react@19.2.17)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       tailwind-merge:
         specifier: ^3.6.0
         version: 3.6.0
@@ -1981,7 +1981,7 @@ packages:
     engines: {node: '>=20'}
     peerDependencies:
       '@medusajs/framework': 2.18.0
-      posthog-node: ^5.46.1
+      posthog-node: ^5.51.4
 
   '@medusajs/analytics@2.18.0':
     resolution: {integrity: sha512-Bv7oIFm21kt3GJWteVVo4PuamkLNhnXxlJIjZQVvwKPOtWT+7aCRLkPg19qWt6LdKhHAvxBq5lYSz1/EyNf6/w==}
@@ -2223,7 +2223,7 @@ packages:
     peerDependencies:
       '@medusajs/framework': 2.18.0
       '@swc/core': ^1.15.46
-      posthog-node: ^5.46.1
+      posthog-node: ^5.51.4
       react-dom: ^18.3.1
       yalc: ^1.0.0-pre.53
     peerDependenciesMeta:
@@ -2839,11 +2839,11 @@ packages:
     engines: {node: '>=20'}
     hasBin: true
 
-  '@posthog/core@1.45.1':
-    resolution: {integrity: sha512-tLtvzomavb2PPWdGYKsusyIzIeL2Px47v348Smibkay7sMy/83TyPk+Ptsp2NdeOgJsbuwSxWkR2+XA0aSCAaA==}
+  '@posthog/core@1.49.2':
+    resolution: {integrity: sha512-AXHDo/4nisUg7OPG1TQNgREK7n+chBQXLQyttp7bDTDsDg2k9lV06TmnpvuNbwJs53q9mP9hjezKEZu4fYadfg==}
 
-  '@posthog/types@1.398.0':
-    resolution: {integrity: sha512-sJMkl4k+u8yS/0fjHsKqE9xTdsAh30a2WvgChiptellnVoE0e8QJKFgqOMD2sk8FaEArPdeFklAhXvmENAt3Sg==}
+  '@posthog/types@1.407.1':
+    resolution: {integrity: sha512-WhbkXPC2rgylXqmxHqv70ffI3k+KxyR6s7DBIfr5NvIqHkxp6v0pk31D/jbz0DNVbzwkLjyll2pxr4FNbJiYzg==}
 
   '@preact/signals-core@1.14.4':
     resolution: {integrity: sha512-HNB6HYeYKhQbJ1aKl+YRjrS4+QWHLKX6qKoUsfS/m0vqzsVaEBiZiaKbG/e+NKk2ch5ALQr/ihWaMHxiCuuWHA==}
@@ -4880,34 +4880,39 @@ packages:
     engines: {node: '>=18'}
     hasBin: true
 
-  '@tanstack/form-core@1.33.2':
-    resolution: {integrity: sha512-F60zJd15bGrXKonc1kpRYnNRNfiES7F+hgvrPMrsZznPLqZtO2DIg76OU6R25kCYkqYQY5xvuKteuWcUsc587A==}
+  '@tanstack/devtools-event-client@0.5.0':
+    resolution: {integrity: sha512-H+OH3zC6Vhu/K0NaVfQKknEKawc/+2PT+D3SB3Ox0V8SiMlTo0abbmH2rH0721R2aNYbjdMXA1oENOd8E2UVoA==}
+    engines: {node: '>=18'}
+    hasBin: true
+
+  '@tanstack/form-core@1.33.5':
+    resolution: {integrity: sha512-3dfx9MBP0aq5sXKteikG629X9oviptrQj0IFRk9YGcb+lB7Kv5x8S17oOSk1wUWgjQZ4xVJEMbKwOAODymocgA==}
 
   '@tanstack/pacer-lite@0.1.1':
     resolution: {integrity: sha512-y/xtNPNt/YeyoVxE/JCx+T7yjEzpezmbb+toK8DDD1P4m7Kzs5YR956+7OKexG3f8aXgC3rLZl7b1V+yNUSy5w==}
     engines: {node: '>=18'}
 
-  '@tanstack/pacer@0.21.1':
-    resolution: {integrity: sha512-hB01dd4rlsYcTCNP7wK186jgAe6K5qimgM1Y5Jtvz+9PUaILvpmeLLjmQNUNSO1l23lIt+CeQR6mO1mjlPvRtQ==}
+  '@tanstack/pacer@0.22.0':
+    resolution: {integrity: sha512-Zq23KOn30tFiA6ZYWihs5x++ttHkOIcnIIjRrJq05tGrYx9+iHsmVaj8jb7UJVemEI+JRWGzJ9C+50YV4nRz0w==}
     engines: {node: '>=18'}
 
-  '@tanstack/query-core@5.102.7':
-    resolution: {integrity: sha512-4TH8KQrCLoNs9Zvl1LW1iaZ9cZx3dGTgfZ1BnLrcRxMNnX/toe/dGbfvF/DkvbzRyfLfpMKZkembz3o0rnugtw==}
+  '@tanstack/query-core@5.102.8':
+    resolution: {integrity: sha512-ZNjkJ33CqvPNec/6lZBnHqLc3EVGPZ9ySLhYahU9TcuRFdmwXewuj0c4hwSWcGHqEUwcSrKeZ+oGcvPBqXcQcg==}
 
   '@tanstack/query-core@5.64.2':
     resolution: {integrity: sha512-hdO8SZpWXoADNTWXV9We8CwTkXU88OVWRBcsiFrk7xJQnhm6WRlweDzMD+uH+GnuieTBVSML6xFa17C2cNV8+g==}
 
-  '@tanstack/query-devtools@5.102.7':
-    resolution: {integrity: sha512-9LOvdYuNzIVummhlES1rTxGf6Z/xq042VZ3mfmerI+g974csn1+K5Y7LyPgSNvtkuGPQa7UaEotKv8tzadjnrg==}
+  '@tanstack/query-devtools@5.102.8':
+    resolution: {integrity: sha512-ZgeMKuF5d/zOE+tgWm3cSbD6Zcbr6IugVsnbHzUcSismqLZDSUPBKM6ILUxExgwe6rPAOox2x5bA5T+PSOQG0Q==}
 
-  '@tanstack/query-persist-client-core@5.102.7':
-    resolution: {integrity: sha512-nropT9sI7fOhoZEMUi2IYJnOj1OtCNmmThqaZlvIplQmPy9swhlr0cPW58FzyJbC1Z8X8SdzziAnB63fAH30Jg==}
+  '@tanstack/query-persist-client-core@5.102.8':
+    resolution: {integrity: sha512-t3v4/D6ejo/BrPzM5gm/AT3c4CWPCxFa+0cIjAeHAeanGPG6rCjFS1hZnPZH/rf55qe3qYYgx5U6iBZMY1PQjA==}
 
-  '@tanstack/query-sync-storage-persister@5.102.7':
-    resolution: {integrity: sha512-Mr6gc/Qa5hi9M7EAtD8MgF3MSbW8twqZSiXYRGihy+PBjsGpmcQy2fzCofgPmnXkaeL3+YYOY+lo1cR9I0iBiw==}
+  '@tanstack/query-sync-storage-persister@5.102.8':
+    resolution: {integrity: sha512-UvIpYl6jipKJHfITAieQaXMvVPoJh2IkQkWDYZNRPycoGbNYdqB+UdRVoXkZagB3EdeKnlC7sA61grsEC87Wfw==}
 
-  '@tanstack/react-form@1.33.2':
-    resolution: {integrity: sha512-nEfayOu+27q5cZ5E0G5dmnddqLcLjdFCatbL/LCs/iLD469a1o1yYJlr8RISV3GfnqsBpm0hf+8kM4okh5fPCw==}
+  '@tanstack/react-form@1.33.5':
+    resolution: {integrity: sha512-LlRB28qJwO/QCGaHvWnbdh4haBgTFiZVmzA2uzxSBS3YA7/IqrQ6HOBK70CkFQ+DbflZ7NawsmSln13h5iIdTA==}
     peerDependencies:
       '@tanstack/react-start': '*'
       react: ^17.0.0 || ^18.0.0 || ^19.0.0
@@ -4915,20 +4920,20 @@ packages:
       '@tanstack/react-start':
         optional: true
 
-  '@tanstack/react-query-devtools@5.102.7':
-    resolution: {integrity: sha512-Wr3BivY7Lbhb9hR9s28H+sXr7og3cdOtmVtFzzn9s7bGQhdVmhbiibP7NA0czgwA1NI+2BhlU3oAOcuyvki+8g==}
+  '@tanstack/react-query-devtools@5.102.8':
+    resolution: {integrity: sha512-QKb7A44BZOU7nxsGA4gFN1fofjYovar5O0T83Ff4Y+2eRq09RGFrAzzutVdF/6/emfSaMDohp6e759BjB3fxEw==}
     peerDependencies:
-      '@tanstack/react-query': ^5.102.7
+      '@tanstack/react-query': ^5.102.8
       react: ^18 || ^19
 
-  '@tanstack/react-query-persist-client@5.102.7':
-    resolution: {integrity: sha512-rLCR9zeKDv4f1eN1MSrHO2zJoCUpTQJfxcGygN4JaudEy2sJMVBqEvTgJz72ILvc0kHVkqONeAZb0gZ3fqfU1w==}
+  '@tanstack/react-query-persist-client@5.102.8':
+    resolution: {integrity: sha512-WOZReC+m9klekPtG7eeZ3txJeMA9lg2R0RytSG3yXcZgJItQAVIyoobJdbdIQtlpgcU2tSzsOEBtJacs2vlCOA==}
     peerDependencies:
-      '@tanstack/react-query': ^5.102.7
+      '@tanstack/react-query': ^5.102.8
       react: ^18 || ^19
 
-  '@tanstack/react-query@5.102.7':
-    resolution: {integrity: sha512-bbd8T4jDIj9aPbNn11SsjNH8apKY4zspkrw63JRsNDXjpW5SRF7X0ipi7yrGd8DCs8QhYfhQJKqEj1YLru1DbQ==}
+  '@tanstack/react-query@5.102.8':
+    resolution: {integrity: sha512-TYBea4OuXWD7MhaSHq069TWbFe7rcwWN6kzT7JF0OKi1K6c1gTv2IzD6A6ExJsCMozdkqBWeuIUZmu4KQg0O5A==}
     peerDependencies:
       react: ^18 || ^19
 
@@ -4957,6 +4962,12 @@ packages:
       react: '>=16.8'
       react-dom: '>=16.8'
 
+  '@tanstack/react-virtual@3.14.10':
+    resolution: {integrity: sha512-SRyoUbdFMRHuYXMijV5H4ZarQWpXkj3iANq8OFre+pybeVap8ZJjZ3Nz9bVjx4d8PfobVUQUdKyyyHYk3E+djw==}
+    peerDependencies:
+      react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+      react-dom: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+
   '@tanstack/react-virtual@3.14.8':
     resolution: {integrity: sha512-O39GJQpAYEJcIu3uN1//YtmhjSEOyw75vg9CKCatBDPiD5hKtZQoJHfferyrB/LdOD3UWaoMLWtdEjarwIwdDw==}
     peerDependencies:
@@ -4965,6 +4976,9 @@ packages:
 
   '@tanstack/store@0.11.0':
     resolution: {integrity: sha512-WlzzCt3xi0G6pCAJu1U+2jiECwabETDpQDi3hfkFZvJii9AuZqEKbOiVarX1/bWhTNjU486yQtJCCasi/0q+Cw==}
+
+  '@tanstack/store@0.11.1':
+    resolution: {integrity: sha512-mzTOBhypOuDJAy/D8n2MfUZ1HFkXnmSETviRyhqEC8LUE7/IZQExOTxMANj3KjTofYTkFNpBY67qaVrT41YccA==}
 
   '@tanstack/table-core@8.20.5':
     resolution: {integrity: sha512-P9dF7XbibHph2PFRz8gfBKEXEY/HJPOhym8CHmjF8y3q5mWpKx9xtZapXQUWCgkqvsK0R46Azuz+VaxD4Xl+Tg==}
@@ -4976,6 +4990,9 @@ packages:
 
   '@tanstack/virtual-core@3.17.6':
     resolution: {integrity: sha512-h0/Ebo18CkOrChlQIhNtQkM5ySUnh/GumQ/D1st3hG2HWUPEF+ILUc2k29UtivCi/9G7w7G3/f7Xyd5cCFbKBw==}
+
+  '@tanstack/virtual-core@3.17.8':
+    resolution: {integrity: sha512-BfEvehNpOT75r5Ksc5xW6NZuXujTfb7nlSEyVu4XHG3gdxNg1KqXruWbDewXOUaUYIo4oRbSfkjIajz4MAT8tA==}
 
   '@testing-library/dom@10.4.1':
     resolution: {integrity: sha512-o4PXJQidqJl82ckFaXUeoAW+XysPLauYI43Abki5hABd853iMhitooc6znOnczgbTYmEP6U6/y1ZyKAIsvMKGg==}
@@ -8384,8 +8401,8 @@ packages:
     resolution: {integrity: sha512-EMsphSQ1YkQqKZL2cuG0zHkmjCCzQqQ71l2GXITqRwjhRleCdv00bDk/ktaSi0LnlaPzAc3535KTrjXsTdtx7A==}
     engines: {node: '>=12'}
 
-  posthog-node@5.46.1:
-    resolution: {integrity: sha512-WjCqExq44pBdyg9MSsH6UAE0tNZ88p4aIuVFicgqhjf2Fbws6IhS4ioYUa4aBrbUPS9EDRXtBTtF5DpP1ml8Pw==}
+  posthog-node@5.51.4:
+    resolution: {integrity: sha512-gI6JMBnU3vjDNclUBWonw3y7k8Y0UPIAVO4AQ2zu9eyW+7sY8UQRofx4JIA7IGYLMEbs4gykfogOmXp16+oUdg==}
     engines: {node: ^20.20.0 || >=22.22.0}
     peerDependencies:
       rxjs: ^7.0.0
@@ -8756,8 +8773,8 @@ packages:
   require-main-filename@2.0.0:
     resolution: {integrity: sha512-NKN5kMDylKuldxYLSUfrbo5Tuzh4hd+2E8NPPX02mZtn1VuREQToYe/ZdlJy+J3uCpfaiGF05e7B8W0iXbQHmg==}
 
-  resend@6.18.0:
-    resolution: {integrity: sha512-EjxZ9AVzywJgOlUoIJe9ytBWVrfbUtJbjeoLnRSvpU1sv97Hh9DSwhw+k8kiujrG4Rg4bzTBsjlmwWWuoOxSug==}
+  resend@6.25.0:
+    resolution: {integrity: sha512-iptUEycs+6Hu+W8mExK708LrDiMYOuGgnCP+wTD5L4Zrqqd2B86h1oyAmNe0khZWQw0ccI7jz8OgAaplEsyaIA==}
     engines: {node: '>=20'}
     peerDependencies:
       '@react-email/render': '*'
@@ -8975,11 +8992,15 @@ packages:
       react: ^18.0.0 || ^19.0.0 || ^19.0.0-rc
       react-dom: ^18.0.0 || ^19.0.0 || ^19.0.0-rc
 
-  sonner@2.0.7:
-    resolution: {integrity: sha512-W6ZN4p58k8aDKA4XPcx2hpIQXBRAgyiWVkYhT7CvK6D3iAu7xjvVyhQHg2/iaKJZ1XVJ4r7XuwGL+WGEK37i9w==}
+  sonner@2.0.8:
+    resolution: {integrity: sha512-UM/ByIoFra8yzV75n1o0Puu0bw5U/9UNnDacrJNspekBewIfsQ3D6ez1nvlWpt7aTsO6rujQtifBpycwIivqlg==}
     peerDependencies:
+      '@types/react': ^18.0.0 || ^19.0.0
       react: ^18.0.0 || ^19.0.0 || ^19.0.0-rc
       react-dom: ^18.0.0 || ^19.0.0 || ^19.0.0-rc
+    peerDependenciesMeta:
+      '@types/react':
+        optional: true
 
   sorted-array-functions@1.3.0:
     resolution: {integrity: sha512-2sqgzeFlid6N4Z2fUQ1cvFmTOLRi/sEDzSQ0OKYchqgoPmQBVyM3959qYx3fpS6Esef80KjmpgPeEr028dP3OA==}
@@ -11589,10 +11610,10 @@ snapshots:
     dependencies:
       '@medusajs/framework': 2.18.0(patch_hash=f6165df7404f897a38f8273ceca54454c149d81f36a77544d050ec410fdfa6b1)(@medusajs/cli@2.18.0(@types/node@26.1.1)(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1))(@types/node@26.1.1)(debug@4.4.3(supports-color@8.1.1))(ioredis@5.11.1(supports-color@8.1.1))(supports-color@8.1.1)(vite@6.4.3(@types/node@26.1.1)(jiti@1.21.7)(lightningcss@1.32.0)(tsx@4.23.1)(yaml@2.9.0))(zod@4.4.3)
 
-  '@medusajs/analytics-posthog@2.18.0(@medusajs/framework@2.18.0(patch_hash=f6165df7404f897a38f8273ceca54454c149d81f36a77544d050ec410fdfa6b1)(@medusajs/cli@2.18.0(@types/node@26.1.1)(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1))(@types/node@26.1.1)(debug@4.4.3(supports-color@8.1.1))(ioredis@5.11.1(supports-color@8.1.1))(supports-color@8.1.1)(vite@6.4.3(@types/node@26.1.1)(jiti@1.21.7)(lightningcss@1.32.0)(tsx@4.23.1)(yaml@2.9.0))(zod@4.4.3))(posthog-node@5.46.1(rxjs@7.8.2))':
+  '@medusajs/analytics-posthog@2.18.0(@medusajs/framework@2.18.0(patch_hash=f6165df7404f897a38f8273ceca54454c149d81f36a77544d050ec410fdfa6b1)(@medusajs/cli@2.18.0(@types/node@26.1.1)(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1))(@types/node@26.1.1)(debug@4.4.3(supports-color@8.1.1))(ioredis@5.11.1(supports-color@8.1.1))(supports-color@8.1.1)(vite@6.4.3(@types/node@26.1.1)(jiti@1.21.7)(lightningcss@1.32.0)(tsx@4.23.1)(yaml@2.9.0))(zod@4.4.3))(posthog-node@5.51.4(rxjs@7.8.2))':
     dependencies:
       '@medusajs/framework': 2.18.0(patch_hash=f6165df7404f897a38f8273ceca54454c149d81f36a77544d050ec410fdfa6b1)(@medusajs/cli@2.18.0(@types/node@26.1.1)(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1))(@types/node@26.1.1)(debug@4.4.3(supports-color@8.1.1))(ioredis@5.11.1(supports-color@8.1.1))(supports-color@8.1.1)(vite@6.4.3(@types/node@26.1.1)(jiti@1.21.7)(lightningcss@1.32.0)(tsx@4.23.1)(yaml@2.9.0))(zod@4.4.3)
-      posthog-node: 5.46.1(rxjs@7.8.2)
+      posthog-node: 5.51.4(rxjs@7.8.2)
 
   '@medusajs/analytics@2.18.0(@medusajs/framework@2.18.0(patch_hash=f6165df7404f897a38f8273ceca54454c149d81f36a77544d050ec410fdfa6b1)(@medusajs/cli@2.18.0(@types/node@26.1.1)(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1))(@types/node@26.1.1)(debug@4.4.3(supports-color@8.1.1))(ioredis@5.11.1(supports-color@8.1.1))(supports-color@8.1.1)(vite@6.4.3(@types/node@26.1.1)(jiti@1.21.7)(lightningcss@1.32.0)(tsx@4.23.1)(yaml@2.9.0))(zod@4.4.3))':
     dependencies:
@@ -11949,7 +11970,7 @@ snapshots:
     dependencies:
       '@medusajs/framework': 2.18.0(patch_hash=f6165df7404f897a38f8273ceca54454c149d81f36a77544d050ec410fdfa6b1)(@medusajs/cli@2.18.0(@types/node@26.1.1)(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1))(@types/node@26.1.1)(debug@4.4.3(supports-color@8.1.1))(ioredis@5.11.1(supports-color@8.1.1))(supports-color@8.1.1)(vite@6.4.3(@types/node@26.1.1)(jiti@1.21.7)(lightningcss@1.32.0)(tsx@4.23.1)(yaml@2.9.0))(zod@4.4.3)
 
-  '@medusajs/medusa@2.18.0(patch_hash=10763c3d3f3c59419f829f49397343c1d81bc759031c9e21f5204f210001a3ee)(fa017b6f3548fce70aef74a391ec618b)':
+  '@medusajs/medusa@2.18.0(patch_hash=10763c3d3f3c59419f829f49397343c1d81bc759031c9e21f5204f210001a3ee)(3801a8200edd0e928b619b3579eaa7c6)':
     dependencies:
       '@inquirer/checkbox': 2.5.0
       '@inquirer/confirm': 2.0.17
@@ -11957,7 +11978,7 @@ snapshots:
       '@medusajs/admin-bundler': 2.18.0(@types/node@26.1.1)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(jiti@1.21.7)(lightningcss@1.32.0)(picomatch@4.0.5)(supports-color@8.1.1)(tsx@4.23.1)(typescript@5.9.3)(yaml@2.9.0)
       '@medusajs/analytics': 2.18.0(@medusajs/framework@2.18.0(patch_hash=f6165df7404f897a38f8273ceca54454c149d81f36a77544d050ec410fdfa6b1)(@medusajs/cli@2.18.0(@types/node@26.1.1)(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1))(@types/node@26.1.1)(debug@4.4.3(supports-color@8.1.1))(ioredis@5.11.1(supports-color@8.1.1))(supports-color@8.1.1)(vite@6.4.3(@types/node@26.1.1)(jiti@1.21.7)(lightningcss@1.32.0)(tsx@4.23.1)(yaml@2.9.0))(zod@4.4.3))
       '@medusajs/analytics-local': 2.18.0(@medusajs/framework@2.18.0(patch_hash=f6165df7404f897a38f8273ceca54454c149d81f36a77544d050ec410fdfa6b1)(@medusajs/cli@2.18.0(@types/node@26.1.1)(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1))(@types/node@26.1.1)(debug@4.4.3(supports-color@8.1.1))(ioredis@5.11.1(supports-color@8.1.1))(supports-color@8.1.1)(vite@6.4.3(@types/node@26.1.1)(jiti@1.21.7)(lightningcss@1.32.0)(tsx@4.23.1)(yaml@2.9.0))(zod@4.4.3))
-      '@medusajs/analytics-posthog': 2.18.0(@medusajs/framework@2.18.0(patch_hash=f6165df7404f897a38f8273ceca54454c149d81f36a77544d050ec410fdfa6b1)(@medusajs/cli@2.18.0(@types/node@26.1.1)(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1))(@types/node@26.1.1)(debug@4.4.3(supports-color@8.1.1))(ioredis@5.11.1(supports-color@8.1.1))(supports-color@8.1.1)(vite@6.4.3(@types/node@26.1.1)(jiti@1.21.7)(lightningcss@1.32.0)(tsx@4.23.1)(yaml@2.9.0))(zod@4.4.3))(posthog-node@5.46.1(rxjs@7.8.2))
+      '@medusajs/analytics-posthog': 2.18.0(@medusajs/framework@2.18.0(patch_hash=f6165df7404f897a38f8273ceca54454c149d81f36a77544d050ec410fdfa6b1)(@medusajs/cli@2.18.0(@types/node@26.1.1)(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1))(@types/node@26.1.1)(debug@4.4.3(supports-color@8.1.1))(ioredis@5.11.1(supports-color@8.1.1))(supports-color@8.1.1)(vite@6.4.3(@types/node@26.1.1)(jiti@1.21.7)(lightningcss@1.32.0)(tsx@4.23.1)(yaml@2.9.0))(zod@4.4.3))(posthog-node@5.51.4(rxjs@7.8.2))
       '@medusajs/api-key': 2.18.0(@medusajs/framework@2.18.0(patch_hash=f6165df7404f897a38f8273ceca54454c149d81f36a77544d050ec410fdfa6b1)(@medusajs/cli@2.18.0(@types/node@26.1.1)(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1))(@types/node@26.1.1)(debug@4.4.3(supports-color@8.1.1))(ioredis@5.11.1(supports-color@8.1.1))(supports-color@8.1.1)(vite@6.4.3(@types/node@26.1.1)(jiti@1.21.7)(lightningcss@1.32.0)(tsx@4.23.1)(yaml@2.9.0))(zod@4.4.3))
       '@medusajs/auth': 2.18.0(@medusajs/framework@2.18.0(patch_hash=f6165df7404f897a38f8273ceca54454c149d81f36a77544d050ec410fdfa6b1)(@medusajs/cli@2.18.0(@types/node@26.1.1)(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1))(@types/node@26.1.1)(debug@4.4.3(supports-color@8.1.1))(ioredis@5.11.1(supports-color@8.1.1))(supports-color@8.1.1)(vite@6.4.3(@types/node@26.1.1)(jiti@1.21.7)(lightningcss@1.32.0)(tsx@4.23.1)(yaml@2.9.0))(zod@4.4.3))(supports-color@8.1.1)
       '@medusajs/auth-emailpass': 2.18.0(@medusajs/framework@2.18.0(patch_hash=f6165df7404f897a38f8273ceca54454c149d81f36a77544d050ec410fdfa6b1)(@medusajs/cli@2.18.0(@types/node@26.1.1)(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1))(@types/node@26.1.1)(debug@4.4.3(supports-color@8.1.1))(ioredis@5.11.1(supports-color@8.1.1))(supports-color@8.1.1)(vite@6.4.3(@types/node@26.1.1)(jiti@1.21.7)(lightningcss@1.32.0)(tsx@4.23.1)(yaml@2.9.0))(zod@4.4.3))
@@ -12022,7 +12043,7 @@ snapshots:
       uuid: 11.1.1
     optionalDependencies:
       '@swc/core': 1.15.46(@swc/helpers@0.5.23)
-      posthog-node: 5.46.1(rxjs@7.8.2)
+      posthog-node: 5.51.4(rxjs@7.8.2)
       react-dom: 18.3.1(react@18.3.1)
     transitivePeerDependencies:
       - '@emotion/is-prop-valid'
@@ -12207,7 +12228,7 @@ snapshots:
       ulid: 2.4.0
     optionalDependencies:
       '@medusajs/core-flows': 2.18.0(@medusajs/framework@2.18.0(patch_hash=f6165df7404f897a38f8273ceca54454c149d81f36a77544d050ec410fdfa6b1)(@medusajs/cli@2.18.0(@types/node@26.1.1)(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1))(@types/node@26.1.1)(debug@4.4.3(supports-color@8.1.1))(ioredis@5.11.1(supports-color@8.1.1))(supports-color@8.1.1)(vite@6.4.3(@types/node@26.1.1)(jiti@1.21.7)(lightningcss@1.32.0)(tsx@4.23.1)(yaml@2.9.0))(zod@4.4.3))
-      '@medusajs/medusa': 2.18.0(patch_hash=10763c3d3f3c59419f829f49397343c1d81bc759031c9e21f5204f210001a3ee)(fa017b6f3548fce70aef74a391ec618b)
+      '@medusajs/medusa': 2.18.0(patch_hash=10763c3d3f3c59419f829f49397343c1d81bc759031c9e21f5204f210001a3ee)(3801a8200edd0e928b619b3579eaa7c6)
     transitivePeerDependencies:
       - debug
       - supports-color
@@ -12867,11 +12888,11 @@ snapshots:
     dependencies:
       playwright: 1.62.0
 
-  '@posthog/core@1.45.1':
+  '@posthog/core@1.49.2':
     dependencies:
-      '@posthog/types': 1.398.0
+      '@posthog/types': 1.407.1
 
-  '@posthog/types@1.398.0': {}
+  '@posthog/types@1.407.1': {}
 
   '@preact/signals-core@1.14.4': {}
 
@@ -14543,7 +14564,7 @@ snapshots:
     dependencies:
       '@medusajs/admin-sdk': 2.18.0
       '@medusajs/framework': 2.18.0(patch_hash=f6165df7404f897a38f8273ceca54454c149d81f36a77544d050ec410fdfa6b1)(@medusajs/cli@2.18.0(@types/node@26.1.1)(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1))(@types/node@26.1.1)(debug@4.4.3(supports-color@8.1.1))(ioredis@5.11.1(supports-color@8.1.1))(supports-color@8.1.1)(vite@6.4.3(@types/node@26.1.1)(jiti@1.21.7)(lightningcss@1.32.0)(tsx@4.23.1)(yaml@2.9.0))(zod@4.4.3)
-      '@medusajs/medusa': 2.18.0(patch_hash=10763c3d3f3c59419f829f49397343c1d81bc759031c9e21f5204f210001a3ee)(fa017b6f3548fce70aef74a391ec618b)
+      '@medusajs/medusa': 2.18.0(patch_hash=10763c3d3f3c59419f829f49397343c1d81bc759031c9e21f5204f210001a3ee)(3801a8200edd0e928b619b3579eaa7c6)
       '@medusajs/ui': 4.2.0(patch_hash=5d9cdcbe604e9df8c43bcbd4b2bd326d7076c065aa9bbbf4fcf51911b1a64e81)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.9.3)
       '@tanstack/react-query': 5.64.2(react@18.3.1)
       awilix: 8.0.1
@@ -14949,7 +14970,9 @@ snapshots:
 
   '@tanstack/devtools-event-client@0.4.4': {}
 
-  '@tanstack/form-core@1.33.2':
+  '@tanstack/devtools-event-client@0.5.0': {}
+
+  '@tanstack/form-core@1.33.5':
     dependencies:
       '@tanstack/devtools-event-client': 0.4.4
       '@tanstack/pacer-lite': 0.1.1
@@ -14957,57 +14980,57 @@ snapshots:
 
   '@tanstack/pacer-lite@0.1.1': {}
 
-  '@tanstack/pacer@0.21.1':
+  '@tanstack/pacer@0.22.0':
     dependencies:
-      '@tanstack/devtools-event-client': 0.4.4
-      '@tanstack/store': 0.11.0
+      '@tanstack/devtools-event-client': 0.5.0
+      '@tanstack/store': 0.11.1
 
-  '@tanstack/query-core@5.102.7': {}
+  '@tanstack/query-core@5.102.8': {}
 
   '@tanstack/query-core@5.64.2': {}
 
-  '@tanstack/query-devtools@5.102.7': {}
+  '@tanstack/query-devtools@5.102.8': {}
 
-  '@tanstack/query-persist-client-core@5.102.7':
+  '@tanstack/query-persist-client-core@5.102.8':
     dependencies:
-      '@tanstack/query-core': 5.102.7
+      '@tanstack/query-core': 5.102.8
 
-  '@tanstack/query-sync-storage-persister@5.102.7':
+  '@tanstack/query-sync-storage-persister@5.102.8':
     dependencies:
-      '@tanstack/query-core': 5.102.7
-      '@tanstack/query-persist-client-core': 5.102.7
+      '@tanstack/query-core': 5.102.8
+      '@tanstack/query-persist-client-core': 5.102.8
 
-  '@tanstack/react-form@1.33.2(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
+  '@tanstack/react-form@1.33.5(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
     dependencies:
-      '@tanstack/form-core': 1.33.2
+      '@tanstack/form-core': 1.33.5
       '@tanstack/react-store': 0.11.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       react: 18.3.1
     transitivePeerDependencies:
       - react-dom
 
-  '@tanstack/react-form@1.33.2(react-dom@19.2.8(react@19.2.8))(react@19.2.8)':
+  '@tanstack/react-form@1.33.5(react-dom@19.2.8(react@19.2.8))(react@19.2.8)':
     dependencies:
-      '@tanstack/form-core': 1.33.2
+      '@tanstack/form-core': 1.33.5
       '@tanstack/react-store': 0.11.0(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       react: 19.2.8
     transitivePeerDependencies:
       - react-dom
 
-  '@tanstack/react-query-devtools@5.102.7(@tanstack/react-query@5.102.7(react@19.2.8))(react@19.2.8)':
+  '@tanstack/react-query-devtools@5.102.8(@tanstack/react-query@5.102.8(react@19.2.8))(react@19.2.8)':
     dependencies:
-      '@tanstack/query-devtools': 5.102.7
-      '@tanstack/react-query': 5.102.7(react@19.2.8)
+      '@tanstack/query-devtools': 5.102.8
+      '@tanstack/react-query': 5.102.8(react@19.2.8)
       react: 19.2.8
 
-  '@tanstack/react-query-persist-client@5.102.7(@tanstack/react-query@5.102.7(react@19.2.8))(react@19.2.8)':
+  '@tanstack/react-query-persist-client@5.102.8(@tanstack/react-query@5.102.8(react@19.2.8))(react@19.2.8)':
     dependencies:
-      '@tanstack/query-persist-client-core': 5.102.7
-      '@tanstack/react-query': 5.102.7(react@19.2.8)
+      '@tanstack/query-persist-client-core': 5.102.8
+      '@tanstack/react-query': 5.102.8(react@19.2.8)
       react: 19.2.8
 
-  '@tanstack/react-query@5.102.7(react@19.2.8)':
+  '@tanstack/react-query@5.102.8(react@19.2.8)':
     dependencies:
-      '@tanstack/query-core': 5.102.7
+      '@tanstack/query-core': 5.102.8
       react: 19.2.8
 
   '@tanstack/react-query@5.64.2(react@18.3.1)':
@@ -15041,25 +15064,29 @@ snapshots:
       react: 19.2.8
       react-dom: 19.2.8(react@19.2.8)
 
+  '@tanstack/react-virtual@3.14.10(react-dom@19.2.8(react@19.2.8))(react@19.2.8)':
+    dependencies:
+      '@tanstack/virtual-core': 3.17.8
+      react: 19.2.8
+      react-dom: 19.2.8(react@19.2.8)
+
   '@tanstack/react-virtual@3.14.8(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
     dependencies:
       '@tanstack/virtual-core': 3.17.6
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
 
-  '@tanstack/react-virtual@3.14.8(react-dom@19.2.8(react@19.2.8))(react@19.2.8)':
-    dependencies:
-      '@tanstack/virtual-core': 3.17.6
-      react: 19.2.8
-      react-dom: 19.2.8(react@19.2.8)
-
   '@tanstack/store@0.11.0': {}
+
+  '@tanstack/store@0.11.1': {}
 
   '@tanstack/table-core@8.20.5': {}
 
   '@tanstack/table-core@8.21.3': {}
 
   '@tanstack/virtual-core@3.17.6': {}
+
+  '@tanstack/virtual-core@3.17.8': {}
 
   '@testing-library/dom@10.4.1':
     dependencies:
@@ -18612,9 +18639,9 @@ snapshots:
 
   postgres-interval@4.0.2: {}
 
-  posthog-node@5.46.1(rxjs@7.8.2):
+  posthog-node@5.51.4(rxjs@7.8.2):
     dependencies:
-      '@posthog/core': 1.45.1
+      '@posthog/core': 1.49.2
     optionalDependencies:
       rxjs: 7.8.2
 
@@ -19164,7 +19191,7 @@ snapshots:
 
   require-main-filename@2.0.0: {}
 
-  resend@6.18.0(@react-email/render@2.1.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)):
+  resend@6.25.0(@react-email/render@2.1.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)):
     dependencies:
       postal-mime: 2.7.5
       standardwebhooks: 1.0.0
@@ -19446,10 +19473,12 @@ snapshots:
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
 
-  sonner@2.0.7(react-dom@19.2.8(react@19.2.8))(react@19.2.8):
+  sonner@2.0.8(@types/react@19.2.17)(react-dom@19.2.8(react@19.2.8))(react@19.2.8):
     dependencies:
       react: 19.2.8
       react-dom: 19.2.8(react@19.2.8)
+    optionalDependencies:
+      '@types/react': 19.2.17
 
   sorted-array-functions@1.3.0: {}
 

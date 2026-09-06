@@ -379,24 +379,143 @@ network records / 710 packets / 151,558 bytes and Storefront recorded 12
 network records / 13 packets / 1,139 bytes, both with zero packet-drop causes.
 No production state was changed.
 
-## Isolated compatibility upgrade plan — 2026-09-03
+## TanStack Form patch update (2026-09-06)
+
+Both direct `@tanstack/react-form` consumers move from 1.33.2 to 1.33.5,
+with one shared `@tanstack/form-core` 1.33.5 and unchanged React 18.3.1
+Admin / React 19.2.8 Storefront peer contexts. The React adapter was published
+at `2026-08-11T12:45:38.642Z` and core at
+`2026-08-11T12:45:38.255Z`; both satisfy the strict seven-day cooling policy.
+No dependency exception, override, or peer suppression was changed. Form 2
+remains an alpha and is outside this patch update. The initial Form-only
+local validation below precedes the larger release batch requested by the
+user on 2026-09-06.
+
+The [official core release](https://github.com/TanStack/form/releases/tag/%40tanstack/form-core%401.33.5)
+and [upstream fix](https://github.com/TanStack/form/pull/2318) narrow field
+deletion to dot- or bracket-delimited descendants, preserving unrelated
+siblings whose names share a prefix. The React adapter source and dependency
+ranges are unchanged across this patch set. The earlier 1.33.3 and 1.33.4
+releases carry other framework adapters' SSR fixes, not a React API migration.
+
+The call-site audit covers four Storefront forms and eight Admin form
+instances. Existing synchronous Zod validation, `useStore` selectors,
+reset/hydration, dirty state, focus targets, and submission contracts remain
+unchanged. Application code does not call `deleteField` directly. The Admin
+regression nevertheless exercises the installed library: sibling values,
+registrations, and metadata survive deletion, while actual object/array
+descendants are removed. Its sibling assertion fails on 1.33.2 and passes on
+1.33.5. The existing hydrated reset/update regression remains green.
+
+Four new Contact component tests pass before and after the upgrade: untouched
+invalid submission sends no request, success resets values, a pending request
+prevents a duplicate click, and failure retains values for retry without
+rendering provider diagnostics. Existing Privacy focus/recovery tests also
+pass. No rendered application source changed.
+
+Local frozen install, peer checks, dependency policy/audit, React Router
+backport verification, full lint/typecheck, both coverage suites, and both
+production builds pass. Backend reports 273 suites / 2,068 tests with 91.58%
+statements and 85.31% branches. Storefront transactional coverage remains
+83.73% statements / 76.50% branches. Its production build completes 55 routes
+and verifies 131 static assets without server-secret leakage or loss of the
+named Stripe Trusted Types policy. Responsive, launch, and critical browser
+matrices pass 54 (two expected skips), 14, and 21 tests respectively. The
+compiled Admin matrix passes all 12 cases with zero axe violations, incomplete
+checks, or other findings. Product creation/authoring, News, and Merchandising
+browser screenshots were inspected without a visible regression; these are
+not graphical-desktop captures. Exact-SHA GitHub/Railway acceptance is still
+required before this cohort is closed.
+
+## Combined compatible-dependency release batch — 2026-09-06
+
+The user requested substantially more work between pushes. The pending Form
+update, Admin acceptance safety fix, and the reviewed updates below now form
+one release batch. The shared lockfile and mirrored service policies remain
+the sole dependency graph; no release-age exception or security suppression
+is added. Exact-SHA CI and Railway acceptance apply to the final batch, not
+to intermediate documentation commits.
+
+| Family | Reviewed target | Compatibility evidence and acceptance |
+| ------ | --------------- | ------------------------------------- |
+| Form | React adapter/core 1.33.5 in both apps | Initial local acceptance above; rerun forms against the final resolved graph, retaining their Store 0.11.0 context independently of Pacer. |
+| Resend | 6.18.0 → 6.25.0 | Published `2026-08-28T17:26:33.600Z`; cooled September 4. The [release](https://github.com/resend/resend-node/releases/tag/v6.25.0) adds domain SPF typing; intervening releases preserve the used `emails.send` contract. Node/React Email compatibility is unchanged. Six real-SDK transport regressions cover actual template serialization, provider errors without automatic retries, stable caller retry keys, cancellation, and redaction. No live email is sent. |
+| PostHog Node | 5.46.1 → 5.51.4 | Published `2026-08-27T20:03:32.838Z`; cooled September 3. [Official releases](https://github.com/PostHog/posthog-js/releases/tag/posthog-node%405.51.4) preserve Medusa's construction, capture, identify, groupIdentify, and awaited shutdown calls. Queue/timeout/memory handling changes require mocked transport checks. Optional RxJS and Node requirements remain compatible. The existing override is updated consistently in all three workspace policies. |
+| Pacer | 0.21.1 → 0.22.0 | Published `2026-08-07T02:18:25.340Z`. The [release](https://github.com/TanStack/pacer/releases/tag/%40tanstack/pacer%400.22.0) updates devtools/store dependencies and fixes async/queue utilities. The synchronous Debouncer source used by catalog search is unchanged. Tests preserve the 250 ms quiet interval, latest/empty query values, and cleanup cancellation. |
+| Query | Five direct Storefront packages 5.102.7 → 5.102.8 | Entire set cooled by `2026-09-03T16:07:48.573Z`. The [source comparison](https://github.com/TanStack/query/compare/release-2026-08-27-0832...release-2026-08-27-1607) changes only Preact behavior; React/core/persistence runtime remains unchanged. Keep the coherent graph and public-cache, prefetch, cart, and checkout regressions. Medusa's Backend Query 5.64.2 stays isolated. |
+| Virtual | React 3.14.8 → 3.14.10, core 3.17.6 → 3.17.8 | React target published `2026-08-18T15:06:28.045Z`; core six seconds earlier. [Core fixes](https://github.com/TanStack/virtual/releases/tag/%40tanstack/virtual-core%403.17.8) address viewport resize, removed/out-of-range measurements, and observer cleanup. Validate search and discography scrolling/filter shrink across responsive viewports. |
+| Sonner | 2.0.7 → 2.0.8 | Published `2026-08-09T08:46:10.174Z`. The [patch](https://github.com/emilkowalski/sonner/releases/tag/v2.0.8) fixes early notifications and visibility-listener cleanup alongside accessibility/StrictMode behavior. New real-library tests reproduce both bugs on 2.0.7 and retain accessible StrictMode dismissal. |
+
+All targets are MIT-licensed and outside the unchanged seven-day release
+cooling window. Pacer requires Store 0.11.1 and devtools-event-client 0.5.0;
+both are cooled. The [Store patch](https://github.com/TanStack/store/compare/%40tanstack%2Fstore%400.11.0...%40tanstack%2Fstore%400.11.1)
+replaces numeric enum flags with equivalent constants. Form remains covered
+against its unchanged Store 0.11.0 context. PostHog's compatible cooled core
+and type packages are reviewed with its Node SDK.
+
+Next.js 16.3.4, Resend 6.26.0, and PostHog 5.51.5/5.51.6 remain time-gated.
+Radix is already current. Motion and Lucide are not patch-only changes from
+the installed lines; their review remains separate. Stripe, AWS,
+OpenTelemetry, and Medusa migration requirements are not waived by batching.
+The final root frozen install and peer checks pass. Only the reviewed seven
+families and their compatible transitives change in the lockfile; Backend
+React 18.3.1, Query 5.64.2, and Virtual 3.14.8 remain isolated from Storefront
+React 19.2.8 and its new Query/Virtual versions. Resend's 27 focused tests pass
+on 6.25.0. PostHog's injected-transport smoke drains three correctly shaped
+events on awaited shutdown, with remote configuration disabled and global
+network fetch blocked. It does not establish live analytics acceptance.
+Sonner's three tests now pass, including both old-version failures. Final
+Node 26.5.0 Backend coverage passes 274 suites / 2,074 tests at 91.58%
+statements and 85.31% branches. Storefront coverage retains 94.40% lines,
+95.83% functions, and 86.08% branches in its baseline suite; transactional
+coverage remains 83.73% statements / 76.50% branches. Both pinned-runtime
+production builds pass, including the Storefront's 55 routes and 131-asset
+secret/Trusted Types scan. The pinned-runtime Admin matrix passes 12/12
+with zero axe violations, incomplete checks, or other findings. Representative
+rendered screenshots were inspected. Virtual-list resize, shrink, and recovery
+also passed headed desktop/mobile checks, with a real desktop capture at
+`/tmp/remorseless-virtual-desktop-20260906.png`.
+
+Validation exposed an implicit-install risk in the Backend build wrapper:
+launching `pnpm exec` from a nested workspace could resolve a different graph.
+The wrapper now invokes the installed Medusa CLI with the current Node binary,
+validates CLI availability before removing generated output, and retains
+fail-closed compilation/artifact checks. Four subprocess regressions and a
+real direct-node build pass. Generated accidental nested dependencies were
+moved outside the repository, root links restored, and final pinned-runtime
+coverage/builds reconfirmed against Medusa 2.18.0. No dependency-policy
+relaxation or unplanned framework upgrade remains. This build fix and the
+Admin harness fix have separate logical commits in the same release batch.
+Final pinned-runtime browsers pass: responsive 60 tests (two expected skips),
+launch 14, and critical 27 across Chromium, Firefox, and WebKit. The new
+virtual-list cases run in all three engines. Fixture search fallback and
+navigation stream-cancellation diagnostics remain visible; these passing
+tests are not a zero-error-log or live-provider acceptance claim. Exact-SHA
+GitHub workflows, runtime image evidence, and Railway deployment acceptance
+remain pending for the combined batch.
+
+## Compatibility upgrade plan — 2026-09-03, batching revised 2026-09-06
 
 `pnpm outdated --recursive --format json` was reviewed against registry publish
-times and official release notes. Each runtime family below owns a separate
-commit, complete local gate, exact-SHA CI run, and Railway acceptance when its
-watched source changes. A failed cohort is reverted independently; unrelated
-families must not be bundled into its lockfile diff.
+times and official release notes. The user explicitly replaced the original
+one-family-per-push cadence on 2026-09-06 with larger release batches.
+Compatible families may now share a reviewed lockfile resolution, full local
+gate, exact-SHA CI run, and watched-service Railway acceptance. Preserve
+family-specific upstream review and focused tests, and use logical commits
+for the implementation and test-harness changes. Do not perform a deployment
+or documentation-only push after every small family. Breaking migrations,
+cooling holds, and provider-specific acceptance requirements remain in force.
 
 | Order | Cohort | Target and boundary |
 | ----- | ------ | ------------------- |
 | 1 | Next.js | Complete the 16.3.3 critical security update above. Re-evaluate 16.3.4 only after its cooling expiry and rerun the image, nonce/CSP, Trusted Types, production-build, responsive browser, accessibility, and Lighthouse gates. |
 | 2 | `qs` | Complete: root, Backend, and Storefront use one exact 6.16.0 graph after the cooling expiry; both advisory ignores, all three patch copies, and the temporary verifier were removed together. |
 | 3 | Medusa | Move every Backend and Storefront `@medusajs/*` package together from 2.18.0 to 2.19.0. The official [2.19 release](https://github.com/medusajs/medusa/releases/tag/v2.19.0) is a breaking Admin migration to Vite 7.3.6 and React Router 7.18.2. Audit removed SDK Product Option methods, `Response.json()` and `defer()` usage, `UIMatch.loaderData`, cart/order wildcard totals, every Medusa patch, Admin browser/a11y contracts, migrations, and complete checkout/refund/tax behavior before staging. |
-| 4 | TanStack | Completed the five Query persistence/runtime package update to 5.102.7 with local, exact-SHA CI, runtime-image, and Railway acceptance. Keep Form 1.33.5 and Pacer 0.22.0 in separate commits because forms own validation/focus behavior and Pacer is a pre-1.0 minor. Hold Table 9 for an explicit API migration instead of forcing it into a patch cohort. |
+| 4 | TanStack | Completed the five Query persistence/runtime package update to 5.102.7 with local, exact-SHA CI, runtime-image, and Railway acceptance. Review Form 1.33.5, Pacer 0.22.0, and cooled Query patches individually, then include compatible results in the combined batch. Preserve validation/focus, debounce/cancellation, and cache/persistence regressions. Hold Table 9 for an explicit API migration. |
 | 5 | Stripe | Update `stripe` 22.6.0 separately from the browser pair. Its release pins a new API version and changes connection-error behavior. Update `@stripe/react-stripe-js` 6.8.2 with `@stripe/stripe-js` 9.14.0 only after rebasing or removing the exact Trusted Types loader patch, then rerun checkout, 3DS, response-loss, webhook, refund, CSP, and three-engine browser matrices. |
 | 6 | AWS SDK | Update the S3 client to 3.1119.0 with its compatible core graph. Recheck the locally patched abort/timeout behavior, MinIO path-style requests, release `HeadBucket`, upload compensation, media backup, and runtime image scan before removing any core override. |
 | 7 | OpenTelemetry | Move the experimental SDK and matching instrumentations as one compatibility set: SDK Node 0.221.0 and the corresponding Redis, ioredis, Knex, PostgreSQL, and runtime packages. Keep stable API/trace packages on their compatible line; prove preload ordering, shutdown, redaction, trace correlation, RED metrics, and provider-disabled startup. |
-| 8 | Small runtime and tool patches | Redis 6.2.1 is complete with local, exact-SHA CI, runtime-image, Railway, and staging acceptance. Continue separate low-risk commits for Resend 6.24.0, PostHog 5.51.3, UI/test patches, and exact GitHub Action commit updates. Preserve functional email, rate-limit, analytics, browser, coverage, immutable-action, and egress-policy tests for the component changed. |
+| 8 | Small runtime and tool patches | Redis 6.2.1 is complete with local, exact-SHA CI, runtime-image, Railway, and staging acceptance. Batch reviewed Resend, PostHog, and UI/test patches; recheck newest cooled versions instead of assuming the September 3 targets remain current. Preserve functional email, rate-limit, analytics, browser, and coverage tests. Exact GitHub Action updates still require immutable-action and egress-policy verification. |
 
 MikroORM 7, Awilix 13, the Meilisearch plugin 2, TanStack Table 9, Motion 13,
 JSDOM 30, TypeScript 7, and Backend React 19 remain migration projects rather

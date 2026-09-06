@@ -1076,6 +1076,97 @@ test("desktop filters preserve position while results refresh", async ({
   )
 })
 
+test("virtual catalog rows survive viewport resize and result shrink", async ({
+  page,
+}, testInfo) => {
+  await page.emulateMedia({ reducedMotion: "reduce" })
+  const pageErrors: string[] = []
+  page.on("pageerror", (error) => pageErrors.push(error.message))
+  await page.route("**/api/catalog/filters/**", async (route) => {
+    const fixture =
+      catalogFilterFixtures[new URL(route.request().url()).pathname]
+    if (!fixture) {
+      await route.fallback()
+      return
+    }
+    await route.fulfill({ json: fixture })
+  })
+  await page.route("**/api/search/products", async (route) => {
+    const request = route.request().postDataJSON() as ProductSearchRequest
+    const fixture =
+      request.query === "single release"
+        ? catalogSearchFixture
+        : {
+            ...createPaginationFixture(0, 60),
+            total: 60,
+            hasMore: false,
+            nextOffset: 60,
+          }
+    await route.fulfill({ json: fixture })
+  })
+
+  await page.goto("/catalog", { waitUntil: "domcontentloaded" })
+  await rejectNonEssentialCookies(page)
+  const search = page.getByRole("searchbox", {
+    name: "Search catalog by product or artist name",
+  })
+  await search.fill("virtual catalog")
+  await expect(page.getByText("Showing 60 of 60")).toBeVisible()
+  const results = page.getByRole("region", { name: "Catalog results" })
+  await results.evaluate((element) => {
+    window.scrollTo({
+      top: element.getBoundingClientRect().top + window.scrollY + 1600,
+    })
+  })
+  await expect
+    .poll(() => page.evaluate(() => window.scrollY))
+    .toBeGreaterThan(1000)
+
+  const originalViewport = page.viewportSize()
+  expect(originalViewport).not.toBeNull()
+  await page.setViewportSize({
+    width: originalViewport!.width >= 1024 ? 768 : 1024,
+    height: originalViewport!.height,
+  })
+  await expect
+    .poll(() =>
+      results.getByRole("heading", { level: 3 }).evaluateAll((headings) =>
+        headings.some((heading) => {
+          const bounds = heading.getBoundingClientRect()
+          return bounds.top < window.innerHeight && bounds.bottom > 0
+        })
+      )
+    )
+    .toBe(true)
+  await page.screenshot({ path: testInfo.outputPath("catalog-resized.png") })
+  await page.setViewportSize(originalViewport!)
+
+  await search.fill("single release")
+  await expect(page.getByText("Showing 1 of 1")).toBeVisible()
+  const remainingRelease = results.getByRole("heading", {
+    name: "Pathological Decomposition",
+    exact: true,
+  })
+  await remainingRelease.scrollIntoViewIfNeeded()
+  await expect(remainingRelease).toBeInViewport()
+  await expect(results.locator("[data-index]")).toHaveCount(1)
+  await expect(
+    results.getByRole("heading", { name: /^Pagination Test/ })
+  ).toHaveCount(0)
+  await page.screenshot({ path: testInfo.outputPath("catalog-shrunk.png") })
+
+  await page.getByRole("button", { name: "Clear catalog search" }).click()
+  await expect(search).toHaveValue("")
+  // An empty query restores the server-provided catalog, not this intercepted
+  // search fixture; explicitly search again to rebuild the larger virtual list.
+  await search.fill("virtual catalog restored")
+  await expect(page.getByText("Showing 60 of 60")).toBeVisible()
+  await expect(
+    results.getByRole("heading", { name: "Pagination Test 1", exact: true })
+  ).toBeVisible()
+  expect(pageErrors).toEqual([])
+})
+
 test("catalog loads the next result window before the end is reached", async ({
   page,
 }) => {
@@ -1213,6 +1304,66 @@ test("discography header precedes every desktop row", async ({
   expect(headerBounds!.y + headerBounds!.height).toBeLessThanOrEqual(
     rowBounds!.y + 1
   )
+})
+
+test("virtual discography rows recover after resize and empty filtering", async ({
+  page,
+}, testInfo) => {
+  await page.emulateMedia({ reducedMotion: "reduce" })
+  const pageErrors: string[] = []
+  page.on("pageerror", (error) => pageErrors.push(error.message))
+  await page.goto("/discography", { waitUntil: "domcontentloaded" })
+  await rejectNonEssentialCookies(page)
+  const releases = page.getByRole("list", {
+    name: /^\d+ discography releases$/,
+  })
+  const rows = page.getByTestId("discography-row")
+  await expect(rows.first()).toBeVisible()
+  const originalLabel = await releases.getAttribute("aria-label")
+  const originalViewport = page.viewportSize()
+  expect(originalViewport).not.toBeNull()
+  await page.setViewportSize({
+    width: originalViewport!.width >= 1024 ? 768 : 1024,
+    height: originalViewport!.height,
+  })
+  await rows.first().scrollIntoViewIfNeeded()
+  await expect(rows.first()).toBeInViewport()
+  await expect
+    .poll(async () => (await rows.first().boundingBox())?.height ?? 0)
+    .toBeGreaterThan(0)
+  await page.screenshot({
+    path: testInfo.outputPath("discography-resized.png"),
+  })
+
+  await page
+    .getByRole("searchbox", { name: "Search discography" })
+    .fill("ci-no-matching-virtual-release")
+  await expect(
+    page.getByText("No matching releases", { exact: true })
+  ).toBeVisible()
+  await expect(releases).toHaveCount(0)
+  await expect(rows).toHaveCount(0)
+  await page.setViewportSize(originalViewport!)
+  await page.getByRole("button", { name: "Clear discography search" }).click()
+  await expect(releases).toHaveAttribute("aria-label", originalLabel!)
+  await rows.first().scrollIntoViewIfNeeded()
+  await expect(rows.first()).toBeInViewport()
+  await expect(rows.first()).toHaveAttribute("aria-posinset", "1")
+  if (originalViewport!.width >= 1024) {
+    const headerBounds = await page
+      .getByTestId("discography-table-header")
+      .boundingBox()
+    const rowBounds = await rows.first().boundingBox()
+    expect(headerBounds).not.toBeNull()
+    expect(rowBounds).not.toBeNull()
+    expect(headerBounds!.y + headerBounds!.height).toBeLessThanOrEqual(
+      rowBounds!.y + 1
+    )
+  }
+  await page.screenshot({
+    path: testInfo.outputPath("discography-restored.png"),
+  })
+  expect(pageErrors).toEqual([])
 })
 
 test("checkout remains accessible and contained with device emulation", async ({
