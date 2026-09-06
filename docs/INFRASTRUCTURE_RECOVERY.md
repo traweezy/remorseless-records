@@ -478,6 +478,51 @@ queue/stalled-job reconciliation, backup retention, p95 latency, production
 capacity or launch approval. The existing capacity/persistence rollout item
 remains open until the controlled change and timed operational drill pass.
 
+September 6 staging observation at accepted revision
+`6f61520fbd3677b15aeecb1052a86b8dffff0e9d`: the existing audit ran over
+Railway private networking from Storefront deployment
+`edbdef4d-832c-472b-9a82-b71d9b82e4ed`, instance
+`bcfee748-4c5c-45f4-accf-2491b3666238`. Railway's Redis
+`serviceInstanceLimits.containers.memoryBytes` reported **32,000,000,000
+bytes**, including plan defaults. This is an independently verified ceiling,
+not evidence that reserving 70% of it is appropriate or cost-approved.
+The endpoint fingerprint matched Redis service metadata:
+`9702205e1609f960448554037c844c03b3bb22c347aea0a37331dec3f571bc41`.
+
+The 133 ms audit returned exit 2 for exactly `maxmemory_unbounded` and
+`rdb_schedule_disabled`. `maxmemory` was zero; used memory was 7,788,776 bytes
+and RSS 18,878,464 bytes. AOF was enabled with `everysec`, rewrite fsync
+suppression disabled, and last write/rewrite status `ok`. Historical delayed
+fsync was 942; eviction and rejected-connection counts were zero. These
+counters do not establish a rate, freshness guarantee, recovery result or SLO.
+The complete private SSH observation took 2,922 ms.
+
+No settings, keys, ACLs or files were changed or uploaded. Backend's existing
+Redis URL contains a query string and was rejected before connecting; it was
+not normalized to bypass policy. Storefront's existing query-free private
+reference supplied the safe alternative, with credentials retained in-process.
+Before remediation, inspect the current volume, backup schedule and immutable
+image, size the ceiling using a reviewed load/fork budget, and approve exact
+configuration and rollback changes. This observation does not close the live
+capacity/persistence rollout or timed recovery requirement.
+
+Follow-up read-only metadata inspection found Redis 8.0.3 running from
+deployment `f75e3583-3d71-4787-9ada-12852e976fa0` (created July 15, 2025).
+That deployment records `bitnami/redis`, while the configured service source
+is `railwayapp/redis`; no immutable image digest/tag was retained in the
+inspected metadata. A generic redeploy could therefore cross an unverified
+image/source boundary. Do not use redeploy as a harmless prerequisite.
+
+Volume `1b69088f-0a38-4ecb-bddf-d43715b97d52`, staging volume instance
+`1f83ec52-ded6-4c3b-a0cc-8622c3bdf5b6`, was READY at `/bitnami`, provisioned
+at 50,000 MB with 1,071.566848 MB used and no pending deletion. Both backup
+schedules and recorded backups were empty. Redis's configured persistence
+directory is under `/bitnami` and its append directory is relative; this
+configuration check does not prove filesystem realpath/symlink containment.
+The first proposed change is a named manual backup, not a restart, restore,
+image migration or Redis configuration edit. No backup has been created by
+this read-only inspection.
+
 `pnpm run qa:redis-capacity` exercises parsing, policy, actual client protocol,
 redaction, deadlines and socket cleanup with enforced 80% helper coverage.
 `qa:redis-capacity:integration` is part of the existing disposable Backend

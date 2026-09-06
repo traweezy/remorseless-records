@@ -46,13 +46,14 @@ September 3 live read remained healthy with Redis `ok`, a completed heartbeat,
 no incident latch, and no alert reason.
 
 The accepted implementation head
-`1f7558817584e174f3aaed51e26a6a3de9294bbf` includes Storefront Query 5.102.8,
+`6f61520fbd3677b15aeecb1052a86b8dffff0e9d` includes Storefront Query 5.102.8,
 both direct Redis clients and the shared Redis 6.2.1 graph, upstream `qs`
 6.16.0, Storefront Trusted Types enforcement, and the accepted combined
 Form/Resend/PostHog/Pacer/Virtual/Sonner, AWS/Stripe/OpenTelemetry, and
 UI/parser/image/tooling cohorts, plus the recovery safeguards, deployed
 browser synchronization correction, bounded PostgreSQL recovery execution and
-read-only Redis capacity/persistence observation.
+read-only Redis capacity/persistence observation and shared local/CI contract
+enforcement.
 The Backend/Admin Query 5.64.2 graph remains
 isolated and unchanged. Full local acceptance, all four exact-SHA GitHub
 workflows, both runtime-image validations, and both Railway staging deployments
@@ -91,6 +92,28 @@ exposure, backups/PITR and timed restore drills; published and attested runtime
 artifacts; and production monitoring/change approval. No production
 environment exists.
 
+## Active grouped application-correctness follow-up
+
+The current local candidate groups three reproduced defects after the accepted
+`6f61520` release: late checkout reads overwriting authoritative writes;
+Storefront completion/error identity collisions between concurrent requests
+sharing a trace; and Medusa's official payment webhook reflecting internal
+enqueue exceptions in public responses. Regression tests cover cancellation,
+revision-scoped shipping options, exact root ownership/replay isolation and
+the installed 2.18 webhook contract. The actual built Next runtime also has a
+deterministic four-request provider barrier test in Browser Smoke CI. No
+payment provider, session key, dependency version or sampling policy changed.
+This candidate is not accepted until its combined local and exact-SHA staging
+gates complete; keep the accepted head above until then.
+
+The September 6 read-only Redis audit is now live evidence, not just a fixture:
+the verified Railway ceiling is 32,000,000,000 bytes, and the existing private
+audit returned `maxmemory_unbounded` plus `rdb_schedule_disabled` in 133 ms.
+AOF/everysec was enabled. No configuration, keys, ACLs or files changed.
+`INFRASTRUCTURE_RECOVERY.md` records exact deployment/instance provenance and
+bounded counters. The live capacity/persistence rollout remains unchecked;
+70% of a plan ceiling is not an approved capacity recommendation.
+
 ## Operating contract
 
 - `staging` is the default integration branch and the only branch connected to
@@ -123,16 +146,16 @@ environment exists.
 - Git branches: `staging` is the default/integration branch; `master` is the
   protected production-candidate branch. Retired `main` was deleted.
 - Latest implementation/runtime-image validation SHA accepted:
-  `1f7558817584e174f3aaed51e26a6a3de9294bbf`.
+  `6f61520fbd3677b15aeecb1052a86b8dffff0e9d`.
 - Original documentation-only staging acceptance:
   `060af53115ed1ae85d2f8d02d6fd0590c8e6a02d`.
 - Railway project: `store`; only the `staging` environment exists.
 - Application acceptance Backend deployment:
-  `92f4638d-fc09-4dc6-87b7-15e6d57b3f12` (`SUCCESS`,
-  `1f7558817584e174f3aaed51e26a6a3de9294bbf`).
+  `c732b2a8-5dd1-4d75-8531-452cc794be8a` (`SUCCESS`,
+  `6f61520fbd3677b15aeecb1052a86b8dffff0e9d`).
 - Application acceptance Storefront deployment:
-  `5eb55dc0-6a1d-47fb-bbb8-ccbb9f52a1dd` (`SUCCESS`,
-  `1f7558817584e174f3aaed51e26a6a3de9294bbf`).
+  `edbdef4d-832c-472b-9a82-b71d9b82e4ed` (`SUCCESS`,
+  `6f61520fbd3677b15aeecb1052a86b8dffff0e9d`).
 - Backend and Storefront `/live` and `/ready` checks return HTTP 200.
 - The public storefront route/API smoke matrix passes. `/products`
   intentionally redirects to `/catalog`.
@@ -4355,10 +4378,28 @@ The aggregate passed in 18.05 seconds (under the 60-second local target), with
 178 recovery/media/Redis/provider/operations/observability tests plus static
 checks. Its independent 71-case validator suite passed at 96.95% lines,
 95.56% branches and 94.44% functions with enforced 80% floors. Full root QA over
-1,316 files and fresh Backend/Admin/Storefront builds passed. Earlier release
-evidence still distinguishes local-only checks from exact-SHA CI; this change
-does not retroactively add remote coverage. The follow-up's exact-SHA remote
-acceptance is still required. No live settings, credentials or data changed.
+1,316 files and fresh Backend/Admin/Storefront builds passed. The eight-file
+follow-up is pushed at `6f61520fbd3677b15aeecb1052a86b8dffff0e9d`. Root CI
+`34063920612` passed with all 71 parity and 178 shared tests executed remotely;
+the added shared step took about 17.99 seconds under existing blocked egress.
+Backend `34063920627`, Storefront `34063920599` and Runtime Images
+`34063920608` also passed at the same SHA, including app coverage, 97 real
+service/recovery cases, three API contracts, browser matrices, pa11y,
+18 Lighthouse reports, image scans and SBOM/OCI verification. Publication
+skipped. Earlier release evidence still distinguishes local-only checks from
+exact-SHA CI; this change does not retroactively add remote coverage.
+
+Both Railway services reached `SUCCESS` at the final SHA. Exact-SHA
+health/readiness, dependencies, catalog, the fresh `22:44:00.062Z` scheduler
+heartbeat, security headers, image optimization and strict runtime/HTTP request
+correlations passed. Deployed browser acceptance passed 75 cases/eight
+expected skips with zero retries in 1.9 minutes. Bounded Storefront error
+samples retained 12 synthetic fixture 404s, 96 client 499s and the deliberate
+guard 400, with no HTTP 5xx; known stream-cancellation noise remains visible.
+No live settings, credentials or data changed. Final evidence is in the
+handoff and remains local for the next substantive batch, without a
+documentation-only push. Across both completed batches, 21 tracked files
+changed; production approval and operational evidence gates remain open.
 
 ## TanStack Form patch compatibility
 

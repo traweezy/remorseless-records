@@ -42,6 +42,16 @@ text.
   request, trace, span, service, environment, and commit identity. Paths,
   queries, IP addresses, user agents, headers, bodies, and raw errors are
   deliberately absent.
+  Storefront joins the proxy's generated outgoing parent span to the exact
+  route root, not just the trace ID: concurrent HTTP requests can share a
+  trace. Its registry remains capped at 10,000 requests and five minutes;
+  child-span associations use weak references. An unrelated pre-proxy root or
+  replayed parent must not consume another request's completion. Missing
+  `next.route` does not suppress an otherwise owned route completion.
+  The existing `parentbased_always_on` sampler remains unchanged: an incoming
+  unsampled parent (`traceparent` flags `00`) can omit SDK spans and therefore
+  these processor-derived completion metrics. Do not treat them as an
+  unsampled total-request counter; Railway HTTP evidence is separate.
 - Browser telemetry posts same-origin without credentials. The accepted schema
   contains only the Web Vital name/rating/rounded value or an already-normalized
   framework error digest and boundary scope.

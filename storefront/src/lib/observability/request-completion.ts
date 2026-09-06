@@ -1,12 +1,11 @@
 import "server-only"
 
-import {
-  isSpanContextValid,
-  trace,
-  type Context,
-  type Span,
-} from "@opentelemetry/api"
-import type { ReadableSpan, SpanProcessor } from "@opentelemetry/sdk-trace-base"
+import { isSpanContextValid, trace, type Context } from "@opentelemetry/api"
+import type {
+  ReadableSpan,
+  Span,
+  SpanProcessor,
+} from "@opentelemetry/sdk-trace-base"
 
 import type { RequestCorrelation } from "@/lib/http/correlation"
 
@@ -15,6 +14,7 @@ import { recordStorefrontHttpMetric } from "./metrics"
 
 type RegisteredRequest = {
   expiresAt: number
+  ownerSpanId?: string
   requestId: string
 }
 
@@ -36,10 +36,18 @@ const DEFAULT_MAX_ENTRIES = 10_000
 const DEFAULT_TTL_MS = 5 * 60_000
 const NEXT_ROOT_SPAN_TYPE = "BaseServer.handleRequest"
 const TRACE_ID_PATTERN = /^[0-9a-f]{32}$/u
+const SPAN_ID_PATTERN = /^[0-9a-f]{16}$/u
+const ZERO_TRACE_ID = "0".repeat(32)
+const ZERO_SPAN_ID = "0".repeat(16)
 const REQUEST_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u
 const REGISTRY_SYMBOL = Symbol.for(
-  "com.remorselessrecords.storefront.request-completion-registry"
+  "com.remorselessrecords.storefront.request-completion-registry.v2"
 )
+const SPAN_REGISTRY_SYMBOL = Symbol.for(
+  "com.remorselessrecords.storefront.request-completion-spans.v2"
+)
+
+type RequestSpanKey = { traceId: string; spanId: string }
 
 export class BoundedRequestRegistry {
   readonly #maxEntries: number
@@ -65,54 +73,87 @@ export class BoundedRequestRegistry {
     return this.#requests.size
   }
 
-  register(traceId: string, requestId: string): void {
+  register(traceId: string, spanId: string, requestId: string): void {
     if (
       !TRACE_ID_PATTERN.test(traceId) ||
+      traceId === ZERO_TRACE_ID ||
+      !SPAN_ID_PATTERN.test(spanId) ||
+      spanId === ZERO_SPAN_ID ||
       !REQUEST_ID_PATTERN.test(requestId)
     ) {
       return
     }
 
     const now = this.#now()
+    const key = `${traceId}:${spanId}`
     this.#pruneExpired(now)
-    this.#requests.delete(traceId)
+    this.#requests.delete(key)
     while (this.#requests.size >= this.#maxEntries) {
-      const oldestTraceId = this.#requests.keys().next().value
-      if (!oldestTraceId) {
+      const oldestKey = this.#requests.keys().next().value
+      if (!oldestKey) {
         break
       }
-      this.#requests.delete(oldestTraceId)
+      this.#requests.delete(oldestKey)
     }
-    this.#requests.set(traceId, {
+    this.#requests.set(key, {
       expiresAt: now + this.#ttlMs,
       requestId,
     })
   }
 
-  lookup(traceId: string): string | undefined {
-    const registered = this.#requests.get(traceId)
+  lookup(traceId: string, spanId: string): string | undefined {
+    const key = `${traceId}:${spanId}`
+    const registered = this.#requests.get(key)
     if (!registered) {
       return undefined
     }
     if (registered.expiresAt <= this.#now()) {
-      this.#requests.delete(traceId)
+      this.#requests.delete(key)
       return undefined
     }
     return registered.requestId
   }
 
-  consume(traceId: string): string | undefined {
-    const requestId = this.lookup(traceId)
-    this.#requests.delete(traceId)
+  claim(traceId: string, spanId: string, ownerSpanId: string): boolean {
+    if (
+      !SPAN_ID_PATTERN.test(ownerSpanId) ||
+      ownerSpanId === ZERO_SPAN_ID ||
+      !this.lookup(traceId, spanId)
+    ) {
+      return false
+    }
+    const key = `${traceId}:${spanId}`
+    const registered = this.#requests.get(key)
+    if (
+      !registered ||
+      (registered.ownerSpanId && registered.ownerSpanId !== ownerSpanId)
+    ) {
+      return false
+    }
+    this.#requests.set(key, { ...registered, ownerSpanId })
+    return true
+  }
+
+  consume(
+    traceId: string,
+    spanId: string,
+    ownerSpanId: string
+  ): string | undefined {
+    const requestId = this.lookup(traceId, spanId)
+    const key = `${traceId}:${spanId}`
+    if (!ownerSpanId || this.#requests.get(key)?.ownerSpanId !== ownerSpanId) {
+      return undefined
+    }
+    this.#requests.delete(key)
     return requestId
   }
 
   #pruneExpired(now: number): void {
-    for (const [traceId, registered] of this.#requests) {
+    for (const [key, registered] of this.#requests) {
       if (registered.expiresAt > now) {
         continue
       }
-      this.#requests.delete(traceId)
+      this.#requests.delete(key)
     }
   }
 }
@@ -129,6 +170,12 @@ const sharedRequests =
     : new Map<string, RegisteredRequest>()
 registryGlobal[REGISTRY_SYMBOL] = sharedRequests
 const requestRegistry = new BoundedRequestRegistry({ requests: sharedRequests })
+const existingSpans = registryGlobal[SPAN_REGISTRY_SYMBOL]
+const requestSpans =
+  existingSpans instanceof WeakMap
+    ? (existingSpans as WeakMap<object, RequestSpanKey>)
+    : new WeakMap<object, RequestSpanKey>()
+registryGlobal[SPAN_REGISTRY_SYMBOL] = requestSpans
 
 export const getActiveTraceContext = ():
   | { traceFlags: string; traceId: string }
@@ -147,7 +194,18 @@ export const getActiveTraceContext = ():
 export const registerRequestCompletion = (
   correlation: RequestCorrelation
 ): void => {
-  requestRegistry.register(correlation.traceId, correlation.requestId)
+  requestRegistry.register(
+    correlation.traceId,
+    correlation.spanId,
+    correlation.requestId
+  )
+  const activeSpan = trace.getActiveSpan()
+  if (activeSpan?.spanContext().traceId === correlation.traceId) {
+    requestSpans.set(activeSpan, {
+      traceId: correlation.traceId,
+      spanId: correlation.spanId,
+    })
+  }
 }
 
 const deploymentIdentity = getStorefrontRuntimeIdentity()
@@ -173,6 +231,7 @@ const durationMilliseconds = (span: ReadableSpan): number =>
 type ProcessorOptions = {
   recordMetric?: typeof recordStorefrontHttpMetric
   registry?: BoundedRequestRegistry
+  spans?: WeakMap<object, RequestSpanKey>
   write?: CompletionLogWriter
 }
 
@@ -180,25 +239,80 @@ export class StorefrontHttpCompletionProcessor implements SpanProcessor {
   readonly #registry: BoundedRequestRegistry
   readonly #recordMetric: typeof recordStorefrontHttpMetric
   readonly #write: CompletionLogWriter
+  readonly #spans: WeakMap<object, RequestSpanKey>
 
   constructor(options: ProcessorOptions = {}) {
     this.#registry = options.registry ?? requestRegistry
     this.#recordMetric = options.recordMetric ?? recordStorefrontHttpMetric
     this.#write = options.write ?? defaultWrite
+    this.#spans = options.spans ?? requestSpans
   }
 
-  onStart(_span: Span, _parentContext: Context): void {}
+  onStart(span: Span, parentContext: Context): void {
+    const parent = trace.getSpan(parentContext)
+    if (!parent) {
+      return
+    }
+    const parentKey = parent.spanContext()
+    const spanContext = span.spanContext()
+    if (
+      !isSpanContextValid(parentKey) ||
+      !isSpanContextValid(spanContext) ||
+      parentKey.traceId !== spanContext.traceId
+    ) {
+      return
+    }
+    if (span.attributes["next.span_type"] === NEXT_ROOT_SPAN_TYPE) {
+      // The route root starts before its forwarded parent can be returned to
+      // a client. A later pre-proxy root can replay that parent, but cannot
+      // claim its completion or inherit its request's error correlation.
+      if (
+        this.#registry.claim(
+          parentKey.traceId,
+          parentKey.spanId,
+          spanContext.spanId
+        )
+      ) {
+        this.#spans.set(span, {
+          traceId: parentKey.traceId,
+          spanId: parentKey.spanId,
+        })
+      }
+      return
+    }
+    const key = this.#spans.get(parent)
+    if (
+      key?.traceId === spanContext.traceId &&
+      this.#registry.lookup(key.traceId, key.spanId)
+    ) {
+      this.#spans.set(span, { traceId: key.traceId, spanId: key.spanId })
+    }
+  }
 
   onEnd(span: ReadableSpan): void {
     if (span.attributes["next.span_type"] !== NEXT_ROOT_SPAN_TYPE) {
       return
     }
-    if (!stringAttribute(span.attributes["next.route"])) {
+    // The proxy creates a unique outgoing parent for the route's root span.
+    // Trace IDs are shared by sibling requests; Next also emits a pre-proxy
+    // root and can omit next.route, so neither a trace nor route is an identity.
+    const parent = span.parentSpanContext
+    if (!parent || !isSpanContextValid(parent)) {
       return
     }
 
     const spanContext = span.spanContext()
-    const requestId = this.#registry.consume(spanContext.traceId)
+    if (
+      !isSpanContextValid(spanContext) ||
+      parent.traceId !== spanContext.traceId
+    ) {
+      return
+    }
+    const requestId = this.#registry.consume(
+      parent.traceId,
+      parent.spanId,
+      spanContext.spanId
+    )
     if (!requestId) {
       return
     }
@@ -246,8 +360,11 @@ export const logStorefrontRequestError = (input: RequestErrorInput): void => {
   const activeSpan = trace.getActiveSpan()
   const spanContext = activeSpan?.spanContext()
   const hasValidSpan = Boolean(spanContext && isSpanContextValid(spanContext))
-  const traceId = hasValidSpan ? spanContext?.traceId : undefined
-  const requestId = traceId ? requestRegistry.lookup(traceId) : undefined
+  const requestKey = activeSpan ? requestSpans.get(activeSpan) : undefined
+  const requestId =
+    hasValidSpan && requestKey && requestKey.traceId === spanContext?.traceId
+      ? requestRegistry.lookup(requestKey.traceId, requestKey.spanId)
+      : undefined
   const digest =
     input.digest && /^[A-Za-z0-9_-]{1,128}$/u.test(input.digest)
       ? input.digest

@@ -17,6 +17,7 @@
     "typecheck": "tsc --project tsconfig.json --noEmit",
     "test": "vitest run",
     "test:unit": "vitest run",
+    "test:runtime:observability": "node --test scripts/request-completion.runtime.test.mjs",
     "test:coverage": "pnpm run test:coverage:baseline && pnpm run test:coverage:transactional",
     "test:coverage:baseline": "vitest run --coverage",
     "test:coverage:transactional": "vitest run --coverage --config=vitest.transactional.config.ts",

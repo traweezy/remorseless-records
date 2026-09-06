@@ -334,6 +334,9 @@ jobs:
       - name: Install pinned Playwright browsers
         run: pnpm --filter remorseless-records-storefront exec playwright install --with-deps chromium firefox webkit
 
+      - name: Verify concurrent request completion in the built runtime
+        run: pnpm --filter remorseless-records-storefront run test:runtime:observability
+
       - name: Run responsive Chromium smoke tests
         run: pnpm --filter remorseless-records-storefront run test:e2e --config=playwright.ci.config.ts
 

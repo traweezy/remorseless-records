@@ -203,6 +203,21 @@ For historical releases, distinguish local/pre-push evidence from checks that
 their exact workflow SHA actually ran; the shared aggregate does not
 retroactively add CI evidence to earlier commits.
 
+After a fixture-backed Storefront build, run
+`pnpm --filter remorseless-records-storefront run test:runtime:observability`.
+Browser Smoke CI runs the same test against its existing build. It starts
+owned ephemeral loopback Next/provider processes, holds four health requests
+at a provider barrier with the same incoming trace and parent, and checks one
+correct, redacted completion per request plus a request with no incoming trace.
+The fixture deliberately has no Redis, so its health responses are 503; this
+is correlation acceptance, not live readiness. Output capture is bounded and
+raw runtime logs are not printed. Unit/real-SDK tests separately cover reverse
+completion, duplicate ends, parent replay, child error correlation, expiration
+and cardinality. Checkout hooks are included in both execution and measurement
+of the existing transactional coverage gate, not just baseline test execution.
+No retry, browser sandbox, accessibility or performance
+budget is relaxed by this test.
+
 The cooling gate covers the root, Backend, Storefront, and generated Backend
 server policies. It requires strict seven-day release aging, rejects missing
 registry publication times and exotic transitive sources, and forces frozen

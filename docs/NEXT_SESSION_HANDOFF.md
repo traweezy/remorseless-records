@@ -10,18 +10,20 @@ artifact Railway is running; verify Railway separately with the sequence below.
 
 - Branch: `staging`
 - Current accepted implementation head:
-  `1f7558817584e174f3aaed51e26a6a3de9294bbf`. It includes the accepted Next.js
+  `6f61520fbd3677b15aeecb1052a86b8dffff0e9d`. It includes the accepted Next.js
   16.3.3 build split, Redis 6.2.1, upstream `qs` 6.16.0, Trusted Types
   enforcement, the Form/Resend/PostHog/Pacer/Query/Virtual/Sonner batch, and
   the AWS/Stripe/OpenTelemetry, UI/parser/image/tooling, and recovery batches.
   Complete local, exact-SHA CI, runtime-image, and Railway staging evidence is recorded
   below, including the deployed test-only hydration correction and the bounded
-  PostgreSQL backup/restore execution and Redis observation batches.
+  PostgreSQL backup/restore execution, Redis observation and shared-CI
+  contract parity batches.
 - Latest exact runtime-image validation SHA:
-  `1f7558817584e174f3aaed51e26a6a3de9294bbf`
+  `6f61520fbd3677b15aeecb1052a86b8dffff0e9d`
 - The prior PostgreSQL release's acceptance notes shipped with the substantive
-  Redis batch. Redis acceptance notes are grouped with the shared-CI contract
-  follow-up; no documentation-only push was made.
+  Redis batch; Redis acceptance notes shipped with the shared-CI contract
+  follow-up. Final CI-parity acceptance notes remain local for the next
+  substantive batch; no documentation-only push was made.
 - Original implementation/runtime-image acceptance SHA
   `61fd86889a4adca23e1e9704e11c889a1fd986a9` is pushed to
   `origin/staging`. Backend source deployment acceptance is documented at
@@ -1389,8 +1391,161 @@ Backend/Admin builds passed in 6.82/17.52 seconds; the Storefront compiled in
 10.0 seconds, generated 55 static pages and passed the 131-asset secret/Trusted
 Types scan using the existing CI-only provider/secret fixtures. Expected local
 search/category fallback warnings remain visible. The owned in-process fixture
-closed after the build; no live environment file changed. Exact-SHA CI and
-staging acceptance for this follow-up remain required before its acceptance.
+closed after the build; no live environment file changed.
+
+The eight-file follow-up (867 insertions, 21 deletions) is pushed at
+`6f61520fbd3677b15aeecb1052a86b8dffff0e9d`. Pre-commit QA passed in 45.73
+seconds; pinned-toolchain pre-push QA/Storefront coverage passed in
+48.99/15.87 seconds. Root CI `34063920612` passed: its new parity step ran all
+71 cases at the same 96.95/95.56/94.44% coverage, and the shared step ran all
+178 cases with Redis helper coverage 100% lines/functions and 98.92% branches.
+Their log spans were about 0.67 and 17.99 seconds under unchanged blocked
+egress. This closes the earlier local-only evidence gap prospectively; it does
+not reclassify earlier releases.
+
+Runtime Images `34063920608` passed both exact-image validations, vulnerability
+gates, CycloneDX generation and independent record/OCI-revision checks at the
+same SHA. Backend artifact `9998387400` has 1,166 components and digest
+`sha256:39288a9cb361deb45733760c241ccd542fed522d4b677a31d5949a01649f94ca`;
+Storefront artifact `9998368543` has 122 components and digest
+`sha256:97d4c2bc6414d9283f39eecb679705ca0bb93071cb645d02c9d06889217f2e1b`.
+Private evidence is at `/tmp/remorseless-runtime-6f61520.ef4ygq`. Publication
+skipped; these CI images do not identify Railway's source-build images.
+
+Backend CI `34063920627` passed 277 suites/2,146 tests in 182.133 seconds at
+91.83% lines/statements, 85.76% branches and 95.80% functions. Disposable
+integration/recovery passed 31 + 41 + 17 PostgreSQL + eight Redis cases and
+three API contracts. Backend/Admin builds took 14.52/33.67 seconds, and the
+Admin bundle budget passed. Storefront CI `34063920599` passed 142 baseline
+files/857 tests (94.28% lines, 86.20% branches), 36 transactional files/322
+tests (83.75% lines, 76.35% branches), 81 responsive/two skipped, 14 launch
+and 48 three-engine cases, pa11y and Lighthouse. All four final-SHA workflows
+are green without reruns or altered budgets.
+
+Lighthouse artifact `9998519182` is private at
+`/tmp/remorseless-lighthouse-6f61520.RtD2Il`. Independent verification found
+18 reports across six requested URLs with three runs each, no runtime/console
+errors and 100% accessibility/best-practices scores. Median
+performance/LCP milliseconds/TBT milliseconds/CLS were Home
+87/4073.52/30.5/0, Cart 87/4037.31/53/0, Catalog
+88/3847.48/83.5/0.000282, Checkout 88/3758.71/68/0, Product
+88/3902.64/33.89/0 and Privacy 86/4102.17/81.5/0. Existing Checkout/Privacy
+SEO scores were 61/92.
+
+Final staging acceptance passed at `6f61520fbd3677b15aeecb1052a86b8dffff0e9d`.
+Railway Backend `c732b2a8-5dd1-4d75-8531-452cc794be8a` and Storefront
+`edbdef4d-832c-472b-9a82-b71d9b82e4ed` reached `SUCCESS`, with source-image
+digests respectively
+`sha256:0fd6777434856a0a632ec130ec3dcc5725025df9b125b43e0c3a8189b46a37b9`
+and `sha256:9ef991ca4f036bc781575023440a509522f9171ed0f7825a901199e4315905fb`.
+Both health/readiness pairs, all Backend dependencies/capabilities, scheduler,
+operations and unchanged catalog counts passed. The fresh exact-SHA scheduler
+heartbeat completed at `22:44:00.062Z` on September 6. Storefront complete
+HTML/security-header checks and the 7,027-byte AVIF check passed. Deployed
+browser acceptance passed 75 cases/eight expected skips, zero retries, in
+1.9 minutes across three Chromium device projects. Private evidence:
+`/tmp/remorseless-6f61520-deployed-browser.IfibS9/results`.
+
+Backend request `91d19dd2-50e6-4e62-aee8-0fe9e7282df6` / trace
+`48bf0f1148adaac53f571bd7cc7642b8` and Storefront request
+`9e9569dd-ae56-424f-9587-db86e84984c7` / trace
+`27fda0ab45aa83ba8b735f064fc11419` passed strict exact-SHA runtime
+correlation. Railway HTTP requests `nKl3s8m-RFWOLG4bO8poTA` and
+`tPMVzwDCRDqpaxAJAax-fw` matched their respective deployments and deliberate
+400 guards. Backend's bounded sample had 372 runtime rows, the one deliberate
+application warning, and one HTTP-error row (the guard). Storefront's 307
+runtime rows retained nine known stream cancellations; its 109 HTTP-error
+rows contained the guard 400, 12 synthetic fixture 404s and 96 client 499s,
+with no HTTP 5xx. Neither bounded sample showed Trusted Types errors or
+credential-assignment signals. These are bounded observations, not a claim
+of zero error logs or production readiness.
+
+Together, the Redis and shared-CI batches changed 21 tracked files across
+three implementation commits, including the Redis entrypoint correction.
+No live Redis policy, credential, data, service source, registry visibility,
+domain or production setting changed. Final acceptance notes remain local for
+the next substantive batch; no documentation-only checkpoint push was made.
+
+### Grouped checkout, request identity and webhook correctness follow-up
+
+Three reproduced application defects are grouped for the next staging push.
+The accepted head remains `6f61520` until the candidate's exact-SHA acceptance
+is complete; do not confuse local verification with deployment evidence.
+
+Checkout reads now accept TanStack cancellation while retaining their existing
+12-second deadline. Writes cancel prior reads and reads started during the
+write before publishing authoritative success/problem projections; mutation
+serialization and single-attempt behavior remain intact. Prepared payment
+secrets are preserved from the current cache only for matching revision/provider/
+status. Shipping options are revision-scoped, and empty-cart callers await the
+authoritative clear. Mounted-hook regressions exercise late success/error/null
+responses, unmount cancellation, shipping races and serialized mutations.
+The existing transactional coverage configuration now includes checkout hooks;
+no coverage floor is reduced.
+
+Actual Next 16.3.3 reproduction showed two overlapping requests sharing a trace
+producing one completion labeled with the other request's ID. The registry now
+keys by trace plus the proxy-generated outgoing parent. The first route root
+claims ownership, preventing a replayed parent from stealing its completion;
+weak child-span associations preserve error identity. TTL/cardinality and fixed
+redacted event fields remain unchanged. `next.route` is not a request identity
+and may be absent. The existing parent-based sampling policy is unchanged, so
+unsampled incoming traces still omit processor-derived observations.
+
+The built-runtime regression starts only owned loopback processes and holds
+four requests with the same trace and incoming parent until all provider
+responses are still open and no request has completed. All four must then
+produce unique, correct completions, followed by a request without an incoming
+trace. This runs in the existing Storefront Browser Smoke job after its build.
+Real-SDK tests separately reject overlapping parent replay, duplicate ends and
+invalid contexts. No framework cancellation/root-span warning is suppressed.
+
+Medusa's official payment webhook previously reflected an enqueue exception's
+message directly in a public 400 response. The existing 2.18 patch now returns
+fixed text for that catch, including non-Error throws, without changing success,
+payload/raw-body forwarding, retries, delay or asynchronous signature checking.
+Installed-route tests preserve the exact queue boundary. The rotation runbook
+now distinguishes successful enqueueing from downstream signature acceptance
+and JWT invalidation from cookie-session invalidation; live drills remain open.
+The root lock changes only five occurrences of the Medusa patch hash, with
+all versions, integrities and other bytes unchanged. Generated Backend patch,
+lock and installed route were independently verified after rebuilding.
+
+The live Redis observation also completed safely from the accepted Storefront
+instance. It found unbounded maxmemory and disabled RDB scheduling; AOF/everysec
+was enabled. `INFRASTRUCTURE_RECOVERY.md` records exact provenance, independently
+verified service ceiling and sanitized counters. Nothing was changed in Redis,
+and a rejected query-bearing Backend URL was not weakened or stripped.
+
+Local verification: Root QA passed across 1,319 formatted source/config files
+and both strict typechecks. Backend passed 278 suites/2,162 tests in 118.649
+seconds (91.83% lines/statements, 85.76% branches, 95.80% functions).
+Backend/Admin builds took 16.29/27.50 seconds and the Admin bundle budget
+passed. Storefront passed 143 baseline files/881 tests (94.93% lines,
+87.59% branches, 96.70% functions), plus 38 transactional files/344 tests
+(84.21% lines, 76.59% branches, 86.26% functions). The newly measured checkout
+hook has 97.72% lines, 76% branches and 94.11% functions. Targeted tests
+measured the completion processor at 95.45% lines, 93.23% branches and 100%
+functions. All thresholds are unchanged.
+
+The final Storefront production build compiled in 5.1 seconds, generated 55
+static pages and passed the 131-asset client secret/Trusted Types scan. The
+built-runtime correlation gate passed in 625 ms. The dependency audit retained
+only the three existing reviewed moderate ignores; no new exception or
+dependency version was introduced. All 48 critical browser cases passed in
+1.3 minutes across Chromium, Firefox and WebKit after the final shipping-refetch
+correction. Evidence uses
+private `/tmp/remorseless-correctness-browser.nHqQgY/results`; the temporary
+configuration changes only the occupied local server port/output location and
+sets zero retries, keeping all 48 three-engine cases intact.
+
+Redis recovery inspection additionally found no recorded backups/schedules
+and source/runtime image drift (`railwayapp/redis` versus the running
+`bitnami/redis`, Redis 8.0.3). The current volume is mounted at `/bitnami`;
+exact volume/deployment metadata is in `INFRASTRUCTURE_RECOVERY.md`. Do not
+restart/redeploy it without a verified backup and reviewed image/rollback
+path. A focused manual-backup approval request is separate from this code
+batch; no backup or live change is implied by these observations.
 
 ### Remaining release work
 
