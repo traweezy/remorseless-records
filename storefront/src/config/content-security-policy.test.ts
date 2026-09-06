@@ -43,6 +43,10 @@ describe("content security policy", () => {
     expect(scriptDirective).not.toContain("'unsafe-inline'")
     expect(scriptDirective).not.toContain("'unsafe-eval'")
     expect(policy).toContain("script-src-attr 'none'")
+    expect(policy).toContain(
+      "trusted-types nextjs nextjs#bundler remorseless-stripe-js"
+    )
+    expect(policy).toContain("require-trusted-types-for 'script'")
     expect(policy).toContain("base-uri 'none'")
     expect(policy).toContain("https://backend.example.com")
     expect(policy).toContain("https://media.example.com")
@@ -67,6 +71,7 @@ describe("content security policy", () => {
 
     expect(scriptDirective).not.toContain("'unsafe-inline'")
     expect(scriptDirective).toContain("'unsafe-eval'")
+    expect(policy).not.toContain("require-trusted-types-for 'script'")
     expect(policy).toContain("http://localhost:9000")
     expect(policy).not.toContain("upgrade-insecure-requests")
   })

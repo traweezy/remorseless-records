@@ -137,6 +137,12 @@ export const buildContentSecurityPolicy = ({
     "default-src 'self'",
     `script-src ${scriptSources.join(" ")}`,
     "script-src-attr 'none'",
+    ...(isDevelopment
+      ? []
+      : [
+          `trusted-types ${TRUSTED_TYPES_POLICY_NAMES.join(" ")}`,
+          "require-trusted-types-for 'script'",
+        ]),
     "style-src 'self' 'unsafe-inline'",
     `img-src ${imageSources.join(" ")}`,
     "font-src 'self' data:",
