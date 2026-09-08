@@ -10,7 +10,7 @@ artifact Railway is running; verify Railway separately with the sequence below.
 
 - Branch: `staging`
 - Current accepted implementation head:
-  `4ba7996f934754a1aeb8d0d970a35f33341a0ce3`. It includes the accepted Next.js
+  `36c9c1003e0206c1afcedcadb18d3acd87796159`. It includes the accepted Next.js
   16.3.3 build split, Redis 6.2.1, upstream `qs` 6.16.0, Trusted Types
   enforcement, the Form/Resend/PostHog/Pacer/Query/Virtual/Sonner batch, and
   the AWS/Stripe/OpenTelemetry, UI/parser/image/tooling, and recovery batches.
@@ -20,7 +20,7 @@ artifact Railway is running; verify Railway separately with the sequence below.
   contract parity batches, plus checkout read/write isolation, native webhook
   error redaction and concurrent-request tracing lifecycle corrections.
 - Latest exact runtime-image validation SHA:
-  `4ba7996f934754a1aeb8d0d970a35f33341a0ce3`. All four CI workflows and
+  `36c9c1003e0206c1afcedcadb18d3acd87796159`. All four CI workflows and
   both Railway source deployments passed. The live shared-trace regression
   that prevented acceptance of `3f9c533` now passes with four exact HTTP 200
   completion records; detailed correction evidence is below.
@@ -1828,14 +1828,149 @@ The first unit invocation inherited the already-cleaned disposable Redis
 endpoint; explicitly disabling Redis restored the CI unit-test environment.
 Both run results are retained with the build evidence; no application source
 or assertion was changed to resolve that harness mismatch.
-Exact-SHA CI acceptance for this grouped batch must still be recorded before
-superseding accepted `4ba7996` above.
+The complete grouped batch shipped as `36c9c1003e0206c1afcedcadb18d3acd87796159`.
+Both commit/push QA hooks passed; the push also passed 908 baseline and 344
+transactional Storefront tests. The root lockfile stayed unchanged.
+
+### Fixture-security batch exact-SHA acceptance (September 8)
+
+All four workflows passed without a rerun: Root `34209351767`, Backend
+`34209351720`, Storefront `34209351716`, and Runtime Images `34209351777`.
+Backend passed 278 suites / 2,162 tests and all 106 disposable integration
+cases, without skips. Storefront passed 908 baseline / 344 transactional tests,
+both built-runtime completion-order tests, 81 responsive cases (two intentional
+desktop-only skips), 14 launch scenarios and 48 three-engine critical flows.
+Pa11y passed. Lighthouse artifact `10049627914` contains 18 reports, six
+requested URLs times three runs; all 71 unchanged median budgets passed.
+Private Lighthouse evidence is `/tmp/remorseless-lighthouse-36c9c100.0TTSmy`.
+
+Disposable artifact `10049265544` independently matches its archive checksum
+and all four report byte counts/hashes. CI tested PostgreSQL image
+`sha256:1db7552da44e7cc20222996cbb07c83f87fcf0c115eafdd31d3ee29c7d7e749a`
+and Redis image
+`sha256:94d1bf4287f882f70ad77c3fafab4ce20887be8d89ada4c0e2d667c5e375d017`
+without rebuilding after scanning. Both have zero findings at all severities
+under Trivy 0.70.0 and the September 8 07:08 UTC database. PostgreSQL retains
+53 OS / four Go packages and 59 SBOM components; Redis 22 / 23. The exact
+container and network removal records passed. Full verified provenance is
+`/tmp/remorseless-backend-ci-36c9c1.bckh6O/verified-summary.json`. A separate
+fresh local scan also passed at
+`/tmp/remorseless-fixture-security-20260908.adGchB/evidence`.
+
+App runtime-image artifacts `10049255319` (Backend) and `10049207932`
+(Storefront) bind their exact SHA and SBOMs to images
+`sha256:252d9362c10f9d3dfe8ca1cdb953f9ea58673bd86c964b1dcca82cb94b804890`
+and `sha256:80087c71e206303abb238efe21ce26ff814c860ea9c56a6a6809cd6898e48234`.
+Their 1,166 / 122 component inventories and 104 / 101 unfiltered finding IDs
+are unchanged from `4ba7996`; one existing Perl advisory gained a medium
+rating. The existing fixed-HIGH/CRITICAL gates pass; this is not a zero-finding
+claim for app images. The Backend-only three React Router findings remain
+the documented source-backport exceptions. Publication stayed skipped.
+
+Both Railway source deployments reached SUCCESS on the exact SHA:
+
+- Backend `4d79532d-42ad-4075-b7ba-e057398c23c4`, image
+  `sha256:7773bdfcc41563097127687842a1de4032ed81c0745196ed7d8d4953e78f1807`.
+- Storefront `316a7ad7-0fc3-4045-9575-e85708b81c8e`, image
+  `sha256:1ba4142b9fcd4b5ab5ea081c93b0dad64c2736474662a1f0aff6248e7cab087c`.
+
+Exact readiness, catalog/operations, headers, complete HTML and AVIF output
+passed. The ordinary Backend heartbeat completed on the new SHA at
+`2026-09-08T09:40:00.091Z`, without a manual trigger. Deployed browser checks
+passed 75 cases / eight expected local-gallery or desktop-only skips, zero
+retries, in 109.57 seconds. All four shared-trace requests have one distinct
+valid route-root completion with status 200 and exact request/trace/SHA fields.
+The response traceparent intentionally identifies its outgoing parent, not
+that child route-root span; an initial temporary verification assumption was
+corrected against the existing source contract, without an application change.
+Both deliberate 400 guards match their exact runtime and Railway HTTP events.
+
+Private live evidence is `/tmp/remorseless-release-36c9c10.5WYkpT`. Uncapped
+runtime samples contain 376 Backend and 340 Storefront records, with no
+unclassified warnings/errors, credential-assignment signals or Trusted Types
+failures. Storefront retains 11 known stream cancellations and one existing
+Next root-span diagnostic. The general Storefront HTTP sample reached 2,000
+rows, so independent uncapped 5xx and exact-request queries were used;
+they found zero 5xx and both expected guard records. A CLI query combining
+typed filtering/end time was rejected; documented raw-filter queries succeeded.
+No live support-service image, credential, database role, production setting
+or package publication changed. These final acceptance notes are carried with
+the substantive Next.js follow-up rather than a documentation-only push.
+
+### Cooled Next.js 16.3.4 follow-up (September 8, acceptance in progress)
+
+The Next-only dependency cohort has passed its seven-day cooling window.
+Only Next, `@next/env` and eight matching SWC packages changed, alongside the
+Storefront importer and three matching package-extension selectors. The new
+root lock SHA-256 is
+`2a224db892eec78cbfc0cd59c50c01db4add84a523dc0b0ffc30d0ca095cac70`.
+Frozen install, peer resolution and the dependency audit pass; Sharp 0.35.4,
+libheif 1.23.2, libvips 8.18.6, PostCSS 8.5.26, React 19.2.8 and all existing
+patches/holds remain unchanged. Audit retains the same three moderate
+source-backport exceptions and no HIGH/CRITICAL findings.
+
+The five-case isolated optimizer test was first demonstrated red on 16.3.3
+(three passes, two AVIF-related failures), then green on 16.3.4. It proves
+actual 64×48 AVIF input decoding and resizing to 32×24 WebP, not unchanged
+upstream bytes or a silent fallback. It also decodes resized PNG-to-AVIF output
+after Next initializes native loader permissions, and retains non-image/SVG
+rejection plus explicit truncated-PNG fallback classification. The previous
+release could encode valid AVIF output; its loader restriction explains that
+second red assertion. Single-run test timings are not performance benchmarks.
+
+Local Storefront standalone and default builds passed in 34.596 and 16.462
+seconds, respectively, each retaining 55 routes and 131 secret-scanned static
+assets. Both built-runtime concurrent completion-order tests passed afterward.
+Build evidence is `/tmp/remorseless-next1634-proof.Q4PTsR`; the owned loopback
+fixture was closed, and user port 3000 was never touched. Full root QA passed,
+including strict application typechecks. Storefront coverage passed all 908
+baseline and 344 transactional tests: baseline 94.96% lines / 87.75% branches /
+96.72% functions; transactional 84.21% / 76.59% / 86.26%.
+
+Backend build passed in 28.743 seconds, Admin assets stayed within their
+unchanged budgets, and full coverage passed 278 suites / 2,162 tests with
+91.83% lines, 85.76% branches and 95.80% functions. Generated manifest, lock
+projection, all 16 patches and tracing bootstrap match sources. Evidence is
+`/tmp/remorseless-backend-next1634.CLTMMX/backend-summary.json`; the provider
+fixture explicitly disables Redis and never reaches a live service.
+
+Launch runtime capture and consent checks now derive the application origin
+from the configured Playwright `baseURL`, rather than hardcoding port 3000.
+All existing assertions remain intact and missing configuration fails clearly.
+This lets the unchanged browser matrix run on an owned alternate port without
+weakening same-origin error detection or touching an existing user server.
+Local browser acceptance passed 81 responsive cases (two expected desktop-only
+skips), 48 critical three-engine cases and all 14 launch/accessibility cases,
+without retries. Evidence and screenshots are retained under
+`/tmp/remorseless-next1634-browsers.WDnZGd/browsers`. All owned processes were
+closed and ports 4300/4010 verified free; the default build and lock stayed
+unchanged throughout that run.
+
+Local Pa11y could not launch Chromium's sandbox on this host, before any page
+audit. No sandbox-capable installed system Chrome was available; no browser
+bypass, download, OS setting or accessibility assertion was changed. Lighthouse
+was not attempted against that unsupported local browser setup. Pa11y and all
+three-run Lighthouse budgets therefore require exact-SHA CI evidence from the
+supported hosted runner.
+
+Both canonical runtime-image decoder steps also passed locally against the
+same packaged candidate image
+`sha256:609d940cddaf745e9c4abb7e0076dc243290e72924c8f8bc20fac4db5974895d`:
+five tests each, zero failures/skips, with no network, read-only filesystem and
+test mount, dropped capabilities and 256-MiB / one-CPU / 64-PID limits.
+Both exact owned containers were removed. The test is not included in the
+image, and no registry publication occurred. This is an explicitly dirty local
+candidate, not an exact committed release artifact. Full proof is
+`/tmp/remorseless-storefront-decoder-image.cU8tJM/proof.json`; the root lock
+remained unchanged. All 71 runtime-image policy tests and four CI security
+tests passed. Final hooks, exact-SHA CI and Railway acceptance must complete
+before superseding accepted `36c9c100`.
 
 ### Remaining release work
 
-1. Re-evaluate Next.js 16.3.4 no earlier than
-   `2026-09-07T20:00:51.381Z`. Keep it isolated from the `qs`, Medusa, TanStack,
-   Stripe, AWS SDK, OpenTelemetry, and small-patch cohorts documented in
+1. Complete the isolated cooled Next.js 16.3.4 acceptance above. Keep it
+   separate from the `qs`, Medusa, TanStack, Stripe, AWS SDK, OpenTelemetry,
+   and small-patch cohorts documented in
    `DEPENDENCY_MIGRATION_AUDIT_2026-07-23.md`.
 2. Hold Medusa 2.19.0: its [Enterprise license](https://raw.githubusercontent.com/medusajs/medusa/v2.19.0/ENTERPRISE-LICENSE.md)
    requires a commercial agreement for the listed RBAC/SSO materials,

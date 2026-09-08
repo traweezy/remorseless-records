@@ -94,6 +94,100 @@ const extractWorkflowJob = (source, jobName) => {
     .join("\n")
 }
 
+const storefrontDecoderStep = (
+  imageOutput
+) => `      - name: Test packaged Storefront image decoders
+        if: \${{ matrix.service == 'storefront' }}
+        timeout-minutes: 2
+        shell: bash
+        run: |
+          image_id="\${{ steps.${imageOutput}.outputs.digest }}"
+          if [[ ! "$image_id" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+            exit 1
+          fi
+          container_id="$(docker create --pull never \\
+            --network none --read-only --cap-drop ALL \\
+            --security-opt no-new-privileges \\
+            --memory 256m --cpus 1 --pids-limit 64 \\
+            --mount "type=bind,source=\${GITHUB_WORKSPACE}/storefront/scripts/image-optimizer.runtime.test.mjs,target=/app/storefront/image-optimizer.runtime.test.mjs,readonly" \\
+            --entrypoint node "$image_id" \\
+            --test --test-isolation=process --test-timeout=30000 \\
+            /app/storefront/image-optimizer.runtime.test.mjs)"
+          if [[ ! "$container_id" =~ ^[0-9a-f]{64}$ ]]; then
+            exit 1
+          fi
+          cleanup() {
+            timeout --signal=TERM --kill-after=5s 10s docker rm --force "$container_id" >/dev/null
+          }
+          trap cleanup EXIT
+          timeout --signal=TERM --kill-after=10s 45s docker start --attach "$container_id"
+          test "$(docker inspect --format '{{.State.Status}} {{.State.ExitCode}}' "$container_id")" = 'exited 0'`
+
+const localImageResolutionStep = (
+  imageOutput
+) => `      - name: Resolve local runtime image digest
+        id: ${imageOutput}
+        shell: bash
+        run: |
+          image_digest="$(docker image inspect --format '{{.Id}}' "\${IMAGE_REF}")"
+          if [[ ! "$image_digest" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+            exit 1
+          fi
+          echo "digest=\${image_digest}" >> "$GITHUB_OUTPUT"`
+
+const requireExactStep = (job, expectedStep) => {
+  const name = expectedStep.split("\n")[0]
+  assert.equal(job.split("\n").filter((line) => line === name).length, 1)
+  const start = job.indexOf(`${name}\n`)
+  const end = job.indexOf("\n      - ", start + 1)
+  assert.equal(
+    job.slice(start, end === -1 ? job.length : end).trimEnd(),
+    expectedStep,
+    "Packaged Storefront decoder smoke must retain its exact identity, isolation, and failure boundaries."
+  )
+  return start
+}
+
+const verifyStorefrontDecoderStep = (job, imageOutput) => {
+  // Fail closed on duplicate/quoted job controls that could skip a protected
+  // step while leaving its canonical text present elsewhere in the job.
+  const jobKeys = job
+    .split("\n")
+    .filter((line) => /^    \S/u.test(line))
+    .map((line) => /^    ([a-z-]+):(?:\s|$)/u.exec(line)?.[1])
+  assert.deepEqual(jobKeys, [
+    "name",
+    "if",
+    "runs-on",
+    "timeout-minutes",
+    "permissions",
+    "strategy",
+    "env",
+    "steps",
+  ])
+  assert.deepEqual(
+    [...job.matchAll(/^          - service: ([a-z]+)$/gmu)].map(
+      (match) => match[1]
+    ),
+    ["backend", "storefront"]
+  )
+
+  const identity = requireExactStep(job, localImageResolutionStep(imageOutput))
+  const start = requireExactStep(job, storefrontDecoderStep(imageOutput))
+  const build = job.indexOf("      - name: Build immutable runtime image\n")
+  const smoke = job.indexOf("      - name: Smoke exact runtime image\n")
+  const scan = job.indexOf(
+    "      - name: Scan runtime image for critical and high vulnerabilities\n"
+  )
+  assert.ok(
+    build >= 0 &&
+      build < identity &&
+      identity < smoke &&
+      smoke < start &&
+      start < scan
+  )
+}
+
 const verifyDockerfile = (service, source, policy) => {
   assert.match(source, new RegExp(`^ARG NODE_IMAGE=${policy.nodeImage}$`, "mu"))
   assert.match(source, /^FROM \$\{NODE_IMAGE\}$/mu)
@@ -117,6 +211,8 @@ export const validateRuntimeWorkflowSource = (source) => {
   const sourceLines = source.split(/\r?\n/u)
   const validateJob = extractWorkflowJob(source, "validate")
   const publishJob = extractWorkflowJob(source, "publish")
+  verifyStorefrontDecoderStep(validateJob, "image")
+  verifyStorefrontDecoderStep(publishJob, "local_image")
 
   assert.match(source, /branches: \[staging, master\]/u)
   assert.doesNotMatch(source, /PUBLISH_IMAGE/u)
@@ -372,7 +468,7 @@ export const verifyRuntimeImagePolicy = () => {
   )
 
   console.info(
-    "Runtime image policy verified: two digest-pinned nonroot images, clean scan/SBOM gates, and signed master artifacts."
+    "Runtime image policy verified: two digest-pinned nonroot images, isolated packaged Storefront decoder gates, clean scan/SBOM gates, and signed master artifacts."
   )
 }
 

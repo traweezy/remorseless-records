@@ -262,6 +262,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Verify isolated image optimizer runtime
+        run: pnpm --filter remorseless-records-storefront run test:runtime:images
+
       - name: Run unit tests with coverage
         run: pnpm --filter remorseless-records-storefront run test:coverage
 

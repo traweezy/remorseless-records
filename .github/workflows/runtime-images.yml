@@ -214,6 +214,33 @@ jobs:
           docker logs "$container_name"
           exit 1
 
+      - name: Test packaged Storefront image decoders
+        if: ${{ matrix.service == 'storefront' }}
+        timeout-minutes: 2
+        shell: bash
+        run: |
+          image_id="${{ steps.image.outputs.digest }}"
+          if [[ ! "$image_id" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+            exit 1
+          fi
+          container_id="$(docker create --pull never \
+            --network none --read-only --cap-drop ALL \
+            --security-opt no-new-privileges \
+            --memory 256m --cpus 1 --pids-limit 64 \
+            --mount "type=bind,source=${GITHUB_WORKSPACE}/storefront/scripts/image-optimizer.runtime.test.mjs,target=/app/storefront/image-optimizer.runtime.test.mjs,readonly" \
+            --entrypoint node "$image_id" \
+            --test --test-isolation=process --test-timeout=30000 \
+            /app/storefront/image-optimizer.runtime.test.mjs)"
+          if [[ ! "$container_id" =~ ^[0-9a-f]{64}$ ]]; then
+            exit 1
+          fi
+          cleanup() {
+            timeout --signal=TERM --kill-after=5s 10s docker rm --force "$container_id" >/dev/null
+          }
+          trap cleanup EXIT
+          timeout --signal=TERM --kill-after=10s 45s docker start --attach "$container_id"
+          test "$(docker inspect --format '{{.State.Status}} {{.State.ExitCode}}' "$container_id")" = 'exited 0'
+
       - name: Scan runtime image for critical and high vulnerabilities
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         env:
@@ -391,6 +418,16 @@ jobs:
           push: false
           tags: ${{ env.IMAGE_REF }}
 
+      - name: Resolve local runtime image digest
+        id: local_image
+        shell: bash
+        run: |
+          image_digest="$(docker image inspect --format '{{.Id}}' "${IMAGE_REF}")"
+          if [[ ! "$image_digest" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+            exit 1
+          fi
+          echo "digest=${image_digest}" >> "$GITHUB_OUTPUT"
+
       - name: Smoke exact runtime image
         shell: bash
         run: |
@@ -426,6 +463,33 @@ jobs:
           done
           docker logs "$container_name"
           exit 1
+
+      - name: Test packaged Storefront image decoders
+        if: ${{ matrix.service == 'storefront' }}
+        timeout-minutes: 2
+        shell: bash
+        run: |
+          image_id="${{ steps.local_image.outputs.digest }}"
+          if [[ ! "$image_id" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+            exit 1
+          fi
+          container_id="$(docker create --pull never \
+            --network none --read-only --cap-drop ALL \
+            --security-opt no-new-privileges \
+            --memory 256m --cpus 1 --pids-limit 64 \
+            --mount "type=bind,source=${GITHUB_WORKSPACE}/storefront/scripts/image-optimizer.runtime.test.mjs,target=/app/storefront/image-optimizer.runtime.test.mjs,readonly" \
+            --entrypoint node "$image_id" \
+            --test --test-isolation=process --test-timeout=30000 \
+            /app/storefront/image-optimizer.runtime.test.mjs)"
+          if [[ ! "$container_id" =~ ^[0-9a-f]{64}$ ]]; then
+            exit 1
+          fi
+          cleanup() {
+            timeout --signal=TERM --kill-after=5s 10s docker rm --force "$container_id" >/dev/null
+          }
+          trap cleanup EXIT
+          timeout --signal=TERM --kill-after=10s 45s docker start --attach "$container_id"
+          test "$(docker inspect --format '{{.State.Status}} {{.State.ExitCode}}' "$container_id")" = 'exited 0'
 
       - name: Scan runtime image for critical and high vulnerabilities
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0

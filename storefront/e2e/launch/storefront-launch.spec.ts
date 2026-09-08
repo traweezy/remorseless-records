@@ -22,7 +22,16 @@ type RuntimeCapture = {
   failedResponses: string[]
 }
 
-const startRuntimeCapture = (page: Page): RuntimeCapture => {
+const requireBaseOrigin = (baseURL: string | undefined): string => {
+  if (!baseURL) {
+    throw new Error(
+      "Storefront launch acceptance requires a configured baseURL"
+    )
+  }
+  return new URL(baseURL).origin
+}
+
+const startRuntimeCapture = (page: Page, origin: string): RuntimeCapture => {
   const capture: RuntimeCapture = {
     consoleErrors: [],
     failedRequests: [],
@@ -47,7 +56,7 @@ const startRuntimeCapture = (page: Page): RuntimeCapture => {
   })
   page.on("response", (response) => {
     const url = new URL(response.url())
-    if (url.origin === "http://127.0.0.1:3000" && response.status() >= 400) {
+    if (url.origin === origin && response.status() >= 400) {
       capture.failedResponses.push(
         `${response.request().method()} ${url.pathname}: ${response.status()}`
       )
@@ -339,8 +348,11 @@ const staticCases = [
 ] as const
 
 for (const current of staticCases) {
-  test(`${current.name} passes launch acceptance`, async ({ page }) => {
-    const capture = startRuntimeCapture(page)
+  test(`${current.name} passes launch acceptance`, async ({
+    page,
+    baseURL,
+  }) => {
+    const capture = startRuntimeCapture(page, requireBaseOrigin(baseURL))
     if (current.route === "/catalog") {
       await installCatalog(page)
     }
@@ -371,8 +383,9 @@ for (const current of staticCases) {
 
 test("populated cart remains accessible at 320 CSS pixels", async ({
   page,
+  baseURL,
 }) => {
-  const capture = startRuntimeCapture(page)
+  const capture = startRuntimeCapture(page, requireBaseOrigin(baseURL))
   await installPopulatedCart(page)
   await page.setViewportSize({ width: 320, height: 900 })
   await page.goto("/cart", { waitUntil: "domcontentloaded" })
@@ -390,8 +403,9 @@ test("populated cart remains accessible at 320 CSS pixels", async ({
 
 test("empty checkout defers Stripe until payment is required", async ({
   page,
+  baseURL,
 }) => {
-  const capture = startRuntimeCapture(page)
+  const capture = startRuntimeCapture(page, requireBaseOrigin(baseURL))
   const stripeRequests: string[] = []
   page.on("request", (request) => {
     const hostname = new URL(request.url()).hostname
@@ -412,8 +426,9 @@ test("empty checkout defers Stripe until payment is required", async ({
 
 test("checkout validation summary is focused and accessible", async ({
   page,
+  baseURL,
 }) => {
-  const capture = startRuntimeCapture(page)
+  const capture = startRuntimeCapture(page, requireBaseOrigin(baseURL))
   await installCheckout(page, "validation")
   await page.setViewportSize({ width: 320, height: 900 })
   await page.goto("/checkout", { waitUntil: "domcontentloaded" })
@@ -432,8 +447,11 @@ test("checkout validation summary is focused and accessible", async ({
   await auditPage(page, capture, "checkout-validation-reflow")
 })
 
-test("free checkout discloses the exact submit contract", async ({ page }) => {
-  const capture = startRuntimeCapture(page)
+test("free checkout discloses the exact submit contract", async ({
+  page,
+  baseURL,
+}) => {
+  const capture = startRuntimeCapture(page, requireBaseOrigin(baseURL))
   await installCheckout(page, "free-ready")
   await page.setViewportSize({ width: 1440, height: 900 })
   await page.goto("/checkout", { waitUntil: "domcontentloaded" })
@@ -450,8 +468,8 @@ test("free checkout discloses the exact submit contract", async ({ page }) => {
   await auditPage(page, capture, "checkout-free-disclosure")
 })
 
-test("checkout confirmation remains accessible", async ({ page }) => {
-  const capture = startRuntimeCapture(page)
+test("checkout confirmation remains accessible", async ({ page, baseURL }) => {
+  const capture = startRuntimeCapture(page, requireBaseOrigin(baseURL))
   await installConfirmation(page)
   await page.setViewportSize({ width: 760, height: 900 })
   await page.goto("/checkout/confirmation", { waitUntil: "domcontentloaded" })
@@ -460,8 +478,8 @@ test("checkout confirmation remains accessible", async ({ page }) => {
   await auditPage(page, capture, "checkout-confirmation")
 })
 
-test("checkout recovery respects reduced motion", async ({ page }) => {
-  const capture = startRuntimeCapture(page)
+test("checkout recovery respects reduced motion", async ({ page, baseURL }) => {
+  const capture = startRuntimeCapture(page, requireBaseOrigin(baseURL))
   await installRecovery(page)
   await page.emulateMedia({ reducedMotion: "reduce" })
   await page.setViewportSize({ width: 760, height: 900 })
@@ -473,8 +491,11 @@ test("checkout recovery respects reduced motion", async ({ page }) => {
   await auditPage(page, capture, "checkout-recovery")
 })
 
-test("privacy validation is focused and actionable", async ({ page }) => {
-  const capture = startRuntimeCapture(page)
+test("privacy validation is focused and actionable", async ({
+  page,
+  baseURL,
+}) => {
+  const capture = startRuntimeCapture(page, requireBaseOrigin(baseURL))
   await page.setViewportSize({ width: 760, height: 900 })
   await page.goto("/privacy", { waitUntil: "domcontentloaded" })
   await rejectNonEssential(page)
@@ -485,8 +506,11 @@ test("privacy validation is focused and actionable", async ({ page }) => {
   await auditPage(page, capture, "privacy-validation")
 })
 
-test("privacy success announces a non-PII reference", async ({ page }) => {
-  const capture = startRuntimeCapture(page)
+test("privacy success announces a non-PII reference", async ({
+  page,
+  baseURL,
+}) => {
+  const capture = startRuntimeCapture(page, requireBaseOrigin(baseURL))
   const requestId = "8f42db79-1539-47f2-a0d7-2bf0d620bc88"
   await page.route("**/api/privacy-request", async (route) => {
     await route.fulfill({
@@ -513,13 +537,15 @@ test("privacy success announces a non-PII reference", async ({ page }) => {
 test("optional storage and Bandcamp remain consent controlled", async ({
   page,
   context,
+  baseURL,
 }) => {
-  const capture = startRuntimeCapture(page)
+  const origin = requireBaseOrigin(baseURL)
+  const capture = startRuntimeCapture(page, origin)
   const externalRequests: string[] = []
   const telemetryRequests: string[] = []
   page.on("request", (request) => {
     const url = new URL(request.url())
-    if (url.origin !== "http://127.0.0.1:3000") {
+    if (url.origin !== origin) {
       externalRequests.push(url.hostname)
     }
     if (url.pathname === "/api/telemetry/browser") {

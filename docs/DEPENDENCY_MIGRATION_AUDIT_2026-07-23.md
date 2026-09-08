@@ -265,6 +265,42 @@ startup warning, `AppRender.fetch` diagnostic, Trusted Types report, or HTTP
 `$ next start` command echo as one error-level line; it has no application
 event or error code and predates this upgrade.
 
+## Next.js AVIF follow-up (2026-09-08)
+
+The isolated Next.js cohort now targets 16.3.4, published
+`2026-08-31T20:00:51.381Z` and cooled since `2026-09-07T20:00:51.381Z`.
+The [official release](https://github.com/vercel/next.js/releases/tag/v16.3.4)
+and [AVIF correction](https://github.com/vercel/next.js/pull/97949) restore
+AVIF input optimization with Sharp 0.35.4. The installed Sharp 0.35.4,
+libheif 1.23.2 and libvips 8.18.6 remain unchanged. The root lockfile changes
+only Next, `@next/env`, their eight platform SWC siblings, the Storefront
+importer and the package-extension checksum. All three workspace extension
+selectors identify 16.3.4. React 19.2.8, PostCSS 8.5.26, the Medusa licensing
+hold and every existing security backport remain in force.
+
+The new `test:runtime:images` gate exercises the installed optimizer and native
+decoder in an isolated Node process, using tiny generated in-memory images.
+Before the update, Next 16.3.3 returned the original 64×48 AVIF input unchanged
+instead of the requested resized WebP. Afterward, it returns an actually
+decoded 32×24 WebP, changed bytes and ETag, the preserved upstream ETag, and
+no fallback error. PNG-to-AVIF output also remains fully decodable after
+optimizer initialization. Next 16.3.3 could already encode valid AVIF output;
+its global HEIF loader restriction caused that second decoding assertion to
+fail. Earlier HTTP 200 AVIF negotiation checks were output smoke evidence,
+not proof that AVIF inputs were decoded and resized.
+
+All five new cases pass on 16.3.4, including non-image rejection, SVG
+default-deny, and explicit classification of a truncated benign PNG as a
+fallback rather than successful optimization. This uses a 4,096-pixel input
+bound, three-second native operation timeout and 30-second isolated test
+timeout; it is not an exploit corpus or a production latency benchmark.
+Storefront CI runs this gate unconditionally before unit coverage and the
+dependent production build. Frozen install, peer resolution and dependency
+audit pass: no HIGH/CRITICAL findings and the same three documented moderate
+source-backport exceptions. Full local and exact-SHA release acceptance is
+recorded in `NEXT_SESSION_HANDOFF.md`; do not treat this dependency update
+alone as deployment acceptance.
+
 ## TanStack Query patch update (2026-09-03)
 
 The Storefront's five Query runtime and persistence packages move together
@@ -809,7 +845,7 @@ cooling holds, and provider-specific acceptance requirements remain in force.
 
 | Order | Cohort | Target and boundary |
 | ----- | ------ | ------------------- |
-| 1 | Next.js | Complete the 16.3.3 critical security update above. Re-evaluate 16.3.4 only after its cooling expiry and rerun the image, nonce/CSP, Trusted Types, production-build, responsive browser, accessibility, and Lighthouse gates. |
+| 1 | Next.js | The cooled 16.3.4 follow-up is implemented above as an isolated cohort, with real AVIF input decoding and resizing coverage. Complete its full local and exact-SHA acceptance in the handoff; retain nonce/CSP, Trusted Types, both production-build modes, responsive browser, accessibility, and Lighthouse gates. |
 | 2 | `qs` | Complete: root, Backend, and Storefront use one exact 6.16.0 graph after the cooling expiry; both advisory ignores, all three patch copies, and the temporary verifier were removed together. |
 | 3 | Medusa | Blocked first on the 2.19 RBAC/SSO licensing decision above. After that is resolved, move every Backend and Storefront `@medusajs/*` package together. The official [2.19 release](https://github.com/medusajs/medusa/releases/tag/v2.19.0) is a breaking Admin migration to Vite 7.3.6 and React Router 7.18.2. Audit removed SDK Product Option methods, `Response.json()` and `defer()` usage, `UIMatch.loaderData`, cart/order wildcard totals, every Medusa patch, Admin browser/a11y contracts, migrations, and complete checkout/refund/tax behavior before staging. |
 | 4 | TanStack | Completed the five Query persistence/runtime package update to 5.102.7 with local, exact-SHA CI, runtime-image, and Railway acceptance. Review Form 1.33.5, Pacer 0.22.0, and cooled Query patches individually, then include compatible results in the combined batch. Preserve validation/focus, debounce/cancellation, and cache/persistence regressions. Hold Table 9 for an explicit API migration. |

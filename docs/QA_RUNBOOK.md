@@ -152,6 +152,9 @@ pnpm run qa:ci-shared-contracts
 pnpm --filter remorseless-records-storefront run typecheck
 pnpm --filter backend exec tsc --noEmit
 
+# Real native image decoding, resizing, output and rejection/fallback contracts
+pnpm --filter remorseless-records-storefront run test:runtime:images
+
 # Dashboard DOM compiler context and browser-boundary assertion regression
 pnpm run qa:admin-browser-boundary
 
@@ -202,6 +205,30 @@ checks, application typechecks, and browser/coverage budgets stay separate.
 For historical releases, distinguish local/pre-push evidence from checks that
 their exact workflow SHA actually ran; the shared aggregate does not
 retroactively add CI evidence to earlier commits.
+
+`test:runtime:images` runs the actual installed Next optimizer and Sharp
+decoder without a build, network access or persistent image fixtures. It
+requires AVIF input to become a resized, decoded WebP rather than unchanged
+upstream bytes, proves PNG-to-AVIF decoding after optimizer initialization,
+and retains non-image/SVG rejection plus malformed-image fallback detection.
+It runs in its own Node process because Next configures native loader state.
+An HTTP 200 response with `image/avif` alone does not prove AVIF input decoding.
+Storefront CI runs the five-case gate unconditionally before unit coverage.
+Runtime-image validation and the existing master-only publication path also
+run the same test against the resolved local Storefront image ID, before
+vulnerability scanning or publication. The test is mounted read-only, not
+shipped in the image. Its anonymous container has no network, a read-only
+filesystem, dropped capabilities, no privilege escalation, and explicit
+256-MiB / one-CPU / 64-PID limits. A 45-second process deadline and exact owned
+container cleanup complement the per-test timeout; an exited-zero state is
+required. The runtime-image policy tests reject skipped/modified decoder steps,
+image-resolution drift and reordered scan/publication boundaries.
+
+Launch browser checks derive same-origin response failures and external-request
+classification from Playwright's configured `baseURL`, including on a private
+alternate port. Missing configuration fails explicitly. Keep every assertion
+and project when overriding a local server origin; do not touch an existing
+user server or silently skip local fixture cases to free the default port.
 
 After a fixture-backed Storefront build, run
 `pnpm --filter remorseless-records-storefront run test:runtime:observability`.
