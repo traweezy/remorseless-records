@@ -362,10 +362,18 @@ content-download budget, at most 10,000 source objects by default, and a
 ten-minute overall content-read deadline. `MEDIA_BACKUP_VERIFY_MAX_OBJECTS`
 may be reviewed up to 100,000 and `MEDIA_BACKUP_VERIFY_TIMEOUT_MS` up to one
 hour. Individual listing/mirror commands have a ten-minute deadline and bounded output.
-Cancellation kills active content readers and waits for process closure;
-provider stderr and raw object names are not emitted. A failed or cancelled
-verification writes no successful manifest and does not roll back an already
-performed mirror. Investigate the partial copy before rerunning.
+SIGINT/SIGTERM cancellation covers client-version lookup, source/target
+listing, dry-run, the mutating mirror and content reads. Every command is
+asynchronous; cancellation kills the active direct `mc` child and waits for
+closure before exiting; no later commands start. Repeated signals remain
+handled while that child is being reaped. This does not claim termination of
+arbitrary descendants or rollback of writes already accepted by the provider.
+Provider stderr and raw object names are not emitted; failures report only a
+fixed phase, failed status and duration. A failed or cancelled workflow emits
+no successful manifest. Cancellation during publication removes only its
+exclusively created manifest; a pre-existing file is never removed. If that
+cleanup itself fails, the reported `manifest_cleanup` phase requires operator
+inspection. Investigate any partial remote copy before rerunning.
 
 The private `0600` schema-version-2 manifest includes client version, endpoint
 fingerprints, canonical key/size inventory hashes, a combined key/size/content
@@ -376,7 +384,9 @@ boundary from off-site storage to a disposable restore bucket for the weekly
 drill. Keep the source quiescent for a consistent current-state copy: sequential
 reads do not establish an atomic multi-object snapshot or prevent subsequent
 changes. The helper's local tests use synthetic streams and disposable fake
-client processes; they do not complete an off-site operational drill.
+client processes. They exercise both cancellation signals in all seven command
+phases, child reaping, deadlines, repeated signals, command failures and
+manifest-publication races; they do not complete an off-site operational drill.
 Version ID history still requires bucket replication and separate provider
 evidence; the mirror manifest intentionally does not claim to protect it.
 
