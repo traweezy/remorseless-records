@@ -101,7 +101,7 @@
     "medusajs-launch-utils": "^0.0.19",
     "multer": "^2.2.0",
     "pg": "^8.22.0",
-    "posthog-node": "^5.51.4",
+    "posthog-node": "5.51.5",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "6.30.4",

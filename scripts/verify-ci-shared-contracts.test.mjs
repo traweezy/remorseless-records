@@ -10,6 +10,7 @@ const workflow = read(".github/workflows/root.yml")
 const aggregate = "qa:ci-shared-contracts"
 const boundary = "qa:ci-shared-contracts-boundary"
 const toolchain = "qa:toolchain-runtime"
+const posthog = "qa:posthog-runtime"
 const names = [
   "qa:service-container-resolution",
   "qa:storefront-response-boundary",
@@ -143,7 +144,7 @@ test("rejects future local gates without an explicit CI mapping", () => {
   )
 })
 
-for (const name of [aggregate, boundary, toolchain]) {
+for (const name of [aggregate, boundary, toolchain, posthog]) {
   test(`requires exactly one local ${name} invocation`, () => {
     for (const change of [
       (scripts) => {
@@ -448,6 +449,98 @@ test("requires parity guard before project toolchain contracts", () => {
     )
   assert.notEqual(changed, workflow)
   assert.throws(() => validate(manifest, changed))
+})
+
+test("preserves exact PostHog runtime command, isolation, deadline, and scope", () => {
+  for (const replacement of [
+    "true",
+    "node scripts/posthog-runtime.test.mjs",
+    `${manifest.scripts[posthog]} || true`,
+    `${manifest.scripts[posthog]} --test-name-pattern=never`,
+  ])
+    assert.throws(() =>
+      validate(
+        mutateScripts((scripts) => {
+          scripts[posthog] = replacement
+        })
+      )
+    )
+  for (const [from, to] of [
+    ["--test-isolation=process", ""],
+    ["--test-isolation=process", "--test-isolation=none"],
+    ["--test-timeout=30000", ""],
+    ["--test-timeout=30000", "--test-timeout=0"],
+    ["--test-timeout=30000", "--test-timeout=60000"],
+    ["scripts/posthog-runtime.test.mjs", ""],
+    ["scripts/posthog-runtime.test.mjs", "scripts/tsx-runtime.test.mjs"],
+  ])
+    assert.throws(() =>
+      validate(
+        mutateScripts((scripts) => {
+          scripts[posthog] = scripts[posthog].replace(from, to)
+        })
+      )
+    )
+})
+
+test("requires local PostHog immediately after toolchain and after parity guard", () => {
+  for (const change of [
+    (chain) =>
+      chain.replace(
+        `pnpm run ${toolchain} && pnpm run ${posthog}`,
+        `pnpm run ${posthog} && pnpm run ${toolchain}`
+      ),
+    (chain) =>
+      chain
+        .replace(` && pnpm run ${posthog}`, "")
+        .replace(
+          " && pnpm run qa:release-policy",
+          ` && pnpm run qa:release-policy && pnpm run ${posthog}`
+        ),
+    (chain) =>
+      chain
+        .replace(` && pnpm run ${toolchain} && pnpm run ${posthog}`, "")
+        .replace(
+          ` && pnpm run ${boundary}`,
+          ` && pnpm run ${toolchain} && pnpm run ${posthog} && pnpm run ${boundary}`
+        ),
+  ])
+    assert.throws(() =>
+      validate(
+        mutateScripts((scripts) => {
+          const changed = change(scripts["qa:lint"])
+          assert.notEqual(changed, scripts["qa:lint"])
+          scripts["qa:lint"] = changed
+        })
+      )
+    )
+})
+
+test("requires named Root PostHog step immediately after toolchain and after guard", () => {
+  const runtime =
+    "      - name: Verify project hook and loader runtime contracts\n        run: pnpm run qa:toolchain-runtime\n"
+  const provider =
+    "      - name: Verify PostHog transport runtime contracts\n        run: pnpm run qa:posthog-runtime\n"
+  for (const changed of [
+    replaceWorkflow(`${runtime}${provider}`, `${provider}${runtime}`),
+    replaceWorkflow(
+      `${runtime}${provider}`,
+      `${runtime}      - name: Interposed bypass\n        run: true\n${provider}`
+    ),
+    replaceWorkflow(
+      "      - name: Verify PostHog transport runtime contracts\n",
+      "      - name: Unreviewed provider runtime\n"
+    ),
+    workflow
+      .replace(`${runtime}${provider}`, "")
+      .replace(
+        "      - name: Verify shared contract CI parity\n",
+        `${runtime}${provider}      - name: Verify shared contract CI parity\n`
+      ),
+  ]) {
+    assert.notEqual(changed, workflow)
+    assert.throws(() => validate(manifest, changed))
+  }
 })
 
 test("rejects omitted Redis helper scopes, tests, and the independent parity test runner", () => {

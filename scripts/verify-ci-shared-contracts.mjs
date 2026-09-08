@@ -6,9 +6,12 @@ import { fileURLToPath } from "node:url"
 const aggregate = "qa:ci-shared-contracts"
 const boundary = "qa:ci-shared-contracts-boundary"
 const toolchain = "qa:toolchain-runtime"
+const posthog = "qa:posthog-runtime"
 const command = (name) => `pnpm run ${name}`
 const toolchainCommand =
   "node --test --test-isolation=process --test-timeout=60000 --experimental-test-coverage --test-coverage-include=scripts/install-git-hooks.mjs --test-coverage-include=scripts/run-git-hook.mjs --test-coverage-lines=80 --test-coverage-branches=80 --test-coverage-functions=80 scripts/git-hooks.test.mjs scripts/tsx-runtime.test.mjs"
+const posthogCommand =
+  "node --test --test-isolation=process --test-timeout=30000 scripts/posthog-runtime.test.mjs"
 const boundaryCommand =
   "node --test --experimental-test-coverage --test-coverage-include=scripts/verify-ci-shared-contracts.mjs --test-coverage-lines=80 --test-coverage-branches=80 --test-coverage-functions=80 scripts/verify-ci-shared-contracts.test.mjs && node scripts/verify-ci-shared-contracts.mjs"
 const sharedContracts = Object.freeze({
@@ -190,6 +193,11 @@ export const validateCiSharedContracts = ({
     "Project hook and loader runtime coverage/test scope must remain enforced"
   )
   assert.equal(
+    scripts[posthog],
+    posthogCommand,
+    "PostHog transport runtime isolation, deadline, and test scope must remain enforced"
+  )
+  assert.equal(
     scripts.prepare,
     "node scripts/install-git-hooks.mjs",
     "Prepare must retain the ownership-refusing project hook installer"
@@ -212,6 +220,7 @@ export const validateCiSharedContracts = ({
     command(boundary),
     command(aggregate),
     command(toolchain),
+    command(posthog),
     ...existingContracts.map(command),
     ...compilerCommands,
   ]
@@ -225,18 +234,37 @@ export const validateCiSharedContracts = ({
   assert.ok(
     local.indexOf(command(boundary)) < local.indexOf(command(aggregate))
   )
+  assert.equal(
+    local.indexOf(command(posthog)),
+    local.indexOf(command(toolchain)) + 1,
+    "Local PostHog runtime contracts must immediately follow toolchain contracts"
+  )
+  assert.ok(
+    local.indexOf(command(boundary)) < local.indexOf(command(posthog)),
+    "The local parity guard must precede PostHog runtime contracts"
+  )
 
   const steps = securitySteps(rootWorkflow)
   const install = exactStep(steps, "pnpm install --frozen-lockfile")
   const guard = exactStep(steps, command(boundary))
   const shared = exactStep(steps, command(aggregate))
   const runtime = exactStep(steps, command(toolchain))
+  const provider = exactStep(steps, command(posthog))
+  assert.equal(
+    steps[provider][0],
+    "      - name: Verify PostHog transport runtime contracts"
+  )
   assert.ok(
     install < guard && guard < shared,
     "Install, independent parity guard, then shared contracts must be ordered"
   )
   assert.ok(guard < runtime, "The parity guard must precede runtime contracts")
-  for (const name of [boundary, aggregate, toolchain]) {
+  assert.equal(
+    provider,
+    runtime + 1,
+    "Root PostHog runtime contracts must immediately follow toolchain contracts"
+  )
+  for (const name of [boundary, aggregate, toolchain, posthog]) {
     const references = rootWorkflow.match(
       new RegExp(`(?<![a-z0-9:-])${name}(?![a-z0-9:-])`, "gu")
     )

@@ -2136,6 +2136,67 @@ now-cooled, independently reviewed PostHog follow-up will share the release
 push after its own transport and final-graph checks; no intermediate deployment
 is requested for these local commits.
 
+### PostHog follow-up in the combined release (September 8, local gates passed)
+
+The toolchain/hook cohort is local commit
+`50a73ef7ab399ac3bc3d062fc39d495797a17c2d`, not an intermediate deployment.
+The now-cooled PostHog 5.51.5 / core 1.50.0 pair is included in the same push.
+The parent and three mirrors are exact pins, with types 1.407.1 retained.
+Independent source/metadata review and the three real-SDK transport tests pass;
+the app's provider configuration is unchanged and no live events are sent.
+Detailed source, cooling and transport boundaries are in the dependency audit
+and QA runbook section 1.14.
+
+The final lock is
+`013f83c879d11be7aff1c4c562166b6e2373dcc6fb3915f4cc36d0eda06c45c2`.
+Incremental structural proof permits exactly the two reviewed package
+replacements, two override-derived peer declarations and one normalized
+Medusa context change, with no unrelated edges or Storefront importer changes.
+Frozen install passes, preserves explicit local/CI layout policy and leaves
+the installed project hooks unchanged. Root parity now passes 102 cases;
+the ten shared aggregate members and all earlier checks remain enforced.
+
+Full final-graph root QA passes, including all 102 parity, 59 hook/loader,
+three actual-SDK transport and eight Medusa toolchain cases, policy checks,
+format/lint and both strict typechecks. Root proof is
+`/tmp/remorseless-posthog-proof.pP9f0j/root-qa.log`.
+
+Backend again passes 278 suites / 2,163 tests at 91.83% lines/statements,
+85.76% branches and 95.80% functions. Build takes 55.22 seconds with no warning
+or error lines; all 330 Admin assets meet the existing budgets. Generated
+runtime SDK 5.51.5/core 1.50.0, manifest, lock projection, sixteen patches,
+bootstrap and workspace policies are verified. Evidence is
+`/tmp/remorseless-backend-posthog-final.kQLNOr/backend-summary.json`.
+
+Storefront again passes 908 baseline and 344 transactional cases, standalone
+and default builds (39.29 / 28.87 seconds), both 131-asset scans, decoder five
+and runtime-completion two. Final browser results are 81 responsive passes
+with two known skips, 48 three-engine critical passes and fourteen launch
+passes, with no failures, flaky results or retries. All source checksums and
+the lock remain unchanged. Owned ports 4010/4300 are independently verified
+free; user port 3000 is untouched. Evidence is
+`/tmp/remorseless-maintenance-final-storefront-20260908.4l2D6N`;
+browser-summary SHA-256 is
+`7fc8adb4d0f814cd9686264d815bb16060396e56ee3e091b9052134c58f324f5`.
+Local Pa11y/Lighthouse acceptance remains unclaimed because of the documented
+sandbox limitation; the supported CI runner must supply those results.
+
+Independent final audits, exact tarball checksums, installed identities,
+licenses and SBOM checks pass. Both production/all dependency audits report
+zero HIGH/CRITICAL, with the same three ignored/patched MODERATE metadata rows.
+Production/all license inventories retain 1,006 / 1,350 entries and only the
+five known upstream-MIT metadata omissions. CycloneDX 1.6 contains 1,310
+components / 1,311 dependency entries, including the exact pair and retained
+types, with no Lefthook. Its SHA-256 is
+`8b33433c059d4d4f2261ba53b21d911e5a11c18b701fafbda779e650ac37d251`.
+Evidence is `/tmp/remorseless-posthog-security.FNuaPk`. SBOM inventory and
+registry checksum verification are not independent provenance-signature or
+compiled-Rust security certification; the previously documented gap remains.
+
+Neither local commit supersedes accepted `80a83ced` until the final combined
+SHA passes its own CI, runtime-image, Railway and deployed acceptance. No
+intermediate commit was pushed or deployed separately.
+
 ### Remaining release work
 
 1. Next.js 16.3.4 is accepted above. Complete the reviewed compatible

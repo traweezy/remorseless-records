@@ -695,6 +695,32 @@ manager for an explicit frozen install, then verify a lightweight CI-mode
 command before application builds. The supply-chain verifier and generated
 configuration tests protect the explicit false policy.
 
+### 1.14 PostHog transport compatibility
+
+Run `pnpm run qa:posthog-runtime` using the pinned toolchain. The same exact
+command runs after the hook/loader gate in local root QA and Root CI. The
+independent parity suite protects its test scope, process isolation,
+30-second runner deadline, unconditional execution and order.
+
+Three real-SDK cases cover Medusa-shaped capture/identify/group events and
+awaited queue draining, a 100 ms request abort with retries disabled, and
+cancellation of a late response body. Fetch is injected; global fetch and
+socket connection are blocked before SDK loading. Fixtures use only a
+reserved `.invalid` host and a noncredential test key, with remote config,
+exception autocapture and local flag evaluation disabled. Cleanup drains only
+into the owned successful transport and checks for unexpected requests/errors.
+The fixture has two-second operation bounds and five-second per-case limits;
+target total execution is under five seconds, without weakening limits.
+
+The available Medusa adapter and the direct Backend dependency must resolve
+the same SDK. This is dependency compatibility, not live analytics delivery:
+the app does not register the PostHog provider. Do not enable a provider or send
+events to obtain acceptance. Local feature-flag evaluation, OTLP attribute
+encoding and browser-user-agent classification are separate upstream changes,
+not application paths covered by these transport cases. Real flush failures
+reject, while shutdown can consume classified fetch failures; do not impose
+an invented rejection contract on shutdown.
+
 ## 2. Stripe Payment Element Matrix
 
 ### 2.1 Environment

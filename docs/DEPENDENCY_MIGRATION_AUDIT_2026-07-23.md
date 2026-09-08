@@ -950,6 +950,59 @@ Exact-SHA deployment acceptance remains required before this maintenance cohort
 supersedes accepted `80a83ced`; the reviewed, now-cooled PostHog follow-up is
 being grouped into the same release push.
 
+### Cooled PostHog pair included in the same release push
+
+After the toolchain cohort's complete local acceptance and logical commit
+`50a73ef7ab399ac3bc3d062fc39d495797a17c2d`, PostHog 5.51.5 completed its
+seven-day window at `2026-09-08T10:53:43.458Z`; core 1.50.0 completed its window
+at `10:53:22.053Z`. Both are independently reviewed and included in the same
+combined release push, not a separate deployment checkpoint. The direct
+Backend selector and all three PostHog override mirrors now pin exactly
+5.51.5. Core moves from 1.49.2 to 1.50.0; `@posthog/types` stays at 1.407.1.
+
+The [Node release](https://github.com/PostHog/posthog-js/releases/tag/posthog-node%405.51.5)
+has no Node runtime source changes. Its paired
+[core release](https://github.com/PostHog/posthog-js/releases/tag/%40posthog%2Fcore%401.50.0)
+changes local flag coercion/matching, moves the bounded OTLP attribute encoder
+with signed-int64 bigint support, and identifies AI-app user-agent labels.
+The reviewed encoder retains depth/item/node limits and circular/getter/toJSON
+defenses; out-of-range bigint values remain strings. This does not make
+ordinary capture properties bigint-safe. Capture transport, queue and shutdown
+sources are unchanged. Both packages retain MIT licensing, compatible engines
+and exports, and no install hooks. The optional RxJS peer is unchanged.
+
+Exact registry timestamps/integrities and source identities are retained in
+`/tmp/remorseless-posthog-review.iJE28U/review.md`, SHA-256
+`23edbfd32212852ee8cdb6d69cb159a057422c05e2839d1e1acfa7cb9547c468`.
+Registry provenance signatures were recorded, not independently verified.
+The first-party app registers no PostHog analytics provider; Medusa's separate
+telemetry dispatcher does not use this SDK. Available adapter compatibility
+does not establish live activation or provider acceptance.
+
+The durable `qa:posthog-runtime` gate passes three cases on both old and new
+SDKs using actual installed modules, injected responses and network guards.
+It covers Medusa-shaped capture/identify/group payloads, awaited draining,
+timeout/abort without retry, and cancellation of a late response body. No live
+event or configuration change occurs. Root local/CI wiring and its exact
+isolation/deadline/scope are protected by 102 parity cases; the ten-member
+shared aggregate and all previous gates remain intact.
+
+Final lock SHA-256 is
+`013f83c879d11be7aff1c4c562166b6e2373dcc6fb3915f4cc36d0eda06c45c2`.
+Compared with `50a73ef`, exactly two nodes are replaced, two Medusa peer
+declarations reflect the override, and one compressed Medusa context changes.
+Normalized snapshot/importer edges and all unrelated fields are identical;
+the Storefront importer is byte-equivalent as a parsed object. Counts remain
+1,800 packages / 1,815 snapshots. Integrity and structural proof is
+`/tmp/remorseless-posthog-proof.pP9f0j/lock-verified.json`.
+The final frozen install passed in 2.4 seconds, running only the idempotent
+hook prepare with zero changes/backups, and the unchanged strict CI-mode
+probe passed. Full final-graph acceptance is recorded in the handoff.
+
+PostHog 5.51.6 remains held until `2026-09-08T13:08:20.450Z`, 5.51.7 until
+September 14, and Resend 6.26.0 until September 10. Do not wait solely for a
+future release or treat this pair's review as approval for other versions.
+
 ## Compatibility upgrade plan — 2026-09-03, batching revised 2026-09-06
 
 `pnpm outdated --recursive --format json` was reviewed against registry publish
