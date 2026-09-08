@@ -160,9 +160,13 @@ production build and client-bundle verifier, and inspected automated plus real
 graphical-desktop screenshots. See `docs/QA_RUNBOOK.md` for commands and
 artifact locations.
 
-The monitored privacy/support mailbox, operator response rehearsal, staff
-training, and the remaining real graphical-desktop customer-journey captures
-are still open. Qualified counsel must approve policy wording, jurisdiction
-scope, retention, consumer-request deadlines, and operating procedures.
+The remaining real graphical-desktop customer-journey captures are complete;
+the inspected Product, Terms, cart, checkout, confirmation, and recovery
+evidence is recorded in `docs/PRODUCTION_HARDENING_PLAN.md` under "Legal,
+accessibility, and launch acceptance."
+
+The monitored privacy/support mailbox, operator response rehearsal, and staff
+training are still open. Qualified counsel must approve policy wording,
+jurisdiction scope, retention, consumer-request deadlines, and operating procedures.
 Automated acceptance proves implementation behavior; it does not provide legal
 approval.

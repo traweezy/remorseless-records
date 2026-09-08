@@ -2,7 +2,11 @@ name: remorseless-records-integration
 
 services:
   postgres:
-    image: docker.io/library/postgres:18.6-alpine3.24@sha256:d3e1620b530c944afa6e887d22eb899824da68e19c52024bf98f5220c88a65b2
+    image: remorseless-records-integration-postgres:18.6-hardened
+    build:
+      context: ./docker/integration
+      dockerfile: postgres.Dockerfile
+    pull_policy: never
     environment:
       POSTGRES_DB: postgres
       POSTGRES_PASSWORD: local_integration_only
@@ -18,7 +22,11 @@ services:
       - /var/lib/postgresql
 
   redis:
-    image: docker.io/library/redis:8.10.1-alpine3.23@sha256:becdda6c7f4b3fb42e42fd7f120bbf5c54c4caaaf16f26da24e4563d2c1f0576
+    image: remorseless-records-integration-redis:8.10.1-hardened
+    build:
+      context: ./docker/integration
+      dockerfile: redis.Dockerfile
+    pull_policy: never
     command:
       - redis-server
       - --save
@@ -38,3 +46,7 @@ services:
       - "127.0.0.1:${RR_INTEGRATION_REDIS_PORT:-56379}:6379"
     tmpfs:
       - /data
+
+networks:
+  default:
+    driver: bridge

@@ -46,14 +46,15 @@ September 3 live read remained healthy with Redis `ok`, a completed heartbeat,
 no incident latch, and no alert reason.
 
 The accepted implementation head
-`6f61520fbd3677b15aeecb1052a86b8dffff0e9d` includes Storefront Query 5.102.8,
+`4ba7996f934754a1aeb8d0d970a35f33341a0ce3` includes Storefront Query 5.102.8,
 both direct Redis clients and the shared Redis 6.2.1 graph, upstream `qs`
 6.16.0, Storefront Trusted Types enforcement, and the accepted combined
 Form/Resend/PostHog/Pacer/Virtual/Sonner, AWS/Stripe/OpenTelemetry, and
 UI/parser/image/tooling cohorts, plus the recovery safeguards, deployed
 browser synchronization correction, bounded PostgreSQL recovery execution and
 read-only Redis capacity/persistence observation and shared local/CI contract
-enforcement.
+enforcement, plus checkout read/write isolation, native webhook error
+redaction and concurrent-request tracing lifecycle corrections.
 The Backend/Admin Query 5.64.2 graph remains
 isolated and unchanged. Full local acceptance, all four exact-SHA GitHub
 workflows, both runtime-image validations, and both Railway staging deployments
@@ -86,13 +87,15 @@ changed.
 
 Production remains blocked by the unchecked operational and approval items in
 this plan: qualified legal/tax/client approval; staffed support and privacy
-ownership plus training; named launch sign-offs; real Stripe/tax/refund
-matrices; production infrastructure, least-privilege roles, private service
+ownership plus training; named launch sign-offs; outstanding provider-specific
+tax sandbox evidence and business decisions (the checkout/payment recovery and
+refund/dispute matrices are already complete); production infrastructure,
+least-privilege roles, private service
 exposure, backups/PITR and timed restore drills; published and attested runtime
 artifacts; and production monitoring/change approval. No production
 environment exists.
 
-## Active grouped application-correctness follow-up
+## Grouped application-correctness acceptance
 
 The grouped candidate was pushed at `3f9c533` after the accepted `6f61520`
 release: late checkout reads overwriting authoritative writes;
@@ -109,8 +112,28 @@ found three status-zero completion events for four successful HTTP requests:
 the Vercel tracing wrapper forcibly ended sibling roots before Next added
 their status. The original reverse-order runtime fixture hid this defect.
 The corrective standard Node provider and both completion-order regressions
-must pass fresh local and exact-SHA staging gates; keep the accepted head
-above until then. The handoff records the unaccepted candidate's evidence.
+passed fresh local and exact-SHA staging gates at
+`4ba7996f934754a1aeb8d0d970a35f33341a0ce3`. Root `34067639362`, Backend
+`34067639391`, Storefront `34067639402` and Runtime Images `34067639367`
+all passed without reruns or policy changes. Both runtime candidates passed
+independent exact OCI/source/digest verification; publication skipped.
+Storefront CI passed 908 baseline tests, 344 transactional tests, both actual
+runtime completion orders, 81 responsive cases/two expected skips, 14 launch
+cases and 48 cross-engine cases. Pa11y and all 71 Lighthouse median budgets
+passed; the 18 reports contained no runtime/console errors.
+
+Both Railway source deployments reached `SUCCESS` on the exact SHA. Backend
+identity/readiness, operations/catalog and the ordinary exact-SHA scheduler
+heartbeat at `2026-09-07T00:02:03.342Z` passed. Storefront health, HTML,
+security/Trusted Types headers and AVIF checks passed, as did 75 deployed
+browser cases/eight expected skips with zero retries. The live four-request
+shared-trace probe now has four distinct, correctly attributed HTTP 200
+completion records; the previous status-zero defect is fixed. Exact guard
+runtime/HTTP correlations passed for both services. Known Next client-stream
+cancellation noise remains visible; no 5xx, unclassified runtime error,
+Trusted Types failure or credential-assignment signal was observed in the
+bounded samples. Detailed exact-SHA evidence is in the handoff. Final notes
+remain local for the next substantive batch, with no documentation-only push.
 
 The September 6 read-only Redis audit is now live evidence, not just a fixture:
 the verified Railway ceiling is 32,000,000,000 bytes, and the existing private
@@ -119,6 +142,61 @@ AOF/everysec was enabled. No configuration, keys, ACLs or files changed.
 `INFRASTRUCTURE_RECOVERY.md` records exact deployment/instance provenance and
 bounded counters. The live capacity/persistence rollout remains unchecked;
 70% of a plan ceiling is not an approved capacity recommendation.
+
+A subsequent one-time staging Redis volume backup was created at
+`2026-09-07T00:37:22.198Z`, ID `129379c6-8a3c-42bf-9695-5e0ef5840e3d`,
+named `pre-hardening-20260906`. The exact-volume record, empty pending-work
+list, unchanged Redis deployment, healthy applications and next ordinary
+scheduler heartbeat were verified. No expiry is currently reported and no
+schedule was added. This checkpoint does not close the memory/persistence,
+immutable-image or timed-restore items. `INFRASTRUCTURE_RECOVERY.md` records
+retention/cost boundaries and the missing workflow-status evidence; no Redis
+configuration, restart, restore or source change was performed.
+
+The image follow-up also found a priority security issue: live Redis reports
+8.0.3, predating the upstream fix for critical CVE-2025-49844; its public
+TCP proxy was initially `ACTIVE`. No vendor-backport proof or exploitation evidence
+was established. Blanket Lua denial would break rate limits, cart idempotency,
+Medusa locks and BullMQ workflows; readiness `PING` alone would miss that
+outage. The recovery runbook records the advisory, immutable historical image
+candidate and controlled migration requirements. Bitnami Legacy is unsupported
+and is not a security-approved replacement. No public endpoint, ACL, source
+or live Redis data was changed during this research.
+The later separately approved exact TCP-proxy deletion ran once at
+`2026-09-07T01:23:41Z` and exited zero; fresh metadata showed zero Redis TCP
+proxies. Both `4ba7996` apps stayed ready over private networking, and the
+ordinary `01:24:00.054Z` scheduler heartbeat plus operations/catalog and
+Storefront probes passed. Only public exposure was removed; the live Redis
+version, data, persistence, credentials and image were not changed.
+The existing Redis 8.10.1 Alpine fixture also fails the candidate-image
+security bar: an exact-digest, cached-DB local scan found eight fixed HIGH OS
+package findings. This is separate from the accepted Backend/Storefront image
+scans and does not imply that their results failed. The recovery runbook keeps
+the advisory/package evidence and the scanner's compiled-Redis coverage gap.
+The official Redis Trixie alternative also failed, and the current PostgreSQL
+integration fixture has one CRITICAL/30 HIGH findings. These remain open
+supply-chain work, not waived results. Separately, local synthetic Redis
+8.0.3-to-8.10.1 persistence/reopen compatibility passed for 11 keys and three
+expirations in 9.44 seconds, with all test resources cleaned. That experiment
+does not close the actual backup-restore, image-security or live rollout items.
+A subsequent local minimal-package Redis build removed all detected OS-package
+findings while preserving the Redis/entrypoint/module hashes and configuration.
+The exact new image also passed the same synthetic persistence/rollback proof
+in 9.61 seconds, and a bounded CycloneDX SBOM was retained. The runbook records
+the local image ID, recipe and compiled-component coverage gap. Nothing was
+published or deployed; both applications remain healthy on `4ba7996`, and
+the live Redis risk plus PostgreSQL fixture findings remain open.
+
+The grouped follow-up now implements hardened disposable recipes and a
+mandatory exact-image build/scan/integration chain. Fresh database scans under
+both Trivy 0.74.0 and CI-pinned 0.70.0 found zero findings across all detected
+packages. The 99-test runner/scanner/wiring gate and all 106 real-service,
+recovery, API and synthetic session-rotation cases passed locally. The failed
+internal-network experiment is retained; the corrected bridge preserves
+loopback bindings and adds a runtime binding assertion. No fixture image was
+published or deployed to Railway. This resolves the tested candidate-package
+findings, not the live Redis advisory or the actual secret-rotation/backup
+restore drills. Exact-SHA CI acceptance remains to be recorded in the handoff.
 
 ## Operating contract
 
@@ -152,16 +230,16 @@ bounded counters. The live capacity/persistence rollout remains unchecked;
 - Git branches: `staging` is the default/integration branch; `master` is the
   protected production-candidate branch. Retired `main` was deleted.
 - Latest implementation/runtime-image validation SHA accepted:
-  `6f61520fbd3677b15aeecb1052a86b8dffff0e9d`.
+  `4ba7996f934754a1aeb8d0d970a35f33341a0ce3`.
 - Original documentation-only staging acceptance:
   `060af53115ed1ae85d2f8d02d6fd0590c8e6a02d`.
 - Railway project: `store`; only the `staging` environment exists.
 - Application acceptance Backend deployment:
-  `c732b2a8-5dd1-4d75-8531-452cc794be8a` (`SUCCESS`,
-  `6f61520fbd3677b15aeecb1052a86b8dffff0e9d`).
+  `4806b717-c262-49c0-a115-1ee89607ea21` (`SUCCESS`,
+  `4ba7996f934754a1aeb8d0d970a35f33341a0ce3`).
 - Application acceptance Storefront deployment:
-  `edbdef4d-832c-472b-9a82-b71d9b82e4ed` (`SUCCESS`,
-  `6f61520fbd3677b15aeecb1052a86b8dffff0e9d`).
+  `e9581a94-a6b9-4ebd-a4e5-fa1c62a4c1c4` (`SUCCESS`,
+  `4ba7996f934754a1aeb8d0d970a35f33341a0ce3`).
 - Backend and Storefront `/live` and `/ready` checks return HTTP 200.
 - The public storefront route/API smoke matrix passes. `/products`
   intentionally redirects to `/catalog`.
@@ -2871,8 +2949,10 @@ Both commands explicitly reported that no files or database records changed.
 - [x] Require TLS for every non-private database connection.
 - [x] Move Storefront Redis to the Railway private service reference and prove
       exact-deployment port-6379 service flows complete without drops.
-- [ ] Remove public Redis and PostgreSQL TCP proxies unless a reviewed,
-      encrypted administrative path requires them.
+- [x] Remove the approved staging Redis public TCP proxy and verify both private
+      application paths plus ordinary reconciliation and catalog operations.
+- [ ] Review and remove the PostgreSQL TCP proxy unless a reviewed, encrypted
+      administrative path requires it.
 - [ ] Put MinIO Console behind private access/SSO or remove its public domain.
 - [ ] Configure PostgreSQL backups/PITR and perform a timed restore drill.
 - [ ] Configure off-site media backup and verify object checksums and restores.
@@ -2930,10 +3010,12 @@ disposable database. Railway volume schedules/PITR and an off-site media target
 still require controlled environment changes and timed drills, so those items
 remain open rather than being closed on documentation alone.
 
-The same runbook defines launch objectives, a 70% Redis memory ceiling with
+The same runbook defines launch objectives, capacity-budgeted Redis memory with
 `noeviction` plus AOF-every-second durability, authoritative-source recovery,
 Meilisearch snapshot/dump/rebuild semantics, current staging public exposure,
 floating support images, and the exact production cost/domain approval packet.
+Its 70% ratio is a starting policy envelope against an approved service limit,
+not permission to allocate 70% of the Railway plan maximum.
 
 ## GitHub, CI, supply chain, and test depth
 

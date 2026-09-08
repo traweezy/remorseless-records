@@ -1,31 +1,35 @@
 # Next-session handoff
 
-Last updated: 2026-09-06
+Last updated: 2026-09-08
 
-This document records the local and GitHub acceptance boundary for the
-runtime-image hardening slice. GitHub image evidence does not prove which
+This document records the local and GitHub acceptance boundary for application
+and infrastructure hardening. GitHub image evidence does not prove which
 artifact Railway is running; verify Railway separately with the sequence below.
 
 ## Repository state
 
 - Branch: `staging`
 - Current accepted implementation head:
-  `6f61520fbd3677b15aeecb1052a86b8dffff0e9d`. It includes the accepted Next.js
+  `4ba7996f934754a1aeb8d0d970a35f33341a0ce3`. It includes the accepted Next.js
   16.3.3 build split, Redis 6.2.1, upstream `qs` 6.16.0, Trusted Types
   enforcement, the Form/Resend/PostHog/Pacer/Query/Virtual/Sonner batch, and
   the AWS/Stripe/OpenTelemetry, UI/parser/image/tooling, and recovery batches.
   Complete local, exact-SHA CI, runtime-image, and Railway staging evidence is recorded
   below, including the deployed test-only hydration correction and the bounded
   PostgreSQL backup/restore execution, Redis observation and shared-CI
-  contract parity batches.
+  contract parity batches, plus checkout read/write isolation, native webhook
+  error redaction and concurrent-request tracing lifecycle corrections.
 - Latest exact runtime-image validation SHA:
-  `3f9c533fbea23fee6b300287f0e1ed3bc8cb7bd9`. CI image validation passed,
-  but application acceptance remains at `6f61520` pending the tracing
-  bootstrap correction below.
+  `4ba7996f934754a1aeb8d0d970a35f33341a0ce3`. All four CI workflows and
+  both Railway source deployments passed. The live shared-trace regression
+  that prevented acceptance of `3f9c533` now passes with four exact HTTP 200
+  completion records; detailed correction evidence is below.
 - The prior PostgreSQL release's acceptance notes shipped with the substantive
   Redis batch; Redis acceptance notes shipped with the shared-CI contract
   follow-up. Final CI-parity acceptance notes shipped with the substantive
-  `3f9c533` application batch; no documentation-only push was made.
+  `3f9c533` application batch; its staging discovery shipped with the
+  substantive `4ba7996` correction. Final correction acceptance notes remain
+  local for the next substantive batch; no documentation-only push was made.
 - Original implementation/runtime-image acceptance SHA
   `61fd86889a4adca23e1e9704e11c889a1fd986a9` is pushed to
   `origin/staging`. Backend source deployment acceptance is documented at
@@ -1472,8 +1476,9 @@ the next substantive batch; no documentation-only checkpoint push was made.
 
 Three reproduced application defects were grouped in one staging push at
 `3f9c533fbea23fee6b300287f0e1ed3bc8cb7bd9` (20 files, three logical commits).
-The accepted head remains `6f61520` until the candidate's exact-SHA acceptance
-is complete; do not confuse local verification with deployment evidence.
+The accepted head stayed at `6f61520` after that candidate's live tracing
+check failed. The corrective `4ba7996` release subsequently passed complete
+exact-SHA acceptance below; local verification alone did not advance it.
 
 Checkout reads now accept TanStack cancellation while retaining their existing
 12-second deadline. Writes cancel prior reads and reads started during the
@@ -1574,7 +1579,7 @@ Backend dependencies, operations/catalog and the ordinary exact-SHA heartbeat
 at `23:28:03.455Z` passed. Storefront HTML/security/AVIF checks and 75 deployed
 browser cases/eight expected skips passed with zero retries in 1.8 minutes;
 private evidence is `/tmp/remorseless-3f9c533-deployed-browser.fdIPik/results`.
-Nevertheless, do not accept this release: live trace
+This candidate was not accepted: live trace
 `1800d92f7ae008251b959b7160d5c064` returned four HTTP 200 responses with correct
 request IDs, but three completion logs recorded status zero.
 
@@ -1612,8 +1617,219 @@ resolved those harness failures without changing gallery code, assertions or
 retry policy. Audit retains only the
 three existing moderate ignores. Final root lock SHA-256 is
 `a1f529fde28d2d0ac7042ca3677b14483cbb05dd865af0fc0885fa000e78eb95`.
-Exact-SHA CI and staging acceptance remain required. No live Redis backup,
-configuration, credentials or production settings changed.
+Exact-SHA CI and staging acceptance subsequently completed as recorded below.
+During that code-release acceptance, no live Redis backup, configuration,
+credentials or production settings changed.
+
+### Corrective exact-SHA acceptance — September 6, 2026
+
+Commit `4ba7996f934754a1aeb8d0d970a35f33341a0ce3` is accepted. Its mandatory
+pre-commit and pre-push hooks passed without bypasses; the push completed with
+the unchanged root lock hash above. No workflow rerun, assertion relaxation,
+sampling change or new audit exception was required.
+
+All four exact-SHA workflows passed:
+
+- Root `34067639362`: 71 parity plus 178 shared tests. Parity coverage is
+  96.95% lines, 95.56% branches and 94.44% functions.
+- Backend `34067639391`: 278 suites/2,162 tests in 192.538 seconds;
+  coverage is 91.83% statements/lines, 85.76% branches and 95.80% functions.
+  All 97 integration/recovery cases and three API contracts passed.
+  Backend/Admin builds took 14.34/33.75 seconds; bundle budgets passed.
+- Storefront `34067639402`: 143 files/908 baseline tests at 94.86% lines
+  and 87.55% branches; 38 files/344 transactional tests at 84.10% lines and
+  76.45% branches. The actual provider bootstrap has 100% coverage in all
+  dimensions. Both built-runtime completion orders passed in 1,535.03 ms
+  total. Responsive tests passed 81 cases/two expected skips, launch passed
+  14, and Chromium/Firefox/WebKit critical flows passed 48. Pa11y passed.
+- Runtime Images `34067639367`: both validation jobs passed; publication
+  skipped. Candidate artifacts are private under
+  `/tmp/remorseless-runtime-4ba7996.VxdmS2` (0700). Backend artifact
+  `9999498246` contains 1,166 components and digest
+  `sha256:2e7a783a3f81baa0ab90672a1c21116a3465db3ce2a17d9e279c69a3eb0e5f3e`.
+  Storefront artifact `9999479696` contains 122 components and digest
+  `sha256:abbe09b1b280a5876243d72d7c1860756eea416a5b4e89e5e7d9f13b6f1f8317`.
+  Repository and independent verification checked unique OCI revision/source
+  labels and exact Trivy ImageID equality, not just digest substrings.
+
+Lighthouse artifact `9999631208` is retained privately at
+`/tmp/remorseless-lighthouse-4ba7996.dp3np0/artifacts/lighthouse`. Independent
+review found 18 reports grouped by six exact requested URLs, three per group,
+zero runtime/console errors, and accessibility/best-practices scores of 1.0
+throughout. All 71 configured median budgets passed with the existing CPU
+slowdown of 2. Cart remains its own requested-URL group despite redirecting
+to `/?cart=1`.
+
+| Requested route | Median performance | LCP ms | TBT ms | CLS |
+| --- | ---: | ---: | ---: | ---: |
+| Home | 0.87 | 4076.651 | 30.000 | 0 |
+| Cart | 0.87 | 4041.753 | 52.500 | 0 |
+| Catalog | 0.88 | 3890.890 | 85.000 | 0.000282 |
+| Checkout | 0.88 | 3757.692 | 93.000 | 0 |
+| Product | 0.88 | 3877.621 | 29.481 | 0 |
+| Privacy | 0.89 | 3746.699 | 71.000 | 0 |
+
+Both Railway source deployments reached `SUCCESS` at that exact SHA:
+
+- Backend `4806b717-c262-49c0-a115-1ee89607ea21`, digest
+  `sha256:69f2ebb3e5b2c3f3c98464b7f7bdb3040a029d4d7e77098f3ab01086634b6dc8`.
+- Storefront `e9581a94-a6b9-4ebd-a4e5-fa1c62a4c1c4`, digest
+  `sha256:4d8430efabd8dad68686a1c4c193f8b455f79238d578d9d98b4e37ceecd68e4d`.
+
+These Railpack-built images are distinct from the CI candidates above. No
+GHCR publication, source cutover or production action occurred. Backend
+identity/readiness, scheduler, operations and all catalog reads passed. The
+ordinary scheduler heartbeat completed at `2026-09-07T00:02:03.342Z` on the
+exact SHA without a manual trigger. Storefront complete HTML, security and
+Trusted Types headers, readiness and the 7,027-byte AVIF response passed.
+Deployed browser acceptance passed 75 cases/eight expected skips with zero
+retries in 1.9 minutes; evidence is private at
+`/tmp/remorseless-4ba7996-deployed-browser.CKMwiT/results`. No new rendered
+UI changes or graphical-desktop screenshot acceptance are claimed.
+
+The decisive live probe at `2026-09-07T00:02:25.782Z` used shared trace
+`2e93b381b3172602d59bd2c1b765591d` and four concurrent health requests.
+All four returned HTTP 200 and each produced exactly one distinct request/span
+completion with status 200, level `info`, correct SHA/environment/service,
+finite duration and no forbidden request fields. Durations were
+47.434/34.185/33.204/32.804 ms. The previous three-zero/one-200 result is fixed
+without replacing unknown status values or weakening the assertion.
+
+Exact guard response/runtime/HTTP log correlations passed for Backend request
+`41d0d267-9ef1-4200-8c2e-5a5e76f435ea`, trace
+`8b6a4fcea3da8c0cc495f143bc480b2e`, Railway request
+`Ea__i5kvRtazyPmDGbGh5g`, and Storefront request
+`1e01cf7c-9362-47cd-8fbd-20fe4480d99b`, trace
+`53365be7e774ceeaf8b9e720c506dab6`, Railway request
+`5Yj8O1ZDTxu_VcuxwoOzXw`.
+Uncapped bounded samples contained 359 Backend runtime rows and 330 Storefront
+runtime rows, with no unclassified warnings/errors, credential-assignment
+signals or Trusted Types failures. Storefront still recorded 11 known Next
+stream-cancellation errors and one existing root-span diagnostic; these were
+not suppressed. Its 125 HTTP-error rows contained 111 client disconnects
+(499), 13 synthetic fixture 404s and the deliberate guard 400; no 5xx was
+observed. Backend's HTTP-error sample contained only its deliberate guard 400.
+
+The subsequent one-time Redis recovery checkpoint is recorded in
+`INFRASTRUCTURE_RECOVERY.md`. After the user instructed the agent to continue
+following the specific backup/cost question, exactly one
+`pre-hardening-20260906` backup was created on the verified staging volume:
+`129379c6-8a3c-42bf-9695-5e0ef5840e3d`, created
+`2026-09-07T00:37:22.198Z`. Fresh listing confirms the backup, 1,072 MB
+referenced size, no reported expiry, no schedule and an empty
+`environmentPendingWork` result. Redis's deployment and configuration were
+not changed; both apps remained ready and the ordinary `00:38:00.082Z`
+heartbeat completed normally.
+No workflow-status response or successful restore is claimed; the recovery
+runbook records the evidence limitation and retention/cost cautions.
+Read-only follow-up found reported Redis 8.0.3 predates the upstream fix for
+critical CVE-2025-49844 and initially confirmed an active public TCP proxy.
+No vendor-backport or exploit evidence is claimed. Do not disable Lua as a
+quick workaround: rate limits, cart idempotency, Medusa locking and BullMQ
+depend on it, while readiness checks only `PING`. The recovery runbook records
+an immutable historical Bitnami Legacy candidate for isolated compatibility
+testing; that unsupported image is neither proven to match the running
+artifact nor approved as a secure replacement.
+The newer Redis 8.10.1 Alpine fixture is not staging-approved either: a local
+exact-digest scan found eight fixed HIGH OS-package findings, documented in
+the recovery runbook. Existing Medusa integration success is functional
+evidence, not security acceptance; the compiled server/modules were outside
+this OS-package scan's detected coverage.
+The same-version Trixie alternative also failed (three CRITICAL/52 HIGH),
+and the existing PostgreSQL integration fixture has one CRITICAL/30 HIGH;
+these do not describe the separately accepted application runtime images.
+An isolated synthetic Redis persistence test passed 8.0.3 to 8.10.1 with
+11 keys, three exact expirations, durable post-rewrite AOF replay and an
+untouched source-baseline reopen. All owned test resources were cleaned.
+The recovery runbook records 9.44-second fixture evidence and limitations:
+direct server binaries, synthetic AOF+RDB, no real backup or queue replay.
+Further local work produced a minimal OS-package-patched Redis candidate,
+Docker image ID `sha256:7451f4003e18e5d5146e99e06b14a8520cc7bfb8d213078b6547b7e98c907288`.
+Only three exact Alpine package versions changed; Redis, entrypoint, modules
+and runtime configuration were preserved. The same cached-DB scan now has zero
+findings across 22 OS packages; its 23-component SBOM does not cover compiled
+Redis/module dependencies. Repeated synthetic persistence/rollback acceptance
+passed on that exact ID in 9.61 seconds with no test resources left behind.
+The recipe, scan and proof locations are in the recovery runbook. This local
+image is not a published artifact or an accepted staging replacement.
+Fresh selected-endpoint metadata confirmed both `4ba7996` apps use private
+Redis networking, and final readiness remained healthy. The separately approved
+exact proxy deletion ran once at `2026-09-07T01:23:41Z`, exited zero, and a
+fresh listing confirmed zero Redis TCP proxies. Both apps remained ready on
+`4ba7996`; the ordinary `01:24:00.054Z` scheduler heartbeat and subsequent
+operations/catalog/Storefront/security-header/AVIF probes passed. External
+clients lose the removed public endpoint; Redis storage, configuration and
+source were unchanged. The real-backup restore route, image publication and
+live upgrade have not been authorized or performed.
+Live Redis configuration, restore, image/source and additional cost decisions
+remain separate from the single backup. Preserve the local legal runbook
+correction and final acceptance/recovery notes for the next substantive batch
+rather than pushing a documentation-only checkpoint.
+
+### Grouped fixture-security and session-rotation follow-up
+
+The next substantive batch replaces both unpatched disposable service images
+with `docker/integration` recipes, preserving the database binaries and
+official privilege-dropping entrypoints. Redis receives three exact signed
+Alpine package fixes; PostgreSQL receives four and a source/checksum-pinned
+`gosu` rebuild with Go 1.27.1 and fixed `x/sys` 0.44.0. The root pnpm lock
+remains unchanged. The recovery runbook records full provenance, startup,
+shutdown and package-coverage limitations.
+
+Backend CI now builds the same recipes as local Compose, scans their exact
+local IDs, binds JSON/CycloneDX evidence and runs with `--no-build`. No registry
+publication is added. Missing reports, high/critical/unknown findings, stale online
+database evidence, suppressed findings, image substitutions, incorrect
+published ports and unsafe output paths fail closed. Both image IDs export
+only after both complete scans pass. The runner rejects pre-existing project
+resources, isolates known provider/telemetry configuration from `.env`, bounds
+child processes/output, and cleans up after startup/test failures or signals.
+
+Independent fresh-DB scans passed both exact Compose IDs with zero findings
+at every severity under local Trivy 0.74.0 and the existing CI-pinned 0.70.0.
+PostgreSQL inventory is 53 OS/four Go packages with 59 CycloneDX components;
+Redis is 22 OS packages/23 components. The unversioned rebuilt `gosu` main
+module and unestablished compiled-server coverage are recorded, not hidden.
+Evidence: `/tmp/remorseless-fixture-security-20260907.qHIXmc/evidence` and
+`/tmp/remorseless-trivy070-compat.jquIIW/evidence`.
+
+The 99-test runner/scanner/wiring boundary passes with 98.77% lines,
+96.81% branches and 100% functions, enforcing an 80% floor. Shared-contract
+parity still passes all 71 cases. Full exact-image integration passed all
+106 cases without skips: 31 Medusa, 41 payment-lifecycle, 17 PostgreSQL
+recovery, eight Redis audit, three API-contract and six session-rotation
+tests, in 21.82 seconds. The rotation matrix uses installed Medusa 2.18
+middleware/session handler and real disposable Redis, not a password/OAuth
+provider or live account. It proves JWT-only rotation preserves sessions,
+both-secret rotation rejects old credentials without deleting stored state,
+new credentials establish sessions, and old-key instances reject them.
+
+The first fullstack run exposed a new optional internal-network setting that
+discarded host port bindings on Docker Desktop 29.7.2. An isolated comparison
+proved this, and the corrected ordinary bridge retains loopback-only ports
+plus a new runtime binding check. The failed 24.26-second run is retained at
+`/tmp/remorseless-hardened-integration-20260907.ztd5PF`; comparison evidence is
+`/tmp/remorseless-compose-network-proof-20260907.NUPV9Q`. Successful evidence
+is `/tmp/remorseless-hardened-integration-20260907.RBQeVt`. Both runs cleaned
+their owned containers/networks; final project inventory has zero containers,
+networks or volumes. No staging support image or credential changed.
+
+Local production builds also pass with synthetic configuration: Storefront
+standalone completed in 21.045 seconds, generated 55 pages, and verified 131
+static assets for server-secret/public-Meilisearch/Stripe Trusted Types safety.
+Its owned loopback Medusa fixture was closed afterward. Backend build completed
+in 22.715 seconds and passed the Admin bundle budget. The first Storefront
+attempt correctly rejected an explicitly empty optional previous secret; a
+distinct synthetic previous key fixed the harness, without changing app code.
+Private build evidence is `/tmp/remorseless-app-build-proof.Aor1MF`.
+Full Backend unit coverage also passed all 278 suites / 2,162 tests in
+86.216 seconds, with 91.83% lines, 85.76% branches and 95.80% functions.
+The first unit invocation inherited the already-cleaned disposable Redis
+endpoint; explicitly disabling Redis restored the CI unit-test environment.
+Both run results are retained with the build evidence; no application source
+or assertion was changed to resolve that harness mismatch.
+Exact-SHA CI acceptance for this grouped batch must still be recorded before
+superseding accepted `4ba7996` above.
 
 ### Remaining release work
 

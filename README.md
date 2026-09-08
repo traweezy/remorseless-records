@@ -1655,7 +1655,7 @@ We run three application/repository pipelines for `staging` and `master`
 pushes/pull requests (plus a weekly schedule), and one runtime-image pipeline
 for long-lived branch pushes:
 
-- **Backend CI**: dependency review, security (Shai-Hulud detector, Trivy FS scan, pnpm audit), secret scan, lint, typecheck, unit tests, CodeQL, build, and an enforced Admin JavaScript bundle budget.
+- **Backend CI**: dependency review, security (Shai-Hulud detector, Trivy FS scan, pnpm audit), secret scan, lint, typecheck, unit tests, CodeQL, hardened disposable PostgreSQL/Redis image scans and integration tests, build, and an enforced Admin JavaScript bundle budget.
 - **Storefront CI**: dependency review, security (Shai-Hulud detector, Trivy FS scan, pnpm audit), secret scan, Biome, semantic typecheck, baseline plus transactional coverage, and a production build. Pushes and `master` release pull requests also require non-destructive responsive Playwright smoke tests, the critical Chromium/Firefox/WebKit guest-commerce matrix, the 14-scenario legal/commerce launch matrix, pa11y, and a six-route repeated Lighthouse gate with private artifacts; ordinary `staging` pull requests can opt into those browser gates with repository variables.
 - **Root CI**: dependency review, security (Shai-Hulud detector, Trivy FS scan, pnpm audit), secret scan, and a retained CycloneDX SBOM plus production-license inventory.
 - **Runtime Images**: builds the generated Medusa server and Next.js standalone
@@ -1710,6 +1710,11 @@ Full runbook with detailed steps lives in [`docs/QA_RUNBOOK.md`](docs/QA_RUNBOOK
 
 - `pnpm exec biome check --error-on-warnings .` plus `pnpm --filter remorseless-records-storefront run typecheck` and `pnpm --filter backend exec tsc --noEmit` before commits.
 - Monorepo check shortcut: `pnpm run qa:lint` (Biome, repository policy verifiers, and both strict compiler checks).
+- Disposable real-service verification: `pnpm run qa:disposable-integration`
+  builds the pinned hardened fixtures, exercises application/recovery/session
+  rotation contracts and cleans up synthetic data. See
+  [`docs/DISPOSABLE_INTEGRATION.md`](docs/DISPOSABLE_INTEGRATION.md) for isolation,
+  exact-image security gates and the limits of this evidence.
 - Critical desktop browser matrix: `pnpm --filter remorseless-records-storefront run test:e2e:critical` after the Storefront production build.
 - Launch acceptance matrix: `pnpm run qa:storefront:launch` after the same
   deterministic-fixture production build. Inspect its commerce, checkout,

@@ -61,7 +61,7 @@ test("accepts ten shared contracts and reports unit-fixture rather than service 
     assert.equal(manifest.scripts[aggregate].includes(forbidden), false)
   assert.match(
     read(".github/workflows/backend.yml"),
-    /run: pnpm run qa:disposable-integration:services/u
+    /run: pnpm run qa:disposable-integration --no-build/u
   )
 })
 

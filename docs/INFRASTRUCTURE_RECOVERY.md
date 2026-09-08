@@ -12,8 +12,12 @@ reviewed operations.
 
 The read-only inventory, rechecked on 2026-09-02, found one Railway environment,
 `staging`, with Backend, Storefront, PostgreSQL, Redis, MinIO, MinIO Console,
-and Meilisearch. PostgreSQL and Redis have no HTTP service domain, but their TCP
-proxy state still requires an explicit network review. MinIO, its Console, and
+and Meilisearch. PostgreSQL and Redis have no HTTP service domain. A subsequent
+September 6 check confirmed an active Redis public TCP proxy; its separately
+approved removal completed at `2026-09-07T01:23Z` with both apps healthy over
+private networking. See the Redis security follow-up below. PostgreSQL proxy
+state still requires an explicit
+network review. MinIO, its Console, and
 Meilisearch have Railway public domains. Current support-service sources are:
 
 - PostgreSQL: `ghcr.io/railwayapp-templates/postgres-ssl:latest`;
@@ -519,9 +523,370 @@ at 50,000 MB with 1,071.566848 MB used and no pending deletion. Both backup
 schedules and recorded backups were empty. Redis's configured persistence
 directory is under `/bitnami` and its append directory is relative; this
 configuration check does not prove filesystem realpath/symlink containment.
-The first proposed change is a named manual backup, not a restart, restore,
-image migration or Redis configuration edit. No backup has been created by
-this read-only inspection.
+That read-only inspection did not create a backup. The separately discussed
+one-time backup was subsequently created after the user instructed the agent
+to continue following the specific staging-backup/cost approval question.
+That direction was applied only to the named backup, not to a restart, restore,
+image migration, schedule or Redis configuration edit.
+
+### Staging Redis recovery checkpoint
+
+The single `volumeInstanceBackupCreate` operation targeted the exact volume
+instance above with name `pre-hardening-20260906`. Fresh preflight metadata
+confirmed the Redis/staging association, READY state, `/bitnami` mount,
+unchanged volume identity, no pending deletion, no existing backups and no
+schedules. The 1,071.566848 MB used was below the documented 50%-of-capacity
+manual-backup limit. Both applications' readiness checks passed before the
+operation on accepted application revision `4ba7996`.
+
+The create command exited successfully. Fresh metadata records exactly one
+named backup:
+
+- Backup ID: `129379c6-8a3c-42bf-9695-5e0ef5840e3d`.
+- Created: `2026-09-07T00:37:22.198Z` (September 6 in the operator timezone).
+- Name: `pre-hardening-20260906`.
+- Referenced size: 1,072 MB; source volume capacity: 50,000 MB.
+- Initially reported exclusive usage: 0 MB. This is not a promise of zero
+  charges; snapshot accounting can lag and exclusive blocks change over time.
+- `expiresAt: null`, `scheduleId: null`; no expiry is currently reported and
+  no schedule was added. No lock/expiration mutation was issued.
+
+The terminal-output handler did not retain the returned workflow identifier;
+therefore a `workflowStatus: Complete` response is not claimed. No create
+retry was issued. Verification instead used the fresh exact-volume backup
+record plus an empty `environmentPendingWork` result. Redis remained on
+successful deployment `f75e3583-3d71-4787-9ada-12852e976fa0`, and both
+applications remained ready. The subsequent ordinary Backend heartbeat at
+`2026-09-07T00:38:00.082Z` completed on `4ba7996`; scheduler, operations,
+catalog and dependencies were healthy with no incident at `00:39:03Z`.
+These are bounded observations, not a continuous no-downtime guarantee.
+
+[Railway volume backups](https://docs.railway.com/volumes/backups) are
+incremental copy-on-write snapshots. Current
+[resource pricing](https://docs.railway.com/pricing/plans#resource-usage-pricing)
+is $0.15/GB/month, making $7.50/month a conservative 50 GB storage envelope,
+not a measured snapshot bill or provider spending cap. Published retention does
+not specify a default manual expiry. Keep this checkpoint until a separate
+retention/cleanup decision; do not silently lock it, schedule more backups,
+delete it, or wipe the parent volume. It is not an off-site backup and does
+not survive wiping the parent volume: that deletes all its backups.
+
+Backup existence does not prove Redis application consistency, AOF replay,
+restorability, RPO/RTO, or image compatibility. Railway's documentation does
+not establish Redis-specific quiescing, and this operation did not issue
+`SAVE`, `CONFIG SET`, AOF rewrite controls, file copies or data reads.
+The configured/running-image mismatch above remains unresolved. A reviewed
+compatible immutable image and controlled restore drill are still required
+before changing memory, persistence or service source. Restoration is a
+separate operation that stages replacement storage and redeploys the service;
+it was not attempted on the active instance.
+Read-only API introspection identifies `volumeInstanceBackupRestore` by its
+source volume-instance and backup IDs; it has no documented independent
+destination-service argument. Its optional `wipeServiceIds` must not be used
+for this drill. Neither this interface nor the inspected `VolumeCreateInput`
+establishes a safe detached clone of the named snapshot. Confirm a supported
+isolated restore route before invoking a restore mutation; do not substitute
+a new volume ID experimentally or use PostgreSQL PITR semantics for Redis.
+
+### Redis security and image compatibility follow-up
+
+The reported live Redis 8.0.3 version predates the upstream 8.0.4 fix for
+critical [CVE-2025-49844](https://github.com/redis/redis/security/advisories/GHSA-4789-qfc9-5f9q).
+The advisory describes potential remote code execution by an authenticated
+user through crafted Lua. No vendor-backport or running-binary evidence has
+been established, so treat this as an unresolved affected-version risk, not
+as a claim that exploitation or compromise occurred. The first patched 8.0
+release is not by itself a currently approved upgrade target.
+
+Read-only Railway metadata also confirmed one Redis public TCP proxy:
+`4640854a-a8c8-4053-85f1-52b1df1882f2`, application port 6379, sync status
+`ACTIVE`. No public connection, authentication attempt or exploit test was
+made; the endpoint is intentionally omitted. Before removal, verify private
+application connectivity and the administrative access path, and obtain the
+separate network-change approval. Do not assume that external clients are
+unused merely because Storefront has a private reference.
+
+At `2026-09-07T01:02:20Z`, bounded read-only SSH checks examined only each
+application process's selected `REDIS_URL` metadata on verified `4ba7996`
+deployments. Both reported a Railway-private hostname, port 6379, database
+zero, a password and no fragment. Backend still has a query string;
+Storefront does not. No URL, hostname, credential or query value was emitted,
+and no Redis connection or normalization was performed. This confirms the
+two applications' configured private paths, not that every external operator
+or client has migrated. The user approved removal with the external-client
+impact identified. At `2026-09-07T01:23:41Z`, after a fresh exact-ID/ACTIVE
+preflight and healthy readiness checks, the single approved command ran:
+
+```bash
+node_modules/.bin/railway tcp-proxy delete \
+  4640854a-a8c8-4053-85f1-52b1df1882f2 \
+  --service Redis --environment staging --yes
+```
+
+The command exited zero; an independent fresh listing contained zero Redis
+TCP proxies. Both apps then returned ready/200 with all checks healthy on
+`4ba7996`; Redis took 12 ms in Backend and 2 ms in Storefront. The ordinary
+`01:24:00.054Z` reconciliation heartbeat completed on that exact SHA, and the
+01:24 operations/catalog, Storefront HTML/security-header/AVIF and deliberate
+400 guard probes passed. This removed only the public TCP exposure, not the
+Redis service, storage, credentials, source, ACLs or persistence settings.
+The subsequent exact-volume check still reported `READY`, no pending deletion,
+the same single backup and no backup schedules.
+External clients can no longer use the removed endpoint. Recreating a proxy
+would be a separately reviewed change and may assign a different endpoint.
+The reported Redis 8.0.3 security risk remains unresolved.
+
+The advisory's Lua-denial workaround is not compatible with the current app
+without a functional outage:
+
+- Backend and Storefront rate-limit helpers use `EVAL`; strict mutation
+  policies fail closed when Redis cannot execute it.
+- Storefront cart idempotency uses Lua for claim, completion and release;
+  Redis failures return `cart_idempotency_unavailable` with HTTP 503.
+- Medusa's default Redis locking provider uses Lua for acquire/release, and
+  the Redis event bus and workflow engine use BullMQ's Lua-backed commands.
+  Checkout, reconciliation, scheduled work and retries depend on these paths.
+- Installed ioredis uses both `EVAL` and `EVALSHA`, including script reload
+  after `NOSCRIPT`; preloading does not remove the dependency.
+
+Application readiness checks only Redis `PING`, so ready/200 would not prove
+that an ACL change preserved these capabilities. No ACL or command policy was
+changed. The capacity/persistence auditor is likewise not a vulnerability
+scanner or image-security certification.
+
+Public registry research identified this immutable historical candidate for
+isolated compatibility testing, not a production or rollback-approved image:
+
+```text
+docker.io/bitnamilegacy/redis:8.0.3-debian-12-r1@sha256:189aae381e7f2de2fbf90847cc753f7f75077cd119e1af688a0c9e0e86ffd096
+linux/amd64: sha256:25b2ea01cc2d5dae05982a98468e39201a615e1351265c7a00b31677ac4badd2
+linux/arm64: sha256:0fc8d5c56abffea9223f886115b41fa7d7ca33d328a0acf699f1fe790b8cc80e
+```
+
+At `2026-09-07T00:42:53.637Z`, anonymous registry index/platform manifests
+returned HTTP 200 with matching calculated digests; config/layer HEAD checks
+matched digest and byte-count metadata. Independent Docker Hub metadata
+agreed. Historical official source at commit
+`7cae83c281089791e24905d6a05e7d66e91c24ac` (July 6, 2025) declares Redis
+8.0.3, UID 1001 and `/bitnami/redis/data`, predating the live July 15 deployment.
+This supports a layout hypothesis, not identity with the running artifact,
+signature verification, current filesystem permissions or a successful restore.
+The later `r3` candidate postdates that deployment.
+
+[Bitnami Legacy](https://github.com/bitnami/containers/issues/83267) receives
+no updates or support and is only a temporary migration fallback. This old
+image also predates the Redis security fix; do not redeploy it as remediation.
+A controlled migration still requires a maintained, digest-pinned target with
+reviewed licensing and vulnerability evidence, actual backup restoration on
+isolated storage, mount/UID compatibility, queue/lock/idempotency acceptance,
+and a rollback path that preserves the untouched source data. Never downgrade
+data files already rewritten by the newer Redis process.
+Isolate replay side effects as well as storage: restored queue/workflow
+consumers must remain stopped until live PostgreSQL/provider credentials and
+provider egress are excluded. Use fixture or sandbox consumers for the drill;
+restored delayed/repeatable jobs must not reach live systems.
+
+The existing local/CI target fixture is also not an accepted staging image:
+`redis:8.10.1-alpine3.23@sha256:becdda6c7f4b3fb42e42fd7f120bbf5c54c4caaaf16f26da24e4563d2c1f0576`.
+An offline, Docker-only Trivy 0.74.0 scan with the cached database updated at
+`2026-09-06T19:02:10Z` reported 26 finding rows: eight HIGH, six MEDIUM,
+12 LOW and zero CRITICAL/UNKNOWN, across 16 unique advisories. No ignore file,
+VEX suppression, database refresh or image pull was used. The report matched
+the exact fixture digest and detected 22 Alpine 3.23.5 OS packages only; it
+does not certify the compiled Redis server or bundled modules.
+
+All eight HIGH rows have fixes available:
+
+- `libcrypto3` and `libssl3`: CVE-2026-14456, installed 3.5.7-r0,
+  fixed 3.5.8-r0 (two rows).
+- `setpriv`: CVE-2026-53612, CVE-2026-53613, CVE-2026-53614,
+  CVE-2026-76642, CVE-2026-78408 and CVE-2026-78410, installed
+  2.41.4-r0, fixed 2.41.6-r0 except CVE-2026-78408 at 2.41.6-r1.
+
+Private evidence is
+`/tmp/remorseless-redis-image-audit.LBdUPn/redis-8.10.1-amd64.vuln.json`.
+The public tag still resolved to that same immutable index during this review;
+the existing app integration pass does not override the security findings.
+The repository's CI scanner pin remains 0.70.0; no scanner or fixture-image
+policy was changed by this local assessment.
+
+The same bounded scanner/database assessment ruled out a simple distro swap
+and identified a separate PostgreSQL fixture risk:
+
+| Inspected fixture/candidate | CRITICAL | HIGH | MEDIUM | LOW | UNKNOWN |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Redis 8.10.1 Alpine above | 0 | 8 | 6 | 12 | 0 |
+| Redis 8.10.1 Trixie | 3 | 52 | 62 | 68 | 6 |
+| PostgreSQL 18.6 Alpine 3.24 | 1 | 30 | 28 | 14 | 11 |
+
+Trixie candidate index
+`sha256:298e5b3bc566bade82f46ad5511777a4a07a294097ce16ada2f6a42be5239df5`
+has 97 unique advisories across 191 rows and 78 detected Debian OS packages.
+Two HIGH OpenSSL rows have fixes; the other 53 HIGH/CRITICAL rows do not list
+a fix. Its exact-digest report is
+`/tmp/remorseless-redis-image-audit.LBdUPn/redis-8.10.1-trixie-amd64.vuln.json`.
+The official Alpine tag still uses the original digest and no 8.10.1 Alpine
+3.24 variant was available. No repository fixture pin was changed.
+
+The existing PostgreSQL fixture index
+`sha256:d3e1620b530c944afa6e887d22eb899824da68e19c52024bf98f5220c88a65b2`
+has 74 unique advisories across 84 rows, covering 53 Alpine OS packages and
+four Go dependencies detected in `/usr/local/bin/gosu`. All 31 HIGH/CRITICAL
+rows list fixes. The critical Go stdlib finding is CVE-2025-68121 against
+v1.24.6; OS HIGH fixes include OpenSSL 3.5.8-r0 and libuuid 2.42.3-r0/r1.
+Private report:
+`/tmp/remorseless-postgres-fixture-audit.RtiIRL/postgres-18.6-amd64.vuln.json`.
+These are fixture-image findings, not evidence about the different live
+Railway PostgreSQL image or the accepted Backend/Storefront runtime images.
+Package detection does not establish exploitable reachability, and successful
+report generation is not vulnerability acceptance. No exceptions were added.
+
+### Local synthetic Redis persistence compatibility
+
+An isolated Linux/amd64 experiment passed from the exact historical 8.0.3
+image above to the existing 8.10.1 Alpine fixture. Eleven synthetic keys
+covered strings, hashes, lists, sets, sorted sets and streams, with additional
+HyperLogLog/bitmap checks. Logical values/types and three absolute expiration
+timestamps matched after replay. A same-connection `WAITAOF` acknowledged a
+post-rewrite marker before source SIGKILL, distinguishing AOF recovery from
+the older RDB snapshot. Four persistence files were copied byte-for-byte
+from a read-only source mount into a separate owned target volume.
+
+The target loaded the expected data and executed benign Lua. A target-only
+durable write left the source persistence hashes unchanged. Reopening that
+untouched source on 8.0.3 recovered the original baseline without the target
+write; no target-written data was downgraded. The unchanged repository
+capacity/persistence policy reported healthy on source, target and reopened
+source, with the synthetic 16 MiB maxmemory/256 MiB container budget.
+
+Total successful test time was 9,438.02 ms; initial source, target and source
+reopen readiness took 178.62, 217.09 and 204.97 ms. These small-fixture timings
+are not staging RTO estimates. The harness verified UID/GID 1001,
+`/bitnami/redis/data`, network-none/exec-only access, read-only container roots,
+explicit CPU/memory/PID limits and owned-volume mounts. Eight owned test
+containers and two synthetic volumes were removed after exact ID/label checks;
+independent final checks found no labeled resources remaining. Three preceding
+harness failures (capability normalization and INFO output handling) and their
+successful cleanup are retained, not represented as Redis compatibility faults.
+
+Private script and evidence are
+`/tmp/remorseless-redis-compat-20260906.GRUPXr/compatibility-proof.mjs` and
+`/tmp/remorseless-redis-compat-20260906.GRUPXr/evidence.json` (0700 directory,
+0600 evidence). This used direct server binaries, bypassing image entrypoints,
+and AOF plus RDB rather than the live AOF-only setup. The policy helper ran
+through `docker exec`, not the network audit CLI. No real backup, queue,
+application/provider data, image-default compatibility or live restore was
+tested. The source/target security findings remain unresolved.
+
+### Local minimal-package Redis candidate
+
+A separate local-only build demonstrated a narrow package remediation without
+replacing the Redis distribution or binary. Starting from the exact 8.10.1
+Alpine index above, it installed only `libcrypto3=3.5.8-r0`,
+`libssl3=3.5.8-r0` and `setpriv=2.41.6-r1`. Exact versions were confirmed in
+official Alpine 3.23/main metadata. APK used that official HTTPS repository
+and the base image's trusted signing keys, with no certificate/signature
+bypass. No package was added or removed; the other 19 versions were unchanged.
+
+The retained local Docker image ID is
+`sha256:7451f4003e18e5d5146e99e06b14a8520cc7bfb8d213078b6547b7e98c907288`
+(`remorseless-redis-minimal-proof:qubhv1`, Linux/amd64). This is not a published
+registry reference. Seven base layers plus one patch layer were verified.
+The entrypoint, server, CLI and four module binary hashes were unchanged,
+as were ten runtime configuration fields. The image still defines the Redis
+account as UID 999/GID 1000 and uses `/data`; this does not adopt the live
+Bitnami layout automatically.
+
+Using the same cached database, Docker-only Trivy 0.74.0 reported zero finding
+rows in every severity across the same 22 detected OS packages, compared with
+26 rows before the patch. CycloneDX 1.7 contains 23 components (22 libraries
+and the OS). Compiled Redis/module dependency coverage is still absent;
+neither the scan nor SBOM is a complete server security certification. No
+ignore, VEX suppression, scanner/database update or repository policy change
+was used. The successful build took 2,647 ms. Its earlier attempt rejected an
+APK boolean-option spelling before package retrieval; both logs are retained.
+
+Recipe, full package inventory, binary/configuration comparison, scan, SBOM
+and build logs are private under
+`/tmp/remorseless-redis-minimal-proof.QUBHV1` (0700; reports 0600).
+The recipe is `context/Dockerfile`; comparison is `candidate-preservation.json`.
+`candidate.vuln.json` SHA-256 is
+`cbe33a1e483d98ee0f41b0639b6991572202ff85c210f73b6dca32ae9beb3a6f`;
+`candidate.cdx.json` SHA-256 is
+`2c47d2fe49f4f5b3b3d32de24e5507229021aca005db37885ddef53ea91c85bf`.
+
+The complete synthetic persistence experiment was then repeated against that
+exact local image ID, with its proof label and base-layer ancestry asserted.
+All 11 keys, three expiration timestamps, durable AOF marker, benign Lua,
+policy audits and untouched-source reopen checks passed in 9,606.12 ms;
+target readiness took 202.50 ms. Eight owned containers and two volumes were
+removed; independent final checks found no leftovers. New script/evidence:
+`/tmp/remorseless-redis-patched-compat-20260906.4DvK54` (0700/0600).
+Prior evidence was preserved. The direct-binary, UID 1001 override,
+synthetic-data and AOF+RDB limitations above still apply: neither image-default
+startup nor an actual Railway backup/queue restore was accepted.
+
+During the image experiment no image was published, repository fixture changed,
+or live Redis source, configuration, ACL or public endpoint altered. The local image remains for
+review. The live 8.0.3 security issue and PostgreSQL fixture findings remain
+open. Final staging readiness during this follow-up returned HTTP 200
+with all checks healthy on `4ba7996` for both applications; Redis checks took
+10 ms in Backend and 2 ms in Storefront. The later approved proxy removal and
+its independent health checks are recorded above. Image publication, a
+supported isolated real-backup restore path and controlled
+live migration remain separate decisions.
+
+### Hardened disposable fixture implementation
+
+The subsequent grouped implementation adopts minimal hardened test recipes in
+`docker/integration` and makes Backend CI build, scan and run those same local
+image IDs. This is test infrastructure only, not a live support-image rollout.
+`DISPOSABLE_INTEGRATION.md` defines the executable commands, ownership checks,
+private evidence, provider isolation and failure handling.
+
+Redis retains its pinned 8.10.1 server/CLI/modules/entrypoint, with exact signed
+Alpine `libcrypto3`/`libssl3` 3.5.8-r0 and `setpriv` 2.41.6-r1 corrections.
+PostgreSQL retains its pinned 18.6 server and entrypoint, with exact signed
+Alpine OpenSSL 3.5.8-r0, `libuuid` 2.42.3-r1 and `libcurl` 8.22.0-r0.
+Its `gosu` 1.19 source is pinned to commit
+`6456aaa0f3c854d199d0f037f068eb97515b7513` and archive checksum, then rebuilt
+with checksum-pinned Go 1.27.1. Only `golang.org/x/sys` changes to 0.44.0 plus
+its required minimum Go directive; exact before/after module-file checksums
+and Go checksum-database verification reject unrelated module drift. Relevant
+source/toolchain/module licenses remain in the image. The root pnpm lock is
+unchanged.
+
+The PostgreSQL default-entrypoint proof passed readiness in 1,155 ms, a real
+18.6 SQL write/read, actual PID-1 UID/GID 70, named/numeric `gosu` identities,
+environment/HOME/PATH behavior and child-exit propagation. Inherited SIGINT
+shutdown exited zero in 208 ms. All 2,404 other `/usr/local` files and ten
+runtime configuration fields were unchanged. Proof and source evidence are
+private under `/tmp/remorseless-postgres-minimal-proof.bf89TZ`; no owned
+containers remain. Redis's official entrypoint separately ran as UID 999/GID
+1000 with a read-only root and tmpfs data during the session proof.
+
+The repository Compose build produced these exact local IDs:
+
+- PostgreSQL: `sha256:070ad9c0ce13e78b791e7502e16466436e08353e597bfbdf64db0f7cd221ec28`;
+- Redis: `sha256:620ce917889d7f11478f48ac7a18249f5e44eb5c059935ada3c38a8b15d5fa90`.
+
+Independent fresh-database Trivy 0.74.0 scans passed with zero findings at
+every severity, retaining 53 OS plus four Go packages/59 CycloneDX components
+for PostgreSQL and 22 OS packages/23 components for Redis. The database was
+updated `2026-09-07T01:01:06.547536359Z`, downloaded at
+`01:34:05.43100022Z`, and 1,978,928 ms old at validation. Evidence is private
+under `/tmp/remorseless-fixture-security-20260907.qHIXmc/evidence`; image
+records bind each report's exact SHA-256. A second real run with the existing
+CI-pinned Trivy 0.70.0 also passed using a fresh database, including Go 1.27.1
+detection and CycloneDX 1.6 output; evidence is
+`/tmp/remorseless-trivy070-compat.jquIIW`. Its official downloaded binary was
+checksum-verified, not installed over the workstation's scanner.
+
+Neither scan suppresses unfixed or unknown findings. The rebuilt `gosu` main
+module's absent package version is explicitly recorded, with its source
+identity proven separately. Full compiled PostgreSQL/Redis/module coverage is
+not established. These clean test-image scans do not close the reported live
+Redis 8.0.3 advisory or authorize registry publication and live migration.
 
 `pnpm run qa:redis-capacity` exercises parsing, policy, actual client protocol,
 redaction, deadlines and socket cleanup with enforced 80% helper coverage.
@@ -599,10 +964,17 @@ production approval items below.
 - [Railway point-in-time recovery](https://docs.railway.com/volumes/point-in-time-recovery)
 - [Railway private networking](https://docs.railway.com/networking/private-networking)
 - [Railway volume reference](https://docs.railway.com/volumes/reference)
+- [Railway volume backups](https://docs.railway.com/volumes/backups)
+- [Railway volume backup API](https://docs.railway.com/integrations/api/manage-volumes)
+- [Railway resource pricing](https://docs.railway.com/pricing/plans#resource-usage-pricing)
 - [PostgreSQL role attributes](https://www.postgresql.org/docs/current/role-attributes.html)
 - [PostgreSQL libpq TLS modes](https://www.postgresql.org/docs/current/libpq-ssl.html)
 - [PostgreSQL `pg_dump`](https://www.postgresql.org/docs/current/app-pgdump.html)
 - [Redis persistence](https://redis.io/docs/latest/operate/oss_and_stack/management/persistence/)
 - [Redis key eviction](https://redis.io/docs/latest/develop/reference/eviction/)
+- [Redis CVE-2025-49844 advisory](https://github.com/redis/redis/security/advisories/GHSA-4789-qfc9-5f9q)
+- [Bitnami Legacy lifecycle](https://github.com/bitnami/containers/issues/83267)
+- [Historical Redis image definition](https://github.com/bitnami/containers/blob/7cae83c281089791e24905d6a05e7d66e91c24ac/bitnami/redis/8.0/debian-12/Dockerfile)
+- [Historical Redis persistence configuration](https://github.com/bitnami/containers/blob/7cae83c281089791e24905d6a05e7d66e91c24ac/bitnami/redis/8.0/debian-12/rootfs/opt/bitnami/scripts/redis-env.sh#L70)
 - [Meilisearch backup methods](https://www.meilisearch.com/docs/resources/self_hosting/data_backup/overview)
 - [MinIO `mc mirror`](https://min.io/docs/minio/linux/reference/minio-mc/mc-mirror.html)

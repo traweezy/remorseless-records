@@ -718,6 +718,15 @@ drain all old instances, and verify that both a pre-rotation bearer token and
 a pre-rotation session cookie are rejected. Confirm that fresh sign-in works;
 do not treat a JWT-only check as a completed session-invalidating drill.
 
+The disposable integration suite now makes this compatibility contract
+executable with installed Medusa middleware, the official session-creation
+handler and a real isolated Redis session store. It checks all four old/new
+JWT and cookie-key combinations, persistent-session precedence, new-key
+session issuance and rejection by old-key instances. The harness issues only
+synthetic credentials; it does not prove a live drain, real account sign-in or
+provider authentication. Run `pnpm run qa:disposable-integration`; fixture
+boundaries and evidence limitations are in `DISPOSABLE_INTEGRATION.md`.
+
 `STRIPE_LIFECYCLE_WEBHOOK_SECRET` belongs only to
 `POST /webhooks/stripe/lifecycle` and must not reuse
 `STRIPE_WEBHOOK_SECRET`. During rotation, deploy the new current key with the
