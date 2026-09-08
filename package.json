@@ -11,7 +11,8 @@
     "format": "biome format --write .",
     "format:check": "biome format .",
     "lint": "biome lint --error-on-warnings .",
-    "qa:lint": "biome check --error-on-warnings . && pnpm run qa:ci-shared-contracts-boundary && pnpm run qa:ci-shared-contracts && pnpm run qa:release-policy && pnpm run qa:dependency-supply-chain && pnpm run qa:ci-runtime-security && pnpm run qa:runtime-images && pnpm run qa:admin-accessibility-boundary && pnpm run qa:railway-iac && pnpm run qa:browser-toolchain-security && pnpm run qa:medusa-build-toolchain && pnpm run qa:dashboard-product-import && pnpm run qa:dashboard-product-deletion && pnpm run qa:secure-artifacts && pnpm run qa:api-contract && pnpm run qa:framework-response-headers && pnpm run qa:checkout-recovery && pnpm run qa:commerce-reliability && pnpm run qa:tax-golden-matrix && pnpm run qa:scheduler-observation && pnpm run qa:railway-runtime-logs && pnpm --filter remorseless-records-storefront run typecheck && pnpm --filter backend exec tsc --noEmit",
+    "qa:lint": "biome check --error-on-warnings . && pnpm run qa:ci-shared-contracts-boundary && pnpm run qa:ci-shared-contracts && pnpm run qa:toolchain-runtime && pnpm run qa:release-policy && pnpm run qa:dependency-supply-chain && pnpm run qa:ci-runtime-security && pnpm run qa:runtime-images && pnpm run qa:admin-accessibility-boundary && pnpm run qa:railway-iac && pnpm run qa:browser-toolchain-security && pnpm run qa:medusa-build-toolchain && pnpm run qa:dashboard-product-import && pnpm run qa:dashboard-product-deletion && pnpm run qa:secure-artifacts && pnpm run qa:api-contract && pnpm run qa:framework-response-headers && pnpm run qa:checkout-recovery && pnpm run qa:commerce-reliability && pnpm run qa:tax-golden-matrix && pnpm run qa:scheduler-observation && pnpm run qa:railway-runtime-logs && pnpm --filter remorseless-records-storefront run typecheck && pnpm --filter backend exec tsc --noEmit",
+    "qa:toolchain-runtime": "node --test --test-isolation=process --test-timeout=60000 --experimental-test-coverage --test-coverage-include=scripts/install-git-hooks.mjs --test-coverage-include=scripts/run-git-hook.mjs --test-coverage-lines=80 --test-coverage-branches=80 --test-coverage-functions=80 scripts/git-hooks.test.mjs scripts/tsx-runtime.test.mjs",
     "qa:ci-shared-contracts": "pnpm run qa:service-container-resolution && pnpm run qa:storefront-response-boundary && pnpm run qa:admin-browser-boundary && pnpm run qa:database-release-boundary && pnpm run qa:storefront-provider-fixture && pnpm run qa:dashboard-product-create && pnpm run qa:workflow-scheduler-timestamps && pnpm run qa:disposable-integration-boundary && pnpm run qa:operations-observation && pnpm run qa:observability-bootstrap",
     "qa:ci-shared-contracts-boundary": "node --test --experimental-test-coverage --test-coverage-include=scripts/verify-ci-shared-contracts.mjs --test-coverage-lines=80 --test-coverage-branches=80 --test-coverage-functions=80 scripts/verify-ci-shared-contracts.test.mjs && node scripts/verify-ci-shared-contracts.mjs",
     "api:contract:generate": "node scripts/generate-api-contract.mjs --write",
@@ -64,7 +65,7 @@
     "qa:storefront:launch": "pnpm --filter remorseless-records-storefront run test:e2e:launch",
     "qa:lighthouse": "lhci autorun --config=./lighthouse/lhci.config.js",
     "qa:ci": "pnpm run qa:lint && pnpm run qa:mobile && pnpm run qa:a11y && pnpm run qa:lighthouse",
-    "prepare": "if [ \"$CI\" = \"true\" ] || [ \"$NODE_ENV\" = \"production\" ]; then exit 0; fi; lefthook install"
+    "prepare": "node scripts/install-git-hooks.mjs"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.13.0",
@@ -73,7 +74,6 @@
     "@lhci/cli": "0.15.1",
     "@railway/cli": "5.45.0",
     "esbuild": "^0.28.2",
-    "lefthook": "^2.1.10",
     "pa11y": "^9.1.1",
     "proxy-agent": "8.0.2",
     "puppeteer": "25.3.0",

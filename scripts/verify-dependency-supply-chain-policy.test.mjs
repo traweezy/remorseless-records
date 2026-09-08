@@ -4,11 +4,18 @@ import { describe, it } from "node:test"
 import {
   readTopLevelScalar,
   readYamlList,
+  validateLefthookRemoval,
   validatePolicyManifest,
   validateWorkspacePolicy,
 } from "./verify-dependency-supply-chain-policy.mjs"
 
-const hardenedWorkspace = `minimumReleaseAge: 10080
+const hardenedWorkspace = `enableGlobalVirtualStore: false
+allowBuilds:
+  "@swc/core": true
+  lefthook: false
+  puppeteer: false
+
+minimumReleaseAge: 10080
 minimumReleaseAgeStrict: true
 minimumReleaseAgeIgnoreMissingTime: false
 trustLockfile: false
@@ -45,6 +52,106 @@ describe("dependency supply-chain policy", () => {
         "fixture"
       )
     )
+  })
+
+  for (const label of [
+    "root workspace",
+    "Backend workspace",
+    "Storefront workspace",
+  ]) {
+    it(`${label} requires explicit boolean false for the global virtual store`, () => {
+      for (const replacement of [
+        "",
+        "enableGlobalVirtualStore: true",
+        'enableGlobalVirtualStore: "false"',
+        "enableGlobalVirtualStore: null",
+        "enableGlobalVirtualStore: 0",
+        "# enableGlobalVirtualStore: false",
+      ])
+        assert.throws(() =>
+          validateWorkspacePolicy(
+            hardenedWorkspace.replace(
+              "enableGlobalVirtualStore: false",
+              replacement
+            ),
+            ["secure-cli@1.2.3"],
+            label
+          )
+        )
+      for (const duplicate of [
+        "enableGlobalVirtualStore: true",
+        '"enableGlobalVirtualStore": true',
+        "enableGlobalVirtualStore : true",
+      ])
+        assert.throws(() =>
+          validateWorkspacePolicy(
+            `${hardenedWorkspace}\n${duplicate}\n`,
+            ["secure-cli@1.2.3"],
+            label
+          )
+        )
+    })
+
+    it(`${label} requires an explicit unique Lefthook build denial`, () => {
+      for (const replacement of [
+        "",
+        "  lefthook: true",
+        '  lefthook: "false"',
+        "  lefthook: null",
+        "  # lefthook: false",
+        "  lefthook: false\n  lefthook: true",
+        '  lefthook: false\n  "lefthook": true',
+        "  lefthook: false\n  lefthook@2.1.10: true",
+        "  lefthook: false\n  lefthook-linux-x64: true",
+        "  lefthook: false\n  <<: *extra",
+      ])
+        assert.throws(() =>
+          validateWorkspacePolicy(
+            hardenedWorkspace.replace("  lefthook: false", replacement),
+            ["secure-cli@1.2.3"],
+            label
+          )
+        )
+      for (const replacement of [
+        "allowBuilds: { lefthook: false }",
+        '"allowBuilds":',
+        "allowBuilds :",
+      ])
+        assert.throws(() =>
+          validateWorkspacePolicy(
+            hardenedWorkspace.replace("allowBuilds:", replacement),
+            ["secure-cli@1.2.3"],
+            label
+          )
+        )
+      assert.throws(() =>
+        validateWorkspacePolicy(
+          `${hardenedWorkspace}\nallowBuilds:\n  lefthook: true\n`,
+          ["secure-cli@1.2.3"],
+          label
+        )
+      )
+    })
+  }
+
+  it("requires root Lefthook dependency removal without rejecting unrelated dependencies", () => {
+    assert.doesNotThrow(() =>
+      validateLefthookRemoval({ devDependencies: { "@railway/cli": "5.45.0" } })
+    )
+    for (const field of [
+      "dependencies",
+      "devDependencies",
+      "optionalDependencies",
+      "peerDependencies",
+    ])
+      for (const dependencies of [
+        { lefthook: "2.1.10" },
+        { "lefthook-linux-x64": "2.1.12" },
+        { renamed: "npm:lefthook" },
+        { renamed: "npm:lefthook@2.1.12" },
+        { renamed: "npm:lefthook-linux-x64@2.1.12" },
+      ])
+        assert.throws(() => validateLefthookRemoval({ [field]: dependencies }))
   })
 
   it("rejects weakened or broadened workspace policy", () => {

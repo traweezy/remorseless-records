@@ -1098,10 +1098,48 @@ committed conversion.
 3. **Install dependencies**
 
    ```bash
-   pnpm install         # installs workspace deps for backend + storefront
+   pnpm install --frozen-lockfile
    ```
 
    > `pnpm install` from the repo root leverages workspace hoisting. You do **not** need to run install in each package unless explicitly noted.
+
+### Git hooks
+
+The root install prepares two repository-owned Git/Node hooks. Pre-commit runs
+`pnpm run qa:lint`; pre-push runs that check and then
+`pnpm run qa:storefront:coverage`, serially. A failed, cancelled or timed-out
+command blocks the Git operation. These checks also run independently in CI.
+Lefthook is no longer a dependency or an executable fallback.
+
+Hooks require the exact `packageManager` version on `PATH`, currently pnpm
+11.17.0. They disable automatic manager downloads and dependency installation,
+including in nested pnpm commands. A global shim that would normally download
+or switch versions is not sufficient. Correct the toolchain explicitly, then
+run `pnpm install --frozen-lockfile` if dependencies need synchronization.
+No global package-manager setting is changed by the hooks.
+Each source workspace and the generated Backend workspace explicitly set
+`enableGlobalVirtualStore: false`, so local and CI-mode commands share the
+same installed layout without disabling dependency-drift detection.
+
+For an existing checkout with the exact reviewed legacy generated wrappers,
+the one-time migration is explicit:
+
+```bash
+node scripts/install-git-hooks.mjs --migrate-legacy
+pnpm install --frozen-lockfile
+```
+
+The installer recognizes the entire legacy wrapper, not just a Lefthook
+comment, and preserves private, non-executable originals as
+`.git/hooks/pre-commit.remorseless-legacy-backup` and
+`.git/hooks/pre-push.remorseless-legacy-backup`. They are recovery evidence,
+not executable fallbacks. A repeat install makes no changes. Custom hooks,
+symlink/hardlink targets, configured `core.hooksPath`, linked worktrees and
+external Git directories are deliberately refused; leave those files intact
+for owner review. Neither Git configuration nor unrelated hooks are changed.
+Normal prepare skips CI and production installs. See
+[toolchain acceptance](docs/QA_RUNBOOK.md#113-git-hook-and-loader-acceptance)
+for the failure and recovery tests.
 
 ## Environment Variables
 

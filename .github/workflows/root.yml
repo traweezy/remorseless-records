@@ -73,6 +73,8 @@ jobs:
         run: pnpm run qa:ci-shared-contracts-boundary
       - name: Verify shared repository contracts
         run: pnpm run qa:ci-shared-contracts
+      - name: Verify project hook and loader runtime contracts
+        run: pnpm run qa:toolchain-runtime
       - name: Verify dependency supply-chain policy
         run: pnpm run qa:dependency-supply-chain
       - name: Verify CI runtime security policy

@@ -1,0 +1,3 @@
+#!/bin/sh
+# Remorseless Records managed hook v1.
+exec node scripts/run-git-hook.mjs pre-push

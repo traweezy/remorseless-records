@@ -149,6 +149,7 @@ const rewriteLockfile = (source, importerKey) => {
 const renderPnpmWorkspaceConfig = ({
   allowBuilds,
   blockExoticSubdeps,
+  enableGlobalVirtualStore,
   hoistPattern,
   minimumReleaseAge,
   minimumReleaseAgeExclude,
@@ -165,6 +166,10 @@ const renderPnpmWorkspaceConfig = ({
   }
   for (const [name, { actual, expected }] of Object.entries({
     blockExoticSubdeps: { actual: blockExoticSubdeps, expected: true },
+    enableGlobalVirtualStore: {
+      actual: enableGlobalVirtualStore,
+      expected: false,
+    },
     minimumReleaseAgeIgnoreMissingTime: {
       actual: minimumReleaseAgeIgnoreMissingTime,
       expected: false,
@@ -192,6 +197,7 @@ const renderPnpmWorkspaceConfig = ({
   lines.push(
     "",
     `resolvePeersFromWorkspaceRoot: ${yamlScalar(resolvePeersFromWorkspaceRoot)}`,
+    `enableGlobalVirtualStore: ${yamlScalar(enableGlobalVirtualStore)}`,
     "",
     `minimumReleaseAge: ${yamlScalar(minimumReleaseAge)}`,
     `minimumReleaseAgeStrict: ${yamlScalar(minimumReleaseAgeStrict)}`,

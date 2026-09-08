@@ -80,6 +80,7 @@ describe("post-build configuration", () => {
     const config = {
       allowBuilds: { sharp: true, puppeteer: false, esbuild: true },
       blockExoticSubdeps: true,
+      enableGlobalVirtualStore: false,
       hoistPattern: ["*", "!@types/react"],
       minimumReleaseAge: 10_080,
       minimumReleaseAgeExclude: ["z@1", "a@1"],
@@ -106,6 +107,7 @@ describe("post-build configuration", () => {
     expect(rendered).toContain("minimumReleaseAgeIgnoreMissingTime: false")
     expect(rendered).toContain("trustLockfile: false")
     expect(rendered).toContain("blockExoticSubdeps: true")
+    expect(rendered).toContain("enableGlobalVirtualStore: false")
     expect(rendered.indexOf('  "a": "1.0.0"')).toBeLessThan(
       rendered.indexOf('  "z": "2.0.0"')
     )
@@ -118,6 +120,7 @@ describe("post-build configuration", () => {
     const config = {
       allowBuilds: {},
       blockExoticSubdeps: true,
+      enableGlobalVirtualStore: false,
       hoistPattern: [],
       minimumReleaseAge: 1440,
       minimumReleaseAgeExclude: [],
@@ -145,6 +148,29 @@ describe("post-build configuration", () => {
         minimumReleaseAge: 10_080,
       })
     ).toThrow("blockExoticSubdeps")
+  })
+
+  it("rejects missing or non-false generated virtual-store policy", () => {
+    const config = {
+      allowBuilds: {},
+      blockExoticSubdeps: true,
+      hoistPattern: [],
+      minimumReleaseAge: 10_080,
+      minimumReleaseAgeExclude: [],
+      minimumReleaseAgeIgnoreMissingTime: false,
+      minimumReleaseAgeStrict: true,
+      overrides: {},
+      packageExtensions: {},
+      patchedDependencies: {},
+      resolvePeersFromWorkspaceRoot: false,
+      trustLockfile: false,
+    }
+
+    for (const enableGlobalVirtualStore of [true, undefined, null, "false"]) {
+      expect(() =>
+        renderPnpmWorkspaceConfig({ ...config, enableGlobalVirtualStore })
+      ).toThrow("enableGlobalVirtualStore must be false")
+    }
   })
 
   it("rejects a canonical patch path outside the reviewed workspace", () => {

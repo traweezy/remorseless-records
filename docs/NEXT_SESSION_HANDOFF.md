@@ -10,8 +10,8 @@ artifact Railway is running; verify Railway separately with the sequence below.
 
 - Branch: `staging`
 - Current accepted implementation head:
-  `36c9c1003e0206c1afcedcadb18d3acd87796159`. It includes the accepted Next.js
-  16.3.3 build split, Redis 6.2.1, upstream `qs` 6.16.0, Trusted Types
+  `80a83ced17a2b5cc937aff1edfff0d9cfbbd49d7`. It includes the accepted Next.js
+  16.3.4 AVIF correction and build split, Redis 6.2.1, upstream `qs` 6.16.0, Trusted Types
   enforcement, the Form/Resend/PostHog/Pacer/Query/Virtual/Sonner batch, and
   the AWS/Stripe/OpenTelemetry, UI/parser/image/tooling, and recovery batches.
   Complete local, exact-SHA CI, runtime-image, and Railway staging evidence is recorded
@@ -20,7 +20,7 @@ artifact Railway is running; verify Railway separately with the sequence below.
   contract parity batches, plus checkout read/write isolation, native webhook
   error redaction and concurrent-request tracing lifecycle corrections.
 - Latest exact runtime-image validation SHA:
-  `36c9c1003e0206c1afcedcadb18d3acd87796159`. All four CI workflows and
+  `80a83ced17a2b5cc937aff1edfff0d9cfbbd49d7`. All four CI workflows and
   both Railway source deployments passed. The live shared-trace regression
   that prevented acceptance of `3f9c533` now passes with four exact HTTP 200
   completion records; detailed correction evidence is below.
@@ -28,8 +28,9 @@ artifact Railway is running; verify Railway separately with the sequence below.
   Redis batch; Redis acceptance notes shipped with the shared-CI contract
   follow-up. Final CI-parity acceptance notes shipped with the substantive
   `3f9c533` application batch; its staging discovery shipped with the
-  substantive `4ba7996` correction. Final correction acceptance notes remain
-  local for the next substantive batch; no documentation-only push was made.
+  substantive `4ba7996` correction. Final Next.js acceptance notes are included
+  with the substantive maintenance batch below; no documentation-only push
+  was made.
 - Original implementation/runtime-image acceptance SHA
   `61fd86889a4adca23e1e9704e11c889a1fd986a9` is pushed to
   `origin/staging`. Backend source deployment acceptance is documented at
@@ -1897,7 +1898,7 @@ No live support-service image, credential, database role, production setting
 or package publication changed. These final acceptance notes are carried with
 the substantive Next.js follow-up rather than a documentation-only push.
 
-### Cooled Next.js 16.3.4 follow-up (September 8, acceptance in progress)
+### Cooled Next.js 16.3.4 follow-up (September 8, accepted)
 
 The Next-only dependency cohort has passed its seven-day cooling window.
 Only Next, `@next/env` and eight matching SWC packages changed, alongside the
@@ -1963,15 +1964,184 @@ image, and no registry publication occurred. This is an explicitly dirty local
 candidate, not an exact committed release artifact. Full proof is
 `/tmp/remorseless-storefront-decoder-image.cU8tJM/proof.json`; the root lock
 remained unchanged. All 71 runtime-image policy tests and four CI security
-tests passed. Final hooks, exact-SHA CI and Railway acceptance must complete
-before superseding accepted `36c9c100`.
+tests passed. The complete release shipped as
+`80a83ced17a2b5cc937aff1edfff0d9cfbbd49d7`; final acceptance follows.
+
+### Next.js follow-up exact-SHA acceptance (September 8)
+
+All four required workflows passed for `80a83ced`: Root `34213580388`,
+Backend `34213580334`, Storefront `34213580217`, and Runtime Images
+`34213580277`. Publication correctly skipped on staging. Storefront CI passed
+five decoder cases, 908 baseline and 344 transactional cases, two built-runtime
+completion-order cases, 81 responsive cases plus two expected skips, all 14
+launch cases, and 48 critical three-engine cases without retries. Supported
+runner Pa11y passed all four paths without errors or review warnings; this
+does not turn the local sandbox limitation into a local pass.
+
+Lighthouse retained 18 reports, six requested URLs times three, with all 71
+unchanged budgets passing at the documented CI CPU calibration of two.
+Every report scored 1.0 for accessibility and best practices with no runtime,
+audit, or console errors. Median performance ranged from 0.86 to 0.88.
+Artifact `10051315575` was independently checksummed:
+`ac3dcf4b2799deaa27b213b4a777c17c1cfd7a17c74834a24538781835fb36b7`.
+Root supply-chain artifact `10050883149` retained 1,311 SBOM components and
+1,006 production license entries, including only the five previously documented
+Medusa metadata exceptions. Private Root/Storefront evidence is
+`/tmp/remorseless-ci-80a83ced.UhI1XL`.
+
+Backend CI passed 278 suites / 2,162 unit cases and all 106 disposable
+integration cases, with the unchanged Admin asset budgets. The exact local
+PostgreSQL and Redis fixture images were scanned against the fresh September 8
+Trivy database with zero findings at every severity, then started by the same
+image IDs without rebuilding. Both owned containers and their network were
+removed afterward. Fixture artifact `10050965368` has archive SHA-256
+`fc72bbec2292c3b88b9e7e9af5d12b6e268cb42d01156a17b7af60fd1edaa2f5`.
+Full evidence is `/tmp/remorseless-ci-80a83ce.YG20d1`.
+
+Validated CI candidate images were Backend
+`sha256:5235f0ab5b400269e924adb098817d23de237d06daa84174179ac56f14d77c99`
+and Storefront
+`sha256:018a732847974ba7c99de4953e1aba83d8516fc2bd467ee300b775bfa05f5e88`.
+The packaged Storefront decoder gate passed all five tests against that exact
+image. SBOM inventories remained 1,166 / 122 components: Backend was unchanged;
+Storefront changed only Next and `@next/env` from 16.3.3 to 16.3.4. Existing
+fixed-HIGH/CRITICAL gates passed. Unfiltered runtime findings remained 104 / 101
+with unchanged IDs and affected-package mappings; this is not a claim of zero
+findings at all severities. The three Backend Router moderate backport
+exceptions remain explicitly scoped.
+
+Railway separately accepted Backend deployment
+`11a4c2ea-a1ce-4e21-8ba6-29244c3404fb`, image
+`sha256:72d0f665c30414404c3b920f7e831de66e9feb823893ba41fbfd3e532c0ae6fb`,
+and Storefront deployment `fd5a2449-b87b-4d36-ae17-0967fcf380b7`, image
+`sha256:8a548535704b29703fb347a51585e88f3d2af9ec7c93f0e8a4d6dd47057bc9f3`.
+Both source builds report the exact commit and healthy readiness dependencies.
+The ordinary scheduler heartbeat at `2026-09-08T10:26:00.072Z` reports the new
+SHA; scheduler, operations, retention, incident and bounded catalog checks are
+healthy. HTML/security/Trusted Types headers and 7,027-byte AVIF output passed.
+That live image response is output smoke evidence; the isolated and packaged
+decoder tests supply the stronger AVIF-input proof.
+
+The deployed browser matrix passed 75 cases and eight expected skips, with no
+failures, flaky cases or retries, from `10:27:03.160Z` to `10:30:02.704Z`.
+The six local-only image-gallery cases and two mobile-inapplicable desktop
+header checks explain all skips. Direct installed Playwright execution avoided
+package-manager installation and the subsequently identified vulnerable
+Lefthook binaries. No local app server or user port 3000 was touched.
+
+Private live evidence is `/tmp/remorseless-release-80a83ce.3hE59b`. Uncapped
+runtime captures retained 496 Backend and 377 Storefront rows. Both deliberate
+400 responses match exact request/trace/SHA identities in application and
+Railway HTTP logs. Four concurrent requests sharing a trace produced exactly
+four distinct route-root completion spans, with no cross-request completion.
+Response parent spans are distinct but are not equated to their child spans.
+Independent post-browser 5xx queries returned zero for both deployments.
+The general Storefront HTTP capture reached its 2,000-row cap, so it is not
+complete-window evidence; targeted guard and 5xx queries remained uncapped.
+Nine existing stream-cancellation diagnostics remain visible under the new
+Next digest `1105982228`, with nine corresponding render-error records and no
+unclassified warnings/errors after review. No credential-assignment or Trusted
+Types error signals were observed. This is not a zero application-error claim.
+
+These final notes remain local for the substantive maintenance follow-up;
+no documentation-only deployment was triggered.
+
+### Compatible maintenance and Git-hook remediation (September 8, local gates passed)
+
+The next substantive batch exact-pins Backend SWC 1.15.47, both Node declaration
+consumers at 26.1.2, Storefront React/React DOM declarations at 19.2.18/19.2.5,
+browser data at 2.11.20 and tsx at 4.23.13. Existing framework/runtime/provider
+versions, sixteen patches, security policy and Medusa licensing holds are
+unchanged. The lock has eighteen precisely reviewed new package records and
+thirty removals; independent structural review proves no unrelated edge or
+policy drift. Its SHA-256 is
+`5b08b5484fbd21150b1d6d4628d838fc42fc5d673258e90d2af77bbb383b4308`.
+An initial caret-based lock-only draft selected unreviewed minor lines and was
+rejected before installation; only the exact reviewed graph was installed.
+
+Static scans discovered fixed HIGH findings in both the installed Lefthook
+2.1.10 binary and the newer integrity-verified 2.1.12 candidate. Neither is
+executed after discovery; the candidate was never installed. The root
+dependency and old configuration are removed, all three build policies
+explicitly deny Lefthook, and the Backend fallback permission is removed.
+Global user tools and caches are untouched. Full findings and the distinction
+between package-version detection and exploit reachability are recorded in
+`DEPENDENCY_MIGRATION_AUDIT_2026-07-23.md`.
+
+Two repository-owned POSIX/Node wrappers preserve pre-commit root QA and serial
+pre-push root QA plus Storefront coverage. Exact pnpm identity, disabled
+downloads/automatic installs, bounded output, failure/cancellation propagation,
+deadlines, refused custom/link targets and recoverable migration are covered
+by 58 hook tests. A real tsx loader smoke brings the runtime gate to 59 cases;
+the existing Medusa toolchain gate now has eight cases including actual SWC
+legacy decorators, reflection metadata, TSX and invalid-input behavior. Root
+CI executes the new runtime gate unconditionally, and 88 shared-contract tests
+protect parity without changing the ten-member aggregate.
+
+The actual one-time migration changed only the two exact recognized hooks,
+preserved both original wrappers as private non-executable backups and left
+seventeen unrelated hook entries and Git configuration unchanged. Repeat
+installation is a no-op. Hook proof and reviewed lock evidence are retained
+under `/tmp/remorseless-maintenance-proof.K3Nd6J`.
+
+The first CI-mode app checks stopped before application execution because an
+unset pnpm virtual-store setting resolved differently from the installed local
+graph. The durable fix explicitly sets `enableGlobalVirtualStore: false` in
+all three source workspaces and generated Backend configuration. Frozen
+installation and the unchanged strict CI-mode probe then passed. No CI flag,
+dependency-drift guard, cooling rule or build permission was relaxed.
+
+Independent dependency/SBOM/license review passes with zero HIGH/CRITICAL
+dependency findings, the same three ignored MODERATE metadata rows and five
+known Medusa license-metadata omissions. All eighteen reviewed identities are
+in the SBOM, and Lefthook is absent. The native SWC scan has no detected package
+inventory and is not claimed as clean compiled-Rust coverage. Evidence is
+`/tmp/remorseless-maintenance-security.aeOtwd`.
+
+The final explicit-config graph passes full root QA, including 88 parity and
+eleven supply-chain cases, plus the 59-case hook/loader gate. The latter took
+5.76 seconds after removing an unnecessary child HOME override; coverage is
+92.42% lines, 96.32% branches and 96.67% functions across both helpers, with
+each helper independently above 80% on each axis. No HOME setting is changed.
+
+Backend passes 278 suites / 2,163 tests at 91.83% lines/statements, 85.76%
+branches and 95.80% functions. Build completed in 73.68 seconds with no warning
+or error lines; 330 Admin assets remain within all unchanged budgets. The
+generated manifest/lock projection, all sixteen patch hashes, bootstrap,
+explicit build denials and virtual-store setting match. Evidence is
+`/tmp/remorseless-backend-maintenance-final.ds1v41`.
+
+Storefront passes 908 baseline cases across 143 files and 344 transactional
+cases across 38 files, with unchanged coverage thresholds. Both standalone
+and source-server builds pass their 131-asset secret/Trusted Types scan;
+decoder five and request-completion-order two also pass. The responsive matrix
+passes 81 cases with two existing mobile-inapplicable skips, the three-engine
+critical matrix passes 48, and launch passes fourteen. Every browser case has
+one result and zero retries/flaky outcomes. Representative rendered launch
+screenshots were inspected. Owned ports 4010/4300 were released and probed;
+user port 3000 was untouched. Evidence is
+`/tmp/remorseless-maintenance-storefront-configured-20260908.AuYXPF/isolated.UUcmtT`.
+
+Two earlier private harness attempts remain qualified: pnpm config drift
+stopped execution before application tests; a subsequent coverage attempt
+passed 907 cases and failed one because build-only optional media/asset values
+leaked into a test expecting those values absent. Separating those private
+coverage/build environments fixed the harness without changing application
+code, assertions or thresholds. Local Pa11y/Lighthouse sandbox limitations are
+not waived; supported-runner CI must provide acceptance.
+
+This batch does not supersede accepted `80a83ced` until the combined release's
+exact-SHA CI, runtime-image, Railway and deployed-browser/log checks pass. The
+now-cooled, independently reviewed PostHog follow-up will share the release
+push after its own transport and final-graph checks; no intermediate deployment
+is requested for these local commits.
 
 ### Remaining release work
 
-1. Complete the isolated cooled Next.js 16.3.4 acceptance above. Keep it
-   separate from the `qs`, Medusa, TanStack, Stripe, AWS SDK, OpenTelemetry,
-   and small-patch cohorts documented in
-   `DEPENDENCY_MIGRATION_AUDIT_2026-07-23.md`.
+1. Next.js 16.3.4 is accepted above. Complete the reviewed compatible
+   maintenance cohort and dependency-free Git-hook remediation documented in
+   `DEPENDENCY_MIGRATION_AUDIT_2026-07-23.md`, preserving framework, provider,
+   security-backport and licensing boundaries.
 2. Hold Medusa 2.19.0: its [Enterprise license](https://raw.githubusercontent.com/medusajs/medusa/v2.19.0/ENTERPRISE-LICENSE.md)
    requires a commercial agreement for the listed RBAC/SSO materials,
    including policies, permission checks, and compiled forms. This app uses

@@ -5,7 +5,10 @@ import { fileURLToPath } from "node:url"
 
 const aggregate = "qa:ci-shared-contracts"
 const boundary = "qa:ci-shared-contracts-boundary"
+const toolchain = "qa:toolchain-runtime"
 const command = (name) => `pnpm run ${name}`
+const toolchainCommand =
+  "node --test --test-isolation=process --test-timeout=60000 --experimental-test-coverage --test-coverage-include=scripts/install-git-hooks.mjs --test-coverage-include=scripts/run-git-hook.mjs --test-coverage-lines=80 --test-coverage-branches=80 --test-coverage-functions=80 scripts/git-hooks.test.mjs scripts/tsx-runtime.test.mjs"
 const boundaryCommand =
   "node --test --experimental-test-coverage --test-coverage-include=scripts/verify-ci-shared-contracts.mjs --test-coverage-lines=80 --test-coverage-branches=80 --test-coverage-functions=80 scripts/verify-ci-shared-contracts.test.mjs && node scripts/verify-ci-shared-contracts.mjs"
 const sharedContracts = Object.freeze({
@@ -181,6 +184,16 @@ export const validateCiSharedContracts = ({
     "Shared aggregate must run all ten reviewed contracts once"
   )
   assert.equal(scripts[boundary], boundaryCommand)
+  assert.equal(
+    scripts[toolchain],
+    toolchainCommand,
+    "Project hook and loader runtime coverage/test scope must remain enforced"
+  )
+  assert.equal(
+    scripts.prepare,
+    "node scripts/install-git-hooks.mjs",
+    "Prepare must retain the ownership-refusing project hook installer"
+  )
   for (const [name, expected] of Object.entries(sharedContracts))
     assert.equal(
       scripts[name],
@@ -198,6 +211,7 @@ export const validateCiSharedContracts = ({
     "biome check --error-on-warnings .",
     command(boundary),
     command(aggregate),
+    command(toolchain),
     ...existingContracts.map(command),
     ...compilerCommands,
   ]
@@ -216,11 +230,13 @@ export const validateCiSharedContracts = ({
   const install = exactStep(steps, "pnpm install --frozen-lockfile")
   const guard = exactStep(steps, command(boundary))
   const shared = exactStep(steps, command(aggregate))
+  const runtime = exactStep(steps, command(toolchain))
   assert.ok(
     install < guard && guard < shared,
     "Install, independent parity guard, then shared contracts must be ordered"
   )
-  for (const name of [boundary, aggregate]) {
+  assert.ok(guard < runtime, "The parity guard must precede runtime contracts")
+  for (const name of [boundary, aggregate, toolchain]) {
     const references = rootWorkflow.match(
       new RegExp(`(?<![a-z0-9:-])${name}(?![a-z0-9:-])`, "gu")
     )

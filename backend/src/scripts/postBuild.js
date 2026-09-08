@@ -51,7 +51,6 @@ const DEFAULT_ALLOWED_BUILDS = [
   "@medusajs/telemetry",
   "@swc/core",
   "esbuild",
-  "lefthook",
   "msgpackr-extract",
   "protobufjs",
   "sharp",
@@ -284,6 +283,10 @@ const resolvePeersFromWorkspaceRoot = readPnpmConfigBoolean(
   "resolvePeersFromWorkspaceRoot",
   true
 )
+const enableGlobalVirtualStore = readPnpmConfigBoolean(
+  "enableGlobalVirtualStore",
+  false
+)
 const patchedDependencies = copyPatchedDependencies(
   readPnpmConfigObject("patchedDependencies")
 )
@@ -293,6 +296,7 @@ createNewRegularFile(
   renderPnpmWorkspaceConfig({
     allowBuilds,
     blockExoticSubdeps,
+    enableGlobalVirtualStore,
     hoistPattern,
     minimumReleaseAge,
     minimumReleaseAgeExclude,

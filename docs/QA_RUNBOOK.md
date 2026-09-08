@@ -638,6 +638,63 @@ batch; passing unit mocks alone is insufficient.
 
 ---
 
+### 1.13 Git-hook and loader acceptance
+
+Run the supported Node and exact declared pnpm versions, then:
+
+```bash
+pnpm run qa:toolchain-runtime
+pnpm run qa:medusa-build-toolchain
+pnpm run qa:ci-shared-contracts-boundary
+```
+
+The first gate exercises the actual two Git/Node wrappers and installer in
+private disposable Git repositories. It uses a harmless fixture pnpm, not
+real QA, package installation, cloud remotes or Lefthook. Cases cover blocked
+commits/pushes, serial gate execution, missing/mismatched/malformed manager
+identity, bounded output, timeouts and cancellation, exact legacy recognition,
+private backups, repeat installation, refused custom hooks/configuration and
+link/FIFO targets, concurrent edits, and recovery from a failed second
+activation. Installer and dispatcher line/branch/function coverage each remain
+above the 80% gate. Tests run in separate processes with a 60-second deadline;
+the existing parity policy protects the exact commands, coverage and deadline
+flags, and unconditional Root CI execution. The ten-member shared aggregate
+is unchanged. These local guards do not replace independent CI enforcement.
+
+The same gate includes one real `tsx/cjs/api` smoke test, with native Node type
+stripping disabled, typed relative imports and same-basename module isolation.
+This is compatibility coverage for Vite's optional TypeScript-config fallback;
+the current app configuration does not exercise that path. It does not claim
+CLI/watch, signal-forwarding or `tsImport` application coverage.
+
+The Medusa gate retains its four build-launcher cases and adds four actual
+Backend-resolved SWC transformer cases: legacy decorator identities/reflection
+metadata, nested-class isolation, automatic TSX using Backend React 18, and
+malformed TypeScript rejection. Options come from the real Backend Jest
+configuration. The nested legacy case is not a reproduction of upstream's
+separate modern-decorator fix. Node coverage cannot measure compiled SWC Rust
+internals, and a package scan does not prove complete native dependency coverage.
+
+Install/migration emits bounded `git.hooks.installed` or
+`git.hooks.install_skipped` records; successful gates emit `git.hook.passed`.
+Expected local installation is sub-second and the isolated gate targets under
+15 seconds; record measurements instead of relaxing assertions on a slow host.
+Version checks have a five-second deadline and each actual QA command a
+30-minute ceiling. Runtime gate changes still require full application builds,
+coverage, exact-SHA CI, runtime-image and deployed staging acceptance.
+
+Root, Backend, Storefront and the generated Backend workspace explicitly set
+`enableGlobalVirtualStore: false`. This preserves one installed layout when
+switching between ordinary local and `CI=true` checks. An unset value can
+otherwise resolve differently in pnpm 11 and spuriously fail the strict
+dependency gate; see [the upstream report](https://github.com/pnpm/pnpm/issues/12337).
+Keep `CI=true`, `pmOnFail=error` and `verifyDepsBeforeRun=error` intact. Do not
+work around this by disabling CI mode, permitting automatic installation or
+weakening drift detection. After changing workspace settings, use the pinned
+manager for an explicit frozen install, then verify a lightweight CI-mode
+command before application builds. The supply-chain verifier and generated
+configuration tests protect the explicit false policy.
+
 ## 2. Stripe Payment Element Matrix
 
 ### 2.1 Environment

@@ -831,6 +831,125 @@ authorization migration. No 2.19 install, feature-flag change, or license
 exception was made. The technical Vite/Router/SDK/patch review below is
 secondary to that unresolved licensing decision.
 
+## Compatible maintenance and hook remediation — 2026-09-08
+
+This substantive follow-up starts after complete local, exact-SHA CI, image,
+Railway and live acceptance of Next.js commit `80a83ced`. It updates six
+reviewed maintenance parents together and removes the vulnerable native Git
+hook tool. The official registry inventory checked 138 direct package names;
+all selected parents and twelve SWC platform siblings passed the existing
+seven-day cooling rule. Exact metadata, timestamps, integrity fields and
+primary-source references are retained in
+`/tmp/remorseless-maintenance-candidates.LUl30h/evidence.json`, SHA-256
+`fc62319f8b2d9556b371e254f309334414e4a000aa7aa2d5d6b6f977c773d054`.
+That original inventory also contains the rejected Lefthook upgrade; it is not
+an approval to install it.
+
+| Consumer | Reviewed change | Compatibility boundary |
+| --- | --- | --- |
+| Backend SWC and three overrides | 1.15.46 → 1.15.47; published July 29, cooled August 5 | [Official compiler changes](https://github.com/swc-project/swc/compare/v1.15.46...v1.15.47) include decorator, enum, minifier and source-position corrections. Keep real legacy metadata/TSX coverage; no repository plugin is configured, so do not claim Rust plugin ABI compatibility. |
+| Both Node declaration consumers | 26.1.1 → 26.1.2; published July 27, cooled August 3 | [The declaration correction](https://github.com/DefinitelyTyped/DefinitelyTyped/commit/4d3adfb84276c5c43daee02826c4c2cd56dad6bc) accepts `KeyObject` in `createPublicKey`. Runtime Node remains 26.5.0 and `undici-types` remains unchanged. |
+| Storefront React declarations | 19.2.17 → 19.2.18; published July 30, cooled August 6 | [Declaration extension](https://github.com/DefinitelyTyped/DefinitelyTyped/commit/a414786ca9309a76c8a35fe249dab28668a69b79) supports renderer-specific canary values; no experimental API is activated. Backend React 18/type isolation remains intact. |
+| Storefront React DOM declarations | 19.2.3 → 19.2.5; published August 23, cooled August 30 | [Canary declaration follow-up](https://github.com/DefinitelyTyped/DefinitelyTyped/commit/199564ee7decf22f3e3e4166913e7fced797ecd7) adds the optional browser reason. Existing stable runtime APIs and peer ranges remain unchanged. |
+| Browser compatibility data | 2.11.3 → 2.11.20; published August 27, cooled September 3 | [The data comparison](https://github.com/web-platform-dx/baseline-browser-mapping/compare/v2.11.3...v2.11.20) refreshes generated browser/feature data, not library algorithms. The older duplicate 2.11.1 node consolidates into the same reviewed version. |
+| Storefront tsx / Vite peer | 4.23.1 → 4.23.13; published August 30, cooled September 6 | [Upstream changes](https://github.com/privatenumber/tsx/compare/v4.23.1...v4.23.13) cover module resolution, source mapping, signal handling and bounded caching. Existing esbuild/fsevents ranges remain unchanged; the narrow actual API smoke does not claim active CLI/watch usage. |
+
+The selected six manifest entries and all three SWC overrides are exact pins.
+An initial lock-only draft with caret ranges selected unreviewed SWC 1.16.1
+and Node declarations 26.4.0; that draft was rejected before installation and
+the original lock restored before resolving the exact patch cohort. Those
+separate minor lines need their own compatibility review, not an accidental
+expansion of this release. No installed dependency was downgraded.
+
+The accepted candidate lock has SHA-256
+`5b08b5484fbd21150b1d6d4628d838fc42fc5d673258e90d2af77bbb383b4308`:
+1,800 package records and 1,815 peer-context snapshots. Its eighteen new package
+records are precisely the six reviewed parents plus twelve matching native SWC
+siblings; all registry integrity metadata matches. Eleven Lefthook records are
+removed, and duplicate browser-data records consolidate. The only existing
+package metadata changes are three SWC peer declarations reflecting the
+override. Two compressed Medusa peer-context hashes change, but normalized
+snapshot edges, importer references, all patches and all other policy fields
+are identical. Structural proof is
+`/tmp/remorseless-maintenance-proof.K3Nd6J/lock-verified.json`.
+
+### Why Lefthook is removed instead of upgraded
+
+Fresh Trivy 0.70.0 scans found twelve HIGH and one MEDIUM package-version
+findings in the installed 2.1.10 Linux x64 Go binary. The integrity-verified
+2.1.12 candidate removes its old standard-library findings but still contains
+three fixed HIGH findings in `golang.org/x/mod` and `golang.org/x/text`:
+[GO-2026-6180](https://pkg.go.dev/vuln/GO-2026-6180),
+[GO-2026-6179](https://pkg.go.dev/vuln/GO-2026-6179), and
+[GO-2026-5970](https://pkg.go.dev/vuln/GO-2026-5970).
+Both scans contain 52 compiled Go package inventory entries and use the fresh
+September 8 database with no severity filter, ignore file, VEX or waiver.
+These findings do not establish vulnerable-symbol reachability in this hook
+workflow, but neither binary satisfies the fixed-HIGH gate. Registry and
+official release checks found no clean newer stable forward release.
+
+The candidate was never installed or executed for this review. Evidence is
+`/tmp/remorseless-lefthook-2.1.12-security.TTw6qZ/evidence.json`, SHA-256
+`73da35330b52a4ae56c7b1f69d7848cf51b69d55fdf41954286242a37cd67c67`.
+Earlier Next commit hooks ran before this discovery; their QA results remain
+valid, but are not evidence of a clean Lefthook executable.
+
+The repository now uses two small POSIX/Node hooks with the same pre-commit
+lint/typecheck/contracts and serial pre-push lint plus Storefront coverage.
+The installer requires complete legacy-wrapper identity, private recoverable
+backups and explicit migration; it refuses custom hooks/configuration, links,
+FIFO targets and observed concurrent changes. Manager identity, no-download,
+no-auto-install and failure propagation are tested, not delegated to an
+unreviewed global binary. Existing Git configuration is not modified.
+
+All three workspace policies explicitly deny `lefthook` builds with `false`.
+Removing the entry first made pnpm 11's strict-build check detect the still
+installed obsolete package and write an unresolved approval placeholder during
+lock-only resolution. Explicit denial fixes that transition without executing
+the package or relaxing strict-build enforcement. The Backend's fallback build
+permission is removed too. Frozen install then removed the dependency and ran
+only the approved SWC postinstall and idempotent new prepare. Global user tools
+and package caches remain untouched; this is repository execution-path and
+dependency removal, not a claim to have cleaned the whole host.
+
+Real migration changed exactly two recognized hooks, preserved two original
+private backups, and left seventeen unrelated hook entries and Git config
+unchanged. Repeat installation reports zero changes. Private proof is
+`/tmp/remorseless-maintenance-proof.K3Nd6J/hooks-after.json`.
+
+The first application validation attempts stopped before builds or coverage:
+pnpm's strict dependency guard detected an unset/false virtual-store setting
+when the installed local graph was entered with `CI=true`. The documented
+[upstream configuration issue](https://github.com/pnpm/pnpm/issues/12337) is
+resolved by explicitly setting `enableGlobalVirtualStore: false` in all three
+source workspaces and propagating it to the generated Backend workspace.
+An explicit pinned frozen install completed without lock changes, and the
+same CI-mode probe then passed. CI mode and both fail-closed manager/dependency
+guards remain enabled. Policy tests reject missing/non-false settings instead
+of accepting a local-only bypass.
+
+Independent installed-graph review found all eighteen reviewed package
+identities in the CycloneDX inventory, all six parents at their reviewed
+versions in the license inventory, and no Lefthook package, executable link or
+SBOM/license entry. Both dependency audits report zero HIGH/CRITICAL findings;
+three existing ignored MODERATE metadata rows remain separately disclosed.
+The production license inventory retains 1,006 entries in sixteen groups;
+the all-package inventory has 1,350 entries in twenty-one groups. Both retain
+only the five known Medusa metadata omissions. A static SWC ELF scan detected
+no package inventory, so it is explicitly not proof of clean compiled Rust
+dependencies. Evidence is
+`/tmp/remorseless-maintenance-security.aeOtwd/cohort-artifact-review.json`.
+Full local application/security acceptance passes on this lock: Backend
+278 suites / 2,163 cases, Storefront 908 baseline plus 344 transactional cases,
+both app builds and both Storefront output modes, five native decoder cases,
+two completion-order cases, and 81 responsive / 48 three-engine / fourteen
+launch browser passes with two expected responsive skips and no retries.
+Root lint/format, policies and both strict typechecks pass. The handoff retains
+exact measurements and the two private harness corrections without waivers.
+Exact-SHA deployment acceptance remains required before this maintenance cohort
+supersedes accepted `80a83ced`; the reviewed, now-cooled PostHog follow-up is
+being grouped into the same release push.
+
 ## Compatibility upgrade plan — 2026-09-03, batching revised 2026-09-06
 
 `pnpm outdated --recursive --format json` was reviewed against registry publish

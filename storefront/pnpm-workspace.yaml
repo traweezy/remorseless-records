@@ -1,11 +1,13 @@
 packages:
   - "."
 
+enableGlobalVirtualStore: false
+
 allowBuilds:
   "@medusajs/telemetry": true
   "@swc/core": true
   esbuild: true
-  lefthook: true
+  lefthook: false
   msgpackr-extract: true
   protobufjs: true
   puppeteer: false
@@ -61,7 +63,7 @@ overrides:
   "@aws-sdk/core": ^3.977.9
   "@isaacs/brace-expansion": ^5.0.1
   "@remix-run/router": 1.23.3
-  "@swc/core": ^1.15.46
+  "@swc/core": 1.15.47
   "ajv@>=7.0.0 <8.18.0": ^8.20.0
   axios: ^1.18.0
   "minimatch@<10.0.0>brace-expansion": 2.1.4

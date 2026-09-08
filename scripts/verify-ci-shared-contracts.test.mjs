@@ -9,6 +9,7 @@ const manifest = JSON.parse(read("package.json"))
 const workflow = read(".github/workflows/root.yml")
 const aggregate = "qa:ci-shared-contracts"
 const boundary = "qa:ci-shared-contracts-boundary"
+const toolchain = "qa:toolchain-runtime"
 const names = [
   "qa:service-container-resolution",
   "qa:storefront-response-boundary",
@@ -142,7 +143,7 @@ test("rejects future local gates without an explicit CI mapping", () => {
   )
 })
 
-for (const name of [aggregate, boundary]) {
+for (const name of [aggregate, boundary, toolchain]) {
   test(`requires exactly one local ${name} invocation`, () => {
     for (const change of [
       (scripts) => {
@@ -327,6 +328,19 @@ test("preserves existing explicit security checks and both local typechecks", ()
 })
 
 for (const axis of ["lines", "branches", "functions"]) {
+  test(`rejects relaxed or removed toolchain ${axis} coverage`, () => {
+    for (const replacement of [`--test-coverage-${axis}=79`, ""])
+      assert.throws(() =>
+        validate(
+          mutateScripts((scripts) => {
+            scripts[toolchain] = scripts[toolchain].replace(
+              `--test-coverage-${axis}=80`,
+              replacement
+            )
+          })
+        )
+      )
+  })
   test(`rejects relaxed or removed parity-validator ${axis} coverage`, () => {
     for (const replacement of [`--test-coverage-${axis}=79`, ""])
       assert.throws(() =>
@@ -367,6 +381,73 @@ test("rejects disabled parity coverage or omitted validator coverage scope", () 
         })
       )
     )
+})
+
+test("preserves exact toolchain test scopes and ownership-refusing prepare", () => {
+  for (const marker of [
+    "--test-isolation=process",
+    "--test-timeout=60000",
+    "--experimental-test-coverage",
+    "--test-coverage-include=scripts/install-git-hooks.mjs",
+    "--test-coverage-include=scripts/run-git-hook.mjs",
+    "scripts/git-hooks.test.mjs",
+    "scripts/tsx-runtime.test.mjs",
+  ])
+    assert.throws(() =>
+      validate(
+        mutateScripts((scripts) => {
+          scripts[toolchain] = scripts[toolchain].replace(marker, "")
+        })
+      )
+    )
+  for (const prepare of [
+    "true",
+    "lefthook install",
+    "node scripts/install-git-hooks.mjs --migrate-legacy",
+    "node scripts/install-git-hooks.mjs || true",
+  ])
+    assert.throws(() =>
+      validate(
+        mutateScripts((scripts) => {
+          scripts.prepare = prepare
+        })
+      )
+    )
+  assert.throws(() =>
+    validate(
+      mutateScripts((scripts) => {
+        scripts[toolchain] += " || true"
+      })
+    )
+  )
+})
+
+test("rejects disabled toolchain isolation and relaxed runtime limits", () => {
+  for (const [from, to] of [
+    ["--test-isolation=process", "--test-isolation=none"],
+    ["--test-timeout=60000", "--test-timeout=0"],
+    ["--test-timeout=60000", "--test-timeout=120000"],
+  ])
+    assert.throws(() =>
+      validate(
+        mutateScripts((scripts) => {
+          scripts[toolchain] = scripts[toolchain].replace(from, to)
+        })
+      )
+    )
+})
+
+test("requires parity guard before project toolchain contracts", () => {
+  const step =
+    "      - name: Verify project hook and loader runtime contracts\n        run: pnpm run qa:toolchain-runtime\n"
+  const changed = workflow
+    .replace(step, "")
+    .replace(
+      "      - name: Verify shared contract CI parity\n",
+      `${step}      - name: Verify shared contract CI parity\n`
+    )
+  assert.notEqual(changed, workflow)
+  assert.throws(() => validate(manifest, changed))
 })
 
 test("rejects omitted Redis helper scopes, tests, and the independent parity test runner", () => {

@@ -31,10 +31,13 @@ const parseYamlScalar = (source) => {
 
 export const readTopLevelScalar = (source, key) => {
   const prefix = `${key}:`
+  const keyPattern = new RegExp(`^(?:${key}|"${key}"|'${key}')\\s*:`, "u")
   const lines = source
     .split(/\r?\n/u)
-    .filter((candidate) => candidate.startsWith(prefix))
+    .filter((candidate) => keyPattern.test(candidate))
   assert.ok(lines.length <= 1, `${key} must not be duplicated`)
+  if (lines[0])
+    assert.ok(lines[0].startsWith(prefix), `${key} must use its canonical key`)
   return lines[0] ? parseYamlScalar(lines[0].slice(prefix.length)) : undefined
 }
 
@@ -125,6 +128,37 @@ export const validatePolicyManifest = (policy) => {
 
 export const validateWorkspacePolicy = (source, expectedExceptions, label) => {
   assert.equal(
+    readTopLevelScalar(source, "enableGlobalVirtualStore"),
+    false,
+    `${label} must explicitly retain the local virtual-store layout`
+  )
+  assert.equal(
+    readTopLevelScalar(source, "allowBuilds"),
+    "",
+    `${label} must retain the reviewed boolean build-approval mapping`
+  )
+  const lines = source.split(/\r?\n/u)
+  const builds = new Map()
+  for (const line of lines.slice(lines.indexOf("allowBuilds:") + 1)) {
+    if (!line.trim() || line.trimStart().startsWith("#")) continue
+    if (!/^\s/u.test(line)) break
+    const entry = line.match(/^  (.+): (true|false)$/u)
+    assert.ok(entry, `${label} build approvals must be canonical booleans`)
+    const name = parseYamlScalar(entry[1])
+    assert.equal(typeof name, "string")
+    assert.ok(!builds.has(name), `${label} build approvals must be unique`)
+    builds.set(name, entry[2] === "true")
+  }
+  assert.equal(
+    builds.get("lefthook"),
+    false,
+    `${label} must deny Lefthook builds`
+  )
+  assert.ok(
+    [...builds.keys()].every((name) => !/^lefthook(?:@|-)/u.test(name)),
+    `${label} must not add alternate Lefthook build selectors`
+  )
+  assert.equal(
     readTopLevelScalar(source, "minimumReleaseAge"),
     10_080,
     `${label} must enforce a one-week dependency cooling window`
@@ -154,6 +188,28 @@ export const validateWorkspacePolicy = (source, expectedExceptions, label) => {
     expectedExceptions,
     `${label} cooling exceptions must match the reviewed manifest`
   )
+}
+
+export const validateLefthookRemoval = (manifest) => {
+  for (const field of [
+    "dependencies",
+    "devDependencies",
+    "optionalDependencies",
+    "peerDependencies",
+  ])
+    for (const [name, selector] of Object.entries(manifest[field] ?? {})) {
+      assert.doesNotMatch(
+        name,
+        /^lefthook(?:$|-)/u,
+        "Root must not depend on Lefthook or its native packages"
+      )
+      if (typeof selector === "string")
+        assert.doesNotMatch(
+          selector,
+          /^npm:lefthook(?:$|@|-)/u,
+          "Root must not alias a Lefthook dependency"
+        )
+    }
 }
 
 const assertRegularEvidence = (evidencePath) => {
@@ -211,6 +267,7 @@ export const verifyDependencySupplyChainPolicy = () => {
   const packageJson = JSON.parse(
     readFileSync(join(root, "package.json"), "utf8")
   )
+  validateLefthookRemoval(packageJson)
   assert.equal(packageJson.devDependencies?.["@railway/cli"], "5.45.0")
   assert.match(
     packageJson.scripts?.["qa:lint"] ?? "",
@@ -265,6 +322,7 @@ export const verifyDependencySupplyChainPolicy = () => {
     "minimumReleaseAgeIgnoreMissingTime",
     "trustLockfile",
     "blockExoticSubdeps",
+    "enableGlobalVirtualStore",
   ]) {
     assert.ok(postBuild.includes(`"${setting}"`))
     assert.ok(postBuildConfiguration.includes(`${setting}:`))
