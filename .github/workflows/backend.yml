@@ -326,8 +326,8 @@ jobs:
     name: Build (backend)
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    # Only build if all checks and unit tests passed
-    needs: [unit, integration]
+    # Build alongside unit coverage after static checks and real integration.
+    needs: [lint, typecheck, codeql, secrets, integration]
     permissions:
       contents: read
     steps:

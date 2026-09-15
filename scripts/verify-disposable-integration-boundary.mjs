@@ -286,7 +286,7 @@ export const verifyDisposableIntegrationBoundary = async () => {
   }
   for (const marker of [
     "run: pnpm run qa:disposable-integration --no-build",
-    "needs: [unit, integration]",
+    "needs: [lint, typecheck, codeql, secrets, integration]",
     'STRIPE_API_KEY: ""',
     'STRIPE_LIFECYCLE_WEBHOOK_SECRET: ""',
     'STRIPE_PAYMENT_METHOD_CONFIGURATION: ""',

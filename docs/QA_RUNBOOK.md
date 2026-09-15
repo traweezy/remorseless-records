@@ -267,6 +267,33 @@ Storefront, and Runtime Images also require the reviewed Shai-Hulud v2.2.0 Node
 `ghcr.io/aquasecurity/trivy-db`; do not re-enable the default registry mirror
 without reviewing and testing the resulting egress expansion.
 
+#### CI dependency graph and release latency
+
+Storefront unit coverage, build, browser, pa11y, and Lighthouse jobs run in
+parallel after **all** lint, typecheck/Trivy, CodeQL, and secret-scan jobs pass.
+Those checks still depend on the initial security/audit job. The build,
+browser, pa11y, and Lighthouse jobs each build their own isolated checkout;
+no job consumes another job's build output.
+Backend build runs alongside unit coverage after its static checks **and**
+disposable PostgreSQL/Redis integration pass. Keep every existing command,
+test scope, coverage threshold, browser engine, accessibility/performance
+budget, artifact, and cleanup step.
+
+For staging pull requests, each optional Storefront runtime check still needs
+both `ENABLE_STOREFRONT_BUILD` and its own enable flag. Pushes and master pull
+requests retain every release gate. `qa:release-policy` checks the dependency
+graph and rejects missing gates, conditional coverage, and changed toggle
+semantics. A successful individual build is insufficient for deployment:
+require all four workflows at the exact SHA, retain Railway `checkSuites: true`,
+then perform the existing deployed health, logs, and browser acceptance.
+
+The completed `7a9d1b9` runs took Root 2m36s, Backend 9m12s, Runtime Images
+4m02s, and Storefront 14m09s. Replaying their observed job durations and queue
+delays against this graph models Storefront at 10m14s and Backend at 7m31s:
+**3m55s less CI waiting on the release's longest path**, without fewer jobs.
+This is a one-run estimate; fresh CI must confirm actual savings because
+runner availability and Lighthouse timing vary.
+
 ### 1.5 Runtime image acceptance
 
 Build the application artifacts before their final images:
