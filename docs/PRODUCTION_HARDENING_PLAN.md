@@ -13,9 +13,10 @@ The user resumed the September 8 paused work and requested larger cohesive
 releases, with local validation, one grouped staging push, and exact-revision
 CI/deployment monitoring. [NEXT_SESSION_HANDOFF.md](NEXT_SESSION_HANDOFF.md)
 records the current candidate and [PROJECT_MAP.md](PROJECT_MAP.md) indexes the
-code and documentation. Both applications were verified healthy on accepted
-revision `531e178e29b376b1e0a6a0968a0d94f0454b8f41`; that revision's later weekly
-dependency security jobs now fail on new advisories.
+code and documentation. The combined release is accepted at
+`aac22a7f1fd5c0f8a3bb4cb937535eeae612737c`: all four exact-revision CI workflows,
+both Railway source deployments and deployed acceptance passed. Live SSH
+confirms the fixed Debian 13 PCRE2 package in both application containers.
 
 The first grouped push (`88c1108` plus `2a76107`) completed receipt isolation,
 route-owned JSON-LD under the approved JSON-data-only Trusted Types policy,
@@ -23,10 +24,10 @@ media-backup cancellation, bounded multipart parsing, Multer/Morgan/CSV fixes
 and the Debian 12 PCRE2 runtime-image fix. Local application/build/browser gates
 and exact-SHA Runtime Images CI passed. Root CI found an atomic-publication
 race in a test fixture; Backend/Storefront CI found one synthetic UUID secret
-false positive. Railway correctly skipped both deployments. Staging remains
-on `531e178`; the first batch is not an accepted release.
+false positive. Railway correctly skipped both deployments. That first
+candidate was rejected; its corrections are included in the accepted release.
 
-The current grouped correction fixes those test/scanner blockers, updates both
+The accepted grouped correction fixes those test/scanner blockers, updates both
 cooled js-yaml parser lines, extends Root auditing to development dependencies,
 adds the Debian 13 PCRE2 fix to actual Railpack runtime builds, and closes the
 real PostgreSQL recovery and runtime scan-evidence proof gaps. The user has
@@ -41,7 +42,21 @@ Runtime Images stopped before scanning because its pinned installer uses an
 unlisted `get.trivy.dev:443` endpoint. Railway correctly skipped the revision.
 The correction permits only that exact HTTPS host and verifies its allowlist
 contract; the reviewed scanner checksum and security gates remain enforced.
-Exact-revision release acceptance is still required, as recorded in the handoff.
+Corrected revision `aac22a7` passed all four workflows. Both live services,
+catalog, scheduler, concurrent tracing and the corrected 83-case browser matrix
+passed. The pointer test needed the existing hydration-readiness convention;
+ten mobile repetitions passed without retries, timeout or assertion changes.
+The small test correction will ship with the next substantive recovery batch.
+
+Actual staging Redis RDB export and isolated restore now pass with exact
+archive/source/target identities, measured fork headroom and independent
+cleanup/source-health checks. This proves RDB loading, not current multipart-AOF
+replay, queue reconciliation or a live image cutover. The PostgreSQL audit now
+supports the actual 16.11 source and still rejects its superuser identity; real
+16.15/18.6 integration checks pass. Private SSH transport is verified, but the
+reviewed same-major recovery image has unresolved security findings. Actual
+PostgreSQL backup/restore, role cutover and Redis migration remain open; see
+[INFRASTRUCTURE_RECOVERY.md](INFRASTRUCTURE_RECOVERY.md) for the precise evidence.
 
 Historical sections below retain dated evidence. Next.js 16.3.4 is installed;
 the previous browser sandbox limitation is resolved with sandboxed Brave.

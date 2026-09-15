@@ -119,7 +119,8 @@ owner exist.
 
 ## PostgreSQL authority split
 
-Production uses three distinct login roles and one non-login owner role:
+The production role plan uses three distinct login roles and one non-login
+owner role:
 
 - `app_owner`: owns application schemas/objects; `NOLOGIN`;
 - `app_runtime`: DML and sequence use required by the running application,
@@ -175,9 +176,33 @@ connect/query/close failures cannot produce an accepted result.
 These are bounded catalog capability checks, not a complete authorization
 certification: separately review executable `SECURITY DEFINER` functions,
 extensions, application-specific capabilities, default privileges, and future
-grants. Role-audit tests create only transactionally rolled-back fixtures on
+grants. The auditor checks whether `lo_compat_privileges` is currently enabled,
+but does not inventory parameter `SET` grants that could permit enabling it
+later; review those grants for the login and its inherited/reachable roles
+separately. Role-audit tests create only transactionally rolled-back fixtures on
 the explicitly guarded disposable local PostgreSQL service. Passing them does
 not perform the staging role cutover or satisfy its operational evidence.
+
+### Staging authority verification — September 15, 2026 UTC
+
+The live PostgreSQL 16.11 audit exposed SQLSTATE `42883`: the previous query
+called `has_largeobject_privilege`, which was introduced in PostgreSQL 18.
+The compatibility fix inspects large-object catalog ACLs, including PUBLIC,
+inherited and reachable grants, superuser authority, and the current
+`lo_compat_privileges` setting. Inspection failures still fail closed.
+Validation passed 54 unit tests and 39 real integration tests on each of
+PostgreSQL 16.15 and 18.6, including actual large-object writes and PostgreSQL
+18 native-function parity. All local fixtures and clusters were removed.
+
+A read-only probe of the reviewed fixed query against live 16.11 correctly
+rejected the existing administrator for all three profiles. This probe did
+not deploy the fix or change authority. Backend still uses the sole superuser
+login; all 914 application relations are superuser-owned, all four planned
+roles are absent, migration/backup URLs are absent, and role-split enforcement
+is disabled. The database contains 171 tables, 735 indexes and eight sequences
+(45,781,475 bytes). Private evidence:
+[live authority inventory](/tmp/remorseless-resume-20260914.oonsnior/postgres-readonly-authority-fixed.json)
+and [local version matrix](/tmp/remorseless-resume-20260914.oonsnior/role-pg-matrix.jsonl).
 
 ## PostgreSQL transport
 
@@ -192,6 +217,17 @@ Application startup and database CLIs share this policy. Plaintext,
 `sslmode=allow`, and `sslmode=prefer` external URLs fail before connecting.
 After the private role cutover and a documented administrative access path,
 remove the PostgreSQL and Redis public TCP proxies.
+
+The September 15 UTC read-only probe verified native SSH forwarding to the
+exact running PostgreSQL deployment instance, with strict existing host-key
+verification and explicit project/environment/service/deployment guards before
+and after the connection. PostgreSQL also negotiated TLS through that tunnel.
+The original source URL remained unchanged; the transient loopback mapping
+preserved credentials, database and query options only in process. Both probe
+tunnels were closed. The public PostgreSQL proxy remains active. See the
+[private tunnel receipt](/tmp/remorseless-resume-20260914.oonsnior/postgres-private-tunnel-locale.json).
+An actual export still needs a companion receipt binding the original source
+identity and Railway scope to the mapped endpoint, run and archive checksum.
 
 ## PostgreSQL backup and restore
 
@@ -331,6 +367,41 @@ the complete evidence boundary and cleanup requirements. This closes the
 synthetic CLI roundtrip gap. It does not establish a real provider backup,
 PITR, a production recovery duration, or live application acceptance.
 
+### Staging recovery readiness — September 15, 2026 UTC
+
+Fresh inventory found eight volume snapshots, newest December 15, 2025, no
+backup schedule, disabled PITR and `archive_mode=off`. The source remains
+PostgreSQL 16.11 with UTF-8, libc `en_US.utf8` and collation version 2.41.
+Verified 16.15 clients are available for a same-major logical recovery proof.
+The existing 18.6 Alpine fixture does not establish that proof: a newer
+`pg_dump` can read an older server, but its output is not guaranteed to restore
+into that older major version. See [PostgreSQL's compatibility notes](https://www.postgresql.org/docs/18/app-pgdump.html#APP-PGDUMP-NOTES).
+
+The official `postgres:16.15-trixie` linux/amd64 target was reviewed and pulled
+by immutable manifest
+`sha256:485935f94cc7165afa896978809c37b592dc07f0a37d2c8f645f12412d0212c8`.
+Its package metadata identifies PostgreSQL `16.15-1.pgdg13+2` and libc/locales
+`2.41-12+deb13u3`; runtime locale parity has not been tested. Trivy 0.70.0 with
+the September 15 01:12 UTC database rejected it with 14 CRITICAL, 101 HIGH and
+three UNKNOWN package findings. Of these 118 gate findings, 59 have listed
+fixes; the remaining 59 span 13 advisories with no listed fix (one CRITICAL,
+56 HIGH, two UNKNOWN). Fixable OS packages and bundled `gosu` dependencies
+therefore do not account for the entire rejection. A private correction recipe
+is only a draft; it was not built or accepted. See the
+[target assessment](/tmp/remorseless-resume-20260914.oonsnior/postgres16-target-assessment.json).
+
+The reviewed 16.15 target was never started, and no PostgreSQL bootstrap backup
+or real-data restore occurred. The next evidence requires an accepted
+same-major target, a bounded private export with source/transport binding,
+and restore plus application
+acceptance in an isolated target with no provider credentials, network egress
+or consumers, followed by verified cleanup. Fresh source load and local/target
+disk and memory capacity must be checked immediately before that operation.
+Role cutover, scheduled backups, PITR and off-provider retention remain open;
+neither the catalog probe nor the synthetic recovery tests satisfy them.
+The linked `/tmp` receipts are private session evidence, not durable backup
+storage or committed recovery artifacts.
+
 ## Media backup and restore
 
 MinIO's application bucket requires versioning and an off-site target in a
@@ -420,6 +491,107 @@ requires it. Remove the public Console domain or place it behind reviewed SSO;
 credentials alone are not an acceptable public-console boundary.
 
 ## Redis recovery and memory
+
+### Actual staging RDB export and isolated restore — September 14
+
+At September 15 02:25 UTC (September 14 in the operator timezone), the first
+actual full synchronization exported a private **1,633,338-byte RDB** from the
+existing Redis 8.0.3 staging deployment. The unchanged source checker consumed
+exactly that byte count and verified its checksum: 1,282 keys, seven expiries,
+zero already expired and zero hash-field subexpiries. The archive SHA256 is
+`92966f920080514c3b4c1b4a0a6d84f5a68d25e48f6921e7041f0a6030051cf7`.
+
+Fresh preflight bound the project, environment, service, deployment, process,
+volume and filesystem. The source runs as UID/GID 1000, correcting the old
+historical-image UID 1001 assumption; the SSH shell runs as root. Persistence
+paths resolve under the expected `/bitnami` volume, with 48.86 GB available.
+The actual cgroup and provider ceiling agree at 32,000,000,000 bytes; cgroup
+peak was 56,569,856 bytes with no recorded OOM/high/max events. Current RSS
+was about 20.44 MB and no save, rewrite or replica was active. Diskless sync,
+RDB checksums and compression were already enabled. Existing credentials
+passed exact ACL dry runs; no grants or settings were changed. The loaded
+`vectorset` v1 module is supported by the isolated target. Host overcommit
+`0` and enabled transparent huge pages were recorded, not changed.
+
+The one-shot helper used the checksum-verified vendor Redis CLI 8.0.3 through
+the existing SSH agent and a fresh private, empty regular file. Its 25-second
+export deadline and 32 MiB OS file limit include the temporary diskless marker.
+The outer remote operation has a 90-second deadline with five seconds for
+cleanup, inside a 120-second local deadline. Diagnostics share a 32 MiB hard
+per-file limit and must pass a subsequent 64 KiB acceptance limit; that latter
+check is not a separate wire cap. Directory-FD anchoring, exact inode/owner/mode
+checks, child reaping and identity-checked removal protect the owned temporary
+files. The base64 transfer is bounded, canonical and bound to the source size,
+hash, run ID and checker evidence. The whole command took 10,868 ms, including
+SSH and the existing five-second diskless delay.
+
+Do not use `redis-cli --rdb -` for this procedure. The reviewed 8.0.3 client
+retains the 40-byte diskless delimiter on stdout, while regular-file truncation
+failure can still accompany exit zero. Both reviewed checkers can accept
+trailing bytes or a disabled checksum. Require the exact CLI success grammar,
+one checksum-success line, the complete final success/count footer and both
+consumed offsets equal to the complete file length. Validate all four numeric
+key/expiry counters. Raw checker failures may expose key names and remain
+private. An actual empty 8.10.1 fixture and eleven rejection cases validated
+these parser boundaries before the live export.
+
+The first wrapper invocation stopped before SSH because its minimal
+environment omitted the existing `SSH_AUTH_SOCK`. Independent observations
+showed zero full syncs, no new fork, no temporary files and healthy apps.
+Preserving the existing agent socket fixed the wrapper; a preflight-only probe
+passed before the sole actual synchronization. Neither failure triggered an
+automatic SYNC retry or key registration.
+
+Independent postchecks matched the preflight run-ID fingerprint and showed
+exactly one full sync and one fork: 3,730 microseconds and 1,331,200 bytes of
+copy-on-write memory. RSS became 21,278,720 bytes; cgroup peak and OOM counters
+were unchanged. No replica, save, rewrite, exporter/checker/timeout process or
+owned temporary directory remained. Source settings and volume identity were
+unchanged; all six application health checks passed on `aac22a7`. A passive
+1 MiB replication backlog remained active with zero replicas. It was recorded
+and left to normal Redis lifecycle management, not cleared to improve evidence.
+
+At 02:29 UTC the exact hardened local image
+`sha256:99267d3e232c751add077e98c4fc1b9e508d4241740b52229e44986f7173f71b`
+restored a separate tmpfs copy. The current-session scan binds that image to
+zero findings across 22 detected OS packages and 23 SBOM components; compiled
+server/module dependency coverage remains unestablished. Before starting Redis,
+its genuine 8.10.1 checker verified the original read-only artifact and exact
+checksum/footer offsets. Actual container inspection verified network-none,
+no published ports or provider credentials, read-only root, dropped
+capabilities, no-new-privileges, one CPU, 256 MiB with no swap, 64 PIDs and
+UID/GID 1000:1001. This deliberately chosen identity is not an image-default
+deployment claim. AOF and scheduled saves were disabled for the isolated RDB
+load; restored workers were never started.
+
+The target loaded 1,278 keys and discarded four expired keys, accounting for
+all 1,282 snapshot keys. Three expiries remained; subsequent aggregate counts
+were stable with no eviction. All 16 target databases were checked: only
+database zero was populated. A random target-only NX write/read/delete and
+benign Lua execution passed. The complete isolated drill took about 3.77
+seconds; these tiny-data timings are not a production RTO. The exact owned
+container was removed and absence independently verified. Original archive
+and manifest bytes, hashes, identities, ownership and private modes remained
+unchanged. The original export manifest retains its historical
+`restoreProven: false`; the separate later restore evidence supplies the proof.
+
+Private artifacts and helpers are under
+`/tmp/remorseless-resume-20260914.oonsnior/redis-real-recovery`, including
+`export-tBNn6Q` and `restore-BWqxPS`; independent source checks are under
+`/tmp/remorseless-redis-preflight-20260915-_t7rhnzu`. Keep the local private
+archive for the controlled migration review. The helper did not change provider
+snapshots, retention schedules, live keys, configuration, ACLs or source-volume
+files. Normal application writes continued. The replication operation incurred
+the measured fork and bookkeeping above.
+
+This closes **actual RDB format/load recovery**, not current multipart-AOF
+replay, unattended/off-site retention, queue/lock/idempotency reconciliation,
+image-default compatibility or rollback after subsequent live writes. The
+configured/running image mismatch, missing immutable live-image identity,
+affected Redis version, unbounded maxmemory and disabled RDB schedule remain
+open. Preserve the untouched source data before any controlled image cutover.
+
+### Recovery policy
 
 Redis contains rate limits, caches, BullMQ/workflow state, locks, event-bus
 state, and bounded checkout-reconciliation snapshots. PostgreSQL and Stripe

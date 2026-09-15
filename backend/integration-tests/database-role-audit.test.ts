@@ -255,4 +255,151 @@ describe("real PostgreSQL role audit", () => {
       "backup_has_write_privileges"
     )
   })
+
+  describe("large-object authority on PostgreSQL 16 and 18", () => {
+    beforeEach(async () => {
+      await client.query(`
+        select pg_catalog.lo_create(99042001);
+        grant pg_read_all_data to rr_audit_subject with inherit true;
+      `)
+    })
+
+    it.each([
+      {
+        label: "no large-object grant",
+        setup: "select 1",
+        writable: false,
+      },
+      {
+        label: "SELECT without UPDATE",
+        setup: "grant select on large object 99042001 to rr_audit_subject",
+        writable: false,
+      },
+      {
+        label: "UPDATE without SELECT",
+        setup: "grant update on large object 99042001 to rr_audit_subject",
+        writable: true,
+        writeAllowed: false,
+      },
+      {
+        label: "direct SELECT and UPDATE",
+        setup:
+          "grant select, update on large object 99042001 to rr_audit_subject",
+        writable: true,
+      },
+      {
+        label: "PUBLIC UPDATE",
+        setup: "grant select, update on large object 99042001 to public",
+        writable: true,
+      },
+      {
+        label: "inherited UPDATE without SET",
+        setup: `
+          grant select, update on large object 99042001 to rr_audit_bridge;
+          grant rr_audit_bridge to rr_audit_subject with inherit true, set false;
+        `,
+        writable: true,
+      },
+      {
+        label: "UPDATE reachable only through SET",
+        setup: `
+          grant select, update on large object 99042001 to rr_audit_bridge;
+          grant rr_audit_bridge to rr_audit_subject with inherit false, set true;
+        `,
+        probeRole: "set role rr_audit_bridge",
+        writable: true,
+      },
+      {
+        label: "inert UPDATE membership",
+        setup: `
+          grant select, update on large object 99042001 to rr_audit_bridge;
+          grant rr_audit_bridge to rr_audit_subject with inherit false, set false;
+        `,
+        writable: false,
+      },
+      {
+        label: "owner's default ACL",
+        setup: "alter large object 99042001 owner to rr_audit_subject",
+        writable: true,
+      },
+      {
+        label: "owner's revoked UPDATE",
+        setup: `
+          alter large object 99042001 owner to rr_audit_subject;
+          revoke update on large object 99042001 from rr_audit_subject;
+        `,
+        writable: false,
+      },
+      {
+        label: "large-object compatibility bypass",
+        setup: "set local lo_compat_privileges = on",
+        writable: true,
+      },
+    ])("detects $label without weakening backup policy", async (fixture) => {
+      await client.query(fixture.setup)
+      const result = await inspectFixture("backup")
+      expect(result.facts.backupWrite).toBe(fixture.writable)
+      expect(result.reasons.includes("backup_has_write_privileges")).toBe(
+        fixture.writable
+      )
+
+      // PostgreSQL 18's built-in privilege function is an independent oracle;
+      // PostgreSQL 16 still exercises every case through actual lo_put below.
+      const version = await client.query<{ version: number }>(
+        "select current_setting('server_version_num')::integer as version"
+      )
+      expect(version.rows).toHaveLength(1)
+      const serverVersion = version.rows[0]?.version
+      expect(Number.isInteger(serverVersion)).toBe(true)
+      if (serverVersion !== undefined && serverVersion >= 180000) {
+        const native = await client.query<{ writable: boolean }>(`
+          select exists (
+            select 1 from pg_catalog.pg_roles as principal
+            where (principal.rolname in (session_user, current_user)
+              or pg_catalog.pg_has_role(session_user, principal.oid, 'SET'))
+              and pg_catalog.has_largeobject_privilege(principal.oid, 99042001, 'UPDATE')
+          ) as writable
+        `)
+        expect(native.rows).toEqual([{ writable: fixture.writable }])
+      }
+
+      if ("probeRole" in fixture) await client.query(fixture.probeRole)
+      await client.query("savepoint large_object_write_probe")
+      let allowed = false
+      try {
+        await client.query("select pg_catalog.lo_put($1, 0, $2)", [
+          99042001,
+          Buffer.from("isolated role audit fixture"),
+        ])
+        allowed = true
+      } catch (error) {
+        expect(error).toMatchObject({ code: "42501" })
+      } finally {
+        await client.query("rollback to savepoint large_object_write_probe")
+      }
+      // lo_put opens a descriptor for both reading and writing. An UPDATE-only
+      // grant still violates backup policy even when SELECT blocks this call.
+      expect(allowed).toBe(
+        "writeAllowed" in fixture ? fixture.writeAllowed : fixture.writable
+      )
+    })
+
+    it("detects superuser writes even when the object ACL grants nothing", async () => {
+      await client.query(`
+        drop table rr_audit_fixture.records;
+        drop sequence rr_audit_fixture.record_ids;
+        revoke all on large object 99042001 from postgres;
+      `)
+      const facts = await inspectDatabaseRole(client, "local")
+      expect(facts.superuser).toBe(true)
+      expect(facts.backupWrite).toBe(true)
+      expect(evaluateDatabaseRole("backup", facts)).toContain(
+        "backup_has_write_privileges"
+      )
+      await client.query("select pg_catalog.lo_put($1, 0, $2)", [
+        99042001,
+        Buffer.from("isolated superuser fixture"),
+      ])
+    })
+  })
 })

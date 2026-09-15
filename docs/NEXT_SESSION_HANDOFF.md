@@ -11,6 +11,111 @@ reviewed scope. Do not invent missing production, legal, tax, or provider facts.
 Use [PROJECT_MAP.md](PROJECT_MAP.md) for the indexed code/documentation entrypoints.
 Preserve unrelated `Default/` unread, untouched, and unstaged.
 
+### Accepted staging release: `aac22a7`
+
+The grouped implementation and its CI corrections are accepted together at
+`aac22a7f1fd5c0f8a3bb4cb937535eeae612737c`. Root CI `34917509525`, Backend
+`34917509482`, Storefront `34917509489`, and Runtime Images `34917509514`
+passed on that exact staging revision. The normal-network PostgreSQL recovery
+job passed all 28 cases; Storefront coverage, 81 responsive cases with two
+expected skips, 20 launch cases, 48 cross-engine critical cases, four pa11y
+routes and 18 Lighthouse runs passed their unchanged gates.
+
+Both source deployments initially skipped the CI-only installer correction.
+After all four workflows passed, guarded Railway CLI 5.45.0
+`redeploy --from-source` calls deployed the configured staging branch. Local
+and remote HEAD, actual service source, trigger checks and CI were verified
+before, between and after the calls. No working-directory upload occurred.
+
+| Service | Successful deployment | Provider-reported deployment image digest |
+| --- | --- | --- |
+| Backend | `9a6c0d48-e9de-40c0-b37b-bf91bfb3c1f1` | `sha256:a59daf6a3686ae2ce5db76650bb5b817dff266d2eb2d0d53c9d82591d3cec422` |
+| Storefront | `045c5f2e-f43a-4c5d-bd3b-3cbb792f08ff` | `sha256:2178a0e2ac56b211cf9eb11660d42fd8902c10f19df39cef32e80e7b0bc964ef` |
+
+Read-only SSH verified exact process/deployment identities, Node 26.5.0 and
+installed Debian 13 PCRE2 `10.46-1~deb13u2` in both running containers. Backend
+release preparation passed all four steps in 43.6 seconds, including search
+validation of 461/461 products. At 01:54 UTC September 15, both health pairs,
+all four Backend dependencies and seven capabilities, scheduler and operations
+passed. The ordinary 01:54 heartbeat completed on the exact revision with zero
+failures, its lock released and no incident. Authenticated bounded catalog
+reads returned 461 Products, 442 Discography records, three shelves and 25
+memberships; the handles check sampled one page, not the entire inventory.
+
+Deployed browser acceptance passed 75 cases with eight expected skips and no
+retries. The first run retained one pre-hydration pointer-test failure: its
+click preceded the Discography JavaScript chunk by about 147 ms. A test-only
+correction uses the existing mounted cart-provider GET plus document load after
+each full navigation, preserving the 30-second timeout and every behavior
+assertion. Ten mobile repetitions and the complete corrected matrix passed
+against the unchanged deployment. All 95 corrected-run mutation-boundary
+attachments passed; non-GET requests used existing local fixtures. The actual
+headed Brave drawer screenshot was inspected, including full control bounds
+and restored keyboard focus. This narrow correction ships with the next
+substantive batch, following the previous documented readiness correction.
+
+Four concurrent original health GETs retained their request identities and
+shared trace, with distinct response parents and exactly four distinct root
+completion spans. Railway's indexed `@trace_id` filter supplied the completion
+records after bare-text filtering returned none; the original collection
+failure is retained and no extra health requests were sent. The bounded
+post-browser log review found zero structured HTTP 5xx and Trusted Types
+records, 26 fixture Product 404s and 46 destination-stream cancellations with
+digest `2991309508`, matching the latest `531e178` baseline. The general
+1,000-row sample was capped and the provider edge-HTTP query was unavailable;
+separate filtered samples were uncapped. This is not a zero-error-log claim.
+
+CI image IDs are Backend `sha256:32b1f6213d704f076898d02aab18677e8c9335da02c3272d79659d082cdb8d15`
+and Storefront `sha256:086cc5874a5f2cd6fba448543b6b0d2893d2b5536412d43285e4adff446e30d2`.
+Both scan records independently verified with zero fixed HIGH/CRITICAL findings;
+52 HIGH and four CRITICAL unfixed findings remain retained under existing
+policy. These images differ from the live source builds. The Backend build's
+platform manifest `sha256:3bf978e1321857dc1accdc3ca733d043753cee2aeb1dfb6d73729a9cf8d25c13`
+is also recorded separately: its relationship to Railway's reported deployment
+digest is not established. Publication/source-image cutover remains open.
+
+Private release evidence is under `/tmp/remorseless-resume-20260914.oonsnior`,
+`/tmp/remorseless-final-security-d5hpbz7d`, and
+`/tmp/remorseless-deployed-2a76107.1dL1wu`. The substantive recovery batch below
+records actual Redis export/isolated restore and PostgreSQL readiness. Do not
+repeat synthetic persistence tests or treat a successful RDB load as proof of
+current multipart-AOF replay, queue reconciliation or a safe live image cutover.
+
+### Recovery evidence and PostgreSQL compatibility batch
+
+The actual staging Redis RDB export and isolated restore now pass. The private
+1,633,338-byte archive contains 1,282 keys; the isolated hardened Redis 8.10.1
+loaded 1,278 and accounted for four expired keys. Independent source checks
+confirmed one measured fork, no OOM, no remaining replica/background work and
+healthy applications. The exact owned target was removed. See
+[INFRASTRUCTURE_RECOVERY.md](INFRASTRUCTURE_RECOVERY.md) for source identity,
+archive hash, confinement, checker boundaries and remaining AOF/cutover limits.
+
+Live PostgreSQL 16.11 exposed an audit query calling an 18-only privilege
+function. The portable ACL query now works on the source while retaining
+large-object write rejection, inherited/SET-reachable roles, PUBLIC grants,
+superuser and compatibility-mode checks. It correctly rejects the current
+superuser deployment identity. Fifty-four focused unit cases and 39 real cases
+each on PostgreSQL 16.15 and 18.6 passed, including actual isolated writes and
+18's native-function parity. Backend full coverage passed 280 suites/2,199 tests
+at 91.82% lines, 85.78% branches and 95.82% functions; production build and root
+QA/typechecks passed. Storefront production compilation and its 131-asset
+client-secret/bundle policy passed using the existing private provider fixture.
+Initial local invocations rejected incomplete fixture environment values;
+correcting the local harness required no application or validation-rule change.
+The browser readiness correction above is included.
+
+Read-only private SSH forwarding to PostgreSQL is verified. No live PostgreSQL
+backup, role/schema/data change or restore has occurred. The reviewed 16.15
+Debian target still has unresolved scanner findings and remains unaccepted;
+an 18.6 Alpine restore would not establish a same-major 16 rollback. Preserve
+that distinction and the existing security gate while preparing a viable target.
+
+### Grouped release history
+
+The following failed candidates are retained as history; the accepted result
+above supersedes their pending gates and old live-revision observations.
+
 ### First grouped push: implementation complete, release rejected by CI
 
 Commits `88c1108e194095b427a43e922f9a7b8f669bad95` and

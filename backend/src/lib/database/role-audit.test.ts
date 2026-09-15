@@ -157,4 +157,22 @@ describe("database audit lifecycle and redaction", () => {
       if (method === "connect") expect(client.query).not.toHaveBeenCalled()
     }
   )
+
+  it("fails closed when the database cannot evaluate an authority check", async () => {
+    const client = createClient()
+    client.query.mockRejectedValue(
+      Object.assign(new Error("private database function is unavailable"), {
+        code: "42883",
+      })
+    )
+    await expect(
+      runDatabaseRoleAudit({
+        client,
+        profile: "backup",
+        transport: "railway_private",
+      })
+    ).resolves.toEqual({ status: "failed" })
+    expect(client.query).toHaveBeenCalledTimes(1)
+    expect(client.end).toHaveBeenCalledTimes(1)
+  })
 })

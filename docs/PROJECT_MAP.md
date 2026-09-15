@@ -1,7 +1,7 @@
 # Project map and continuation guide
 
-Last indexed: September 14, 2026 (America/New_York). Live access and health
-verified September 15, 2026, at approximately 00:16 UTC.
+Last indexed: September 14, 2026 (America/New_York). Latest application release
+acceptance completed September 15, 2026, at approximately 02:05 UTC.
 
 ## Start here
 
@@ -98,8 +98,8 @@ contracts before applying generic framework examples from those files.
 
 ## Verified continuation boundary
 
-At indexing time, both Railway applications run accepted revision
-`531e178e29b376b1e0a6a0968a0d94f0454b8f41`. GitHub repository access and pinned
+Both Railway applications now run accepted revision
+`aac22a7f1fd5c0f8a3bb4cb937535eeae612737c`. GitHub repository access and pinned
 Railway CLI access were verified. Railway project `store` has one environment,
 `staging`, containing Backend, Storefront, Postgres, Redis, Bucket (MinIO),
 Console, and MeiliSearch. All seven active deployments report `SUCCESS`.
@@ -111,17 +111,19 @@ shelves, and 25 shelf memberships; only aggregate counts were retained. Four
 data volumes were ready with no pending deletion. These checks establish
 bounded live access and health, not a backup/restore or complete data audit.
 
-Weekly Root, Backend, and Storefront security runs have since failed on new
-dependency findings at the accepted revision. The continuation batch must
-restore current security gates and complete fresh exact-revision acceptance;
-historical green CI does not resolve those findings.
+The new dependency findings and PCRE2 fixes passed current exact-revision
+Root, Backend, Storefront and Runtime Images workflows. Live package identity,
+corrected deployed browser and concurrent-trace acceptance also passed; the
+handoff retains all original failures, corrections and bounded-log limitations.
 
 Production remains absent. Redis's configured/running image mismatch and
 documented live-version risk remain open. PostgreSQL retains a public TCP
-proxy; MinIO, Console, and MeiliSearch retain public domains. Recovery drills,
-role cutover, support-image migration, network changes, backup schedules,
-registry publication/source cutover, and production provisioning retain their
-documented approval boundaries.
+proxy; MinIO, Console, and MeiliSearch retain public domains. Actual Redis RDB
+export/isolated loading now pass; AOF/queue and PostgreSQL recovery, role cutover,
+support-image migration, network changes, backup schedules,
+registry publication/source cutover, and production provisioning remain open.
+The user's autonomous-work authorization supersedes historical permission-only
+holds; missing operational, licensing and business facts still require evidence.
 
 ## Work and push cadence
 

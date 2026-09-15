@@ -222,6 +222,22 @@ test.afterEach(({ page }) => {
   unexpectedTrustedTypesViolationsByPage.delete(page)
 })
 
+const gotoHydratedPage = async (
+  page: Page,
+  pathname: string
+): Promise<void> => {
+  // Full navigations replace the mounted cart provider and route scripts.
+  // Await its existing GET and document load before testing React controls.
+  const hydrated = page.waitForResponse(
+    (response) =>
+      new URL(response.url()).pathname === "/api/cart" &&
+      response.request().method() === "GET"
+  )
+  await page.goto(pathname, { waitUntil: "domcontentloaded" })
+  await hydrated
+  await page.waitForLoadState("load")
+}
+
 const expectVisibleInteractivePointers = async (page: Page): Promise<void> => {
   const offenders = await page
     .locator(interactivePointerSelector)
@@ -433,7 +449,7 @@ test("homepage hydrates available shelves without client errors", async ({
 test("visible interactive controls consistently use pointer cursors", async ({
   page,
 }) => {
-  await page.goto("/", { waitUntil: "domcontentloaded" })
+  await gotoHydratedPage(page, "/")
   await expectVisibleInteractivePointers(page)
 
   await rejectNonEssentialCookies(page)
@@ -447,13 +463,13 @@ test("visible interactive controls consistently use pointer cursors", async ({
     await page.getByRole("button", { name: "Close navigation" }).click()
   }
 
-  await page.goto("/catalog", { waitUntil: "domcontentloaded" })
+  await gotoHydratedPage(page, "/catalog")
   await expectVisibleInteractivePointers(page)
   await page.getByRole("combobox", { name: "Sort products" }).click()
   await expectVisibleInteractivePointers(page)
   await page.keyboard.press("Escape")
 
-  await page.goto("/discography", { waitUntil: "domcontentloaded" })
+  await gotoHydratedPage(page, "/discography")
   await expectVisibleInteractivePointers(page)
   const mobileDiscographyFilters = page.getByRole("button", {
     name: /^Show filters/,
@@ -474,10 +490,10 @@ test("visible interactive controls consistently use pointer cursors", async ({
     page.getByRole("combobox", { name: "Sort discography" })
   ).toContainText("Catalog # high–low")
 
-  await page.goto("/contact", { waitUntil: "domcontentloaded" })
+  await gotoHydratedPage(page, "/contact")
   await expectVisibleInteractivePointers(page)
 
-  await page.goto("/cookies", { waitUntil: "domcontentloaded" })
+  await gotoHydratedPage(page, "/cookies")
   await expectVisibleInteractivePointers(page)
 })
 

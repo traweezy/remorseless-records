@@ -11,6 +11,9 @@ import type { PostgreSqlClient } from "./standalone-postgres"
 // backup identity. Each reachable principal can also inherit object privileges.
 // This is a bounded capability inventory, not a SECURITY DEFINER/function audit.
 // https://www.postgresql.org/docs/18/functions-info.html#FUNCTIONS-INFO-ACCESS-TABLE
+// has_largeobject_privilege was added in PostgreSQL 18; inspect the same ACL
+// semantics directly so the live PostgreSQL 16 source remains auditable.
+// lo_compat_privileges bypasses large-object ACLs, including UPDATE checks.
 export const DATABASE_ROLE_AUDIT_QUERY = `
 with principals as materialized (
   select role.*
@@ -91,7 +94,17 @@ select
     else false end
   ) or exists (
     select 1 from principals cross join pg_catalog.pg_largeobject_metadata as object
-    where pg_catalog.has_largeobject_privilege(principals.oid, object.oid, 'UPDATE')
+    where principals.rolsuper
+      or pg_catalog.current_setting('lo_compat_privileges') = 'on'
+      or exists (
+        select 1 from pg_catalog.aclexplode(
+          coalesce(object.lomacl, pg_catalog.acldefault('L', object.lomowner))
+        ) as privilege
+        where privilege.privilege_type = 'UPDATE'
+          and case when privilege.grantee = 0 then true
+            else pg_catalog.pg_has_role(principals.oid, privilege.grantee, 'USAGE')
+          end
+      )
   ) as backup_write
 from pg_catalog.pg_roles as role where role.rolname = session_user
 `
