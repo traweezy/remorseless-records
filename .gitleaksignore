@@ -25,3 +25,8 @@ d389a76a63b2e3b13f9526674ea7a9f0a99f72d9:storefront/src/features/checkout/server
 # not a credential. The active fixture is now deterministic; ignore only the
 # exact immutable historical fingerprint without weakening the generic rule.
 8e76c885bcd6470ffd851cfdc5a8b57dcf579310:backend/src/api/admin/tax-control/switch/route.test.ts:generic-api-key:42
+
+# This UUID was synthetic multipart idempotency metadata, not a credential.
+# Active fixtures now use an explicit low-entropy UUID. Retain only this exact
+# immutable historical fingerprint; all other commits, paths and values scan.
+2a76107f44214133b846029a00e1920c1ae661bf:backend/src/lib/pinned-http-parser-security.test.ts:generic-api-key:283

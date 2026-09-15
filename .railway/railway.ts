@@ -8,6 +8,7 @@ const SHARED_BUILD_WATCH_PATTERNS = [
   "/package.json",
   "/pnpm-lock.yaml",
   "/pnpm-workspace.yaml",
+  "/railpack.json",
   "/patches/**",
 ] as const
 

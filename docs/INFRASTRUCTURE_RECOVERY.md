@@ -305,11 +305,31 @@ Never retry against a populated target or repurpose this command for in-place
 production recovery.
 
 Regression gates: `pnpm run qa:database-release-boundary` covers process,
-input, snapshot, and CLI failures. `pnpm run qa:postgres-recovery:integration`
+input, snapshot, CLI failures and verified client provisioning.
+`pnpm run qa:postgres-recovery:integration`
 requires the explicitly guarded disposable local PostgreSQL fixture and is
-included in `qa:disposable-integration:services`. It creates only its own
-randomly named database, rolls back each object fixture, and drops that owned
-database afterward. No real backup-provider setup or live restore is implied.
+included in `qa:disposable-integration:services`. The target-inventory matrix
+rolls back its object fixtures. The real CLI suite creates separate randomly
+named source/target databases, produces a custom archive and private checksum
+manifest with `pg_dump`, verifies dry-run, then applies `pg_restore` and checks
+representative rows, views, routines, identity sequences and database
+constraints. It exercises archive corruption/budget rejection, source-target
+and confirmation guards, populated targets, transaction rollback after a late
+COPY failure, and actual lock-wait client cancellation with PID/file cleanup.
+After releasing its owned lock, it verifies the server session disappears;
+the default server does not poll for client disconnection during a query.
+The verified snapshot remains restorable after the original archive
+changes. Every database and temporary directory belongs to the test and is
+removed afterward.
+
+These tests require actual PostgreSQL 18.6 clients. Backend CI provisions exact
+PGDG `18.6-1.pgdg24.04+2` client/libpq packages privately on Ubuntu 24.04 after
+signature and checksum verification. Metadata and package identities are
+retained as CI artifacts; missing pins fail closed without a version fallback.
+See [Disposable integration](DISPOSABLE_INTEGRATION.md) for local provisioning,
+the complete evidence boundary and cleanup requirements. This closes the
+synthetic CLI roundtrip gap. It does not establish a real provider backup,
+PITR, a production recovery duration, or live application acceptance.
 
 ## Media backup and restore
 

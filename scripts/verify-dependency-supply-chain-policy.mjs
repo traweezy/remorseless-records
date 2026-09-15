@@ -284,7 +284,7 @@ export const verifyDependencySupplyChainPolicy = () => {
   )
   assert.equal(
     packageJson.scripts?.["qa:dependency-supply-chain"],
-    "node --test scripts/verify-dependency-supply-chain-policy.test.mjs && node scripts/verify-dependency-supply-chain-policy.mjs"
+    "node --test scripts/verify-dependency-supply-chain-policy.test.mjs scripts/js-yaml-security.test.mjs && node scripts/verify-dependency-supply-chain-policy.mjs"
   )
   assert.equal(packageJson.scripts?.["qa:qs-security"], undefined)
   assert.doesNotMatch(packageJson.scripts?.["qa:lint"] ?? "", /qs-security/u)
@@ -309,6 +309,16 @@ export const verifyDependencySupplyChainPolicy = () => {
       workspace,
       /^  csv-parse: 7\.0\.2$/mu,
       `${label} must pin CSV Parse 7.0.2`
+    )
+    assert.match(
+      workspace,
+      /^  "js-yaml@>=3\.0\.0 <4\.0\.0": 3\.15\.2$/mu,
+      `${label} must pin the fixed js-yaml 3.x parser`
+    )
+    assert.match(
+      workspace,
+      /^  "js-yaml@>=4\.0\.0 <4\.3\.2": 4\.3\.2$/mu,
+      `${label} must pin the fixed js-yaml 4.x parser`
     )
     assert.doesNotMatch(workspace, /qs@6\.15\.3|patches\/qs@/u)
   }

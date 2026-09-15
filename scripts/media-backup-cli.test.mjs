@@ -20,7 +20,7 @@ import {
 } from "./lib/media-backup-command.mjs"
 
 const executable = `#!/usr/bin/env node
-const {appendFileSync,writeFileSync}=require('node:fs');
+const {appendFileSync,renameSync,writeFileSync}=require('node:fs');
 const args=process.argv.slice(2);
 appendFileSync(process.env.RR_TEST_MC_CALLS, JSON.stringify(args)+'\\n');
 const scenario=process.env.RR_TEST_MC_SCENARIO;
@@ -33,7 +33,10 @@ if(phase===process.env.RR_TEST_MC_STOP_PHASE) {
  } else {
   process.on('SIGINT',()=>{});
   process.on('SIGTERM',()=>{});
-  writeFileSync(process.env.RR_TEST_MC_READY,String(process.pid),{mode:0o600});
+  // Publish only the complete PID so the waiting parent cannot read a new empty file.
+  const pendingReady=process.env.RR_TEST_MC_READY+'.pending';
+  writeFileSync(pendingReady,String(process.pid),{mode:0o600,flag:'wx'});
+  renameSync(pendingReady,process.env.RR_TEST_MC_READY);
   setInterval(()=>{},1000);
  }
 } else if(args[0]==='--version') { console.log('mc version RELEASE.2026-08-13T18-18-13Z'); }

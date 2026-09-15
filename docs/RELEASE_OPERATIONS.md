@@ -93,6 +93,55 @@ verification, policy review, package-identity checks, and full image scan.
 A package-only proof does not replace scanning the final application image or
 establish that Railway's source-built deployment contains the same OS update.
 
+### Bound scan evidence
+
+`scan-runtime-image.mjs` scans the resolved local Docker image ID on Linux
+amd64. The pinned Trivy 0.70.0 executable must match the reviewed SHA-256 in
+`runtime-image-policy.json`. Each run downloads one fresh database into a
+private cache, freezes it, disables subsequent updates, and streams SHA-256
+hashes of the database and metadata before and after the vulnerability scan
+and CycloneDX generation. The database must be current, unchanged throughout
+the bounded scan interval, and younger than 48 hours at completion.
+
+The schema 2 `<service>.image.json` record binds the image ID and revision to
+scanner identity, database hashes/timestamps, exact report/SBOM byte hashes,
+package coverage, complete severity counts, and fixed HIGH/CRITICAL findings.
+Package URLs bind the inventories across Debian revision/epoch formatting and
+scoped npm package names. Unfixed findings remain visible; the gate retains
+its existing fixed HIGH/CRITICAL policy. The workflow uploads the small
+metadata, full reports, records, and any failure markers even on failure;
+it never uploads the database itself. Hashes establish the exact bytes used
+by the trusted scan job, while replaying a historical scan would also require
+those database bytes.
+
+```bash
+node scripts/scan-runtime-image.mjs \
+  --service backend --revision '<40-character-source-sha>' \
+  --image-id 'sha256:<local-image-config-id>' --output /absolute/new-evidence
+node scripts/verify-runtime-image-artifacts.mjs \
+  /absolute/new-evidence/backend.image.json
+```
+
+Use an existing, canonical parent directory; the scanner creates the new
+output directory with mode 0700 and files with mode 0600. Verification rejects
+symlinks, hardlinks, directory replacement, concurrent file changes, or a
+failure marker. For downloaded GitHub artifacts, restore the entire artifact
+including failure markers into a new private directory and restore JSON file
+modes to 0600 before verification. Do not selectively copy a success record
+away from its failure marker. The workflow verifies in the producing job,
+where private modes are retained.
+
+On `master`, the workflow revalidates the local evidence and tag identity
+before pushing. `finalize-runtime-image-publication.mjs` then reads the
+registry descriptor, fetches its exact manifest by digest, and checks raw
+manifest hash/size and its configuration digest against the scanned local
+image ID. It rejects multi-platform indexes. The separate
+`<service>.published.image.json` record binds this manifest and descriptor to
+the unchanged scan; attestations use that verified published digest. The
+finalizer only reads the registry. Failed/cancelled publication evidence
+cannot verify as success, and cancellation reaps the owned scanner/registry
+child before returning.
+
 Verify before any deployment source change:
 
 ```bash
@@ -103,6 +152,18 @@ gh attestation verify \
   'oci://ghcr.io/traweezy/remorseless-records-storefront@sha256:<digest>' \
   --repo traweezy/remorseless-records
 ```
+
+Railway's Debian 13 source runtime uses a separate package fix:
+root `railpack.json` preserves Railpack's generated runtime package set and
+adds `libpcre2-8-0=10.46-1~deb13u2`. The reviewed Railpack 0.39.0 generated
+Backend and Storefront plans retain their existing build/start commands and
+layers; the change adds that exact package to the runtime apt layer. A
+throwaway copy of the current Railway runtime base verified Debian's signed
+apt metadata and exactly one package upgrade from `10.46-1~deb13u1` to
+`10.46-1~deb13u2`, with no additional or removed packages. This source-build
+fix is distinct from the bookworm image recipe above. Acceptance requires
+checking the installed package version in both new live application
+deployments after exact-SHA success; a generated plan alone is insufficient.
 
 Railway currently builds both applications from GitHub source with Railpack.
 Publishing an image therefore does not prove the Railway deployment is that

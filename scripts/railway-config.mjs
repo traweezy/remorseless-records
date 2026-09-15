@@ -1,5 +1,14 @@
 import assert from "node:assert/strict"
 import { spawnSync } from "node:child_process"
+import { createRequire } from "node:module"
+import { dirname, join } from "node:path"
+
+const require = createRequire(import.meta.url)
+const railwayExecutable = join(
+  dirname(require.resolve("@railway/cli/package.json")),
+  "bin",
+  process.platform === "win32" ? "railway.exe" : "railway"
+)
 
 const PROJECT = {
   id: "1f39263a-25e4-4d69-abc2-f0287b331d1e",
@@ -18,11 +27,15 @@ assert.match(
 )
 
 const runRailway = (args, options = {}) =>
-  spawnSync("pnpm", ["exec", "railway", ...args], {
+  spawnSync(railwayExecutable, args, {
     cwd: process.cwd(),
     encoding: "utf8",
     maxBuffer: 20 * 1024 * 1024,
+    timeout: 120_000,
     ...options,
+    // The IaC SDK checks the executable in `_`. Shell/pnpm inheritance can
+    // instead identify a shell or Node and incorrectly reject the pinned CLI.
+    env: { ...(options.env ?? process.env), _: railwayExecutable },
   })
 
 const parseJsonResult = (result, operation) => {

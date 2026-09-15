@@ -17,21 +17,29 @@ code and documentation. Both applications were verified healthy on accepted
 revision `531e178e29b376b1e0a6a0968a0d94f0454b8f41`; that revision's later weekly
 dependency security jobs now fail on new advisories.
 
-The active batch completes receipt isolation, route-owned JSON-LD under an
-approved JSON-data-only Trusted Types policy, media-backup child cancellation,
-bounded upload parsing and failure cleanup, Multer/Morgan/CSV security fixes,
-and the fixed Debian PCRE2 runtime package. The user approved only the exact
-Multer 2.4.0 and Morgan 1.12.1 cooling exceptions; strict general cooling and
-all existing audit, browser, image, and release gates remain enabled.
-Local final-graph builds and acceptance are in progress. This section does not
-claim the candidate is deployed or production is ready.
+The first grouped push (`88c1108` plus `2a76107`) completed receipt isolation,
+route-owned JSON-LD under the approved JSON-data-only Trusted Types policy,
+media-backup cancellation, bounded multipart parsing, Multer/Morgan/CSV fixes
+and the Debian 12 PCRE2 runtime-image fix. Local application/build/browser gates
+and exact-SHA Runtime Images CI passed. Root CI found an atomic-publication
+race in a test fixture; Backend/Storefront CI found one synthetic UUID secret
+false positive. Railway correctly skipped both deployments. Staging remains
+on `531e178`; the first batch is not an accepted release.
 
-The historical sections below retain dated evidence. In particular, Next.js
-16.3.4 is already installed, the previous local browser sandbox limitation is
-resolved with sandbox-enabled Brave, and old passing security scans are not
-evidence against newly published findings. Remaining production business,
-legal, provider, data-recovery, infrastructure, and release requirements remain
-as recorded below; no production environment exists.
+The current grouped correction fixes those test/scanner blockers, updates both
+cooled js-yaml parser lines, extends Root auditing to development dependencies,
+adds the Debian 13 PCRE2 fix to actual Railpack runtime builds, and closes the
+real PostgreSQL recovery and runtime scan-evidence proof gaps. The user has
+authorized continued implementation and staging releases without further
+permission prompts. Existing security gates and missing external production
+facts still determine what can be accepted. The exact Multer 2.4.0 and Morgan
+1.12.1 cooling exceptions remain the only new exceptions; js-yaml needs none.
+
+Historical sections below retain dated evidence. Next.js 16.3.4 is installed;
+the previous browser sandbox limitation is resolved with sandboxed Brave.
+Old passing scans are not evidence against new advisories. Production does not
+exist; live Redis migration, recovery infrastructure, role/network cutovers,
+provider evidence and legal/business requirements remain open as recorded.
 
 ## Historical handoff — September 6, 2026
 

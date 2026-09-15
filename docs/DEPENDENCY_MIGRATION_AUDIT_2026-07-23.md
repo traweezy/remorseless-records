@@ -1,8 +1,46 @@
 # Dependency Migration Audit — 2026-07-23
 
-## Security continuation — September 14, 2026
+## Follow-up security correction — September 14, 2026
 
-This section records the current **unaccepted local candidate**; the dated
+The first candidate was pushed as `2a76107`; both runtime-image CI validations
+passed, but fixture-only Root/Gitleaks failures correctly blocked Railway.
+The current correction also addresses
+[GHSA-2883-xcg3-v3hh](https://github.com/nodeca/js-yaml/security/advisories/GHSA-2883-xcg3-v3hh)
+by pinning js-yaml 3.15.2 and 4.3.2 across all workspace overrides. Both releases
+were published August 26, 2026 and require no cooling exception. The lockfile
+changes only those two versions/integrities and their consumer edges.
+
+The prior installed 3.15.1 and 4.3.1 parsers accept nine empty merged mappings
+with a budget of eight. Actual Lighthouse and Puppeteer configuration consumers
+now reject that input, zero-budget merges, cumulative merges across mappings,
+and the default-budget bypass. Ordinary YAML and an exactly permitted budget
+still parse. Each regression runs in a child with a five-second deadline and
+64 MiB heap cap. Root CI now audits the full dependency graph. Frozen install,
+peers, all 13 supply-chain/parser checks and the full audit pass with no
+unignored advisory; only the three existing React Router exceptions remain.
+
+Live Railway source images use Debian 13, separately from the Debian 12 CI
+Dockerfiles. Both live applications were read-only verified at PCRE2
+`10.46-1~deb13u1`, affected by
+[CVE-2026-86145](https://security-tracker.debian.org/tracker/CVE-2026-86145) and
+[CVE-2026-89161](https://security-tracker.debian.org/tracker/CVE-2026-89161).
+The shared root Railpack config pins `libpcre2-8-0=10.46-1~deb13u2` in the final
+runtime apt layer while retaining generated inputs. Official checksum-verified
+Railpack 0.39.0 plans preserve build/start commands and all other generated
+steps. An owned disposable copy of its runtime base upgraded exactly PCRE2
+and no other package through signed Debian apt metadata; amd64 package SHA256
+is `1252b96a5bc44bb5db982bef8eb18e54f5047cede2aff641bce4f8e1edb91c3e`.
+Fresh exact-revision Railway SSH remains required to establish deployed repair.
+The guarded Railway configuration wrapper now invokes the installed pinned CLI
+binary directly and gives the IaC SDK that executable identity. The SDK's `_`
+probe previously inherited an unrelated shell executable and incorrectly
+rejected CLI 5.45.0. The actual read-only plan now passes; it changes application
+watch/start/restart settings only, with zero creates or deletions.
+
+
+## First security batch — September 14, 2026
+
+This section records the first **pushed but unaccepted candidate**; the dated
 entries below remain historical evidence. The accepted staging revision's
 weekly Root, Backend, and Storefront jobs now fail security gates.
 

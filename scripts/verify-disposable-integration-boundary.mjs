@@ -169,7 +169,7 @@ export const validateHardenedFixtureWiring = ({
     job.slice(0, stepsIndex),
     [
       "    name: Disposable PostgreSQL & Redis Integration",
-      "    runs-on: ubuntu-latest",
+      "    runs-on: ubuntu-24.04",
       "    timeout-minutes: 40",
       "    needs: [lint, typecheck, secrets]",
       "    permissions:",
@@ -210,6 +210,11 @@ export const validateHardenedFixtureWiring = ({
     return indices[0]
   }
   const order = [
+    exactStep("Provision verified PostgreSQL 18.6 clients", [
+      "        run: |",
+      '          node scripts/provision-postgres-recovery-client.mjs --output-dir "$RUNNER_TEMP/postgres-recovery-client"',
+      '          echo "$RUNNER_TEMP/postgres-recovery-client/bin" >> "$GITHUB_PATH"',
+    ]),
     exactStep("Build hardened disposable integration images", [
       "        run: docker compose --env-file /dev/null --file compose.integration.yml build",
     ]),
@@ -226,6 +231,15 @@ export const validateHardenedFixtureWiring = ({
     ]),
     exactStep("Run disposable integration and API contracts", [
       "        run: pnpm run qa:disposable-integration --no-build",
+    ]),
+    exactStep("Retain verified PostgreSQL client provenance", [
+      "        if: ${{ always() }}",
+      "        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7",
+      "        with:",
+      "          name: postgres-recovery-client-provenance",
+      "          path: ${{ runner.temp }}/postgres-recovery-client/provenance",
+      "          if-no-files-found: error",
+      "          retention-days: 14",
     ]),
   ]
   assert.ok(
@@ -345,7 +359,7 @@ export const verifyDisposableIntegrationBoundary = async () => {
     )
   assert.equal(
     packageManifest.scripts?.["qa:postgres-recovery:integration"],
-    "node --test scripts/postgres-recovery.integration.test.mjs"
+    "node --test scripts/postgres-recovery.integration.test.mjs scripts/postgres-recovery-roundtrip.integration.test.mjs"
   )
   const recoveryTest = await read(
     "scripts/postgres-recovery.integration.test.mjs"
@@ -364,6 +378,32 @@ export const verifyDisposableIntegrationBoundary = async () => {
       `Recovery fixture guard lost: ${marker}`
     )
   }
+  const roundtripTest = await read(
+    "scripts/postgres-recovery-roundtrip.integration.test.mjs"
+  )
+  for (const marker of [
+    'process.env.INTEGRATION_TESTS_ENABLED !== "1"',
+    'url.password !== "local_integration_only"',
+    'url.pathname !== "/postgres"',
+    "url.search ||",
+    "url.hash",
+    "DROP DATABASE",
+    "ROLLBACK",
+    "snapshotBackupArchive",
+    'join(scripts, "postgres-logical-backup.mjs")',
+    '"--apply"',
+    "wait_event_type='Lock'",
+  ])
+    assert.ok(
+      roundtripTest.includes(marker),
+      `Real recovery proof lost: ${marker}`
+    )
+  assert.ok(
+    packageManifest.scripts?.["qa:database-release-boundary"]?.includes(
+      "scripts/provision-postgres-recovery-client.test.mjs"
+    ),
+    "Verified recovery client provisioning coverage lost"
+  )
   const localCommands =
     packageManifest.scripts?.["qa:lint"]?.split(" && ") ?? []
   for (const command of [

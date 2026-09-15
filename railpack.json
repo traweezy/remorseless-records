@@ -1,0 +1,6 @@
+{
+  "$schema": "https://schema.railpack.com",
+  "deploy": {
+    "aptPackages": ["...", "libpcre2-8-0=10.46-1~deb13u2"]
+  }
+}

@@ -13,6 +13,7 @@ const SHARED_BUILD_WATCH_PATTERNS = [
   "/package.json",
   "/pnpm-lock.yaml",
   "/pnpm-workspace.yaml",
+  "/railpack.json",
   "/patches/**",
 ]
 
@@ -23,6 +24,16 @@ for (const legacyConfigPath of legacyConfigPaths) {
     `${legacyConfigPath} must not compete with project-level Railway IaC`
   )
 }
+
+const railpackConfig = JSON.parse(fs.readFileSync("railpack.json", "utf8"))
+assert.deepEqual(
+  railpackConfig,
+  {
+    $schema: "https://schema.railpack.com",
+    deploy: { aptPackages: ["...", "libpcre2-8-0=10.46-1~deb13u2"] },
+  },
+  "Railpack must retain generated runtime packages and pin the Debian 13 PCRE2 security fix"
+)
 
 const packageJson = JSON.parse(fs.readFileSync("package.json", "utf8"))
 const pnpmLock = fs.readFileSync("pnpm-lock.yaml", "utf8")

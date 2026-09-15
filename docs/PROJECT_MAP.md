@@ -133,7 +133,8 @@ Avoid separate documentation-only checkpoint pushes.
 Run the current QA, coverage, security, integration, build, and applicable
 browser gates from the runbooks. After pushing, observe Railway's exact-revision
 `WAITING` hold, all required GitHub checks, the expected application deployments,
-and live health/catalog/scheduler/log acceptance before starting another batch.
+and live health/catalog/scheduler/log acceptance before accepting the release.
 Watch paths determine which applications rebuild; an unchanged application
-may correctly retain its previously accepted revision. Larger batches do not
-change production, data, credential, cost, or infrastructure approval boundaries.
+may correctly retain its previously accepted revision. The user authorized continued engineering and staging release work without
+further permission prompts. Missing production, legal and provider facts still
+require evidence; do not invent them or mark them complete.

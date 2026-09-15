@@ -13,10 +13,11 @@
   },
   "repository": "https://github.com/traweezy/remorseless-records",
   "trivy": {
-    "repository": "aquasecurity/trivy-action",
-    "commit": "ed142fd0673e97e23eac54620cfb913e5ce36c25",
-    "version": "v0.36.0",
+    "repository": "aquasecurity/setup-trivy",
+    "commit": "3fb12ec12f41e471780db15c232d5dd185dcb514",
+    "version": "v0.2.6",
     "scannerVersion": "v0.70.0",
+    "binarySha256": "379d59f24a4a828c55de5f0b91b6805cc35d13580180b658820e648611256166",
     "databaseRepository": "ghcr.io/aquasecurity/trivy-db"
   },
   "actions": {

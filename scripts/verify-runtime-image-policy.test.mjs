@@ -3,78 +3,14 @@ import { readFileSync } from "node:fs"
 import test from "node:test"
 
 import {
-  validateRuntimeImageRecord,
-  validateRuntimeImageSbom,
-} from "./verify-runtime-image-artifacts.mjs"
-import {
   validateRuntimeDockerfileSource,
   validateRuntimeImagePolicyManifest,
   validateRuntimeWorkflowSource,
 } from "./verify-runtime-image-policy.mjs"
-import { buildRuntimeImageRecord } from "./write-runtime-image-record.mjs"
-
-const revision = "a".repeat(40)
-const digest = `sha256:${"b".repeat(64)}`
 const workflowSource = readFileSync(
   new URL("../.github/workflows/runtime-images.yml", import.meta.url),
   "utf8"
 )
-const record = buildRuntimeImageRecord({
-  digest,
-  revision,
-  service: "backend",
-})
-const sbom = {
-  bomFormat: "CycloneDX",
-  specVersion: "1.7",
-  serialNumber: "urn:uuid:11111111-2222-3333-4444-555555555555",
-  metadata: {
-    component: {
-      "bom-ref": `pkg:oci/backend@${digest}`,
-      type: "container",
-      properties: [
-        {
-          name: "aquasecurity:trivy:Labels:org.opencontainers.image.revision",
-          value: revision,
-        },
-        {
-          name: "aquasecurity:trivy:Labels:org.opencontainers.image.source",
-          value: "https://github.com/traweezy/remorseless-records",
-        },
-      ],
-    },
-  },
-  components: [{ type: "library", name: "example", version: "1.0.0" }],
-}
-
-test("accepts an exact runtime record and bound CycloneDX SBOM", () => {
-  assert.doesNotThrow(() => validateRuntimeImageRecord(record))
-  assert.doesNotThrow(() => validateRuntimeImageSbom(sbom, record))
-})
-
-test("rejects digest, revision, service, and SBOM subject drift", () => {
-  assert.throws(() =>
-    validateRuntimeImageRecord({ ...record, digest: "sha256:short" })
-  )
-  assert.throws(() =>
-    validateRuntimeImageRecord({ ...record, revision: "main" })
-  )
-  assert.throws(() =>
-    validateRuntimeImageRecord({ ...record, service: "worker" })
-  )
-  assert.throws(() =>
-    validateRuntimeImageSbom(
-      {
-        ...sbom,
-        metadata: {
-          component: { ...sbom.metadata.component, "bom-ref": "unbound" },
-        },
-      },
-      record
-    )
-  )
-})
-
 test("rejects an incomplete policy manifest", () => {
   assert.throws(() => validateRuntimeImagePolicyManifest({ schemaVersion: 1 }))
 })
@@ -193,20 +129,20 @@ test("rejects a publication path that skips smoke or exact-image push", () => {
   assert.throws(() => validateRuntimeWorkflowSource(skippedSmoke))
 
   const skippedPush = workflowSource.replace(
-    'run: docker push "${IMAGE_REF}"',
-    'run: echo "${IMAGE_REF}"'
+    'docker push "${IMAGE_REF}"',
+    'echo "${IMAGE_REF}"'
   )
   assert.notEqual(skippedPush, workflowSource)
   assert.throws(() => validateRuntimeWorkflowSource(skippedPush))
 })
 
-test("rejects SBOM generation before private evidence initialization", () => {
-  const missingEvidenceDirectory = workflowSource.replace(
-    "      - name: Prepare private runtime image evidence directory\n        shell: bash\n        run: install -d -m 0700 artifacts\n\n",
-    ""
+test("rejects scan evidence redirected outside its private artifact directory", () => {
+  const changed = workflowSource.replace(
+    "--output artifacts",
+    "--output /tmp/unbound"
   )
-  assert.notEqual(missingEvidenceDirectory, workflowSource)
-  assert.throws(() => validateRuntimeWorkflowSource(missingEvidenceDirectory))
+  assert.notEqual(changed, workflowSource)
+  assert.throws(() => validateRuntimeWorkflowSource(changed))
 })
 
 test("rejects a Storefront runtime image built without standalone output", () => {
@@ -412,5 +348,69 @@ for (const jobName of ["validate", "publish"]) {
       )
     )
     assert.throws(() => validateRuntimeWorkflowSource(mutated))
+  })
+}
+
+for (const jobName of ["validate", "publish"]) {
+  const scan = stepForJob(
+    jobName,
+    "      - name: Scan runtime image for critical and high vulnerabilities\n"
+  )
+  for (const [label, from, to] of [
+    [
+      "skip condition",
+      "        shell: bash",
+      "        if: false\n        shell: bash",
+    ],
+    ["swallowed failure", "--output artifacts", "--output artifacts || true"],
+    ["tag subject", /--image-id "[^\n]+"/u, '--image-id "${IMAGE_REF}"'],
+    ["wrong revision", '--revision "${GITHUB_SHA}"', '--revision "unrelated"'],
+    [
+      "wrong service",
+      '--service "${{ matrix.service }}"',
+      '--service "backend"',
+    ],
+    ["no deadline", "        timeout-minutes: 16\n", ""],
+    [
+      "continue on error",
+      "        shell: bash",
+      "        continue-on-error: true\n        shell: bash",
+    ],
+  ])
+    test(`rejects ${jobName} scan with ${label}`, () => {
+      const changed = scan.replace(from, to)
+      assert.notEqual(changed, scan)
+      assert.throws(() =>
+        validateRuntimeWorkflowSource(
+          mutateJob(jobName, (job) => job.replace(scan, changed))
+        )
+      )
+    })
+  test(`rejects ${jobName} scanner cache reuse or binary setup drift`, () => {
+    for (const change of [
+      (job) => job.replace("          cache: false", "          cache: true"),
+      (job) =>
+        job.replace("          version: v0.70.0", "          version: latest"),
+    ])
+      assert.throws(() =>
+        validateRuntimeWorkflowSource(mutateJob(jobName, change))
+      )
+  })
+  test(`rejects ${jobName} omitted failure artifacts or expanded DB upload paths`, () => {
+    for (const change of [
+      (job) =>
+        job.replace(
+          "        if: ${{ always() }}\n        uses: actions/upload-artifact",
+          "        uses: actions/upload-artifact"
+        ),
+      (job) =>
+        job.replace(
+          "            artifacts/*.db.json",
+          "            /tmp/rr-runtime-trivy-*/db/trivy.db"
+        ),
+    ])
+      assert.throws(() =>
+        validateRuntimeWorkflowSource(mutateJob(jobName, change))
+      )
   })
 }

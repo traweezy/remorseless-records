@@ -75,6 +75,28 @@ test("rejects scanner setup version drift or bypass", () => {
     )
 })
 
+test("rejects unverified, skipped, floating-platform or unexported recovery clients", () => {
+  for (const [from, to] of [
+    ["    runs-on: ubuntu-24.04", "    runs-on: ubuntu-latest"],
+    [
+      "      - name: Provision verified PostgreSQL 18.6 clients",
+      "      - name: Provision verified PostgreSQL 18.6 clients\n        if: false",
+    ],
+    [
+      "scripts/provision-postgres-recovery-client.mjs --output-dir",
+      "scripts/unverified-client.mjs --output-dir",
+    ],
+    [
+      '          echo "$RUNNER_TEMP/postgres-recovery-client/bin" >> "$GITHUB_PATH"',
+      "          true",
+    ],
+    ["name: postgres-recovery-client-provenance", "name: unrelated-provenance"],
+  ])
+    assert.throws(() =>
+      validateHardenedFixtureWiring(mutate("backendWorkflow", from, to))
+    )
+})
+
 test("rejects conditional integration jobs and old external service blocks", () => {
   for (const line of [
     "    if: false",

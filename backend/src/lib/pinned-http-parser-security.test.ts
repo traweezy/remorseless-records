@@ -95,7 +95,7 @@ const submitManagedUpload = (body: Buffer) => {
 
 const startUploadWithCompletedFile = async () => {
   const body = multipart([
-    { name: "idempotencyKey", content: "86289e01-1b83-491b-a885-5f7aa8d8b781" },
+    { name: "idempotencyKey", content: "00000000-0000-4000-8000-000000000001" },
     { name: "files", filename: "accepted.csv", content: "accepted bytes" },
     {
       name: "private-second",
@@ -272,7 +272,7 @@ describe("pinned multipart parser security", () => {
       multipart([
         {
           name: "idempotencyKey",
-          content: "86289e01-1b83-491b-a885-5f7aa8d8b781",
+          content: "00000000-0000-4000-8000-000000000001",
         },
         { name: "files", filename: "catalog.csv", content: body },
       ])
@@ -280,7 +280,7 @@ describe("pinned multipart parser security", () => {
     expect(result.next).toHaveBeenCalledWith(undefined)
     expect(result.response.json).not.toHaveBeenCalled()
     expect(result.request.body).toEqual({
-      idempotencyKey: "86289e01-1b83-491b-a885-5f7aa8d8b781",
+      idempotencyKey: "00000000-0000-4000-8000-000000000001",
     })
     expect(result.request.files).toEqual([
       expect.objectContaining({

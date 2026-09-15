@@ -3,13 +3,45 @@
 These fixtures exercise the real Medusa application and recovery helpers with
 synthetic data. They are not deployment images, backups of staging, or approval
 to change a live support service. Use the repository's pinned Node and pnpm
-toolchain and Docker with Linux/amd64 support.
+toolchain, PostgreSQL 18.6 clients (`pg_dump`, `pg_restore`, `psql`) on `PATH`,
+and a Linux host with Docker Linux/amd64 support (client-reaping verification
+uses `/proc`). The fixture and real recovery suite reject
+client/server version drift before creating a test database.
 
 ## Local functional verification
 
 ```bash
 pnpm run qa:disposable-integration
 ```
+
+On Ubuntu 24.04 amd64 (or an Ubuntu 24.04-compatible noble derivative), the
+repository can provision the reviewed clients without root privileges or
+changing system packages:
+
+```bash
+recovery_tools="$(mktemp -d)"
+node scripts/provision-postgres-recovery-client.mjs --output-dir "$recovery_tools/postgres"
+PATH="$recovery_tools/postgres/bin:$PATH" pnpm run qa:disposable-integration
+```
+
+The helper needs `gpg`, `gpgv`, `dpkg-deb` and the normal Ubuntu client runtime
+libraries. It has a two-minute overall deadline. It verifies the pinned PGDG
+key bytes/fingerprint, the signed `InRelease`, the package-index SHA256, and
+both independent package hashes before extracting exact
+`postgresql-client-18` and `libpq5` version `18.6-1.pgdg24.04+2`. Private
+launchers select that libpq and `exec` the real client; the recovery supervisor
+still owns the actual client PID. Maintainer scripts and package installation
+are never run. Remove only the temporary directory created for this command
+when finished. Official repository setup is documented by
+[PostgreSQL](https://www.postgresql.org/download/linux/ubuntu/).
+
+Backend CI pins Ubuntu 24.04 and provisions these clients before integration.
+It retains `verification.json`, the signing key, `InRelease` and `Packages.gz`
+in `postgres-recovery-client-provenance` for 14 days. The record binds the
+signature identity, metadata hashes and package hashes. If PGDG removes an
+older pinned package from its current signed index, provisioning fails: review
+the current release and update the verified pins deliberately. There is no
+fallback to a newer package, unsigned metadata or the runner's older client.
 
 The runner builds the two recipes under `docker/integration`, starts their exact
 local images, waits for readiness, runs the integration contracts and removes
@@ -37,7 +69,8 @@ values so those files cannot re-enable these integrations. A synthetic `.env`
 regression verifies that override behavior against the installed loader.
 
 The suite verifies real API readiness, custom migrations, payment-lifecycle
-idempotency/retries, distributed locks, PostgreSQL backup/restore CLI guards,
+idempotency/retries, distributed locks, a real PostgreSQL backup/restore CLI
+roundtrip and rejection/cancellation guards,
 the Redis audit's read-only command allowlist and API contract parity. Its
 Redis audit intentionally reports persistence disabled: this is the correct
 result for an ephemeral test fixture, not an accepted live configuration.
@@ -46,6 +79,30 @@ two minutes, and the test aggregate to fifteen minutes. Scanning has a
 fifteen-minute overall deadline and five-minute Trivy command deadlines.
 These are failure budgets, not expected durations: the initial corrected
 106-case service run completed in 21.82 seconds.
+
+The recovery roundtrip creates independent, randomly named source and target
+databases from `template0`, using only the fixed loopback synthetic fixture
+credentials. It runs the actual backup and restore commands, independently
+checks the custom archive/manifest hashes and private modes, verifies dry-run
+leaves an empty target, and restores Unicode, exact numeric, JSONB, timestamp,
+binary and nullable values. Restored views, routines, identity sequences,
+foreign keys, unique, not-null and check constraints are exercised. Other
+cases reject changed/truncated/invalid archives, excess snapshot bytes, wrong
+confirmation, the source endpoint and populated targets. A late COPY check
+failure must roll back the whole transaction before the deadline; cancellation
+tests observe a real blocked `pg_dump`, verify its host PID exits and partial
+files disappear, then release the owned lock and check server-session cleanup.
+PostgreSQL's default `client_connection_check_interval=0` means a running
+lock-wait query can retain its server session until the next socket interaction;
+local client cancellation does not promise immediate server cancellation.
+See the [PostgreSQL connection-check documentation](https://www.postgresql.org/docs/18/runtime-config-connection.html#GUC-CLIENT-CONNECTION-CHECK-INTERVAL).
+The snapshot test changes the original
+archive after copying and restores the verified private copy. The existing
+mocked CLI race test separately covers mutation between snapshot verification
+and command execution. All owned connections, databases and temporary files
+are cleaned up. This exercises synthetic logical recovery, not a provider
+backup, PITR, production restore timing or application acceptance after a live
+restore.
 
 The session-rotation matrix additionally uses the installed Medusa
 authentication middleware and official session-creation handler with their
@@ -57,6 +114,33 @@ precedence over an invalid bearer. Exact owned session keys and HTTP servers
 are cleaned up. Credentials are generated for the test; it does not exercise a
 password/OAuth provider, a browser TLS handshake, a live instance drain or a
 real account. See `CHECKOUT_OPERATIONS.md` for the still-required live drill.
+
+### Recovery acceptance on 2026-09-14
+
+The original recovery test files passed all 28 cases in 3.54 seconds against
+an owned native loopback PostgreSQL `18.6-1.pgdg24.04+2` cluster, using the
+verified private clients and the final dependency graph. The late COPY error
+returned in 319 ms, signal cancellation in 104 ms, and the two-second deadline
+case in 2,063 ms. The test-owned cluster process, socket and data directory
+were removed. Signed client provisioning also passed against official PGDG
+metadata; independently changing signed metadata made `gpgv` reject it.
+
+The same 28 cases also passed against the exact hardened fixture images in
+4.59 seconds, with 21 relay connections opened and closed and all owned
+containers/networks/volumes removed. The late COPY failure returned in 863 ms,
+signal cancellation in 236 ms, and the deadline case in 2,151 ms.
+
+This host had a separate Docker bridge publication defect: mapped ports
+accepted TCP while PostgreSQL protocol requests timed out. Local image proof
+therefore used a private loopback-to-`docker exec` transport, verifying the
+immutable container/image IDs before connection. The earlier BusyBox `nc`
+relay retained EOF during cancellation; its replacement used the image's
+existing Bash/`dd` to forward short reads and close on either peer's EOF.
+Only the corrected transport's strict results were accepted. No fixture image
+or global Docker settings changed. This verifies real CLI behavior and the
+exact fixture images, with a local transport limitation. Backend CI runs the
+same files over the normal published loopback ports and must pass before
+release acceptance.
 
 ## Image security and identity
 

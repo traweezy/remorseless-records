@@ -27,10 +27,12 @@ const expectedPolicy = {
   },
   repository: "https://github.com/traweezy/remorseless-records",
   trivy: {
-    repository: "aquasecurity/trivy-action",
-    commit: "ed142fd0673e97e23eac54620cfb913e5ce36c25",
-    version: "v0.36.0",
+    repository: "aquasecurity/setup-trivy",
+    commit: "3fb12ec12f41e471780db15c232d5dd185dcb514",
+    version: "v0.2.6",
     scannerVersion: "v0.70.0",
+    binarySha256:
+      "379d59f24a4a828c55de5f0b91b6805cc35d13580180b658820e648611256166",
     databaseRepository: "ghcr.io/aquasecurity/trivy-db",
   },
   actions: {
@@ -327,30 +329,91 @@ export const validateRuntimeWorkflowSource = (source) => {
       2
     )
   }
-  assert.equal(source.match(/ignore-unfixed: true/gu)?.length, 2)
-  assert.equal(source.match(/severity: CRITICAL,HIGH/gu)?.length, 2)
-  assert.equal(source.match(/exit-code: 1/gu)?.length, 2)
-  assert.equal(source.match(/format: cyclonedx/gu)?.length, 2)
-  assert.equal(
-    source.match(
-      /- name: Prepare private runtime image evidence directory\n\s+shell: bash\n\s+run: install -d -m 0700 artifacts/gu
-    )?.length,
-    2
-  )
-  assert.match(publishJob, /run: docker push "\$\{IMAGE_REF\}"/u)
-  assert.match(
+  for (const [job, imageOutput] of [
+    [validateJob, "image"],
+    [publishJob, "local_image"],
+  ]) {
+    const setup = requireExactStep(
+      job,
+      `      - name: Setup reviewed runtime scanner
+        uses: ${policy.trivy.repository}@${policy.trivy.commit} # ${policy.trivy.version}
+        with:
+          version: ${policy.trivy.scannerVersion}
+          cache: false`
+    )
+    const scan = requireExactStep(
+      job,
+      `      - name: Scan runtime image for critical and high vulnerabilities
+        timeout-minutes: 16
+        shell: bash
+        run: |
+          node scripts/scan-runtime-image.mjs \\
+            --service "\${{ matrix.service }}" \\
+            --revision "\${GITHUB_SHA}" \\
+            --image-id "\${{ steps.${imageOutput}.outputs.digest }}" \\
+            --output artifacts`
+    )
+    assert.ok(setup < scan)
+    requireExactStep(
+      job,
+      `      - name: Retain runtime image evidence
+        if: \${{ always() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: runtime-image-\${{ matrix.service }}-\${{ github.sha }}
+          path: |
+            artifacts/*.image.json
+            artifacts/*.vuln.json
+            artifacts/*.cdx.json
+            artifacts/*.db.json
+            artifacts/*.manifest.json
+            artifacts/*.descriptor.json
+            artifacts/failure.json
+            artifacts/publication-failure.json
+          if-no-files-found: error
+          retention-days: 30`
+    )
+  }
+  const pushIndex = requireExactStep(
     publishJob,
-    /docker buildx imagetools inspect --raw "\$\{IMAGE_REF\}"/u
+    `      - name: Push exact runtime image
+        timeout-minutes: 10
+        shell: bash
+        run: |
+          node scripts/verify-runtime-image-artifacts.mjs "artifacts/\${{ matrix.service }}.image.json"
+          test "$(docker image inspect --format '{{.Id}}' "\${IMAGE_REF}")" = "\${{ steps.local_image.outputs.digest }}"
+          docker push "\${IMAGE_REF}"`
+  )
+  const publication = requireExactStep(
+    publishJob,
+    `      - name: Resolve published runtime image digest
+        id: image
+        timeout-minutes: 3
+        shell: bash
+        run: |
+          node scripts/finalize-runtime-image-publication.mjs \\
+            "artifacts/\${{ matrix.service }}.image.json" >> "$GITHUB_OUTPUT"`
   )
   const scanIndex = publishJob.indexOf(
-    `uses: ${policy.trivy.repository}@${policy.trivy.commit}`
+    "      - name: Scan runtime image for critical and high vulnerabilities"
   )
   const loginIndex = publishJob.indexOf(
     `uses: ${policy.actions.login.repository}@${policy.actions.login.commit}`
   )
-  const pushIndex = publishJob.indexOf('run: docker push "${IMAGE_REF}"')
-  assert.ok(scanIndex >= 0 && scanIndex < loginIndex)
-  assert.ok(loginIndex < pushIndex)
+  assert.ok(
+    scanIndex >= 0 &&
+      scanIndex < loginIndex &&
+      loginIndex < pushIndex &&
+      pushIndex < publication
+  )
+  assert.ok(
+    publication <
+      publishJob.indexOf("      - name: Attest runtime image provenance")
+  )
+  assert.doesNotMatch(
+    source,
+    /trivy-action@|write-runtime-image-record\.mjs|TRIVY_/u
+  )
   assert.equal(source.match(/- name: Smoke exact runtime image/gu)?.length, 2)
   assert.doesNotMatch(source, /- name: Smoke exact runtime image\n\s+if:/u)
   assert.equal(source.match(/test -z "\$\(command -v npm\)"/gu)?.length, 2)
@@ -363,14 +426,6 @@ export const validateRuntimeWorkflowSource = (source) => {
     assert.ok(
       runtimeSmokeIndex >= 0 && runtimeSmokeIndex < serviceBranchIndex,
       "Common runtime identity smoke must execute before service branching."
-    )
-    const evidenceDirectoryIndex = job.indexOf(
-      "run: install -d -m 0700 artifacts"
-    )
-    const sbomIndex = job.indexOf("format: cyclonedx")
-    assert.ok(
-      evidenceDirectoryIndex >= 0 && evidenceDirectoryIndex < sbomIndex,
-      "The private evidence directory must exist before SBOM generation."
     )
   }
   for (const environmentName of [
@@ -387,33 +442,17 @@ export const validateRuntimeWorkflowSource = (source) => {
       2
     )
   }
-  assert.equal(
-    source.match(/--digest "\$\{\{ steps\.image\.outputs\.digest \}\}"/gu)
-      ?.length,
-    2
-  )
-  assert.match(
-    publishJob,
-    /image-ref: \$\{\{ matrix\.image_name \}\}@\$\{\{ steps\.image\.outputs\.digest \}\}/u
-  )
   assert.match(
     publishJob,
     /sbom-path: artifacts\/\$\{\{ matrix\.service \}\}\.cdx\.json/u
   )
   assert.equal(source.match(/push-to-registry: true/gu)?.length, 2)
   assert.equal(source.match(/retention-days: 30/gu)?.length, 2)
-  assert.equal(
-    source.match(/TRIVY_DB_REPOSITORY: ghcr\.io\/aquasecurity\/trivy-db/gu)
-      ?.length,
-    4
-  )
-  assert.equal(source.match(/version: v0\.70\.0/gu)?.length, 4)
-
   assertExactActionCount(source, policy.actions.setupBuildx, 2)
   assertExactActionCount(source, policy.actions.login, 1)
   assertExactActionCount(source, policy.actions.buildPush, 2)
   assertExactActionCount(source, policy.actions.attest, 2)
-  assertExactActionCount(source, policy.trivy, 4)
+  assertExactActionCount(source, policy.trivy, 2)
 }
 
 export const verifyRuntimeImagePolicy = () => {
@@ -500,7 +539,7 @@ export const verifyRuntimeImagePolicy = () => {
   )
   assert.equal(
     packageJson.scripts?.["qa:runtime-images"],
-    "node --test scripts/verify-runtime-image-policy.test.mjs && node scripts/verify-runtime-image-policy.mjs"
+    "node --test scripts/verify-runtime-image-policy.test.mjs scripts/runtime-image-evidence.test.mjs && node scripts/verify-runtime-image-policy.mjs"
   )
   assert.match(
     packageJson.scripts?.["qa:lint"] ?? "",

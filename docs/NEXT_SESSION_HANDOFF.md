@@ -4,97 +4,110 @@ Last updated: 2026-09-14 (America/New_York)
 
 ## Resumed work — September 14
 
-The user explicitly resumed implementation and requested substantially larger
-cohesive batches per push, with local validation followed by GitHub CI and
-Railway deployment monitoring. This supersedes the September 8 pause below.
-The documentation was indexed across the root, Backend, Storefront, operations,
-client guides, and ADRs; use [PROJECT_MAP.md](PROJECT_MAP.md) for entrypoints.
+The user resumed implementation, requested substantially larger cohesive batches
+per staging push, and authorized autonomous execution without further permission
+prompts. Keep normal local gates, exact-revision CI, deployment monitoring, and
+reviewed scope. Do not invent missing production, legal, tax, or provider facts.
+Use [PROJECT_MAP.md](PROJECT_MAP.md) for the indexed code/documentation entrypoints.
+Preserve unrelated `Default/` unread, untouched, and unstaged.
 
-GitHub access is verified as repository administrator. Pinned Railway CLI
-5.45.0 authentication, service metadata, bounded Backend SSH, and authenticated
-read-only catalog access work. At approximately September 15 00:16 UTC, all
-seven staging services report successful deployments; both applications still
-run accepted revision `531e178e29b376b1e0a6a0968a0d94f0454b8f41`. Liveness,
-readiness, four Backend dependencies, seven capabilities, scheduler, retention,
-and operations checks pass. Catalog counts remain 461 Products, 442 Discography
-records, three shelves, and 25 memberships. No production environment exists.
-These observations do not establish direct access to every data record or a
-backup/restore result. No live data or infrastructure setting was changed.
+### First grouped push: implementation complete, release rejected by CI
 
-The previous local media commit `88c1108` remains unpushed. Receipt isolation,
-JSON-LD work, and the previous handoff edits were preserved. Fresh focused
-receipt checks pass 31 tests and media-backup checks pass 60 tests; these are
-limited local checks, not full release acceptance.
+Commits `88c1108e194095b427a43e922f9a7b8f669bad95` and
+`2a76107f44214133b846029a00e1920c1ae661bf` were pushed together to staging.
+They contain media-backup child cancellation, receipt isolation, the approved
+JSON-data-only Trusted Types policy, bounded multipart parsing/cleanup, exact
+Multer 2.4.0/Morgan 1.12.1/CSV Parse 7.0.2 remediation, and checksum-pinned
+Debian 12 PCRE2 fixes in both CI runtime Dockerfiles.
 
-The final Storefront baseline and transactional coverage runs also pass:
-956 tests across 145 suites and 362 tests across 39 suites respectively.
-Both configured coverage gates pass. The fresh production build
-`5n3LsenhYLfXatfDRJT7t` passes its 131-asset bundle check. All six new strict
-receipt/JSON-LD browser cases and 14 existing launch cases pass in sandboxed
-Brave. Responsive, accessibility, Lighthouse, and desktop evidence are still
-being collected; deployment acceptance remains separate.
+Local validation passed: complete `qa:lint`, strict typechecks, Backend
+280 suites/2,198 tests (91.82% lines, 85.78% branches, 95.82% functions),
+Storefront baseline 956 tests and transactional 362 tests under their unchanged
+coverage gates, both production builds and packaged Backend parser behavior,
+peer checks, dependency audit, repository scan, CycloneDX SBOM and licenses.
+The default Storefront build `5n3LsenhYLfXatfDRJT7t` passed its 131-asset budget,
+20 launch cases, 34 responsive cases, six pa11y routes and all 18 Lighthouse
+reports under unchanged thresholds. Real desktop receipt screenshots were
+inspected using Spectacle after Flameshot could not detect the desktop. Manual
+pa11y review warnings remain documented in the private evidence; none was
+reported as a confirmed automated violation.
 
-The final Multer 2.4.0/Morgan 1.12.1 graph passes all 280 Backend suites and
-2,198 tests, with 91.82% statement/line, 85.78% branch, and 95.82% function
-coverage. The real disk-abort regression reproduces one orphan on old Multer
-2.3.0 and zero on 2.4.0, with all temporary fixtures removed. The complete
-root `qa:lint` aggregate, both strict typechecks, peer checks, pinned Trivy
-repository scan, CycloneDX SBOM, and production-license verification pass.
-The production Backend build and packaged peers pass; compiled upload,
-Morgan, and CSV behavior was checked against the actual packaged fixed versions.
+Exact-SHA Runtime Images run `34914874309` passed both services; publication
+correctly skipped on staging. Both final local image scans also had zero fixed
+HIGH/CRITICAL findings; existing unfixed findings remain under the unchanged
+policy. These Docker artifacts are distinct from live Railway source builds.
+The 106-case disposable service suite passed through private loopback relays
+because this workstation's Docker published ports fail protocol exchange;
+normal Docker transport still requires exact-SHA CI evidence.
 
-Both exact disposable service images have zero findings across all severities.
-The local Docker published ports accept TCP but fail protocol exchanges, while
-the same services answer inside their containers. The unchanged 106-case
-service suite passes using temporary loopback-to-container-exec relays against
-those exact images. All owned resources were removed. This is transport-fallback
-functional evidence; exact-SHA CI must establish normal port-publication
-acceptance. No global Docker, firewall, image, or test policy was changed.
+Root run `34914874390` failed on a test-only readiness publication race: the
+parent could read an empty PID file before its writer finished. Backend run
+`34914874253` and Storefront run `34914874254` failed on one synthetic UUID
+flagged by Gitleaks. Their dependent acceptance jobs did not run. Railway
+correctly marked Backend `62fb079a-78a9-4669-b1b8-f1ec2517a62b` and Storefront
+`b0948f60-608a-4281-82db-823bd6c296c2` as `SKIPPED`. Do not call this an
+accepted release or substitute the successful image workflow for missing CI.
 
-Current weekly CI is no longer green at the accepted revision: Root run
-`34827129773`, Storefront `34827388524`, and Backend `34829047805` fail dependency
-security gates. The current local candidate pins Multer 2.4.0, Morgan 1.12.1,
-and CSV Parse 7.0.2 across the three workspace policies. Its reviewed lockfile
-changes only those identities and their consumer edges; frozen install, peers,
-and supply-chain checks pass. The dependency audit reports only the three
-existing ignored React Router findings. That feed is incomplete: upstream
-documents additional Multer `GHSA-3pph-fpjx-jg34` and Morgan
-`GHSA-9f6g-j8ch-79g4` fixes in 2.4.0 and 1.12.1, still inside cooling. The user
-approved these two exact security-release exceptions on September 14; the
-manifest records their publish times and regression evidence. Strict cooling
-otherwise remains enabled and no audit ignore was added. The final graph's
-frozen install, peer validation, registry audit, and supply-chain checks pass.
+### Current grouped correction and recovery/evidence batch
 
-Sandbox-enabled Brave/Chromium 153 reproduces the pending native JSON-LD
-insertion failure. The executable-script negative control is also blocked.
-The user approved one narrowly scoped JSON-data-only Trusted Types policy on
-September 14. The isolated browser prototype accepts canonical JSON records,
-rejects 13 malformed/executable input cases, and preserves the executable-script
-negative control. Application integration and the production-build browser
-regressions now pass, including SSR without JavaScript, repeated SPA ownership,
-hostile JSON data, all 13 rejections, and the executable negative control.
+The readiness fixture now atomically publishes its complete PID. Synthetic
+multipart UUIDs use a low-entropy valid fixture; the existing historical-ignore
+mechanism records only the exact immutable false-positive fingerprint.
+Pinned Gitleaks 8.30.1 scanned all 982 historical commits with zero findings;
+focused media checks passed 42 tests and parser checks passed 24 tests.
 
-Fresh scanning of historical local runtime images also finds fixed HIGH
-libpcre2 findings in the unchanged Node base. Those old images are diagnostic
-evidence only. Both runtime Dockerfiles now install exact checksum-pinned
-`libpcre2-8-0=10.42-1+deb12u1` from signed Debian metadata; the Node base digest
-is unchanged. The isolated amd64 security layer changes one of 89 Debian
-packages, preserves Node 26.5.0 and non-root execution, and has zero fixed
-HIGH/CRITICAL findings with a fresh database. Existing unfixed findings remain
-under the unchanged scan policy. Final application-image scans remain required.
+New GitHub alerts identified js-yaml merge-budget bypasses in development
+consumers. All workspace overrides now pin 3.15.2 and 4.3.2, published August
+26 and already cooled. Both prior parsers reproduce the bypass; installed
+fixed consumers reject explicit, cumulative, and default-budget attacks while
+preserving ordinary YAML. Full-graph audit, frozen install, peers, and 13
+supply-chain/parser tests pass with only the existing three React Router
+exceptions. Root CI now audits development dependencies too.
 
-The combined intended batch comprises receipt privacy, JSON-LD navigation,
-media-backup cancellation, parser/upload/logging security, runtime OS fixes,
-and the project/operations documentation. Remaining browser/performance checks,
-final application runtime scans, commit/push, exact-revision CI, and live
-deployment acceptance are still outstanding. Preserve `Default/` untouched.
-Do not treat this resumed work as an accepted release.
+Read-only SSH established that both live Railway applications still have
+Debian 13 `libpcre2-8-0=10.46-1~deb13u1`. Root `railpack.json` adds the exact
+fixed `10.46-1~deb13u2` final-runtime apt package, preserving generated package
+inputs and commands. Railpack 0.39.0 generated-plan comparison changes only
+that runtime apt pin. A disposable copy of its exact runtime base successfully
+upgraded only PCRE2 through Debian's signed apt metadata. This is local
+validation; fresh deployed SSH must prove the fix actually reached Railway.
 
-The next grouped engineering verification work is a real disposable PostgreSQL
-backup/restore CLI round trip and binding runtime scan records to exact
-vulnerability-database bytes and scan intervals. These close documented proof
-gaps; they do not establish live recovery, production ownership, or legal/tax
-approval.
+The original 28 PostgreSQL integration cases now pass against both an owned
+native PostgreSQL 18.6 cluster and the exact hardened fixture image, using the
+verified private PGDG clients and final dependency graph. Real COPY failure
+rolls back; signal/deadline cancellation reaps the actual child, removes partial
+files, and releases its database session after the owned lock is released.
+The container proof used a private transport relay; all 21 connections closed
+and all owned resources were removed. Normal Docker transport remains a CI gate.
+Final Backend coverage on the current graph passes 280 suites/2,198 tests with
+91.82% lines, 85.82% branches and 95.82% functions. Both current-graph production
+builds and bundle budgets pass; default Storefront
+build `bM9-T_zNdJTy33dE8D0Me` contains 131 verified assets. Packaged Backend peers
+also pass.
+
+This batch also binds runtime scan evidence to the scanner, exact database bytes, scan
+interval, reports, image ID, and published manifest. See the recovery and
+release runbooks for their contracts and retained limitations. Complete local
+acceptance, normal commit/push hooks, all four exact-SHA workflows, and deployed
+acceptance remain required before this batch can be marked accepted.
+
+The reviewed application-only Railway plan was applied as change set
+`e72f1e02b80097e497a548d24c06d80f`: both watch lists now include `/railpack.json`,
+and existing silent pnpm/restart declarations are restored. No resources were
+created or destroyed and variables/support services were outside the change.
+The wrapper now invokes the pinned CLI executable directly, including the
+executable identity expected by the IaC SDK. Deployment acceptance is separate.
+
+### Last verified live boundary
+
+At September 15 00:55 UTC, both applications still run accepted revision
+`531e178e29b376b1e0a6a0968a0d94f0454b8f41`. Liveness/readiness, Backend's four
+dependencies and seven capabilities, scheduler heartbeat and operations pass.
+Earlier authenticated bounded reads verified 461 Products, 442 Discography
+records, three shelves and 25 memberships. GitHub administrator access and
+pinned Railway CLI 5.45.0 authentication, service metadata and SSH work.
+Only staging exists. These observations establish bounded access and health;
+they do not establish complete data access, production readiness or live restore.
 
 ## Historical user-requested pause — September 8, 12:39 UTC
 
