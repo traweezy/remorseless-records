@@ -25,11 +25,11 @@ describe("Storefront security proxy", () => {
     expect(scriptDirective).not.toContain("'unsafe-inline'")
     expect(policy).toContain("upgrade-insecure-requests")
     expect(policy).toContain(
-      "trusted-types nextjs nextjs#bundler remorseless-stripe-js"
+      "trusted-types nextjs nextjs#bundler remorseless-stripe-js remorseless-json-ld"
     )
     expect(policy).toContain("require-trusted-types-for 'script'")
     expect(reportOnlyPolicy).toBe(
-      "trusted-types nextjs nextjs#bundler remorseless-stripe-js; require-trusted-types-for 'script'; report-uri /api/security/trusted-types-report; report-to trusted-types"
+      "trusted-types nextjs nextjs#bundler remorseless-stripe-js remorseless-json-ld; require-trusted-types-for 'script'; report-uri /api/security/trusted-types-report; report-to trusted-types"
     )
     expect(response.headers.get("Reporting-Endpoints")).toBe(
       'trusted-types="/api/security/trusted-types-report"'

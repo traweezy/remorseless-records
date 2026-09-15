@@ -12,7 +12,7 @@ import {
 describe("content security policy", () => {
   it("builds a report-only Trusted Types policy with modern and legacy delivery", () => {
     expect(buildTrustedTypesReportOnlyPolicy()).toBe(
-      "trusted-types nextjs nextjs#bundler remorseless-stripe-js; require-trusted-types-for 'script'; report-uri /api/security/trusted-types-report; report-to trusted-types"
+      "trusted-types nextjs nextjs#bundler remorseless-stripe-js remorseless-json-ld; require-trusted-types-for 'script'; report-uri /api/security/trusted-types-report; report-to trusted-types"
     )
     expect(buildTrustedTypesReportingEndpoints()).toBe(
       'trusted-types="/api/security/trusted-types-report"'
@@ -44,7 +44,7 @@ describe("content security policy", () => {
     expect(scriptDirective).not.toContain("'unsafe-eval'")
     expect(policy).toContain("script-src-attr 'none'")
     expect(policy).toContain(
-      "trusted-types nextjs nextjs#bundler remorseless-stripe-js"
+      "trusted-types nextjs nextjs#bundler remorseless-stripe-js remorseless-json-ld"
     )
     expect(policy).toContain("require-trusted-types-for 'script'")
     expect(policy).toContain("base-uri 'none'")

@@ -495,7 +495,7 @@ GitHub-hosted release jobs continue to use their normal sandbox.
 
 The Storefront enforces Trusted Types on document responses whenever
 `NODE_ENV` is not `development`. `Content-Security-Policy` must contain
-`trusted-types nextjs nextjs#bundler remorseless-stripe-js` and
+`trusted-types nextjs nextjs#bundler remorseless-stripe-js remorseless-json-ld` and
 `require-trusted-types-for 'script'`. Development retains reporting without
 enforcement. The same directives remain in
 `Content-Security-Policy-Report-Only`, with the same-origin
@@ -508,7 +508,8 @@ evidence are recorded in [the session handoff](NEXT_SESSION_HANDOFF.md).
 For each relevant release:
 
 1. Build the production Storefront and confirm the bundle verifier reports that
-   the Stripe loader uses `remorseless-stripe-js`. Check an HTML response from
+   the Stripe loader and JSON-LD include `remorseless-stripe-js` and
+   `remorseless-json-ld`. Check an HTML response from
    the candidate artifact for both enforced directives, the report-only
    policy, and the reporting endpoint.
 2. Run `playwright.ci.config.ts` across Desktop Chrome, Pixel 7, and iPhone 15
@@ -521,8 +522,8 @@ For each relevant release:
    in section 2 when that boundary changes.
 3. Reject unexpected `securitypolicyviolation` events and investigate blocked
    script/HTML sinks or runtime errors. The listener retains only the reviewed
-   classifications for React's inert script construction and sanitized JSON-LD
-   serialization from a versioned Next client chunk. Those classifications do
+   classification for React's inert script construction from a versioned Next
+   client chunk. JSON-LD sink violations are rejected. That classification does
    not authorize a broken journey or a new sink. Do not add a broad `default`
    Trusted Types policy or expand the named policies to hide a regression.
 4. Inspect the `rr.security.browser.reports` counter and
@@ -533,6 +534,37 @@ For each relevant release:
 5. Record the candidate revision, deployment identity, browser results, and
    bounded log-observation window in the handoff. Investigate any unexplained
    report before accepting the release.
+
+The September 14 JSON-LD correction has explicit user authorization for the
+`remorseless-json-ld` policy. Its only callback is `createScript`, accepting
+canonical serialized JSON objects or arrays of objects, bounded to 1 MiB of
+UTF-8. The serializer escapes HTML delimiters and JavaScript line separators;
+the policy parses and requires an exact serialized round trip. It rejects
+executable source, primitives, trailing code, duplicate keys, noncanonical
+escapes/whitespace, overflowing numbers and oversized input. There is no
+`default`, `createHTML`, or `createScriptURL` callback and no reuse of a foreign
+policy after denied or duplicate creation. The private policy object is reused
+only for its owning native factory, and returned values must pass `isScript`.
+
+The server component keeps escaped nonce-bearing JSON-LD in the initial HTML.
+After hydration, a client leaf replaces each block with one owned head script
+whose MIME type is fixed to `application/ld+json`. It assigns the TrustedScript
+through the native text setter; no client HTML parsing or source URL is allowed.
+Route updates, unmounts and Activity hide/reveal remove only the owned node.
+The native setter still requires TrustedScript for these inert data blocks,
+as confirmed with a sandboxed Chromium proof; inserting plain text nodes is
+insufficient under enforcement.
+
+Run `e2e/launch/structured-data-lifecycle.spec.ts` against a fresh production
+build. Its four browser cases cover JavaScript-disabled Catalog and Product
+HTML, repeated hydrated SPA history with exact metadata ownership and zero
+unfiltered CSP/runtime errors, the actual policy's hostile-data round trip and
+13 rejected inputs, absent HTML/URL capabilities, and a nonce-authorized
+executable-script negative control. That last control must still emit a Trusted
+Types violation and must not execute. Run the two receipt lifecycle cases in
+the same build, then the existing launch, responsive, accessibility and
+Lighthouse gates. Synthetic fixtures establish application behavior, not live
+provider/payment acceptance.
 
 If enforcement breaks a supported journey, revert the enforcement-only change
 in `storefront/src/config/content-security-policy.ts` (introduced by
@@ -806,12 +838,36 @@ Run all of the following in staging test mode:
 - arbitrary Stripe parameters on `/checkout/return`;
 - recovery polling through processing/finalizing/confirmed/failed states;
 - revisit confirmation before and after the 30-minute receipt TTL;
+- place two successive orders in one browser session and revisit confirmation
+  through client-side navigation: each visit must request the current receipt,
+  never briefly display the earlier order while loading, and preserve the
+  server's expired/temporarily unavailable receipt guidance;
+- hold receipt revalidation, pause a retry offline, and fail it with an expired
+  grant or unavailable response: earlier receipt data must not reappear or
+  remain in the shared query cache after final failure;
 - address/shipping/cart change in another tab before payment.
 
 Every path must yield at most one charge and one order. An uncertain result must
 say not to pay again and route through recovery. See
 [`CHECKOUT_OPERATIONS.md`](CHECKOUT_OPERATIONS.md) for exact incident and
 rollback procedures.
+
+The automated receipt lifecycle regression uses actual TanStack Query and
+React with one persistent QueryClient, plus desktop/mobile production-browser
+SPA navigation. Synthetic receipt responses cover consecutive orders and
+expiry without placing orders or changing real grants. Query tests additionally
+cover abort/late responses, StrictMode and Activity hide/reveal (a compatibility
+boundary; Cache Components are not currently enabled). Visit-scoped query keys
+contain no order ID or grant, are not persisted, and are removed on cleanup.
+This proves visit/revalidation isolation, not continuous background grant
+reauthorization, physical JavaScript-memory erasure or a provider payment drill.
+
+The September 8 pause exposed a catalog JSON-LD Trusted Types failure during
+these receipt SPA journeys. The September 14 JSON-only policy correction is
+described in section 1.10. Preserve the strict runtime-error assertions and
+require fresh production results for both receipt cases and all four
+structured-data cases before acceptance. Candidate build and deployment
+evidence belongs in [`NEXT_SESSION_HANDOFF.md`](NEXT_SESSION_HANDOFF.md).
 
 ### 2.4 Browser automation boundary
 

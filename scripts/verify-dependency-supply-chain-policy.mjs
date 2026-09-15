@@ -249,8 +249,17 @@ export const verifyDependencySupplyChainPolicy = () => {
     "utf8"
   )
   validateWorkspacePolicy(rootWorkspace, selectors, "root workspace")
-  validateWorkspacePolicy(backendWorkspace, [], "Backend workspace")
-  validateWorkspacePolicy(storefrontWorkspace, [], "Storefront workspace")
+  const applicationCoolingExceptions = ["multer@2.4.0", "morgan@1.12.1"]
+  validateWorkspacePolicy(
+    backendWorkspace,
+    applicationCoolingExceptions,
+    "Backend workspace"
+  )
+  validateWorkspacePolicy(
+    storefrontWorkspace,
+    applicationCoolingExceptions,
+    "Storefront workspace"
+  )
   assert.deepEqual(
     readYamlList(rootWorkspace, "ignoreGhsas").sort(),
     [...auditIds].sort()
@@ -286,6 +295,21 @@ export const verifyDependencySupplyChainPolicy = () => {
     ["Storefront workspace", storefrontWorkspace],
   ]) {
     assert.match(workspace, /^  qs: 6\.16\.0$/mu, `${label} must pin qs 6.16.0`)
+    assert.match(
+      workspace,
+      /^  multer: 2\.4\.0$/mu,
+      `${label} must pin Multer 2.4.0`
+    )
+    assert.match(
+      workspace,
+      /^  morgan: 1\.12\.1$/mu,
+      `${label} must pin Morgan 1.12.1`
+    )
+    assert.match(
+      workspace,
+      /^  csv-parse: 7\.0\.2$/mu,
+      `${label} must pin CSV Parse 7.0.2`
+    )
     assert.doesNotMatch(workspace, /qs@6\.15\.3|patches\/qs@/u)
   }
 

@@ -152,6 +152,8 @@ const checkoutProblemCodeSchema = z.enum([
   "payment_session_stale",
   "payload_too_large",
   "rate_limited",
+  "receipt_missing",
+  "receipt_unavailable",
   "recovery_required",
   "request_source_required",
   "shipping_changed",
@@ -487,10 +489,13 @@ export const getCheckoutStatus = async (): Promise<CheckoutRecoveryState> => {
   return response.checkout.state
 }
 
-export const getCheckoutReceipt = async (): Promise<CheckoutReceipt> => {
+export const getCheckoutReceipt = async (
+  options: CheckoutReadOptions = {}
+): Promise<CheckoutReceipt> => {
   const response = await request(
     "/api/checkout/confirmation",
-    checkoutReceiptEnvelopeSchema
+    checkoutReceiptEnvelopeSchema,
+    options
   )
   return response.receipt
 }

@@ -1,3 +1,5 @@
+import { JSON_LD_TRUSTED_TYPES_POLICY } from "../lib/seo/json-ld"
+
 const DYNAMIC_ORIGIN_ENVIRONMENT_KEYS = [
   "NEXT_PUBLIC_SITE_URL",
   "NEXT_PUBLIC_BASE_URL",
@@ -29,6 +31,7 @@ export const TRUSTED_TYPES_POLICY_NAMES = [
   "nextjs",
   "nextjs#bundler",
   "remorseless-stripe-js",
+  JSON_LD_TRUSTED_TYPES_POLICY,
 ] as const
 
 const unique = (values: Array<string | null>): string[] =>

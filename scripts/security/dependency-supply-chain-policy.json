@@ -10,6 +10,25 @@
         "patches/@railway__cli@5.45.0.patch",
         "scripts/verify-railway-iac.mjs"
       ]
+    },
+    {
+      "selector": "multer@2.4.0",
+      "publishedAt": "2026-09-14T08:18:42.977Z",
+      "reason": "User-approved exact security release for GHSA-3pph-fpjx-jg34 and the preceding multipart parser findings; retain strict seven-day cooling for every other release and verify installed-parser cancellation and limit behavior.",
+      "evidence": [
+        "docs/DEPENDENCY_MIGRATION_AUDIT_2026-07-23.md",
+        "backend/src/lib/pinned-http-parser-security.test.ts",
+        "backend/src/lib/uploads/multipart.ts"
+      ]
+    },
+    {
+      "selector": "morgan@1.12.1",
+      "publishedAt": "2026-09-11T08:57:42.376Z",
+      "reason": "User-approved exact security release for GHSA-9f6g-j8ch-79g4; the real installed Medusa logger regression verifies quote escaping as well as Unicode line-forging protection without an audit suppression or local backport.",
+      "evidence": [
+        "docs/DEPENDENCY_MIGRATION_AUDIT_2026-07-23.md",
+        "backend/src/lib/pinned-http-parser-security.test.ts"
+      ]
     }
   ],
   "auditIgnores": [

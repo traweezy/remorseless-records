@@ -4,6 +4,7 @@ import {
   CheckoutApiError,
   completeCheckout,
   getCheckout,
+  getCheckoutReceipt,
   getCheckoutShippingOptions,
   prepareCheckoutPayment,
 } from "@/features/checkout/api/checkout-api"
@@ -53,6 +54,70 @@ afterEach(() => {
 })
 
 describe("semantic checkout API client", () => {
+  it.each([
+    [
+      404,
+      "receipt_missing",
+      "This secure receipt has expired. Check your email for the order confirmation.",
+    ],
+    [
+      503,
+      "receipt_unavailable",
+      "Your order is confirmed, but the receipt could not be loaded. Check your email or try again.",
+    ],
+  ] as const)(
+    "preserves the explicit %s receipt problem and its guidance",
+    async (status, code, detail) => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(() =>
+          Promise.resolve(
+            Response.json(
+              {
+                type: `https://remorselessrecords.com/problems/${code.replaceAll("_", "-")}`,
+                title: "Receipt is unavailable",
+                status,
+                code,
+                detail,
+              },
+              { status }
+            )
+          )
+        )
+      )
+      await expect(getCheckoutReceipt()).rejects.toMatchObject({
+        problem: { status, code, detail },
+      })
+    }
+  )
+
+  it("does not trust an unknown receipt problem code or its raw detail", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() =>
+        Promise.resolve(
+          Response.json(
+            {
+              type: "https://remorselessrecords.com/problems/unknown",
+              title: "Private upstream title",
+              status: 503,
+              code: "unrecognized_receipt_code",
+              detail: "Private upstream detail",
+            },
+            { status: 503 }
+          )
+        )
+      )
+    )
+    await expect(getCheckoutReceipt()).rejects.toMatchObject({
+      problem: {
+        status: 503,
+        code: "recovery_required",
+        detail: "We could not complete that checkout step. Try again.",
+      },
+    })
+  })
+
   it("loads and validates the private checkout projection", async () => {
     const fetchMock = vi.fn(() => Promise.resolve(Response.json({ checkout })))
     vi.stubGlobal("fetch", fetchMock)
@@ -184,6 +249,7 @@ describe("semantic checkout API client", () => {
   for (const [name, read] of [
     ["checkout", getCheckout],
     ["shipping options", getCheckoutShippingOptions],
+    ["receipt", getCheckoutReceipt],
   ] as const) {
     it(`cancels ${name} reads without exposing caller abort reasons`, async () => {
       const controller = new AbortController()

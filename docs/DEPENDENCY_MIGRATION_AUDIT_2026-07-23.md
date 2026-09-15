@@ -1,5 +1,48 @@
 # Dependency Migration Audit — 2026-07-23
 
+## Security continuation — September 14, 2026
+
+This section records the current **unaccepted local candidate**; the dated
+entries below remain historical evidence. The accepted staging revision's
+weekly Root, Backend, and Storefront jobs now fail security gates.
+
+The candidate replaces Multer 2.2.0 with 2.4.0, Morgan 1.11.0 with 1.12.1,
+and the remaining Medusa CSV Parse 5.6.0 edge with 7.0.2. The user approved
+cooling exceptions for exactly `multer@2.4.0` and `morgan@1.12.1` on September
+14; CSV Parse 7.0.2 is already outside the seven-day window. Root and
+application workspace overrides agree. The reviewed lockfile changes only
+these packages, their consumer edges, and the now-unused `concat-stream`
+and `typedarray` dependencies removed by Multer.
+
+- Multer 2.3.0 addresses the published malformed-field, aborted disk-upload,
+  and unbounded field-array findings. The managed upload wrapper additionally
+  bounds multipart metadata and translates known Multer field/limit errors
+  into redacted, correlated API problems.
+- CSV Parse 7.0.2 addresses
+  [GHSA-8cw4-87c7-c6xx](https://github.com/advisories/GHSA-8cw4-87c7-c6xx).
+  Regression tests exercise the installed Medusa parser edge and native CSV
+  normalization callback, including chunk boundaries and malformed input.
+  Injected storage/workflow boundaries do not establish live import acceptance.
+- Morgan 1.12.0 addresses Unicode line forging, but the newer
+  [quote-injection advisory](https://github.com/expressjs/morgan/security/advisories/GHSA-9f6g-j8ch-79g4)
+  requires 1.12.1 (published September 11). The installed-parser regression
+  failed on 1.12.0 before the 1.12.1 correction, proving the regression detects
+  the vulnerable behavior.
+- Multer's newer
+  [asynchronous disk-storage abort advisory](https://github.com/expressjs/multer/security/advisories/GHSA-3pph-fpjx-jg34)
+  is fixed by 2.4.0 (published September 14). Current managed and native Medusa
+  upload paths use memory storage; this does not remove the dependency finding.
+
+The registry audit currently reports only the three existing ignored React
+Router advisories. That result does **not** resolve the newer upstream Morgan
+and Multer findings on older packages. The two approved exceptions are recorded
+with exact publish times and regression evidence in the supply-chain policy;
+strict cooling remains enabled for every other release. No new audit ignore
+or source backport was added. Fresh final-graph tests, builds, scans, CI, and
+Railway acceptance remain required.
+
+## Original audit scope
+
 This audit covers the dependency refresh begun in commit `a697093` and
 completed in commit `578ad0e`. The review used upstream migration guides,
 release notes, published peer ranges, and the installed Medusa package

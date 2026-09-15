@@ -1,13 +1,39 @@
 # Production Hardening Plan
 
-Last verified: September 6, 2026
+Last reviewed: September 14, 2026
 
 This is the authoritative launch-readiness backlog for Remorseless Records. It
 supersedes the local `tmp/HARDENING_NEXT_STEPS.md` working note. Detailed
 operating procedures remain in the linked runbooks and ADRs; this document
 tracks what is still required before production traffic is approved.
 
-## Active handoff — September 6, 2026
+## Active continuation — September 14, 2026
+
+The user resumed the September 8 paused work and requested larger cohesive
+releases, with local validation, one grouped staging push, and exact-revision
+CI/deployment monitoring. [NEXT_SESSION_HANDOFF.md](NEXT_SESSION_HANDOFF.md)
+records the current candidate and [PROJECT_MAP.md](PROJECT_MAP.md) indexes the
+code and documentation. Both applications were verified healthy on accepted
+revision `531e178e29b376b1e0a6a0968a0d94f0454b8f41`; that revision's later weekly
+dependency security jobs now fail on new advisories.
+
+The active batch completes receipt isolation, route-owned JSON-LD under an
+approved JSON-data-only Trusted Types policy, media-backup child cancellation,
+bounded upload parsing and failure cleanup, Multer/Morgan/CSV security fixes,
+and the fixed Debian PCRE2 runtime package. The user approved only the exact
+Multer 2.4.0 and Morgan 1.12.1 cooling exceptions; strict general cooling and
+all existing audit, browser, image, and release gates remain enabled.
+Local final-graph builds and acceptance are in progress. This section does not
+claim the candidate is deployed or production is ready.
+
+The historical sections below retain dated evidence. In particular, Next.js
+16.3.4 is already installed, the previous local browser sandbox limitation is
+resolved with sandbox-enabled Brave, and old passing security scans are not
+evidence against newly published findings. Remaining production business,
+legal, provider, data-recovery, infrastructure, and release requirements remain
+as recorded below; no production environment exists.
+
+## Historical handoff — September 6, 2026
 
 The original runtime-image, dependency-advisory, and staging source-deployment
 slice is complete. Its runtime-image acceptance SHA

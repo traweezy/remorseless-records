@@ -1,6 +1,6 @@
 # Managed media security and lifecycle
 
-Last reviewed: 2026-08-30
+Last reviewed: 2026-09-14
 
 ## Scope and goals
 
@@ -23,9 +23,13 @@ The operational objectives are:
 
 ## Image acceptance pipeline
 
-1. Multer bounds the multipart request before application parsing: at most 10
-   files, 12 MiB per input, 20 MiB combined, one small text field, and no disk
-   buffering.
+1. The shared managed multipart parser permits at most 10 files, 12 MiB per
+   input, and one text field of at most 128 bytes. Field names are bounded at
+   100 characters, nesting at one level, and numeric array indices at zero;
+   this prevents a tiny field name from creating a huge sparse array. The
+   parser buffers files in memory, not on disk. Subsequent upload validation
+   enforces the 20 MiB combined-file limit; that aggregate limit is not an
+   early multipart buffering limit.
 2. Boundary validation requires a path-free filename, an allow-listed
    extension/media-type pair, an allow-listed MIME type, and the expected magic
    bytes. This is a fast rejection layer, not the trust decision.
@@ -55,6 +59,17 @@ can contain a compromised native library. The native decoder is additionally
 bounded by the OS process limits, libvips input policy, explicit image limits,
 and parent deadline. The pipeline fails closed when Linux `prlimit`, the pinned
 Sharp runtime, or the worker artifact is unavailable.
+
+The shared parser is `backend/src/lib/uploads/multipart.ts`. Both the generic
+and Catalog managed-upload routes retain their native authentication and
+permission policies, with rate-limit middleware preceding the parser.
+Known Multer limit failures return a correlated 413
+`upload_limit_exceeded` Problem; other known Multer field errors return a
+correlated 400 `invalid_upload` Problem. Other parser errors retain native
+Medusa error handling. Responses retain request/trace IDs
+without echoing field names, filenames, file contents, or raw parser errors.
+The existing request-completion telemetry records the bounded problem code.
+Client-supplied field data still passes the route's own validation after parsing.
 
 ## Persistence and audit evidence
 

@@ -171,10 +171,6 @@ const unexpectedTrustedTypesViolationsByPage = new WeakMap<Page, string[]>()
 const trustedTypesFrameworkSamples = [
   "Element innerHTML|<script></script>",
 ] as const
-const trustedTypesJsonLdSamplePrefixes = [
-  'Element innerHTML|{"@context":"https://schema.org"',
-  'Element innerHTML|[{"@context":"https://schema.org"',
-] as const
 
 test.beforeEach(async ({ page }) => {
   const violations: string[] = []
@@ -188,7 +184,7 @@ test.beforeEach(async ({ page }) => {
     }
   )
   await page.addInitScript(
-    ({ frameworkSamples, jsonLdSamplePrefixes }) => {
+    ({ frameworkSamples }) => {
       document.addEventListener("securitypolicyviolation", (event) => {
         if (event.effectiveDirective !== "require-trusted-types-for") {
           return
@@ -201,10 +197,7 @@ test.beforeEach(async ({ page }) => {
         }
         const isNextRuntime = sourcePath.startsWith("/_next/static/chunks/")
         const isKnownFrameworkSink = frameworkSamples.includes(event.sample)
-        const isSanitizedJsonLdSink = jsonLdSamplePrefixes.some((prefix) =>
-          event.sample.startsWith(prefix)
-        )
-        if (isNextRuntime && (isKnownFrameworkSink || isSanitizedJsonLdSink)) {
+        if (isNextRuntime && isKnownFrameworkSink) {
           return
         }
         const sink = event.sample.split("|", 1)[0]?.slice(0, 64) ?? "unknown"
@@ -220,7 +213,6 @@ test.beforeEach(async ({ page }) => {
     },
     {
       frameworkSamples: [...trustedTypesFrameworkSamples],
-      jsonLdSamplePrefixes: [...trustedTypesJsonLdSamplePrefixes],
     }
   )
 })

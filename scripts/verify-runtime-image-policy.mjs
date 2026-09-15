@@ -14,6 +14,17 @@ const expectedPolicy = {
   schemaVersion: 1,
   nodeImage:
     "node:26.5.0-bookworm-slim@sha256:2d49d876e96237d76de412761cf05dbfe5aee325cc4406a4d41d5824c5bb8beb",
+  debianSecurityPackage: {
+    name: "libpcre2-8-0",
+    version: "10.42-1+deb12u1",
+    repository:
+      "https://security.debian.org/debian-security/pool/updates/main/p/pcre2",
+    advisories: ["CVE-2026-86145", "CVE-2026-89161"],
+    sha256: {
+      amd64: "81c5502941118a24d47af69a17b8b0b9548d75cc6d72b3eb3fe01047b46fa10e",
+      arm64: "d178d33697eef877c2c27733141b7f8520fee66a329ae5809e8c8eae3709efa3",
+    },
+  },
   repository: "https://github.com/traweezy/remorseless-records",
   trivy: {
     repository: "aquasecurity/trivy-action",
@@ -188,7 +199,36 @@ const verifyStorefrontDecoderStep = (job, imageOutput) => {
   )
 }
 
-const verifyDockerfile = (service, source, policy) => {
+export const validateRuntimeDockerfileSource = (serviceName, source) => {
+  const policy = expectedPolicy
+  const service = policy.services[serviceName]
+  assert.ok(service, "Unknown runtime image service.")
+  const pkg = policy.debianSecurityPackage
+  const downloadStage = [
+    "FROM scratch AS runtime-security-packages",
+    "# DLA-4772-1: hashes verified against Debian's signed bookworm-security index.",
+    ...Object.entries(pkg.sha256).map(
+      ([arch, hash]) =>
+        `ADD --checksum=sha256:${hash} ${pkg.repository}/${pkg.name}_${pkg.version}_${arch}.deb /${arch}.deb`
+    ),
+  ].join("\n")
+  const installation = `ARG TARGETARCH
+RUN --mount=from=runtime-security-packages,target=/tmp/runtime-security,readonly \\
+    case "$TARGETARCH" in amd64|arm64) ;; *) exit 1 ;; esac \\
+    && test "$(dpkg --print-architecture)" = "$TARGETARCH" \\
+    && test "$(dpkg-deb --field "/tmp/runtime-security/$TARGETARCH.deb" Package)" = ${pkg.name} \\
+    && test "$(dpkg-deb --field "/tmp/runtime-security/$TARGETARCH.deb" Version)" = ${pkg.version} \\
+    && test "$(dpkg-deb --field "/tmp/runtime-security/$TARGETARCH.deb" Architecture)" = "$TARGETARCH" \\
+    && dpkg --install "/tmp/runtime-security/$TARGETARCH.deb" \\
+    && test "$(dpkg-query --show --showformat='\${db:Status-Status} \${Architecture} \${Version}' ${pkg.name})" = "installed $TARGETARCH ${pkg.version}"`
+  assert.equal(source.split(downloadStage).length, 2)
+  assert.equal(source.split(installation).length, 2)
+  assert.equal(source.match(/^FROM /gmu)?.length, 2)
+  assert.ok(
+    source.indexOf(downloadStage) < source.indexOf("FROM ${NODE_IMAGE}")
+  )
+  assert.ok(source.indexOf(installation) > source.indexOf("FROM ${NODE_IMAGE}"))
+  assert.ok(source.indexOf(installation) < source.indexOf("USER node"))
   assert.match(source, new RegExp(`^ARG NODE_IMAGE=${policy.nodeImage}$`, "mu"))
   assert.match(source, /^FROM \$\{NODE_IMAGE\}$/mu)
   assert.match(source, /^ARG REVISION$/mu)
@@ -201,8 +241,8 @@ const verifyDockerfile = (service, source, policy) => {
   assert.match(source, /\/usr\/local\/bin\/npm/u)
   assert.match(source, /\/usr\/local\/bin\/npx/u)
   assert.doesNotMatch(
-    source,
-    /(?:apt-get|apk|curl|wget|npm\s+(?:ci|install)|pnpm\s+install|yarn\s+install)/u
+    source.replace(downloadStage, "").replace(installation, ""),
+    /(?:\bADD\b|dpkg|TARGETARCH|runtime-security|apt-get|apk|curl|wget|npm\s+(?:ci|install)|pnpm\s+install|yarn\s+install)/u
   )
 }
 
@@ -280,6 +320,7 @@ export const validateRuntimeWorkflowSource = (source) => {
     "fonts.googleapis.com:443",
     "fonts.gstatic.com:443",
     "production.cloudfront.docker.com:443",
+    "security.debian.org:443",
   ]) {
     assert.equal(
       sourceLines.filter((line) => line.trim() === endpoint).length,
@@ -379,11 +420,10 @@ export const verifyRuntimeImagePolicy = () => {
   const policy = JSON.parse(readFileSync(policyPath, "utf8"))
   validateRuntimeImagePolicyManifest(policy)
 
-  for (const service of Object.values(policy.services)) {
-    verifyDockerfile(
-      service,
-      readFileSync(join(root, service.dockerfile), "utf8"),
-      policy
+  for (const [serviceName, service] of Object.entries(policy.services)) {
+    validateRuntimeDockerfileSource(
+      serviceName,
+      readFileSync(join(root, service.dockerfile), "utf8")
     )
   }
 

@@ -1,32 +1,37 @@
 import { headers } from "next/headers"
 
+import { JsonLdScript } from "@/components/json-ld-script"
+import {
+  requireCanonicalJsonLd,
+  serializeJsonLd,
+  type JsonLdData,
+} from "@/lib/seo/json-ld"
+
+export { serializeJsonLd } from "@/lib/seo/json-ld"
+
 type JsonLdProps = {
-  data: Record<string, unknown> | Array<Record<string, unknown>>
+  data: JsonLdData
   id?: string
   nonce?: string
 }
 
-export const serializeJsonLd = (data: JsonLdProps["data"]): string =>
-  JSON.stringify(data)
-    .replaceAll("<", "\\u003c")
-    .replaceAll(">", "\\u003e")
-    .replaceAll("&", "\\u0026")
-    .replaceAll("\u2028", "\\u2028")
-    .replaceAll("\u2029", "\\u2029")
-
 const JsonLd = async ({ data, id, nonce }: JsonLdProps) => {
   const requestNonce = nonce ?? (await headers()).get("x-nonce") ?? undefined
+  const serialized = requireCanonicalJsonLd(serializeJsonLd(data))
 
   return (
-    <script
-      type="application/ld+json"
-      suppressHydrationWarning
+    <JsonLdScript
+      serialized={serialized}
       {...(id ? { id } : {})}
       {...(requestNonce ? { nonce: requestNonce } : {})}
-      dangerouslySetInnerHTML={{
-        __html: serializeJsonLd(data),
-      }}
-    />
+    >
+      <script
+        type="application/ld+json"
+        {...(id ? { id } : {})}
+        {...(requestNonce ? { nonce: requestNonce } : {})}
+        dangerouslySetInnerHTML={{ __html: serialized }}
+      />
+    </JsonLdScript>
   )
 }
 

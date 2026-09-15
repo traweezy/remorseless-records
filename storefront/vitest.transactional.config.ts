@@ -27,7 +27,7 @@ export default defineConfig({
       include: [
         "src/app/api/{cart,checkout}/**/*.ts",
         "src/features/checkout/{api,hooks,lib,schemas,server}/**/*.ts",
-        "src/features/checkout/components/{checkout-error-summary,checkout-problem,checkout-summary,payment-section}.tsx",
+        "src/features/checkout/components/{checkout-confirmation,checkout-error-summary,checkout-problem,checkout-summary,payment-section}.tsx",
         "src/lib/{cart,redis}/**/*.ts",
       ],
       thresholds: {
@@ -35,6 +35,12 @@ export default defineConfig({
         statements: 80,
         functions: 80,
         branches: 70,
+        "src/features/checkout/components/checkout-confirmation.tsx": {
+          lines: 80,
+          statements: 80,
+          functions: 80,
+          branches: 80,
+        },
       },
     },
   },

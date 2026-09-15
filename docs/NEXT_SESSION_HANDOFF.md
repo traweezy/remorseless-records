@@ -1,6 +1,141 @@
 # Next-session handoff
 
-Last updated: 2026-09-08
+Last updated: 2026-09-14 (America/New_York)
+
+## Resumed work — September 14
+
+The user explicitly resumed implementation and requested substantially larger
+cohesive batches per push, with local validation followed by GitHub CI and
+Railway deployment monitoring. This supersedes the September 8 pause below.
+The documentation was indexed across the root, Backend, Storefront, operations,
+client guides, and ADRs; use [PROJECT_MAP.md](PROJECT_MAP.md) for entrypoints.
+
+GitHub access is verified as repository administrator. Pinned Railway CLI
+5.45.0 authentication, service metadata, bounded Backend SSH, and authenticated
+read-only catalog access work. At approximately September 15 00:16 UTC, all
+seven staging services report successful deployments; both applications still
+run accepted revision `531e178e29b376b1e0a6a0968a0d94f0454b8f41`. Liveness,
+readiness, four Backend dependencies, seven capabilities, scheduler, retention,
+and operations checks pass. Catalog counts remain 461 Products, 442 Discography
+records, three shelves, and 25 memberships. No production environment exists.
+These observations do not establish direct access to every data record or a
+backup/restore result. No live data or infrastructure setting was changed.
+
+The previous local media commit `88c1108` remains unpushed. Receipt isolation,
+JSON-LD work, and the previous handoff edits were preserved. Fresh focused
+receipt checks pass 31 tests and media-backup checks pass 60 tests; these are
+limited local checks, not full release acceptance.
+
+The final Storefront baseline and transactional coverage runs also pass:
+956 tests across 145 suites and 362 tests across 39 suites respectively.
+Both configured coverage gates pass. The fresh production build
+`5n3LsenhYLfXatfDRJT7t` passes its 131-asset bundle check. All six new strict
+receipt/JSON-LD browser cases and 14 existing launch cases pass in sandboxed
+Brave. Responsive, accessibility, Lighthouse, and desktop evidence are still
+being collected; deployment acceptance remains separate.
+
+The final Multer 2.4.0/Morgan 1.12.1 graph passes all 280 Backend suites and
+2,198 tests, with 91.82% statement/line, 85.78% branch, and 95.82% function
+coverage. The real disk-abort regression reproduces one orphan on old Multer
+2.3.0 and zero on 2.4.0, with all temporary fixtures removed. The complete
+root `qa:lint` aggregate, both strict typechecks, peer checks, pinned Trivy
+repository scan, CycloneDX SBOM, and production-license verification pass.
+The production Backend build and packaged peers pass; compiled upload,
+Morgan, and CSV behavior was checked against the actual packaged fixed versions.
+
+Both exact disposable service images have zero findings across all severities.
+The local Docker published ports accept TCP but fail protocol exchanges, while
+the same services answer inside their containers. The unchanged 106-case
+service suite passes using temporary loopback-to-container-exec relays against
+those exact images. All owned resources were removed. This is transport-fallback
+functional evidence; exact-SHA CI must establish normal port-publication
+acceptance. No global Docker, firewall, image, or test policy was changed.
+
+Current weekly CI is no longer green at the accepted revision: Root run
+`34827129773`, Storefront `34827388524`, and Backend `34829047805` fail dependency
+security gates. The current local candidate pins Multer 2.4.0, Morgan 1.12.1,
+and CSV Parse 7.0.2 across the three workspace policies. Its reviewed lockfile
+changes only those identities and their consumer edges; frozen install, peers,
+and supply-chain checks pass. The dependency audit reports only the three
+existing ignored React Router findings. That feed is incomplete: upstream
+documents additional Multer `GHSA-3pph-fpjx-jg34` and Morgan
+`GHSA-9f6g-j8ch-79g4` fixes in 2.4.0 and 1.12.1, still inside cooling. The user
+approved these two exact security-release exceptions on September 14; the
+manifest records their publish times and regression evidence. Strict cooling
+otherwise remains enabled and no audit ignore was added. The final graph's
+frozen install, peer validation, registry audit, and supply-chain checks pass.
+
+Sandbox-enabled Brave/Chromium 153 reproduces the pending native JSON-LD
+insertion failure. The executable-script negative control is also blocked.
+The user approved one narrowly scoped JSON-data-only Trusted Types policy on
+September 14. The isolated browser prototype accepts canonical JSON records,
+rejects 13 malformed/executable input cases, and preserves the executable-script
+negative control. Application integration and the production-build browser
+regressions now pass, including SSR without JavaScript, repeated SPA ownership,
+hostile JSON data, all 13 rejections, and the executable negative control.
+
+Fresh scanning of historical local runtime images also finds fixed HIGH
+libpcre2 findings in the unchanged Node base. Those old images are diagnostic
+evidence only. Both runtime Dockerfiles now install exact checksum-pinned
+`libpcre2-8-0=10.42-1+deb12u1` from signed Debian metadata; the Node base digest
+is unchanged. The isolated amd64 security layer changes one of 89 Debian
+packages, preserves Node 26.5.0 and non-root execution, and has zero fixed
+HIGH/CRITICAL findings with a fresh database. Existing unfixed findings remain
+under the unchanged scan policy. Final application-image scans remain required.
+
+The combined intended batch comprises receipt privacy, JSON-LD navigation,
+media-backup cancellation, parser/upload/logging security, runtime OS fixes,
+and the project/operations documentation. Remaining browser/performance checks,
+final application runtime scans, commit/push, exact-revision CI, and live
+deployment acceptance are still outstanding. Preserve `Default/` untouched.
+Do not treat this resumed work as an accepted release.
+
+The next grouped engineering verification work is a real disposable PostgreSQL
+backup/restore CLI round trip and binding runtime scan records to exact
+vulnerability-database bytes and scan intervals. These close documented proof
+gaps; they do not establish live recovery, production ownership, or legal/tax
+approval.
+
+## Historical user-requested pause — September 8, 12:39 UTC
+
+The following records the September 8 stop and is superseded by the explicit
+September 14 resume above. That paused candidate was not a completed release;
+its working tree, including the untracked files below, was preserved.
+
+- Local `staging` HEAD is `88c1108e194095b427a43e922f9a7b8f669bad95`:
+  `fix(recovery): cancel and reap media backup commands`. Its normal pre-commit
+  gate passed. This commit is **not pushed**.
+- `origin/staging` and the last accepted CI/Railway implementation remain
+  `531e178e29b376b1e0a6a0968a0d94f0454b8f41`. No new CI run, Railway
+  deployment, production change or provider operation was started for this
+  follow-up. The prior release's accepted evidence below remains valid.
+- Receipt isolation is implemented but uncommitted. Its focused tests, full
+  coverage and both builds passed. The final launch matrix is **14 passed /
+  2 failed**: the two new receipt cases pass their receipt assertions but
+  expose a separate catalog JSON-LD Trusted Types error during SPA navigation.
+- The attempted JSON-LD rendering correction is unfinished and unverified.
+  Its focused Biome run fails `lint/security/noDangerouslySetInnerHtml` in
+  `json-ld-script.tsx`. No tests or build have run on those latest changes.
+  Do not suppress that rule, weaken CSP or claim the earlier green builds
+  cover this candidate.
+- All three subagents stopped. No owned test/server/browser processes remain.
+  Ports 4010/4300 were verified free; the `.next` lease is released. The user's
+  port 3000 was untouched. Preserve the last build
+  `vjhYT2PBrzeojxT8E8YVV` as evidence of the pre-JSON-LD candidate only.
+
+New untracked implementation/test files to preserve explicitly:
+
+- `storefront/e2e/launch/receipt-lifecycle.spec.ts`
+- `storefront/src/features/checkout/components/checkout-confirmation.test.tsx`
+- `storefront/src/components/json-ld-script.tsx`
+- `storefront/src/lib/seo/json-ld.ts`
+
+The planned `structured-data-lifecycle.spec.ts` was **not created**. Tracked
+receipt, JSON-LD, coverage-config, fixture and documentation edits also remain
+uncommitted. `Default/` remains unrelated user data: do not inspect or stage it.
+The lockfile remains unchanged at
+`013f83c879d11be7aff1c4c562166b6e2373dcc6fb3915f4cc36d0eda06c45c2`.
+The detailed diagnosis and resume sequence are in the follow-up section below.
 
 This document records the local and GitHub acceptance boundary for application
 and infrastructure hardening. GitHub image evidence does not prove which
@@ -10,7 +145,9 @@ artifact Railway is running; verify Railway separately with the sequence below.
 
 - Branch: `staging`
 - Current accepted implementation head:
-  `80a83ced17a2b5cc937aff1edfff0d9cfbbd49d7`. It includes the accepted Next.js
+  `531e178e29b376b1e0a6a0968a0d94f0454b8f41`. It includes the reviewed
+  toolchain maintenance, dependency-free Git hooks and PostHog transport
+  follow-up, plus the accepted Next.js
   16.3.4 AVIF correction and build split, Redis 6.2.1, upstream `qs` 6.16.0, Trusted Types
   enforcement, the Form/Resend/PostHog/Pacer/Query/Virtual/Sonner batch, and
   the AWS/Stripe/OpenTelemetry, UI/parser/image/tooling, and recovery batches.
@@ -20,7 +157,7 @@ artifact Railway is running; verify Railway separately with the sequence below.
   contract parity batches, plus checkout read/write isolation, native webhook
   error redaction and concurrent-request tracing lifecycle corrections.
 - Latest exact runtime-image validation SHA:
-  `80a83ced17a2b5cc937aff1edfff0d9cfbbd49d7`. All four CI workflows and
+  `531e178e29b376b1e0a6a0968a0d94f0454b8f41`. All four CI workflows and
   both Railway source deployments passed. The live shared-trace regression
   that prevented acceptance of `3f9c533` now passes with four exact HTTP 200
   completion records; detailed correction evidence is below.
@@ -29,8 +166,9 @@ artifact Railway is running; verify Railway separately with the sequence below.
   follow-up. Final CI-parity acceptance notes shipped with the substantive
   `3f9c533` application batch; its staging discovery shipped with the
   substantive `4ba7996` correction. Final Next.js acceptance notes are included
-  with the substantive maintenance batch below; no documentation-only push
-  was made.
+  with the substantive maintenance batch below. The final combined-release
+  acceptance notes are local handoff updates for the next substantive batch;
+  no additional documentation-only commit or push was made.
 - Original implementation/runtime-image acceptance SHA
   `61fd86889a4adca23e1e9704e11c889a1fd986a9` is pushed to
   `origin/staging`. Backend source deployment acceptance is documented at
@@ -2130,17 +2268,16 @@ coverage/build environments fixed the harness without changing application
 code, assertions or thresholds. Local Pa11y/Lighthouse sandbox limitations are
 not waived; supported-runner CI must provide acceptance.
 
-This batch does not supersede accepted `80a83ced` until the combined release's
-exact-SHA CI, runtime-image, Railway and deployed-browser/log checks pass. The
-now-cooled, independently reviewed PostHog follow-up will share the release
-push after its own transport and final-graph checks; no intermediate deployment
-is requested for these local commits.
+These local checks preceded the combined release acceptance recorded below.
+The independently reviewed PostHog follow-up shared the same release push;
+there was no intermediate deployment of this toolchain commit.
 
-### PostHog follow-up in the combined release (September 8, local gates passed)
+### PostHog follow-up in the combined release (September 8, accepted)
 
-The toolchain/hook cohort is local commit
+The toolchain/hook cohort is commit
 `50a73ef7ab399ac3bc3d062fc39d495797a17c2d`, not an intermediate deployment.
-The now-cooled PostHog 5.51.5 / core 1.50.0 pair is included in the same push.
+The now-cooled PostHog 5.51.5 / core 1.50.0 pair is commit
+`531e178e29b376b1e0a6a0968a0d94f0454b8f41`, included in the same push.
 The parent and three mirrors are exact pins, with types 1.407.1 retained.
 Independent source/metadata review and the three real-SDK transport tests pass;
 the app's provider configuration is unchanged and no live events are sent.
@@ -2193,16 +2330,304 @@ Evidence is `/tmp/remorseless-posthog-security.FNuaPk`. SBOM inventory and
 registry checksum verification are not independent provenance-signature or
 compiled-Rust security certification; the previously documented gap remains.
 
-Neither local commit supersedes accepted `80a83ced` until the final combined
-SHA passes its own CI, runtime-image, Railway and deployed acceptance. No
-intermediate commit was pushed or deployed separately.
+Both commits were pushed together to `origin/staging` after the normal
+pre-commit and pre-push hooks passed. The final combined SHA supersedes
+`80a83ced` with the acceptance below. No intermediate commit was pushed or
+deployed separately; no security gate or hook was bypassed.
+
+### Combined maintenance release acceptance (September 8)
+
+All four workflows passed on attempt 1 at exact
+`531e178e29b376b1e0a6a0968a0d94f0454b8f41`:
+
+- Root CI `34219345239`: 102 parity cases, 277 shared-contract cases,
+  59 hook/loader cases, three PostHog transport cases and eight compiler
+  cases passed. Dependency review skipped intentionally for the push.
+- Backend CI `34219345231`: all eight required jobs passed. Unit results
+  are 278 suites / 2,163 cases in 180.74 seconds, with 91.83% lines/statements,
+  85.76% branches and 95.80% functions. The 330 Admin assets meet unchanged
+  budgets: main raw/gzip 7,400,816 / 1,808,701 bytes; total raw/gzip
+  9,024,678 / 2,389,250 bytes.
+- Storefront CI `34219345200`: all ten required jobs passed. Baseline
+  908 / 143 files and transactional 344 / 38 files passed. Artifact-verified
+  statements/branches/functions/lines are 94.83/87.55/96.72/94.86% and
+  83.98/76.59/86.26/84.10%, respectively. The workflow executes four default
+  builds, each checking 131 client assets; standalone evidence belongs to
+  the separate local and Runtime Images checks. Decoder five and runtime
+  completion-order two passed. Responsive 81 with two known skips, launch
+  fourteen and critical cross-engine 48 passed. CI still allows one retry
+  for responsive/critical and zero for launch; actual line logs contain no
+  executed retry/flaky/failure markers. CI did not retain structured
+  Playwright retry fields, unlike the local and deployed proofs.
+- Runtime Images `34219345318`: both validation jobs passed; publication
+  intentionally skipped. No registry publication, attestation or Railway
+  source cutover is claimed.
+
+Supported-runner Pa11y passed `/about`, `/accessibility`, `/cookies` and
+`/terms` with zero issues/review warnings. Lighthouse produced eighteen
+reports in six requested-URL groups with three runs each. All 71 unchanged
+budget assertions passed at CPU slowdown 2; runtime, audit and console error
+counts are zero. Accessibility and best-practices scores are 1.0 throughout.
+Three expected cart-redirect warnings remain, one per cart run. Median
+performance scores are 0.86–0.88; no budget was relaxed. Eight representative
+current CI launch PNGs were inspected, including desktop home/catalog/product
+and mobile/reflow cart, checkout validation, terms and privacy states. This
+is rendered CI-browser evidence, not native desktop/Flameshot validation.
+
+Verified GitHub artifact archive SHA-256 values are:
+
+- Root supply chain `10053139971`:
+  `b6f1aa3826f866382766971801a80f43b4ac2d15c272621ff6467d584ec4e683`.
+  The SBOM contains 1,310 components / 1,311 dependencies; production
+  licenses cover 1,006 entries with only the five known upstream-MIT
+  metadata omissions. The prior Root SBOM already omitted Lefthook, so its
+  removal is proved by the lock/installed graph/hooks, not an SBOM delta.
+- Backend integration `10053347105`:
+  `c395c39b22c0ecadd96001377e96c04a189917dbb8a821dfd10441692e059a82`.
+- Storefront coverage `10053251009`:
+  `f2099a82e8f04a6e95d3920d8ddd0fe1b0544f18405eda108db4328d6285a28f`.
+- Storefront Lighthouse `10053550564`:
+  `3ddb3f5ff039357e1cb5d64634de9d48ba5c4ac1f4c68b70dde3c2172dff6a79`.
+- Storefront launch, fourteen PNGs, `10053571098`:
+  `9a2ca1b295bae6608268ca48f5edbf0dc6fd0dd3633a83deb85b073aecabf621`.
+- Backend runtime image `10053183423`:
+  `5544c28f84d3a4a05c6e1b5b695481813be52de770f46c5ab0d546c3b6bcd1c4`.
+- Storefront runtime image `10053153240`:
+  `0ccdbddd23ae57b08028302c13831b4bcc9dbab50f11594eb2525756591cb39c`.
+
+The disposable integration runner used the exact scanned PostgreSQL image
+`sha256:f84017e655f68a8847fb89bb00ac764e6fbe8ce08cc5cf862f0f65c3cc24931e`
+and Redis image
+`sha256:3ee2a67115e91caf9c7ad5cd25a1bde6b1d5d9dc2080ac9c60b311a58dd04972`
+without rebuilding. All 106 cases passed in groups 31/41/17/8/3/6, with zero
+failures/skips/cancellations. Logs confirm removal of both containers and the
+project network; there was no independent remote Docker inspection. Fixture
+inventories remain unchanged and detected findings are zero at every severity.
+Trivy 0.70.0 recorded DB update `2026-09-08T07:08:01.235696926Z`, download
+`2026-09-08T11:18:48.200820446Z`, offline false, and report/SBOM hashes.
+The DB binary digest and compiled PostgreSQL/Redis server coverage are not
+established by these artifacts.
+
+CI candidate image IDs are Backend
+`sha256:fe688f90bc68db5a3d71719b57f75e63d12662ba1a70a295a94f3f5386df2370`
+and Storefront
+`sha256:3bb24add289d704b6d76efa447ce6ee8b1c4507b33d0e8879088d4b061a39dd2`.
+Their 1,166 / 122 component inventories differ only by the reviewed versions;
+the complete unfiltered 104 / 101 vulnerability records are unchanged.
+Fixed HIGH/CRITICAL gates remain zero with the existing `ignore-unfixed`
+policy. Packaged Storefront decoder five passed against its exact image ID.
+Runtime scans used Trivy 0.70.0 and the September 8 daily DB cache; unlike the
+fixture proof, explicit runtime DB update/download timestamps were not retained.
+
+Railway independently accepted the existing source-based staging deployments:
+
+- Backend `860ca8a7-8a1d-429d-ac67-93dfc6a71522`, image
+  `sha256:909d40a300f046983f4d8dd093dcbe4ea54f46a6a0c877a1226360f2bcc77955`.
+- Storefront `bcd4e120-0036-4ab0-95f5-1a3f0f2364f6`, image
+  `sha256:6f1af9cf875ff6a16b505ac2bcc96bca628101b32ada0ea3e7d16ad9c067ee87`.
+
+Both expose the exact final SHA. Health/readiness, operational/retention and
+catalog probes pass; the ordinary scheduler heartbeat completed at
+`2026-09-08T11:32:00.129Z` on that SHA, with Redis healthy and no incident.
+Storefront HTML/security headers, Trusted Types enforcement and actual AVIF
+response checks pass. These Railway images are not the CI candidate images.
+
+The deployed browser run covered desktop and mobile from
+`11:31:08.679Z` to `11:33:12.516Z`: 75 passes, eight unchanged known skips
+(six local-gallery-only and two mobile-inapplicable desktop-header cases),
+zero failures/errors/flaky outcomes/retries, and exactly one result per case.
+All case/skip identities match the accepted baseline. Report SHA-256 is
+`1782166573cc583b3864abb5685231e968124d25b9cbe385542df2157c4cbbb7`.
+No local server, package-manager hook or user-port-3000 operation was started.
+
+Runtime captures since `11:31:00Z` contain 157 Backend and 364 Storefront
+rows, both uncapped. General Storefront HTTP logs hit the 2,000-row cap and
+are not claimed as a complete window. Separate exact guard queries match
+each deliberate 400 to its Railway deployment/request and structured runtime
+trace. Four concurrent HTTP 200 requests sharing one trace have exactly four
+completion events with distinct route-root spans; response parent spans are
+not incorrectly equated with those child spans. Independent final filtered
+HTTP 5xx queries at `11:33:50.730Z` / `11:33:52.792Z` both return zero.
+
+Application logs are not error-free: all 55 Storefront error rows form eleven
+destination-stream-closed diagnostic groups and eleven structured render
+events. Their message/ignored-stack/closing fingerprints match the previously
+observed family, but the digest changed from `1105982228` to `2991309508`.
+The initial fail-closed classification is retained unchanged. A separate
+narrow review verifies this one digest against exact event identity and
+installed Next.js 16.3.4 source: cancellation creates an Error on destination
+close, digests include original/component stacks, and printed ignored frames
+can be collapsed. The exact hidden-stack change is not established; this is
+not newly extracted deployed-image source or proof of which browser request
+caused each cancellation. Temporal grouping is explicitly non-causal. No
+other error family, unknown warning, credential-assignment or Trusted Types
+signal was found. No repository classifier, runtime logging or gate changed.
+
+Private acceptance evidence is retained under
+`/tmp/remorseless-ci-combined-prep.ewHS2m`,
+`/tmp/remorseless-backend-ci-531e178.aPqpa3`,
+`/tmp/remorseless-ci-531e178e.KsgVHy`, and
+`/tmp/remorseless-release-combined.KbTdHY`. Raw logs remain private;
+reviewed summaries preserve the coverage and attribution limits above.
+
+### Receipt isolation and media cancellation follow-up (September 8)
+
+The next grouped implementation fixes two reproduced lifecycle failures without
+changing dependencies, live credentials, grants, provider configuration or
+deployment policy. Exact-SHA CI and staging acceptance remain separate gates;
+the accepted head above is not advanced by local results alone.
+
+- Media backup formerly used synchronous child commands before registering
+  cancellation handlers. A bounded synthetic regression against the accepted
+  CLI reproduced an orphaned copying child. The new workflow handles both
+  SIGINT and SIGTERM from version lookup through manifest publication, awaits
+  asynchronous direct-child closure, prevents later commands and emits only
+  fixed phase/status/duration failure details. Publication cleanup removes only
+  an exclusively created manifest, never an existing file. This is not a
+  process-tree guarantee, rollback of remote writes or an off-site restore
+  drill. All 67 focused tests pass, including seven-phase cancellation/failure,
+  deadline, repeated-signal and publication-race cases. The new command helper
+  has 100% lines/functions and 92.31% branches with 80% enforced floors.
+- Confirmation formerly reused one five-minute shared query across visits;
+  refetch failures retained earlier order data. Actual Query/React tests and
+  both desktop/mobile SPA regressions reproduce the stale visit against the
+  accepted build. Each new visit now has a non-persisted query, always
+  reauthorizes, hides data during fetching or offline-paused retries, removes
+  private query data after failure and removes its exact query on cleanup.
+  Reads honor cancellation and late-body checks. Known `receipt_missing` and
+  `receipt_unavailable` problems preserve the server's guidance; unknown codes
+  still fall back safely. The 63 focused tests include persistent-client
+  revisits, expiry/unavailability, offline retries, StrictMode, retained
+  Activity and late responses. Confirmation coverage is 100/96.66/100/100%
+  statements/branches/functions/lines with an explicit per-file 80% gate.
+  Activity is compatibility coverage, not a claim that Cache Components are
+  enabled. SPA document continuity is asserted in browsers; shared QueryClient
+  identity is directly tested in the React suite. No continuous background
+  grant reauthorization or physical JavaScript-memory erasure is claimed.
+
+Before the unfinished JSON-LD edits, Root QA passed across 1,334 files,
+including both application typechecks and the unchanged shared security/build
+contracts. Backend passed 278 suites /
+2,163 tests at 91.83% statements/lines, 85.76% branches and 95.80% functions;
+its production build and all 330 Admin asset budgets passed. Storefront passed
+144 baseline files / 926 tests and 39 transactional files / 362 tests, with
+transactional coverage 84.34/77.03/86.99/84.46%. Both production build targets,
+131-asset secret/Trusted Types scans, five decoder cases and two runtime
+completion-order cases passed. Responsive browsers passed 81 cases with two
+known skips; the three-engine critical matrix passed 48. Launch finished
+14 passed / 2 failed, with retries disabled and no rerun. The new receipt
+cases passed A → pending B → B → expired-grant assertions and the Axe check,
+then failed the strict final console-error assertion described below.
+Fresh production/all audits retain the same three existing MODERATE metadata
+findings, zero HIGH/CRITICAL and unchanged reviewed ignores. All 28 scoped
+dependency/security files, including the lockfile and 16 patches, are identical
+to the accepted `531e178` cohort.
+
+#### Newly exposed JSON-LD navigation failure and unfinished candidate
+
+The desktop trace places Trusted Types errors immediately after each
+"Continue shopping" click (approximately 1,943–2,452 ms), before the first
+Axe evaluation at approximately 3,868 ms. Catalog re-exports the products
+listing page, which renders `JsonLd`. Its raw JSX script takes ReactDOM's
+script-host creation path, using `div.innerHTML = "<script></script>"` before
+applying the JSON data. This is a real enforced-policy application/framework
+failure, not a scanner probe or an expected error to ignore. The exact built
+sink is `f5b937ea-bc1b3ae0ee7bb47e.js:1:133362`; the installed compiled
+ReactDOM equivalent is at `react-dom-client.production.js:8472`.
+
+Root began, but has not accepted, an app-native correction:
+
+- keep the async server `JsonLd` wrapper and request nonce lookup;
+- move the unchanged escaping serializer into `src/lib/seo/json-ld.ts` and
+  re-export it from the original wrapper;
+- add a memoized client leaf with server/hydration snapshot `true` and client
+  snapshot `false`, retaining initial server HTML and avoiding React script
+  creation on client navigation;
+- create only fixed-type `application/ld+json` nodes in a client effect, append
+  a text node, and remove only that owned element on cleanup;
+- expand unit tests for SSR, hydration, updates, hostile strings, StrictMode,
+  Activity and cleanup, and add an explicit 80% component coverage gate.
+
+This candidate has **two unresolved gates**. First, its new raw SSR script
+location fails the existing Biome security rule. Second, native text-node
+insertion is not established as Trusted Types-compatible: the inspected
+[Chromium script loader](https://raw.githubusercontent.com/chromium/chromium/main/third_party/blink/renderer/core/script/script_loader.cc)
+validates script text before classifying MIME type, so even this inert data
+node may be rejected when connected. Current upstream source is a risk
+indicator, not proof of the installed browser's behavior. The isolated
+enforced-browser proof could not run because sandbox-enabled Chromium failed
+to launch; the temporary server was cleaned up, and no unsandboxed fallback
+was attempted. No executable-script negative control has passed.
+
+Do not replace this with `next/script`, plain JSX children, an unrestricted
+Trusted Types policy, approved-policy name reuse, a console exception or a CSP
+relaxation. An SSR-only solution that omits metadata on SPA arrivals is a
+different SEO behavior, not equivalent acceptance. Root-only Zod bootstrap
+and the separate news rich-HTML/dormant speculation-rule sinks were not changed.
+
+When explicitly resumed:
+
+1. Read current instructions and preserve the paused work. Use pinned Node
+   26.5.0 and pnpm 11.17.0 with `pnpm_config_pm_on_fail=error` and
+   `pnpm_config_verify_deps_before_run=error`; never invoke installed/global
+   Lefthook. Do not rely on the workstation's newer default tool versions.
+2. Resolve the JSON-LD design using actual enforced-browser evidence, including
+   the fixed data-block path and an executable-script negative control. Then
+   address the lint failure without relaxing safeguards and run the new unit
+   tests; they have not yet been executed.
+3. Implement the planned structured-data browser regression: no-JavaScript
+   catalog/product SSR, nonce and parseable metadata, hydrated hard load,
+   catalog → product → back, persistent root metadata, correct route metadata,
+   no stale/duplicate blocks and zero runtime/Trusted Types errors. The receipt
+   regression already covers both desktop and mobile navigation.
+4. Re-run full Root/Storefront validation on the final candidate, including both
+   production build targets, scans, coverage, browser matrices and actual
+   screenshot inspection. Keep the failed run and its traces unchanged. Do
+   not describe the current candidate as green based on earlier output.
+5. Review explicit staged paths, keep logical commits, and push the completed
+   batch once. Then obtain fresh exact-SHA acceptance from all four CI
+   workflows, both Railway deployments and live probes/browser/runtime logs.
+   Candidate runtime images and Railway source-build images remain distinct.
+
+Two later safe engineering opportunities were identified but not implemented:
+bind runtime-image scan evidence to the actual vulnerability-database bytes and
+scan interval, and add a durable synthetic PostgreSQL CLI backup/restore
+round-trip against the existing disposable fixture. Current runtime-image
+records do not prove those database-byte identities; current fake CLI and
+catalog-preflight tests are not that real round-trip. Neither item authorizes
+live restores, paid infrastructure, schema changes or weaker scanning policy.
+
+Private evidence and prepared-but-uninvoked release helpers:
+
+- Media focused proof: `/tmp/remorseless-media-cancellation.fhpBEr`.
+- Backend full proof: `/tmp/remorseless-backend-media-final.bZ1ogn`.
+- Receipt focused coverage: `/tmp/remorseless-receipt-coverage-20260908`.
+- Full Storefront builds and failed launch traces:
+  `/tmp/remorseless-receipt-storefront-20260908.CaSNMY`.
+- Root QA, expected old-build receipt failure and successful local media commit
+  log: `/tmp/remorseless-receipt-media-20260908.taeowk`.
+- Independent unchanged-graph/audit evidence:
+  `/tmp/remorseless-fix-security-20260908.Dx91bf`.
+- Incomplete native JSON-LD browser proof:
+  `/tmp/remorseless-jsonld-tt-proof.NYIEGD`.
+- Prepared Root/Runtime CI harness: `/tmp/remorseless-ci-fixes-prep.V4TG9g`;
+  Backend CI harness: `/tmp/remorseless-backend-ci-next.aX3PYp`.
+- Prepared live release helpers:
+  `/tmp/remorseless-release-receipt-media.9wbReH`. These were not invoked;
+  no next-release deployment/probe/browser acceptance exists there. Review
+  arguments, counts and script validity before use. Runtime log digest review
+  is still to be prepared; do not blindly admit a new cancellation digest.
 
 ### Remaining release work
 
-1. Next.js 16.3.4 is accepted above. Complete the reviewed compatible
-   maintenance cohort and dependency-free Git-hook remediation documented in
-   `DEPENDENCY_MIGRATION_AUDIT_2026-07-23.md`, preserving framework, provider,
-   security-backport and licensing boundaries.
+1. The reviewed Next.js, compatible maintenance, Git-hook remediation and
+   PostHog cohorts are accepted above. The receipt/media/JSON-LD follow-up is
+   paused and unaccepted as detailed above. PostHog 5.51.6 remains cooling until
+   September 8
+   `13:08:20.450Z`; Resend 6.26.0 until September 10. Expiry alone does not
+   approve another version or broaden the reviewed families. Preserve the
+   operational/licensing boundaries below and in the hardening/recovery plans;
+   completed Redis backup/proxy operations must not be repeated.
 2. Hold Medusa 2.19.0: its [Enterprise license](https://raw.githubusercontent.com/medusajs/medusa/v2.19.0/ENTERPRISE-LICENSE.md)
    requires a commercial agreement for the listed RBAC/SSO materials,
    including policies, permission checks, and compiled forms. This app uses

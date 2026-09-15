@@ -1,6 +1,9 @@
 import type { Page } from "@playwright/test"
 
-import type { CheckoutProjection } from "@/features/checkout/types/checkout"
+import type {
+  CheckoutProjection,
+  CheckoutReceipt,
+} from "@/features/checkout/types/checkout"
 import { cartEnvelopeFrom } from "@/lib/cart/snapshot"
 import type { ProductSearchResponse } from "@/lib/search/search"
 
@@ -312,48 +315,48 @@ export const installCheckout = async (
   })
 }
 
+export const createConfirmationReceipt = (): CheckoutReceipt => ({
+  orderNumber: "1042",
+  placedAt: "2026-08-31T16:30:00.000Z",
+  email: "buyer@example.test",
+  items: [
+    {
+      id: "item_LAUNCH",
+      title: "Pathological Decomposition",
+      variantTitle: "LP",
+      thumbnail: null,
+      quantity: 1,
+      total: 20,
+    },
+  ],
+  deliveryAddress: {
+    firstName: address.firstName,
+    lastName: address.lastName,
+    address1: address.address1,
+    address2: address.address2,
+    city: address.city,
+    province: address.province,
+    postalCode: address.postalCode,
+    countryCode: address.countryCode,
+  },
+  deliveryMethod: "Standard",
+  totals: {
+    taxCollectionMode: "collect",
+    currencyCode: "usd",
+    subtotal: 20,
+    discountTotal: 0,
+    shippingTotal: 5,
+    taxTotal: 1.5,
+    total: 26.5,
+  },
+})
+
 export const installConfirmation = async (page: Page): Promise<void> => {
   await page.route("**/api/checkout/confirmation", async (route) => {
     await route.fulfill({
       status: 200,
       contentType: "application/json",
-      body: JSON.stringify({
-        receipt: {
-          orderNumber: "1042",
-          placedAt: "2026-08-31T16:30:00.000Z",
-          email: "buyer@example.test",
-          items: [
-            {
-              id: "item_LAUNCH",
-              title: "Pathological Decomposition",
-              variantTitle: "LP",
-              thumbnail: null,
-              quantity: 1,
-              total: 20,
-            },
-          ],
-          deliveryAddress: {
-            firstName: address.firstName,
-            lastName: address.lastName,
-            address1: address.address1,
-            address2: address.address2,
-            city: address.city,
-            province: address.province,
-            postalCode: address.postalCode,
-            countryCode: address.countryCode,
-          },
-          deliveryMethod: "Standard",
-          totals: {
-            taxCollectionMode: "collect",
-            currencyCode: "usd",
-            subtotal: 20,
-            discountTotal: 0,
-            shippingTotal: 5,
-            taxTotal: 1.5,
-            total: 26.5,
-          },
-        },
-      }),
+      body: JSON.stringify({ receipt: createConfirmationReceipt() }),
     })
   })
 }

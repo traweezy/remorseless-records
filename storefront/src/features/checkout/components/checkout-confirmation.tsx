@@ -1,9 +1,9 @@
 "use client"
 
-import { useQuery } from "@tanstack/react-query"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { Check, Mail, MapPin, PackageCheck } from "lucide-react"
 import Image from "next/image"
-import { memo, useMemo } from "react"
+import { memo, useCallback, useEffect, useId, useMemo } from "react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
@@ -30,14 +30,51 @@ const CheckoutConfirmationSkeleton = memo(() => (
 CheckoutConfirmationSkeleton.displayName = "CheckoutConfirmationSkeleton"
 
 export const CheckoutConfirmation = memo(() => {
+  const queryClient = useQueryClient()
+  const visitId = useId()
+  const queryKey = useMemo(
+    () => ["checkout", "confirmation", visitId] as const,
+    [visitId]
+  )
   const receiptQuery = useQuery({
-    queryKey: ["checkout", "confirmation"],
-    queryFn: getCheckoutReceipt,
-    staleTime: 5 * 60_000,
+    queryKey,
+    queryFn: async ({ signal }) => {
+      try {
+        return await getCheckoutReceipt({ signal })
+      } catch (error: unknown) {
+        if (!signal.aborted) {
+          // Query normally retains the previous success on a refetch error.
+          // A failed receipt authorization must also remove that private data
+          // without resetting the error or triggering another fetch.
+          queryClient
+            .getQueryCache()
+            .find({ queryKey, exact: true })
+            ?.setState({
+              data: undefined,
+              dataUpdatedAt: 0,
+            })
+        }
+        throw error
+      }
+    },
+    staleTime: 0,
+    gcTime: 0,
+    refetchOnMount: "always",
     retry: 1,
     refetchOnWindowFocus: false,
     meta: { persist: false },
   })
+  useEffect(
+    () => () => {
+      // A receipt is authorized by the current HttpOnly grant, not by a
+      // remembered order or a retained route. Also runs when Activity hides.
+      queryClient.removeQueries({ queryKey, exact: true })
+    },
+    [queryClient, queryKey]
+  )
+  const retryReceipt = useCallback((): void => {
+    void receiptQuery.refetch()
+  }, [receiptQuery.refetch])
   const receipt = receiptQuery.data
   const placedAt = useMemo(
     () =>
@@ -50,11 +87,11 @@ export const CheckoutConfirmation = memo(() => {
     [receipt]
   )
 
-  if (receiptQuery.isPending) {
+  if (receiptQuery.isPending || receiptQuery.fetchStatus !== "idle") {
     return <CheckoutConfirmationSkeleton />
   }
 
-  if (!receipt) {
+  if (receiptQuery.isError || !receipt) {
     const message =
       receiptQuery.error instanceof CheckoutApiError
         ? receiptQuery.error.problem.detail
@@ -65,7 +102,7 @@ export const CheckoutConfirmation = memo(() => {
           <CheckoutProblem
             title="Receipt is unavailable"
             message={message}
-            onRetry={() => void receiptQuery.refetch()}
+            onRetry={retryReceipt}
           />
           <div className="flex justify-center">
             <Button asChild variant="outline">

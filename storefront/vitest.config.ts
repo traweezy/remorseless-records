@@ -25,6 +25,7 @@ export default defineConfig({
         "src/hooks/**/*.ts",
         "src/lib/**/*.ts",
         "src/components/ui/smart-link.tsx",
+        "src/components/json-ld-script.tsx",
       ],
       exclude: ["src/lib/cart/**", "src/lib/medusa.ts"],
       thresholds: {
@@ -32,6 +33,12 @@ export default defineConfig({
         statements: 90,
         functions: 93,
         branches: 85,
+        "src/components/json-ld-script.tsx": {
+          lines: 80,
+          statements: 80,
+          functions: 80,
+          branches: 80,
+        },
       },
     },
   },

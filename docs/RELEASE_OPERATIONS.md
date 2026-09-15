@@ -78,6 +78,21 @@ published subject must have all of the following on the same digest:
 - GitHub build-provenance attestation; and
 - GitHub CycloneDX SBOM attestation pushed to the registry.
 
+The runtime recipes retain the reviewed Node image digest and install Debian
+`libpcre2-8-0=10.42-1+deb12u1` for
+[CVE-2026-86145](https://security-tracker.debian.org/tracker/CVE-2026-86145) and
+[CVE-2026-89161](https://security-tracker.debian.org/tracker/CVE-2026-89161).
+The amd64 and arm64 archive hashes in
+[`runtime-image-policy.json`](../scripts/security/runtime-image-policy.json)
+were verified against Debian's signed `bookworm-security` package indexes.
+Docker verifies those checksums before exposing the archives through a
+read-only build mount; package name, version, architecture, and installed
+status must match. Unsupported architectures fail. The archives do not remain
+in the runtime image. Refreshing this pin requires the same signed-metadata
+verification, policy review, package-identity checks, and full image scan.
+A package-only proof does not replace scanning the final application image or
+establish that Railway's source-built deployment contains the same OS update.
+
 Verify before any deployment source change:
 
 ```bash

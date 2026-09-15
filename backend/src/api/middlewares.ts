@@ -5,7 +5,6 @@ import {
   type MedusaResponse,
   type MiddlewareRoute,
 } from "@medusajs/framework/http"
-import multer from "multer"
 
 import {
   adminAuthorizationPolicyRoutes,
@@ -30,7 +29,7 @@ import {
   type RateLimitDecision,
   type RateLimitPolicy,
 } from "../lib/security/rate-limit"
-import { MAX_UPLOAD_BYTES, MAX_UPLOAD_FILES } from "../lib/uploads/validation"
+import { parseManagedUpload } from "../lib/uploads/multipart"
 
 type RateLimitConsumer = (
   identity: string,
@@ -237,17 +236,6 @@ const adminCatalogMediaReadRateLimit = createRateLimitMiddleware({
   max: 120,
   windowMs: 60_000,
   onUnavailable: "local-fallback",
-})
-
-const managedUpload = multer({
-  limits: {
-    fileSize: MAX_UPLOAD_BYTES,
-    files: MAX_UPLOAD_FILES,
-    fieldSize: 128,
-    fields: 1,
-    parts: MAX_UPLOAD_FILES + 1,
-  },
-  storage: multer.memoryStorage(),
 })
 
 const rejectPresignedUploads = (
@@ -504,7 +492,7 @@ export default defineMiddlewares({
     {
       matcher: "/admin/managed-uploads",
       methods: ["POST"],
-      middlewares: [adminManagedUploadRateLimit, managedUpload.array("files")],
+      middlewares: [adminManagedUploadRateLimit, parseManagedUpload],
     },
     ...adminAuthorizationPolicyRoutes,
     ...nativeAdminPolicyOverlayRoutes,
@@ -514,10 +502,7 @@ export default defineMiddlewares({
     {
       matcher: "/admin/catalog/media/uploads",
       methods: ["POST"],
-      middlewares: [
-        adminCatalogMediaMutationRateLimit,
-        managedUpload.array("files"),
-      ],
+      middlewares: [adminCatalogMediaMutationRateLimit, parseManagedUpload],
     },
     {
       matcher: "/admin/uploads/presigned-urls",

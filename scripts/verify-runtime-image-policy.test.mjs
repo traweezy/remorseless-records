@@ -7,6 +7,7 @@ import {
   validateRuntimeImageSbom,
 } from "./verify-runtime-image-artifacts.mjs"
 import {
+  validateRuntimeDockerfileSource,
   validateRuntimeImagePolicyManifest,
   validateRuntimeWorkflowSource,
 } from "./verify-runtime-image-policy.mjs"
@@ -77,6 +78,89 @@ test("rejects digest, revision, service, and SBOM subject drift", () => {
 test("rejects an incomplete policy manifest", () => {
   assert.throws(() => validateRuntimeImagePolicyManifest({ schemaVersion: 1 }))
 })
+
+for (const service of ["backend", "storefront"]) {
+  const dockerfile = readFileSync(
+    new URL(`../${service}/Dockerfile.runtime`, import.meta.url),
+    "utf8"
+  )
+  test(`accepts ${service} with only the verified Debian security package`, () => {
+    assert.doesNotThrow(() =>
+      validateRuntimeDockerfileSource(service, dockerfile)
+    )
+  })
+  const mutations = [
+    ["unverified archive", "ADD --checksum=sha256:", "ADD --checksum=sha512:"],
+    [
+      "wrong amd64 hash",
+      "81c5502941118a24d47af69a17b8b0b9548d75cc6d72b3eb3fe01047b46fa10e",
+      "a".repeat(64),
+    ],
+    [
+      "wrong arm64 hash",
+      "d178d33697eef877c2c27733141b7f8520fee66a329ae5809e8c8eae3709efa3",
+      "b".repeat(64),
+    ],
+    [
+      "unreviewed source",
+      "https://security.debian.org/",
+      "https://example.com/",
+    ],
+    [
+      "plaintext source",
+      "https://security.debian.org/",
+      "http://security.debian.org/",
+    ],
+    ["floating package", "10.42-1+deb12u1", "latest"],
+    ["unsupported architecture", "amd64|arm64)", "amd64|arm64|ppc64le)"],
+    ["architecture failure bypass", "*) exit 1 ;;", "*) exit 0 ;;"],
+    ["writable archive mount", ",readonly", ""],
+    [
+      "package identity bypass",
+      'Package)" = libpcre2-8-0',
+      'Package)" = anything',
+    ],
+    [
+      "package version bypass",
+      'Version)" = 10.42-1+deb12u1',
+      'Version)" = anything',
+    ],
+    [
+      "architecture identity bypass",
+      "dpkg --print-architecture",
+      "printf amd64",
+    ],
+    [
+      "archive architecture bypass",
+      'Architecture)" = "$TARGETARCH"',
+      'Architecture)" = amd64',
+    ],
+    [
+      "unsigned package forcing",
+      "dpkg --install",
+      "dpkg --force-all --install",
+    ],
+    ["installed status bypass", "${db:Status-Status}", "ignored"],
+    [
+      "extra package installation",
+      "ARG REVISION",
+      "RUN apt-get update && apt-get install -y curl\nARG REVISION",
+    ],
+    [
+      "extra archive download",
+      "ARG REVISION",
+      "ADD https://example.com/archive /archive\nARG REVISION",
+    ],
+    ["extra external stage", "ARG REVISION", "FROM node:latest\nARG REVISION"],
+  ]
+  for (const [label, from, to] of mutations) {
+    test(`rejects ${service} runtime package with ${label}`, () => {
+      const changed = dockerfile.replace(from, to)
+      assert.notEqual(changed, dockerfile)
+      assert.throws(() => validateRuntimeDockerfileSource(service, changed))
+    })
+  }
+}
 
 test("accepts split read-only validation and master-only publication", () => {
   assert.doesNotThrow(() => validateRuntimeWorkflowSource(workflowSource))

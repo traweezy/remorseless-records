@@ -108,6 +108,8 @@ export type CheckoutProblemCode =
   | "payment_session_stale"
   | "payload_too_large"
   | "rate_limited"
+  | "receipt_missing"
+  | "receipt_unavailable"
   | "recovery_required"
   | "request_source_required"
   | "shipping_changed"

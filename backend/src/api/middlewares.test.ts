@@ -15,6 +15,7 @@ import {
   operationsAdminActions,
   productImportAdminActions,
 } from "../lib/admin-permissions"
+import { parseManagedUpload } from "../lib/uploads/multipart"
 import middlewares, {
   contentAdminPolicyRoutes,
   applySecurityBoundaryHeaders,
@@ -96,6 +97,20 @@ describe("content Admin RBAC middleware", () => {
       policyFor(middlewares.routes ?? [], "POST", "/admin/managed-uploads")
     ).toEqual([nativeAdminActions.file.create])
   })
+
+  it.each(["/admin/managed-uploads", "/admin/catalog/media/uploads"])(
+    "uses the bounded parser after the rate limiter on %s",
+    (path) => {
+      const parsers = (middlewares.routes ?? []).filter(
+        (route) =>
+          routeMatches(route, "POST", path) &&
+          route.middlewares?.includes(parseManagedUpload)
+      )
+      expect(parsers).toHaveLength(1)
+      expect(parsers[0]?.middlewares?.at(-1)).toBe(parseManagedUpload)
+      expect(parsers[0]?.middlewares).toHaveLength(2)
+    }
+  )
 
   it("does not match nested or malformed content routes", () => {
     expect(

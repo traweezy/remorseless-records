@@ -33,6 +33,7 @@ source does not declare.
 | Project custom route | proof/authentication failure | 401 | `ApiProblem` |
 | Project custom guard | origin/authorization rejection | 403 | `ApiProblem` |
 | Project custom route | conflict | 409 | `ApiProblem` |
+| Managed upload parser | known Multer field / file or field limit error | 400 / 413 | redacted `ApiProblem` |
 | Project custom route | upstream/provider failure | 502, 503, or timeout 504 | `ApiProblem` |
 | Project custom route | unexpected internal failure | 500 or retryable 503 | redacted `ApiProblem` |
 | Native Medusa auth | unauthenticated | 401 | `NativeMedusaError` |
@@ -45,6 +46,19 @@ native unauthenticated, forbidden, invalid-data, and unexpected failures and
 also proves the project has not registered a replacement global error handler.
 This guards Dashboard/Admin SDK compatibility while custom handlers migrate
 independently.
+
+Both managed upload routes use the same bounded memory parser. File sizes up
+to and including 12 MiB are accepted by the parser; one byte over is rejected.
+Multipart metadata has a 100-character name limit, a 128-byte value limit,
+one field, one level of nesting, and a maximum numeric array index of zero.
+The catalog route separately requires a scalar UUID idempotency key. Known
+Multer field and limit errors include request/trace correlation and a fixed
+`invalid_upload` or `upload_limit_exceeded` code; field names, filenames, and
+values are never echoed in the problem. Other parser errors, including a
+missing multipart boundary or truncated body, retain native Medusa error
+handling. Every parser
+failure releases completed file-buffer references and clears request file and
+metadata entries; this does not physically erase uploaded bytes.
 
 ## Correlation rules
 

@@ -4,6 +4,7 @@ Brutal maximalist commerce experience for extreme music: MedusaJS v2 backend, Ne
 
 ## Contents
 
+- [Project map and continuation guide](docs/PROJECT_MAP.md)
 - [Architecture](#architecture)
 - [Medusa Admin Client Guide](docs/ADMIN_CLIENT_GUIDE.md)
 - [Medusa Admin Support Guide](docs/ADMIN_SUPPORT_GUIDE.md)
@@ -1310,46 +1311,48 @@ PUBLIC_FORM_BFF_SECRET=replace-with-the-same-distinct-backend-form-secret
 
 ## Using Railway/Staging Environment Variables Locally
 
-To mirror staging settings locally:
+Use the repository-installed Railway CLI from the monorepo root. Its exact
+version and checksum-verified installer are part of the frozen pnpm graph;
+do not replace it with a global or `@latest` installation. For normal
+development and integration tests, use local configuration and the isolated
+fixtures in [DISPOSABLE_INTEGRATION.md](docs/DISPOSABLE_INTEGRATION.md).
 
-1. **Install Railway CLI**
+Before an explicitly scoped staging operation, verify the existing context:
 
-   ```bash
-   pnpm dlx @railway/cli@latest login
-   railway link   # choose the project/service for backend
-   ```
+```bash
+pnpm exec railway --version
+pnpm exec railway status --json
+pnpm exec railway environment list --json
+```
 
-2. **Pull backend variables**
+The expected project is `store`
+(`1f39263a-25e4-4d69-abc2-f0287b331d1e`) and environment is `staging`
+(`799a2f98-f819-495d-b8b6-12e71af86568`). Stop on a mismatch; do not silently
+relink the workspace. Authentication or linking is a separate setup action
+when the existing credentials/context are unavailable.
 
-   ```bash
-   cd backend
-   railway variables --service backend > .env.railway
-   # Merge into .env (review before overwriting secrets)
-   ```
+For a reviewed, read-only one-off command that needs service configuration,
+`railway run` injects the selected environment into that child process:
 
-3. **Pull storefront variables**
+```bash
+pnpm exec railway run --service Backend --environment staging -- <reviewed-read-only-command>
+```
 
-   ```bash
-   cd storefront
-   railway variables --service storefront > .env.local.railway
-   ```
+Use the exact service names `Backend` and `Storefront`. Keep secrets in the
+child process: do not print variables, copy bulk variable output into files,
+source CLI output as shell code, or overwrite local `.env` files. Railway
+private hostnames normally require execution inside the verified service via
+`railway ssh`; `railway run` alone does not create a private-network tunnel.
+Never substitute a public database or Redis URL to bypass a failed private
+connection.
 
-4. **Recommended approach**: source the Railway file when starting services to avoid committing secrets.
-
-   ```bash
-   cd backend
-   set -o allexport
-   source .env.railway
-   set +o allexport
-   pnpm dev
-   ```
-
-5. **Using `railway run` for one-off commands**
-   ```bash
-   railway run pnpm dev            # runs with remote env for the linked service
-   ```
-
-> Always validate that secrets fetched from Railway do not overwrite local development-only values unintentionally (e.g., pointing to production Stripe keys).
+Starting application workers or running release, import, seed, rebuild,
+maintenance, or migration commands against staging can change real state.
+Follow the relevant operator runbook and approval boundary before doing so.
+Railway configuration changes use only the guarded commands in the
+[Railway guide](.railway/README.md); release and recovery procedures live in
+[RELEASE_OPERATIONS.md](docs/RELEASE_OPERATIONS.md) and
+[INFRASTRUCTURE_RECOVERY.md](docs/INFRASTRUCTURE_RECOVERY.md).
 
 ## Stripe Payment Element & Webhooks
 

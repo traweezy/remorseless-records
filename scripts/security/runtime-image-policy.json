@@ -1,6 +1,16 @@
 {
   "schemaVersion": 1,
   "nodeImage": "node:26.5.0-bookworm-slim@sha256:2d49d876e96237d76de412761cf05dbfe5aee325cc4406a4d41d5824c5bb8beb",
+  "debianSecurityPackage": {
+    "name": "libpcre2-8-0",
+    "version": "10.42-1+deb12u1",
+    "repository": "https://security.debian.org/debian-security/pool/updates/main/p/pcre2",
+    "advisories": ["CVE-2026-86145", "CVE-2026-89161"],
+    "sha256": {
+      "amd64": "81c5502941118a24d47af69a17b8b0b9548d75cc6d72b3eb3fe01047b46fa10e",
+      "arm64": "d178d33697eef877c2c27733141b7f8520fee66a329ae5809e8c8eae3709efa3"
+    }
+  },
   "repository": "https://github.com/traweezy/remorseless-records",
   "trivy": {
     "repository": "aquasecurity/trivy-action",

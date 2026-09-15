@@ -27,6 +27,7 @@ const FORBIDDEN_PUBLIC_SEARCH_NAMES = [
 ]
 const STRIPE_SCRIPT_ORIGIN = "js.stripe.com"
 const STRIPE_TRUSTED_TYPES_POLICY = "remorseless-stripe-js"
+const JSON_LD_TRUSTED_TYPES_POLICY = "remorseless-json-ld"
 
 const environment = {}
 for (const file of ENVIRONMENT_FILES) {
@@ -48,8 +49,12 @@ const files = fs
 const findings = []
 const stripeLoaderFiles = []
 const untrustedStripeLoaderFiles = []
+const jsonLdPolicyFiles = []
 for (const file of files) {
   const content = fs.readFileSync(file)
+  if (content.includes(JSON_LD_TRUSTED_TYPES_POLICY)) {
+    jsonLdPolicyFiles.push(path.relative(STATIC_DIRECTORY, file))
+  }
   if (
     content.includes(STRIPE_SCRIPT_ORIGIN) &&
     content.includes("advancedFraudSignals")
@@ -83,6 +88,12 @@ if (!stripeLoaderFiles.length) {
   )
 }
 
+if (!jsonLdPolicyFiles.length) {
+  throw new Error(
+    "JSON-LD Trusted Types policy is missing from the Storefront client bundle"
+  )
+}
+
 if (untrustedStripeLoaderFiles.length) {
   throw new Error(
     `Stripe.js loader is missing the remorseless-stripe-js Trusted Types policy in: ${untrustedStripeLoaderFiles.join(", ")}`
@@ -99,5 +110,5 @@ if (findings.length) {
 }
 
 console.log(
-  `Client bundle verified: ${files.length} static assets contain no server-only secret or public Meilisearch input, and the Stripe.js loader uses its Trusted Types policy.`
+  `Client bundle verified: ${files.length} static assets contain no server-only secret or public Meilisearch input, and Stripe.js and JSON-LD include their named Trusted Types policies.`
 )
