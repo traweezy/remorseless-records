@@ -78,6 +78,7 @@
         "check.trivy.dev:443",
         "fonts.googleapis.com:443",
         "fonts.gstatic.com:443",
+        "get.trivy.dev:443",
         "ghcr.io:443",
         "github.com:443",
         "nodejs.org:443",

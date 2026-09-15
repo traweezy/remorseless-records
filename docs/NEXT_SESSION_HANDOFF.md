@@ -87,9 +87,10 @@ also pass.
 
 This batch also binds runtime scan evidence to the scanner, exact database bytes, scan
 interval, reports, image ID, and published manifest. See the recovery and
-release runbooks for their contracts and retained limitations. Complete local
-acceptance, normal commit/push hooks, all four exact-SHA workflows, and deployed
-acceptance remain required before this batch can be marked accepted.
+release runbooks for their contracts and retained limitations. Local acceptance
+and normal commit/push hooks passed; the grouped commit
+`18ec329297c215e978390d6a5477ff4fede18858` is pushed. All four exact-SHA workflows
+and deployed acceptance are still required before the release can be accepted.
 
 The reviewed application-only Railway plan was applied as change set
 `e72f1e02b80097e497a548d24c06d80f`: both watch lists now include `/railpack.json`,
@@ -97,6 +98,31 @@ and existing silent pnpm/restart declarations are restored. No resources were
 created or destroyed and variables/support services were outside the change.
 The wrapper now invokes the pinned CLI executable directly, including the
 executable identity expected by the IaC SDK. Deployment acceptance is separate.
+
+### Runtime installer correction after the grouped push
+
+Root CI `34916487130` passed on `18ec329`. Backend's normal disposable-service
+CI job also passed, including signed PostgreSQL client provisioning, exact-image
+scans and all 28 real recovery cases without skips. This supplies the normal
+Docker published-port evidence missing from the workstation's relay-based run.
+Late COPY failure rolled back in 350 ms; SIGTERM and deadline cancellation
+completed in 109 ms and 2,060 ms. These fixture timings are not staging RTOs.
+
+Runtime Images `34916486966` failed before scanning in both services because
+the pinned installer downloads through `get.trivy.dev:443`, absent from the
+blocked-egress allowlist. Both Railway deployments were correctly skipped:
+Backend `53986904-e25d-4496-8004-8c0ad7a92c53` and Storefront
+`f4d0a470-7d2d-4371-9616-889a77ea6d7a`. The correction adds only that exact HTTPS
+endpoint to both runtime jobs and their policy, with regressions rejecting
+omission, wildcard hosts, plaintext ports and audit-only egress. All 195 focused
+checks pass. A fresh official download matches the existing Trivy 0.70.0
+executable checksum; scanner versions, checksums and scan gates are unchanged.
+Wait for the corrected revision's full CI and Railway/browser acceptance.
+
+GitHub's new js-yaml HIGH alerts are closed after the push. The two remaining
+open alerts identify the existing React Router backport contract; upstream v6
+now fixes one advisory, while the other two still require the reviewed patches
+and Medusa retains its exact 6.30.4 peer. No audit exception was broadened.
 
 ### Last verified live boundary
 

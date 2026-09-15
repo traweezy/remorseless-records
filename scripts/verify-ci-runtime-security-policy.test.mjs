@@ -106,6 +106,29 @@ describe("CI runtime security policy", () => {
     )
   })
 
+  it("keeps the pinned runtime installer endpoint exact and blocked by default", () => {
+    const runtimePolicy = manifest.workflows.find(
+      ({ path }) => path === ".github/workflows/runtime-images.yml"
+    )
+    assert.ok(runtimePolicy.allowedEndpoints.includes("get.trivy.dev:443"))
+    for (const changed of [
+      runtimeWorkflow.replace("            get.trivy.dev:443\n", ""),
+      runtimeWorkflow.replace("get.trivy.dev:443", "*.trivy.dev:443"),
+      runtimeWorkflow.replace("get.trivy.dev:443", "get.trivy.dev:80"),
+      runtimeWorkflow.replace("egress-policy: block", "egress-policy: audit"),
+    ]) {
+      assert.notEqual(changed, runtimeWorkflow)
+      assert.throws(() =>
+        validateWorkflowRuntimeSecurity(
+          changed,
+          runtimePolicy.allowedEndpoints,
+          runtimePolicy.profile,
+          runtimePolicy.securityJobCount
+        )
+      )
+    }
+  })
+
   it("rejects missing scan controls and drifted self-verification", () => {
     assert.throws(() =>
       validateWorkflowRuntimeSecurity(

@@ -35,6 +35,14 @@ permission prompts. Existing security gates and missing external production
 facts still determine what can be accepted. The exact Multer 2.4.0 and Morgan
 1.12.1 cooling exceptions remain the only new exceptions; js-yaml needs none.
 
+Grouped commit `18ec329` passed Root CI and the Backend's normal-network
+PostgreSQL/Redis integration job, including all 28 real recovery cases.
+Runtime Images stopped before scanning because its pinned installer uses an
+unlisted `get.trivy.dev:443` endpoint. Railway correctly skipped the revision.
+The correction permits only that exact HTTPS host and verifies its allowlist
+contract; the reviewed scanner checksum and security gates remain enforced.
+Exact-revision release acceptance is still required, as recorded in the handoff.
+
 Historical sections below retain dated evidence. Next.js 16.3.4 is installed;
 the previous browser sandbox limitation is resolved with sandboxed Brave.
 Old passing scans are not evidence against new advisories. Production does not

@@ -321,6 +321,7 @@ export const validateRuntimeWorkflowSource = (source) => {
   for (const endpoint of [
     "fonts.googleapis.com:443",
     "fonts.gstatic.com:443",
+    "get.trivy.dev:443",
     "production.cloudfront.docker.com:443",
     "security.debian.org:443",
   ]) {

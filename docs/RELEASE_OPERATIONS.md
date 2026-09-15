@@ -97,8 +97,14 @@ establish that Railway's source-built deployment contains the same OS update.
 
 `scan-runtime-image.mjs` scans the resolved local Docker image ID on Linux
 amd64. The pinned Trivy 0.70.0 executable must match the reviewed SHA-256 in
-`runtime-image-policy.json`. Each run downloads one fresh database into a
-private cache, freezes it, disables subsequent updates, and streams SHA-256
+`runtime-image-policy.json`. The pinned setup action's
+[immutable installer](https://github.com/aquasecurity/trivy/blob/75c4dc0f45c5d7ffd05ae26df1e0c666787bdf2a/contrib/install.sh)
+routes the release archive through `get.trivy.dev:443` before checking its
+GitHub release checksum. Both blocked-egress runtime jobs allow that exact
+HTTPS endpoint; wildcard Trivy hosts and plaintext ports remain disallowed.
+The scanner independently verifies the executable's reviewed hash before use.
+Each run downloads one fresh database into a private cache, freezes it,
+disables subsequent updates, and streams SHA-256
 hashes of the database and metadata before and after the vulnerability scan
 and CycloneDX generation. The database must be current, unchanged throughout
 the bounded scan interval, and younger than 48 hours at completion.
