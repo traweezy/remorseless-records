@@ -12,8 +12,13 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import test from "node:test"
 import {
+  buildRestoreInvariantsSql,
+  parseRestoreInvariants,
   parseRestoreInventory,
+  parseRestoreReceipt,
+  parseRestoreTableList,
   readBackupManifest,
+  readRestoreReceipt,
   restoreArchiveLimit,
   snapshotBackupArchive,
 } from "./lib/postgres-restore.mjs"
@@ -28,6 +33,96 @@ const manifest = {
   sha256: createHash("sha256").update(content).digest("hex"),
   sourceFingerprint: "a".repeat(64),
 }
+
+const invariants = {
+  serverMajor: 16,
+  counts: {
+    constraints: 2,
+    indexes: 3,
+    routines: 1,
+    sequences: 1,
+    tables: 2,
+    views: 1,
+  },
+  tableRows: [
+    { schema: "app", table: "artists", rows: 1 },
+    { schema: "app", table: "releases", rows: 2 },
+  ],
+}
+
+test("receipt requires exact archive binding and complete table counts", () => {
+  const receipt = {
+    archiveSha256: manifest.sha256,
+    sourceFingerprint: manifest.sourceFingerprint,
+    schemaVersion: 1,
+    invariants,
+  }
+  assert.deepEqual(parseRestoreReceipt(receipt), receipt)
+  for (const bad of [
+    { ...receipt, archiveSha256: "wrong" },
+    { ...receipt, schemaVersion: 2 },
+    { ...receipt, unexpected: true },
+    { ...receipt, invariants: { ...invariants, serverMajor: "16" } },
+    {
+      ...receipt,
+      invariants: {
+        ...invariants,
+        counts: { ...invariants.counts, tables: 3 },
+      },
+    },
+    {
+      ...receipt,
+      invariants: {
+        ...invariants,
+        tableRows: [...invariants.tableRows, invariants.tableRows[0]],
+      },
+    },
+  ])
+    assert.throws(() => parseRestoreReceipt(bad))
+  assert.deepEqual(
+    parseRestoreInvariants(JSON.stringify(invariants)),
+    invariants
+  )
+})
+
+test("table list and generated read-only SQL reject unsafe identifiers", () => {
+  const tables = invariants.tableRows.map(({ schema, table }) => ({
+    schema,
+    table,
+  }))
+  assert.deepEqual(parseRestoreTableList(JSON.stringify(tables)), tables)
+  const sql = buildRestoreInvariantsSql(tables)
+  assert.match(sql, /BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY/u)
+  assert.match(sql, /SELECT count\(\*\) FROM "app"\."artists"/u)
+  for (const bad of [
+    [{ schema: "app", table: "artists;drop" }],
+    [tables[1], tables[0]],
+    [tables[0], tables[0]],
+    [{ schema: "public", table: "Capital" }],
+  ])
+    assert.throws(() => buildRestoreInvariantsSql(bad))
+})
+
+test("reads bounded canonical restore receipts", () =>
+  withDirectory(async (directory) => {
+    const path = join(directory, "receipt.json")
+    const receipt = {
+      archiveSha256: manifest.sha256,
+      sourceFingerprint: manifest.sourceFingerprint,
+      schemaVersion: 1,
+      invariants,
+    }
+    await writeFile(path, JSON.stringify(receipt), { mode: 0o600 })
+    assert.deepEqual(
+      await readRestoreReceipt(path, AbortSignal.timeout(1000)),
+      receipt
+    )
+    const alias = join(directory, "receipt-alias")
+    await symlink(path, alias)
+    await assert.rejects(readRestoreReceipt(alias, AbortSignal.timeout(1000)))
+    await writeFile(path, " ".repeat(256 * 1024 + 1))
+    await assert.rejects(readRestoreReceipt(path, AbortSignal.timeout(1000)))
+  }))
 const withDirectory = async (run) => {
   const directory = await mkdtemp(join(tmpdir(), "restore-snapshot-test-"))
   try {

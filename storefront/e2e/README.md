@@ -2,9 +2,10 @@
 
 This folder contains two Playwright surfaces:
 
-- `ci/` contains non-destructive browser smoke tests used by direct pushes to
-  `main`. They run with `playwright.ci.config.ts`, use real Pixel 7 and iPhone 15
-  Pro device emulation, and never seed or reset a database. The same journeys
+- `ci/` contains non-destructive browser smoke tests used by `staging` pushes
+  and `master` release pull requests. They run with `playwright.ci.config.ts`,
+  use real Pixel 7 and iPhone 15 Pro device emulation, and never seed or reset
+  a database. The same journeys
   can run in desktop Firefox and WebKit with
   `playwright.cross-browser.config.ts`.
 - The remaining template suite exercises authenticated commerce flows. It

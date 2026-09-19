@@ -1,22 +1,46 @@
 # Production Hardening Plan
 
-Last reviewed: September 14, 2026
+Last reviewed: September 19, 2026
 
 This is the authoritative launch-readiness backlog for Remorseless Records. It
 supersedes the local `tmp/HARDENING_NEXT_STEPS.md` working note. Detailed
 operating procedures remain in the linked runbooks and ADRs; this document
 tracks what is still required before production traffic is approved.
 
-## Active continuation — September 14, 2026
+## Active continuation — September 14 onward
+
+The resumed batch is local and unaccepted. At the start of the September 19
+session, `staging` HEAD `33d2823ab03ef044aa017ba78878017395ab13d6` was
+one commit ahead of `origin/staging` and unpushed. An existing recovery
+record describes a scanned, recovery-only PostgreSQL 16.15 target and an actual
+bounded export from the live 16.11 source. Its private `/tmp` archive is not
+available in this session. That export is evidence of backup execution, not
+evidence of an isolated restore or durable retained backup. A fresh guarded
+source-bound export and same-major isolated restore remain to be completed.
+The local `data:postgres:restore-receipt` implementation now requires a receipt
+captured after export while the source remains quiesced, and restore apply
+checks complete physical-table row counts, six schema counts, and server-major
+parity. Forty-five focused tests and 12 real PostgreSQL 16.15 roundtrip cases
+passed locally. See the [restore acceptance guide](POSTGRES_RESTORE_ACCEPTANCE.md).
+This does not establish a live-data restore or a staging release.
+Actual Redis multipart-AOF replay and queue reconciliation also remain open;
+the earlier RDB load does not close them. Preserve the accepted `7a9d1b9`
+release boundary and run the full grouped local and exact-revision acceptance
+before marking any new work complete.
 
 The user resumed the September 8 paused work and requested larger cohesive
 releases, with local validation, one grouped staging push, and exact-revision
 CI/deployment monitoring. [NEXT_SESSION_HANDOFF.md](NEXT_SESSION_HANDOFF.md)
 records the current candidate and [PROJECT_MAP.md](PROJECT_MAP.md) indexes the
-code and documentation. The combined release is accepted at
-`aac22a7f1fd5c0f8a3bb4cb937535eeae612737c`: all four exact-revision CI workflows,
+code and documentation. The current recovery release is accepted at
+`7a9d1b9942f1a48fb03f4ebfa32985ee71425100`: all four exact-revision CI workflows,
 both Railway source deployments and deployed acceptance passed. Live SSH
 confirms the fixed Debian 13 PCRE2 package in both application containers.
+The packaged PostgreSQL auditor now evaluates on live 16.11 and correctly
+rejects its administrator identity. The release also carries the validated
+browser readiness correction and actual Redis RDB recovery evidence. Backend
+CI passed 129 integration cases and 2,199 unit tests; deployed browser, trace,
+health, catalog and bounded-log acceptance all passed.
 
 The first grouped push (`88c1108` plus `2a76107`) completed receipt isolation,
 route-owned JSON-LD under the approved JSON-data-only Trusted Types policy,
@@ -55,7 +79,8 @@ replay, queue reconciliation or a live image cutover. The PostgreSQL audit now
 supports the actual 16.11 source and still rejects its superuser identity; real
 16.15/18.6 integration checks pass. Private SSH transport is verified, but the
 reviewed same-major recovery image has unresolved security findings. Actual
-PostgreSQL backup/restore, role cutover and Redis migration remain open; see
+PostgreSQL isolated restore, scheduled backup/PITR, role cutover and Redis
+migration remain open; see
 [INFRASTRUCTURE_RECOVERY.md](INFRASTRUCTURE_RECOVERY.md) for the precise evidence.
 
 Historical sections below retain dated evidence. Next.js 16.3.4 is installed;

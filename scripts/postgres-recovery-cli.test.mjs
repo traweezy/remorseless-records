@@ -30,6 +30,7 @@ const withFixture = async (run) => {
   const directory = await mkdtemp(join(tmpdir(), "postgres-recovery-cli-"))
   const archive = join(directory, "input.dump")
   const manifestPath = join(directory, "input.manifest.json")
+  const receiptPath = join(directory, "input.receipt.json")
   const output = join(directory, "backups")
   const scratch = join(directory, "scratch")
   try {
@@ -47,6 +48,31 @@ const withFixture = async (run) => {
           .fingerprint,
       })
     )
+    const invariants = {
+      serverMajor: 18,
+      counts: {
+        constraints: 1,
+        indexes: 1,
+        routines: 0,
+        sequences: 0,
+        tables: 1,
+        views: 0,
+      },
+      tableRows: [{ schema: "public", table: "catalog", rows: 2 }],
+    }
+    await writeFile(
+      receiptPath,
+      JSON.stringify({
+        schemaVersion: 1,
+        archiveSha256: createHash("sha256")
+          .update(fixtureContent)
+          .digest("hex"),
+        sourceFingerprint: createPostgresClientEnvironment(sourceUrl, "fixture")
+          .fingerprint,
+        invariants,
+      }),
+      { mode: 0o600 }
+    )
     const executable = `#!${process.execPath}
 const fs=require('node:fs'),path=require('node:path');
 const dir=${JSON.stringify(directory)},args=process.argv.slice(2),tool=path.basename(process.argv[1]);
@@ -61,7 +87,9 @@ else if(tool==='pg_restore'&&args.includes('--list')) {
  if(config.replaceSource) fs.writeFileSync(${JSON.stringify(archive)},'changed-after-verification');
  console.log('verified fixture table of contents');
 } else if(tool==='psql') {
- const value=config.inventory??(fs.existsSync(path.join(dir,'restored.dump'))?(config.afterInventory??{tables:1,objects:3}):{tables:0,objects:0});
+ const sql=args.at(-1);
+ const after=fs.existsSync(path.join(dir,'restored.dump'));
+ const value=sql.includes("'tableRows'")?(config.afterInvariants??${JSON.stringify(invariants)}):sql.includes('server_version_num')?18:sql.includes('json_agg')?[{schema:'public',table:'catalog'}]:config.inventory??(after?(config.afterInventory??{tables:1,objects:3}):{tables:0,objects:0});
  console.log(typeof value==='string'?value:JSON.stringify(value));
 } else if(tool==='pg_restore') {
  if(config.failRestore) {console.error('private-fixture-password');process.exit(9)}
@@ -83,7 +111,13 @@ else process.exit(9);
         ...prefix,
         ...(kind === "backup"
           ? ["--output-dir", output]
-          : ["--archive", archive, "--manifest", manifestPath]),
+          : [
+              "--archive",
+              archive,
+              "--manifest",
+              manifestPath,
+              ...(extra.includes("--apply") ? ["--receipt", receiptPath] : []),
+            ]),
         ...extra,
       ],
       env: {
@@ -134,6 +168,7 @@ else process.exit(9);
       directory,
       archive,
       manifestPath,
+      receiptPath,
       output,
       scratch,
       command,
@@ -146,7 +181,11 @@ else process.exit(9);
   }
 }
 
-for (const script of ["postgres-logical-backup", "postgres-restore-drill"]) {
+for (const script of [
+  "postgres-logical-backup",
+  "postgres-restore-receipt",
+  "postgres-restore-drill",
+]) {
   test(`${script} help works without credentials`, () => {
     const result = spawnSync(
       process.execPath,
@@ -316,6 +355,137 @@ test("restore applies the verified snapshot even if the original path changes", 
     assert.equal(mutation.args.includes("--create"), false)
     assert.equal(mutation.args.at(-1), recorded[0].args.at(-1))
   }))
+
+test("receipt capture publishes private source invariants bound to the archive", () =>
+  withFixture(
+    async ({ command, configure, directory, manifestPath, calls }) => {
+      await configure({})
+      const output = join(directory, "captured.receipt.json")
+      const result = spawnSync(
+        process.execPath,
+        [
+          resolve("scripts/postgres-restore-receipt.mjs"),
+          "--manifest",
+          manifestPath,
+          "--output",
+          output,
+        ],
+        { env: command("backup").env, encoding: "utf8", timeout: 5000 }
+      )
+      assert.equal(result.status, 0, result.stderr)
+      const evidence = JSON.parse(result.stdout)
+      assert.equal(evidence.status, "receipt_captured")
+      assert.equal(evidence.tableCount, 1)
+      assert.equal((await stat(output)).mode & 0o777, 0o600)
+      const receipt = JSON.parse(await readFile(output, "utf8"))
+      assert.equal(receipt.archiveSha256, evidence.archiveSha256)
+      assert.deepEqual(receipt.invariants.tableRows, [
+        { schema: "public", table: "catalog", rows: 2 },
+      ])
+      assert.deepEqual(
+        (await calls()).map((call) => call.tool),
+        ["psql", "psql"]
+      )
+    }
+  ))
+
+test("receipt capture refuses a different source before connecting", () =>
+  withFixture(async ({ command, configure, directory, manifestPath }) => {
+    await configure({})
+    const output = join(directory, "wrong-source.receipt.json")
+    const input = command("backup", [], {
+      DATABASE_BACKUP_URL: targetUrl,
+    })
+    const result = spawnSync(
+      process.execPath,
+      [
+        resolve("scripts/postgres-restore-receipt.mjs"),
+        "--manifest",
+        manifestPath,
+        "--output",
+        output,
+      ],
+      { env: input.env, encoding: "utf8", timeout: 5000 }
+    )
+    assert.equal(result.status, 1)
+    assert.equal(JSON.parse(result.stderr).phase, "source_verification")
+    assert.equal(result.stdout, "")
+    await assert.rejects(access(join(directory, "calls.jsonl")), {
+      code: "ENOENT",
+    })
+    await assert.rejects(access(output), { code: "ENOENT" })
+  }))
+
+test("restore rejects altered receipt and same-major mismatch before apply", () =>
+  withFixture(async ({ invoke, receiptPath, calls, directory }) => {
+    const receipt = JSON.parse(await readFile(receiptPath, "utf8"))
+    await writeFile(
+      receiptPath,
+      JSON.stringify({ ...receipt, archiveSha256: "b".repeat(64) })
+    )
+    const altered = await invoke("restore", {}, ["--apply"])
+    assert.equal(altered.status, 1)
+    assert.equal(JSON.parse(altered.stderr).phase, "archive_verification")
+    await assert.rejects(access(join(directory, "calls.jsonl")), {
+      code: "ENOENT",
+    })
+    await writeFile(
+      receiptPath,
+      JSON.stringify({
+        ...receipt,
+        invariants: { ...receipt.invariants, serverMajor: 16 },
+      })
+    )
+    const wrongMajor = await invoke("restore", {}, ["--apply"])
+    assert.equal(wrongMajor.status, 1)
+    assert.equal(JSON.parse(wrongMajor.stderr).phase, "target_preflight")
+    assert.equal(
+      (await calls()).some(
+        (call) => call.tool === "pg_restore" && !call.args.includes("--list")
+      ),
+      false
+    )
+  }))
+
+for (const [name, afterInvariants] of [
+  [
+    "row drift",
+    {
+      serverMajor: 18,
+      counts: {
+        constraints: 1,
+        indexes: 1,
+        routines: 0,
+        sequences: 0,
+        tables: 1,
+        views: 0,
+      },
+      tableRows: [{ schema: "public", table: "catalog", rows: 3 }],
+    },
+  ],
+  [
+    "schema drift",
+    {
+      serverMajor: 18,
+      counts: {
+        constraints: 1,
+        indexes: 2,
+        routines: 0,
+        sequences: 0,
+        tables: 1,
+        views: 0,
+      },
+      tableRows: [{ schema: "public", table: "catalog", rows: 2 }],
+    },
+  ],
+])
+  test(`restore rejects ${name} without verified acceptance output`, () =>
+    withFixture(async ({ invoke }) => {
+      const result = await invoke("restore", { afterInvariants }, ["--apply"])
+      assert.equal(result.status, 1)
+      assert.equal(JSON.parse(result.stderr).phase, "target_verification")
+      assert.equal(result.stdout, "")
+    }))
 
 for (const inventory of [
   { tables: 0, objects: 1 },

@@ -204,6 +204,16 @@ is disabled. The database contains 171 tables, 735 indexes and eight sequences
 [live authority inventory](/tmp/remorseless-resume-20260914.oonsnior/postgres-readonly-authority-fixed.json)
 and [local version matrix](/tmp/remorseless-resume-20260914.oonsnior/role-pg-matrix.jsonl).
 
+On the accepted `7a9d1b9` release, a separate 03:07 UTC check ran the actual
+packaged query against that source. Its query hash matched committed SQL and
+all three profiles still rejected the administrator; backup also rejected its
+write privileges. The read-only transaction rolled back and its connection
+closed. Exact running-instance and source identities matched before/after.
+This proves deployment of the compatibility fix, not completion of role
+separation. The initial private helper refused retained removed-instance
+history before SSH; its corrected strict running-instance check and original
+refusal are recorded in the handoff and private evidence.
+
 ## PostgreSQL transport
 
 Railway private service traffic uses environment-isolated WireGuard networking
@@ -255,7 +265,7 @@ the archive with `pg_restore --format=custom --list`, applies mode `0600`, and w
 manifest containing byte length, SHA-256, tool version, timestamp, and a
 credential-free source fingerprint.
 
-Both PostgreSQL commands accept `--help` without credentials and reject unknown,
+All three PostgreSQL commands accept `--help` without credentials and reject unknown,
 duplicate, or incomplete arguments. One optional leading `--` forwarded by
 `pnpm run` is normalized before parsing; repeated or interior separators still
 fail. `DATABASE_RECOVERY_TIMEOUT_MS` bounds the
@@ -277,18 +287,35 @@ Reserve sufficient local archive space before starting a dump; a deadline is
 not a disk quota. A failure during the final two-file publication can leave an
 orphan archive without its manifest; do not treat that as verified evidence.
 
-A restore drill must target a new, empty, disposable database. First run the
-read-only verification:
+A restore drill must target a new, empty, disposable database on the source's
+PostgreSQL major version. Before releasing source quiescence, capture a private
+source receipt after the archive is created. The receipt binds the archive
+checksum and source fingerprint to every physical user table and its row count,
+six schema counts, and the source major. It cannot retroactively certify an
+earlier export or a source that changed between dump and receipt capture. See
+the [PostgreSQL restore acceptance guide](POSTGRES_RESTORE_ACCEPTANCE.md) for
+the complete sequence, isolation requirements, and failure handling:
+
+```bash
+DATABASE_BACKUP_URL='<backup-role-url>' \
+  pnpm run data:postgres:restore-receipt -- \
+  --manifest /absolute/path/postgres-....manifest.json \
+  --output /absolute/private/postgres.restore-receipt.json
+```
+
+First run the read-only target verification with the source receipt:
 
 ```bash
 DATABASE_RESTORE_URL='<disposable-target-url>' \
   pnpm run data:postgres:restore-drill -- \
   --archive /absolute/path/postgres-....dump \
-  --manifest /absolute/path/postgres-....manifest.json
+  --manifest /absolute/path/postgres-....manifest.json \
+  --receipt /absolute/private/postgres.restore-receipt.json
 ```
 
 The command verifies canonical regular files, a manifest no larger than 64 KiB,
-byte length, SHA-256, a distinct endpoint fingerprint, and the target inventory.
+byte length, SHA-256, a distinct endpoint fingerprint, receipt binding, source
+and target major-version parity, and the target inventory.
 It copies the archive into an exclusive private `0600` snapshot and uses only
 that verified copy for both archive listing and restore. Replacing the original
 path after verification cannot change the restored bytes. Dry-run therefore
@@ -324,9 +351,14 @@ DATABASE_RESTORE_CONFIRM='<dry-run-target-fingerprint>' \
   pnpm run data:postgres:restore-drill -- \
   --archive /absolute/path/postgres-....dump \
   --manifest /absolute/path/postgres-....manifest.json \
+  --receipt /absolute/private/postgres.restore-receipt.json \
   --apply
 ```
 
+Apply requires the receipt and confirms the complete physical-table list,
+per-table row counts, all six schema counts, and server major against its
+source invariants. A comparison failure reports `target_verification` without
+a success record, but the restore transaction may already have committed.
 Record archive checksum, start/end time, restored application-table count,
 Medusa migration status, representative read-only queries, and destruction of
 the disposable target. A successful command without an application smoke test
@@ -355,8 +387,11 @@ COPY failure, and actual lock-wait client cancellation with PID/file cleanup.
 After releasing its owned lock, it verifies the server session disappears;
 the default server does not poll for client disconnection during a query.
 The verified snapshot remains restorable after the original archive
-changes. Every database and temporary directory belongs to the test and is
-removed afterward.
+changes. The receipt-required path also has 45 focused tests and 12 real
+same-major PostgreSQL 16.15 roundtrip cases, including a row-count mismatch
+and populated-target rejection. These are local implementation results, not
+acceptance of an actual staging-data restore. Every database and temporary
+directory belongs to the test and is removed afterward.
 
 These tests require actual PostgreSQL 18.6 clients. Backend CI provisions exact
 PGDG `18.6-1.pgdg24.04+2` client/libpq packages privately on Ubuntu 24.04 after
@@ -367,7 +402,7 @@ the complete evidence boundary and cleanup requirements. This closes the
 synthetic CLI roundtrip gap. It does not establish a real provider backup,
 PITR, a production recovery duration, or live application acceptance.
 
-### Staging recovery readiness — September 15, 2026 UTC
+### Initial staging recovery assessment — September 15, 2026 UTC
 
 Fresh inventory found eight volume snapshots, newest December 15, 2025, no
 backup schedule, disabled PITR and `archive_mode=off`. The source remains
@@ -390,8 +425,8 @@ therefore do not account for the entire rejection. A private correction recipe
 is only a draft; it was not built or accepted. See the
 [target assessment](/tmp/remorseless-resume-20260914.oonsnior/postgres16-target-assessment.json).
 
-The reviewed 16.15 target was never started, and no PostgreSQL bootstrap backup
-or real-data restore occurred. The next evidence requires an accepted
+That rejected official 16.15 target was never started. At this assessment,
+no PostgreSQL bootstrap backup or real-data restore had occurred. Recovery required an accepted
 same-major target, a bounded private export with source/transport binding,
 and restore plus application
 acceptance in an isolated target with no provider credentials, network egress
@@ -401,6 +436,69 @@ Role cutover, scheduled backups, PITR and off-provider retention remain open;
 neither the catalog probe nor the synthetic recovery tests satisfy them.
 The linked `/tmp` receipts are private session evidence, not durable backup
 storage or committed recovery artifacts.
+
+### Accepted same-major target and actual backup — September 15, 2026 UTC
+
+The recovery-only PostgreSQL 16.15 image is
+`sha256:76db58e52e571729aa4ab51a5c597189e6f570086345c29b68b358067a6547e8`.
+It builds unmodified official source with checksum
+`c1575341fa7bd40f5274ea465b34390f4dc64cdd0770af327005caaeb9f6b7ed`,
+also matched against the signed PGDG source index. Its runtime retains 18
+complete, verified Debian package payloads, including libc/locales
+`2.41-12+deb13u4`, ICU, OpenSSL, compression libraries, the shell and the bounded
+loopback relay. All 1,075 package files matched their original SHA-256 values;
+all 372 ELF loader checks passed. Build inputs and toolchains are pinned.
+The repeated cached build returned the same image ID; a clean independent
+reproducibility build is not established.
+
+This deliberately reduced recovery image omits XML/XSLT, systemd, PAM, GSS,
+LDAP, additional procedural languages and contrib extensions. A fresh read-only
+source feature query found no objects requiring those omitted features. It is
+not a full replacement for the live service image. Synthetic runtime checks
+verified 16.15, UTF-8, libc `en_US.utf8`, collation version 2.41, ICU, PL/pgSQL,
+SCRAM, TLS and all three supported dump compression formats.
+
+The checksum-verified Trivy 0.70.0 scanner and September 15 01:12 UTC database
+reported zero HIGH, CRITICAL or UNKNOWN package findings; 28 LOW and 42 MEDIUM
+findings remain. Trivy does not establish coverage of the compiled PostgreSQL C
+code. A separate review of the official PostgreSQL 16 security table found all
+55 listed advisories fixed by 16.15. The private
+[root-reviewed target receipt](/tmp/remorseless-resume-20260914.oonsnior/pg16-minimal.rZtAhf/candidate-root-reviewed-receipt.json)
+binds source, packages, scanner/database, feature checks and runtime evidence.
+
+One actual bootstrap export ran from 03:39:14–03:39:39 UTC using verified native
+16.15 clients and the existing backup helper. The source was the unchanged
+16.11 deployment `50c57d73-0457-4bdc-8765-99fa22a6c084`, running instance
+`afc5f0ed-2fb6-4a17-94fb-d34129d0de1e`, on volume
+`1f219ae4-1659-4d3f-972f-8a8020441293`. The existing administrator supplied this
+bounded read-only bootstrap; it does not satisfy the least-privilege backup-role
+requirement. The archive is **1,852,247 bytes**, SHA-256
+`e9d492ea9049c7f23a7f4c2c029fbcddc069948b38f64afaf9e5bc9cb9e32c7a`.
+Private directory/file modes are 0700/0600. Strict native SSH host-key checking,
+PostgreSQL TLS and a separate source receipt bind the original source identity
+to the temporary mapped endpoint, target, tools, archive and manifest.
+
+The helper completed in 24.742 seconds; the complete guarded operation took
+47.107 seconds. Before/after checks matched 171 application tables, 735 indexes,
+eight sequences, three migration-table counts/digests, 518 Products (462 not
+soft-deleted), 646 variants and zero orphan variants. These database counts
+include draft/deleted records and are distinct from the published catalog API
+counts. The source retained eight connections of 100, zero waiting locks,
+zero recovery clients and no OOM events. Both application readiness contracts
+remained healthy on `7a9d1b9`. All owned client groups and source tunnels closed.
+Two earlier local preflights stopped before credentials, tunnel or dump work:
+one rejected a non-private evidence-file mode, and one used an incorrect
+Storefront health route. Both were corrected with the original refusals retained.
+
+The [source recovery receipt](/tmp/remorseless-resume-20260914.oonsnior/postgres-real-recovery/export-20260915-0338/source-recovery-receipt.json)
+has SHA-256 `c6c69c53556865d350ff4f7131b0337d45874908a2272badfef8cdeb5e32d3e9`.
+Its schema-1 archive manifest remains unchanged. Export acceptance alone does
+not establish restoration, production RTO, scheduled backups, PITR or off-site
+retention. Private `/tmp` archives are session evidence, not durable storage.
+The new restore receipt cannot be created after the fact for this earlier
+export. Its private archive is unavailable in the resumed session, so the
+isolated restore remains pending and needs a fresh source-bound archive plus a
+receipt captured while the source stays quiesced.
 
 ## Media backup and restore
 
@@ -590,6 +688,60 @@ image-default compatibility or rollback after subsequent live writes. The
 configured/running image mismatch, missing immutable live-image identity,
 affected Redis version, unbounded maxmemory and disabled RDB schedule remain
 open. Preserve the untouched source data before any controlled image cutover.
+
+### Offline multipart-AOF verification
+
+Use `pnpm run data:redis:aof:verify -- --help` for a bounded check of an
+**offline, operator-owned copy** of the Redis multipart-AOF directory. The
+command requires an absolute private directory owned by the running user, mode
+0700, containing only `appendonly.aof.manifest` and its listed regular 0600
+BASE, INCR and optional HISTORY files. It rejects symlinks, hard links, extra
+files, malformed or duplicate manifest entries, noncanonical names, missing
+listed files, an absent active BASE/INCR file and more than 32 AOF files. A
+valid set can contain only a BASE or only INCR files. HISTORY files are
+inventoried and hashed, but Redis's checker validates only active BASE/INCR
+content; the report exposes both counts. It accepts the default
+`appendonly.aof` name only; a
+different Redis `appendfilename` needs a separate review. Example:
+
+```bash
+REDIS_AOF_CHECKER_SHA256='<independently-reviewed-checker-sha256>' \
+REDIS_AOF_MAX_BYTES=536870912 REDIS_AOF_TIMEOUT_MS=120000 \
+  pnpm run data:redis:aof:verify -- \
+  --archive-dir /absolute/private/offline-appendonlydir \
+  --checker /absolute/trusted/redis-check-aof
+```
+
+The checker SHA-256 must come from independently reviewed binary provenance,
+not from hashing an untrusted candidate at run time. It is verified before and
+after execution; version output alone is not identity evidence. The verifier
+copies at most 512 MiB by default to a new private temporary
+directory, hashes every file, invokes the trusted Redis 8.10.1
+`redis-check-aof` there **without `--fix`**, then checks the snapshot hashes
+again and removes it. An explicit `REDIS_AOF_MAX_BYTES` can raise the total
+budget to 10 GiB; `REDIS_AOF_TIMEOUT_MS` is an overall 100–600,000 ms deadline.
+It bounds the checker manifest path to 240 bytes before invocation, uses bounded
+64 KiB streaming buffers and suppresses raw checker diagnostics,
+which can include private paths and key data. Successful JSON reports only
+version/checker hash, active/history file counts, byte count, SHA-256
+manifest/set fingerprints, duration and
+`replayProven: false`; failures use fixed phases and no source path or key names.
+The source archive is read-only to this command. Redis's checker opens files
+read/write even in check mode, which is why it only sees the owned snapshot.
+
+This verifier proves structural and checker acceptance of the copied set, not
+that an active AOF directory was copied consistently. Redis warns that copying
+multipart files during an AOF rewrite can produce an invalid backup; use a
+reviewed quiesce or Redis 8.10 `BACKUP START`/`BACKUP SEAL` boundary before
+creating the offline copy. See the [Redis persistence
+guide](https://redis.io/docs/latest/operate/oss_and_stack/management/persistence/).
+The disposable integration gate creates a synthetic BASE plus INCR in the
+digest-pinned, scanned Redis 8.10.1 image and checks it with that image's real
+checker; it also checks BASE-only and HISTORY-inventory variants. The gate
+binds the checker wrapper to the scanned image ID. A
+current staging AOF capture, actual server startup replay, source/target
+identity binding, queue reconciliation and timed operational recovery remain
+unproven. Do not count this syntax verification as a completed restore drill.
 
 ### Recovery policy
 

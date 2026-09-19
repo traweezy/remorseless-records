@@ -1,8 +1,8 @@
 # Next-session handoff
 
-Last updated: 2026-09-14 (America/New_York)
+Last updated: 2026-09-19 (America/New_York)
 
-## Resumed work — September 14
+## Resumed work — September 14 onward
 
 The user resumed implementation, requested substantially larger cohesive batches
 per staging push, and authorized autonomous execution without further permission
@@ -10,6 +10,99 @@ prompts. Keep normal local gates, exact-revision CI, deployment monitoring, and
 reviewed scope. Do not invent missing production, legal, tax, or provider facts.
 Use [PROJECT_MAP.md](PROJECT_MAP.md) for the indexed code/documentation entrypoints.
 Preserve unrelated `Default/` unread, untouched, and unstaged.
+
+### September 19 batch — local work, not release acceptance
+
+At the start of the September 19 session, local `staging` HEAD was
+`33d2823ab03ef044aa017ba78878017395ab13d6`, one commit ahead of
+`origin/staging` and unpushed. The latest accepted deployment
+remains `7a9d1b9` below. Recovery documentation records a
+scanned, recovery-only PostgreSQL 16.15 target and one verified export of the
+live 16.11 database. The private `/tmp` archive from that export is not
+available in this session. Preserve its receipt as historical evidence, but
+do not treat it as a restorable input or claim an isolated restore. Recovery
+requires a fresh, source-bound archive and a guarded restore into an isolated
+same-major target before the drill can be accepted. The new
+`data:postgres:restore-receipt` command captures complete physical-table row
+counts and six schema counts while the source remains quiesced. Apply now
+requires that receipt and compares the restored target to it. The local tooling
+passed 45 focused tests and 12 real PostgreSQL 16.15 roundtrip cases, including
+row-count mismatch and populated-target rejection. See the
+[restore acceptance guide](POSTGRES_RESTORE_ACCEPTANCE.md). This is local
+tooling evidence; no live-data restore or staging release acceptance occurred.
+
+Actual Redis multipart-AOF export/replay and queue reconciliation remain
+pending. The accepted Redis RDB load proves only the narrower boundary below.
+Measure CI's critical path before changing the release matrix. Group compatible
+hardening, focused regressions, policy checks, and documentation into one
+staging push after local gates pass; then complete exact-revision CI, deployment,
+and live acceptance. No result from this resumed batch is accepted yet.
+
+### Accepted recovery release: `7a9d1b9`
+
+Commit `7a9d1b9942f1a48fb03f4ebfa32985ee71425100` ships the PostgreSQL 16
+large-object authority fix, its real version-matrix regressions, the narrow
+browser hydration-readiness correction and the actual Redis RDB recovery
+record. All eight files were reviewed together; normal commit/push hooks ran.
+Root CI `34922312807`, Backend `34922312763`, Storefront `34922312752` and
+Runtime Images `34922312794` passed on this exact revision. Both Railway
+applications moved through the expected CI hold and deployed automatically.
+
+| Service | Successful source deployment | Provider-reported deployment image digest |
+| --- | --- | --- |
+| Backend | `31efc612-e75f-457e-8235-8fb0014c0808` | `sha256:c21253d5604b718e5189068832e5b3a3a2542c8764e09ac499ac0e878b541e10` |
+| Storefront | `2ccb3c1c-577e-411c-8468-ca1a72bd6376` | `sha256:42e054e3a0de9940de873dd2ab4ce0a6200292cc94a950668fe497e60e0cae67` |
+
+Backend CI passed 280 unit suites/2,199 tests and 129 integration cases:
+39 role-audit, four infrastructure, 41 payment-boundary, 28 PostgreSQL recovery,
+eight Redis, three API-contract and six session-rotation cases. The production
+build and Admin budget passed. Storefront passed its overlapping 956 baseline
+and 362 transactional tests, 81 responsive cases with two expected skips,
+20 launch cases, 48 cross-engine cases, four pa11y routes with zero issues,
+and all assertions across 18 Lighthouse runs. The exact CI runtime artifacts
+independently verified with zero fixed HIGH/CRITICAL findings under the newer
+September 15 01:12 UTC scanner database. Existing 52 HIGH/four CRITICAL unfixed
+findings remain; those CI images are distinct from the source-built deployments.
+
+Live checks verified both revisions, Node 26.5.0, installed PCRE2
+`10.46-1~deb13u2`, health/readiness, four Backend dependencies, seven capabilities
+and healthy operations. Authenticated bounded reads returned 461 Products,
+442 Discography records, three shelves and 25 memberships; handles remained a
+one-page sample. The ordinary 03:08 UTC heartbeat completed on this revision
+with zero failures, its lock released and no incident. Final health checks
+passed at 03:09 UTC September 15 (September 14 locally).
+
+The actual packaged role-audit query matched committed SQL and evaluated on
+live PostgreSQL 16.11. It correctly rejected the current administrator for
+runtime, migration and backup profiles. Read-only transaction, rollback and
+connection closure were verified. The first private acceptance helper stopped
+before SSH because provider metadata included a removed instance alongside the
+sole running one. The corrected guard allows only removed history plus exactly
+one running instance and retains every source/scope and before/after identity
+check. The original refusal remains in private evidence; no audit was skipped
+or privilege policy weakened.
+
+The deployed browser matrix passed its first attempt: 75 passed, eight existing
+skips and zero retries. The additional headed drawer test passed and its real
+desktop screenshot was inspected, including the complete filter action and
+restored focus. All 84 request-boundary attachments passed; 60 non-GET requests
+were fulfilled locally. Four original concurrent health GETs returned 200 with
+four matching, distinct completion spans through the indexed trace query.
+The browser window was 03:05:42.169–03:07:38.059 UTC. Subsequent bounded logs
+contained 329 general records, seven accepted closed-stream groups matching
+digest `2991309508`, and 14 paired fixture Product 404s. No unexpected error,
+structured runtime 5xx or Trusted Types record appeared. Samples were
+unsaturated; edge HTTP logs remained unavailable. Individual cancellation-to-
+browser-request attribution is not established.
+
+Private acceptance is bound in
+`/tmp/remorseless-resume-20260914.oonsnior/recovery-release-accepted.json`, with
+browser evidence under `/tmp/remorseless-deployed-recovery-20260915.12cDt9`
+and CI/log evidence under `/tmp/remorseless-7a9d1b9-release-usot4f2v`.
+The next grouped work addresses actual Redis multipart-AOF recovery, an
+isolated same-major PostgreSQL restore, and measured CI critical-path latency.
+Keep all release/security gates and source-data protections in place. The
+following accepted releases and preparation notes remain historical evidence.
 
 ### Accepted staging release: `aac22a7`
 

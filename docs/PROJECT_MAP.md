@@ -1,7 +1,7 @@
 # Project map and continuation guide
 
-Last indexed: September 14, 2026 (America/New_York). Latest application release
-acceptance completed September 15, 2026, at approximately 02:05 UTC.
+Last indexed: September 19, 2026 (America/New_York). Latest application release
+acceptance completed September 15, 2026, at approximately 03:09 UTC.
 
 ## Start here
 
@@ -62,6 +62,7 @@ user data and is excluded from project work.
 | [Disposable integration](DISPOSABLE_INTEGRATION.md) | Isolated PostgreSQL/Redis fixtures, scanned image identity, and cleanup |
 | [Release operations](RELEASE_OPERATIONS.md) | Branch authority, grouped staging releases, CI hold, and rollback |
 | [Infrastructure recovery](INFRASTRUCTURE_RECOVERY.md) | Data roles, networking, backups, restores, support images, and production topology |
+| [PostgreSQL restore acceptance](POSTGRES_RESTORE_ACCEPTANCE.md) | Receipt-required same-major logical restore sequence and limits |
 | [Observability operations](OBSERVABILITY_OPERATIONS.md) | Health contracts, service objectives, incident handling, and privacy-safe evidence |
 | [API Problem contract](API_PROBLEM_CONTRACT.md) and [OpenAPI schema](openapi/api-problems.yaml) | Shared HTTP error format and generated contract checks |
 | [Media security](MEDIA_SECURITY.md) | Upload validation, managed assets, quarantine, and the disabled physical-purge boundary |
@@ -99,7 +100,7 @@ contracts before applying generic framework examples from those files.
 ## Verified continuation boundary
 
 Both Railway applications now run accepted revision
-`aac22a7f1fd5c0f8a3bb4cb937535eeae612737c`. GitHub repository access and pinned
+`7a9d1b9942f1a48fb03f4ebfa32985ee71425100`. GitHub repository access and pinned
 Railway CLI access were verified. Railway project `store` has one environment,
 `staging`, containing Backend, Storefront, Postgres, Redis, Bucket (MinIO),
 Console, and MeiliSearch. All seven active deployments report `SUCCESS`.
@@ -115,11 +116,25 @@ The new dependency findings and PCRE2 fixes passed current exact-revision
 Root, Backend, Storefront and Runtime Images workflows. Live package identity,
 corrected deployed browser and concurrent-trace acceptance also passed; the
 handoff retains all original failures, corrections and bounded-log limitations.
+The deployed PostgreSQL auditor now evaluates on the actual 16.11 source and
+correctly rejects the existing administrator identity.
+
+At the start of the September 19 session, local `staging` HEAD was
+`33d2823ab03ef044aa017ba78878017395ab13d6`, one commit ahead of
+`origin/staging` and unpushed. The recovery notes record a scanned PostgreSQL
+16.15 target and a real, bounded 16.11 export. Its private `/tmp` archive is
+unavailable in this session. A new `data:postgres:restore-receipt` command and
+receipt-required restore verification passed 45 focused tests and 12 real
+same-major PostgreSQL 16.15 roundtrip cases locally. The earlier export cannot
+gain a receipt retroactively; an isolated staging-data restore still requires
+a fresh source-bound archive and receipt captured while the source is quiesced.
+Actual Redis multipart-AOF replay and queue reconciliation are also pending.
+These are local work items, not accepted deployment evidence.
 
 Production remains absent. Redis's configured/running image mismatch and
 documented live-version risk remain open. PostgreSQL retains a public TCP
 proxy; MinIO, Console, and MeiliSearch retain public domains. Actual Redis RDB
-export/isolated loading now pass; AOF/queue and PostgreSQL recovery, role cutover,
+export/isolated loading now pass; AOF/queue and PostgreSQL restore, role cutover,
 support-image migration, network changes, backup schedules,
 registry publication/source cutover, and production provisioning remain open.
 The user's autonomous-work authorization supersedes historical permission-only

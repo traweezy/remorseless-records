@@ -5,9 +5,14 @@ import { join } from "node:path"
 import { normalizeScriptArguments } from "./lib/cli-arguments.mjs"
 import { createPostgresClientEnvironment } from "./lib/postgres-logical-backup.mjs"
 import {
+  buildRestoreInvariantsSql,
+  parseRestoreInvariants,
   parseRestoreInventory,
+  parseRestoreTableList,
   readBackupManifest,
+  readRestoreReceipt,
   restoreArchiveLimit,
+  RESTORE_TABLE_LIST_SQL,
   RESTORE_TARGET_PREFLIGHT_SQL,
   snapshotBackupArchive,
 } from "./lib/postgres-restore.mjs"
@@ -19,9 +24,11 @@ import {
   runRecoveryCommand,
 } from "./lib/recovery-process.mjs"
 
-const help = `Usage: postgres-restore-drill --archive <absolute-path> --manifest <absolute-path> [--apply]
+const help = `Usage: postgres-restore-drill --archive <absolute-path> --manifest <absolute-path> [--receipt <absolute-path>] [--apply]
 Default: read-only database preflight; creates and removes a private local archive snapshot.
-Requires DATABASE_RESTORE_URL. Apply also requires DATABASE_RESTORE_CONFIRM from dry-run.
+Requires DATABASE_RESTORE_URL. Apply also requires --receipt and DATABASE_RESTORE_CONFIRM from dry-run.
+The receipt binds archive/source identity, same-major server, schema counts and
+exact row counts for every physical user table. Capture it on a quiesced source.
 Only use a trusted archive and an isolated, empty disposable target with no other writers.
 Checksums establish integrity, not archive trust or endpoint-alias identity.
 DATABASE_RECOVERY_TIMEOUT_MS: overall deadline (default 30 minutes, maximum 4 hours).
@@ -45,11 +52,22 @@ const main = async () => {
   let evidence
   const startedAt = Date.now()
   try {
+    const receiptIndex = inputArguments.indexOf("--receipt")
+    let receiptPath
+    let restoreArguments = inputArguments
+    if (receiptIndex !== -1) {
+      receiptPath = inputArguments[receiptIndex + 1]
+      assert.ok(receiptPath && !receiptPath.startsWith("--"))
+      restoreArguments = inputArguments.filter(
+        (_, index) => index !== receiptIndex && index !== receiptIndex + 1
+      )
+    }
     const args = parseRecoveryArguments(
-      inputArguments,
+      restoreArguments,
       ["--archive", "--manifest"],
       true
     )
+    if (args.apply) assert.ok(receiptPath, "Apply requires a source receipt.")
     scope = createRecoveryScope(
       recoveryTimeoutMs(process.env.DATABASE_RECOVERY_TIMEOUT_MS)
     )
@@ -71,6 +89,13 @@ const main = async () => {
     const manifest = await readBackupManifest(args["--manifest"], scope.signal)
     assert.ok(manifest.bytes <= maxBytes)
     assert.notEqual(connection.fingerprint, manifest.sourceFingerprint)
+    const receipt = receiptPath
+      ? await readRestoreReceipt(receiptPath, scope.signal)
+      : undefined
+    if (receipt) {
+      assert.equal(receipt.archiveSha256, manifest.sha256)
+      assert.equal(receipt.sourceFingerprint, manifest.sourceFingerprint)
+    }
     directory = await mkdtemp(join(tmpdir(), "remorseless-restore-"))
     const snapshot = join(directory, "verified.dump")
     await snapshotBackupArchive(
@@ -96,6 +121,20 @@ const main = async () => {
     const before = await inventory()
     assert.equal(before.objects, 0)
     assert.equal(before.tables, 0)
+    if (receipt) {
+      const major = Number(
+        await run("psql", [
+          "--no-psqlrc",
+          "--no-password",
+          "--quiet",
+          "--set=ON_ERROR_STOP=1",
+          "--tuples-only",
+          "--no-align",
+          "--command=SELECT pg_catalog.current_setting('server_version_num')::integer / 10000;",
+        ])
+      )
+      assert.equal(major, receipt.invariants.serverMajor)
+    }
     if (!args.apply) {
       evidence = {
         confirmation: connection.fingerprint,
@@ -119,11 +158,35 @@ const main = async () => {
       phase = "target_verification"
       const after = await inventory()
       assert.ok(after.tables > 0)
+      const tables = parseRestoreTableList(
+        await run("psql", [
+          "--no-psqlrc",
+          "--no-password",
+          "--quiet",
+          "--set=ON_ERROR_STOP=1",
+          "--tuples-only",
+          "--no-align",
+          `--command=${RESTORE_TABLE_LIST_SQL}`,
+        ])
+      )
+      const invariants = parseRestoreInvariants(
+        await run("psql", [
+          "--no-psqlrc",
+          "--no-password",
+          "--quiet",
+          "--set=ON_ERROR_STOP=1",
+          "--tuples-only",
+          "--no-align",
+          `--command=${buildRestoreInvariantsSql(tables)}`,
+        ])
+      )
+      assert.deepEqual(invariants, receipt.invariants)
       evidence = {
         sourceChecksum: manifest.sha256,
         status: "restore_verified",
         targetTables: after.tables,
         targetObjects: after.objects,
+        verifiedRows: invariants.tableRows.length,
       }
     }
   } catch {

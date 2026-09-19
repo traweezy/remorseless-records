@@ -24,6 +24,9 @@ import {
 } from "./lib/postgres-restore.mjs"
 
 const url = new URL(process.env.DATABASE_URL ?? "postgresql://invalid")
+const expectedVersion = process.env.POSTGRES_RECOVERY_TEST_VERSION ?? "18.6"
+if (!["16.15", "18.6"].includes(expectedVersion))
+  throw new Error("Unsupported disposable PostgreSQL recovery test version.")
 if (
   process.env.INTEGRATION_TESTS_ENABLED !== "1" ||
   !["postgres:", "postgresql:"].includes(url.protocol) ||
@@ -95,7 +98,7 @@ const waitUntil = async (predicate) => {
   assert.fail("Disposable recovery condition exceeded five seconds.")
 }
 
-test("real PostgreSQL 18.6 backup, restore, rejection, rollback and cancellation", {
+test(`real PostgreSQL ${expectedVersion} backup, restore, rejection, rollback and cancellation`, {
   timeout: 90_000,
 }, async (t) => {
   const directory = await mkdtemp(join(tmpdir(), "rr-postgres-roundtrip-"))
@@ -112,7 +115,7 @@ test("real PostgreSQL 18.6 backup, restore, rejection, rollback and cancellation
       assert.match(
         result.stdout.trim(),
         new RegExp(
-          `^${tool} \\(PostgreSQL\\) 18\\.6(?: \\(Ubuntu 18\\.6-1\\.pgdg24\\.04\\+2\\))?$`,
+          `^${tool} \\(PostgreSQL\\) ${expectedVersion.replace(".", "\\.")}(?: \\(Ubuntu ${expectedVersion.replace(".", "\\.")}-1\\.pgdg24\\.04\\+2\\))?$`,
           "u"
         )
       )
@@ -121,7 +124,7 @@ test("real PostgreSQL 18.6 backup, restore, rejection, rollback and cancellation
     assert.equal(
       (await administrator.query("SHOW server_version_num")).rows[0]
         .server_version_num,
-      "180006"
+      `${Number(expectedVersion.split(".")[0]) * 10000 + Number(expectedVersion.split(".")[1])}`
     )
     const database = async () => {
       const name = `rr_roundtrip_${randomUUID().replaceAll("-", "")}`
@@ -190,6 +193,20 @@ test("real PostgreSQL 18.6 backup, restore, rejection, rollback and cancellation
     }
     const backup = (output, overrides) =>
       invoke("logical-backup", ["--output-dir", output], overrides)
+    const captureReceipt = async (archive, overrides = {}) => {
+      const receiptPath = join(
+        dirname(archive.manifestPath),
+        "restore.receipt.json"
+      )
+      const evidence = await invoke(
+        "restore-receipt",
+        ["--manifest", archive.manifestPath, "--output", receiptPath],
+        overrides
+      )
+      assert.equal(evidence.status, "receipt_captured")
+      assert.equal((await stat(receiptPath)).mode & 0o777, 0o600)
+      return { ...archive, receiptPath }
+    }
     const restore = (archive, extra = [], overrides = {}, phase) =>
       invoke(
         "restore-drill",
@@ -198,6 +215,7 @@ test("real PostgreSQL 18.6 backup, restore, rejection, rollback and cancellation
           archive.archivePath,
           "--manifest",
           archive.manifestPath,
+          ...(archive.receiptPath ? ["--receipt", archive.receiptPath] : []),
           ...extra,
         ],
         overrides,
@@ -275,10 +293,27 @@ test("real PostgreSQL 18.6 backup, restore, rejection, rollback and cancellation
         assert.equal(manifest.sha256, archive.sha256)
         assert.equal(manifest.bytes, archive.bytes)
         assert.equal(manifest.sourceFingerprint, source.fingerprint)
-        assert.match(manifest.pgDumpVersion, /^pg_dump \(PostgreSQL\) 18\.6/u)
+        assert.match(
+          manifest.pgDumpVersion,
+          new RegExp(
+            `^pg_dump \\(PostgreSQL\\) ${expectedVersion.replace(".", "\\.")}`,
+            "u"
+          )
+        )
       }
     )
     assert.ok(archive)
+    archive = await captureReceipt(archive)
+    const captured = JSON.parse(await readFile(archive.receiptPath, "utf8"))
+    assert.equal(captured.archiveSha256, archive.sha256)
+    assert.equal(
+      captured.invariants.serverMajor,
+      Number(expectedVersion.split(".")[0])
+    )
+    assert.deepEqual(captured.invariants.tableRows, [
+      { schema: "app", table: "artists", rows: 1 },
+      { schema: "app", table: "releases", rows: 2 },
+    ])
     await t.test(
       "dry-run provides target confirmation and leaves every target object absent",
       async () => {
@@ -323,6 +358,7 @@ test("real PostgreSQL 18.6 backup, restore, rejection, rollback and cancellation
         const pair = {
           archivePath: changed,
           manifestPath: archive.manifestPath,
+          receiptPath: archive.receiptPath,
         }
         await writeFile(
           changed,
@@ -350,12 +386,40 @@ test("real PostgreSQL 18.6 backup, restore, rejection, rollback and cancellation
           { mode: 0o600 }
         )
         await restore(
-          { archivePath: changed, manifestPath: changedManifest },
+          {
+            archivePath: changed,
+            manifestPath: changedManifest,
+            receiptPath: archive.receiptPath,
+          },
           ["--apply"],
           {},
           "archive_verification"
         )
         await empty(target.client)
+      }
+    )
+    await t.test(
+      "rejects a real restored row-count mismatch on an owned disposable target",
+      async () => {
+        const mismatchTarget = await database()
+        const changedReceipt = join(directory, "mismatched.receipt.json")
+        const receipt = JSON.parse(await readFile(archive.receiptPath, "utf8"))
+        receipt.invariants.tableRows[1].rows += 1
+        await writeFile(changedReceipt, JSON.stringify(receipt), {
+          mode: 0o600,
+        })
+        await restore(
+          { ...archive, receiptPath: changedReceipt },
+          ["--apply"],
+          {
+            DATABASE_RESTORE_URL: mismatchTarget.url,
+            DATABASE_RESTORE_CONFIRM: mismatchTarget.fingerprint,
+          },
+          "target_verification"
+        )
+        // A committed restore with failed acceptance stays isolated for inspection.
+        assert.deepEqual(await rows(mismatchTarget.client), originalRows)
+        assert.deepEqual(await rows(source.client), originalRows)
       }
     )
     await t.test(
@@ -375,7 +439,11 @@ test("real PostgreSQL 18.6 backup, restore, rejection, rollback and cancellation
         await writeFile(input, "changed after snapshot verification")
         assert.equal((await stat(snapshot)).mode & 0o777, 0o600)
         const result = await restore(
-          { archivePath: snapshot, manifestPath: archive.manifestPath },
+          {
+            archivePath: snapshot,
+            manifestPath: archive.manifestPath,
+            receiptPath: archive.receiptPath,
+          },
           ["--apply"]
         )
         assert.equal(result.status, "restore_verified")
@@ -462,8 +530,11 @@ test("real PostgreSQL 18.6 backup, restore, rejection, rollback and cancellation
           join(directory, "rollback-backup"),
           { DATABASE_BACKUP_URL: failing.url }
         )
+        const failureReceipt = await captureReceipt(failureArchive, {
+          DATABASE_BACKUP_URL: failing.url,
+        })
         const failure = await restore(
-          failureArchive,
+          failureReceipt,
           ["--apply"],
           {
             DATABASE_RESTORE_URL: rollbackTarget.url,

@@ -319,7 +319,7 @@ export const verifyDisposableIntegrationBoundary = async () => {
   )
   assert.equal(
     packageManifest.scripts?.["qa:disposable-integration:services"],
-    "pnpm --filter backend run test:integration && pnpm run qa:postgres-recovery:integration && pnpm run qa:redis-capacity:integration && pnpm run qa:api-contract && node --test scripts/medusa-session-rotation.integration.test.mjs"
+    "pnpm --filter backend run test:integration && pnpm run qa:postgres-recovery:integration && pnpm run qa:redis-capacity:integration && node --test scripts/redis-aof-recovery.integration.test.mjs && pnpm run qa:api-contract && node --test scripts/medusa-session-rotation.integration.test.mjs"
   )
   assert.equal(
     packageManifest.scripts?.["qa:redis-capacity:integration"],
