@@ -1,7 +1,7 @@
 # Project map and continuation guide
 
-Last indexed: September 19, 2026 (America/New_York). Latest application release
-acceptance completed September 15, 2026, at approximately 03:09 UTC.
+Last indexed: September 19, 2026 (America/New_York). Latest application staging
+release acceptance completed September 19, 2026.
 
 ## Start here
 
@@ -100,9 +100,16 @@ contracts before applying generic framework examples from those files.
 ## Verified continuation boundary
 
 Both Railway applications now run accepted revision
-`7a9d1b9942f1a48fb03f4ebfa32985ee71425100`. GitHub repository access and pinned
-Railway CLI access were verified. Railway project `store` has one environment,
-`staging`, containing Backend, Storefront, Postgres, Redis, Bucket (MinIO),
+`f635cec6e8443efa87e50901befc353ebd752fa8`. Root, Backend, Storefront,
+and Runtime Images CI passed on that exact SHA; Backend deployment
+`76eab912-2faf-4e12-bbd6-802924d643d3` and Storefront deployment
+`356e9ed7-f952-41c6-9791-7e5789db09da` reached `SUCCESS`. Both health
+pairs, Backend operations/scheduler/retention, manual monitors, 75 deployed
+browser cases with eight expected skips, and 16/16 cross-browser cases passed.
+Bounded logs showed no new signature or HTTP 5xx. The prior accepted revision
+was `7a9d1b9942f1a48fb03f4ebfa32985ee71425100`. GitHub repository access
+and pinned Railway CLI access were verified. Railway project `store` has one
+environment, `staging`, containing Backend, Storefront, Postgres, Redis, Bucket (MinIO),
 Console, and MeiliSearch. All seven active deployments report `SUCCESS`.
 
 Both applications' liveness/readiness returned 200 with that revision. Backend
@@ -112,7 +119,7 @@ shelves, and 25 shelf memberships; only aggregate counts were retained. Four
 data volumes were ready with no pending deletion. These checks establish
 bounded live access and health, not a backup/restore or complete data audit.
 
-The new dependency findings and PCRE2 fixes passed current exact-revision
+The earlier dependency findings and PCRE2 fixes passed their exact-revision
 Root, Backend, Storefront and Runtime Images workflows. Live package identity,
 corrected deployed browser and concurrent-trace acceptance also passed; the
 handoff retains all original failures, corrections and bounded-log limitations.
@@ -129,7 +136,7 @@ same-major PostgreSQL 16.15 roundtrip cases locally. The earlier export cannot
 gain a receipt retroactively; an isolated staging-data restore still requires
 a fresh source-bound archive and receipt captured while the source is quiesced.
 Actual Redis multipart-AOF replay and queue reconciliation are also pending.
-These are local work items, not accepted deployment evidence.
+The recovery tooling is accepted on staging; those live-data drills are not.
 
 Production remains absent. Redis's configured/running image mismatch and
 documented live-version risk remain open. PostgreSQL retains a public TCP

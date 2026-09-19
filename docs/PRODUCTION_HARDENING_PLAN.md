@@ -7,10 +7,24 @@ supersedes the local `tmp/HARDENING_NEXT_STEPS.md` working note. Detailed
 operating procedures remain in the linked runbooks and ADRs; this document
 tracks what is still required before production traffic is approved.
 
-## Active continuation — September 14 onward
+## Active continuation — September 19 onward
 
-The resumed batch is local and unaccepted. At the start of the September 19
-session, `staging` HEAD `33d2823ab03ef044aa017ba78878017395ab13d6` was
+The grouped recovery-evidence release is accepted on staging at
+`f635cec6e8443efa87e50901befc353ebd752fa8`. Root, Backend, Storefront,
+and Runtime Images CI passed on the exact revision (runs `35464924483`,
+`35464924485`, `35464924472`, and `35464924837`); the measured CI critical
+path fell from 14m09s to 10m33s. Railway Backend deployment
+`76eab912-2faf-4e12-bbd6-802924d643d3` and Storefront deployment
+`356e9ed7-f952-41c6-9791-7e5789db09da` reached `SUCCESS`. Both health
+pairs and Backend operations, scheduler, and retention returned healthy; manual
+operations and scheduler monitor runs `35465867127` and `35465869762` passed
+with 461 Products, 442 Discography records, three shelves, and 25 memberships.
+Deployed browsers passed 75 cases with eight expected skips and 16/16
+cross-browser cases; bounded logs showed no new signature or HTTP 5xx. See
+the [handoff](NEXT_SESSION_HANDOFF.md) for the exact acceptance boundary.
+
+At the start of the September 19 session, `staging` HEAD
+`33d2823ab03ef044aa017ba78878017395ab13d6` was
 one commit ahead of `origin/staging` and unpushed. An existing recovery
 record describes a scanned, recovery-only PostgreSQL 16.15 target and an actual
 bounded export from the live 16.11 source. Its private `/tmp` archive is not
@@ -22,19 +36,17 @@ captured after export while the source remains quiesced, and restore apply
 checks complete physical-table row counts, six schema counts, and server-major
 parity. Forty-five focused tests and 12 real PostgreSQL 16.15 roundtrip cases
 passed locally. See the [restore acceptance guide](POSTGRES_RESTORE_ACCEPTANCE.md).
-This does not establish a live-data restore or a staging release.
+This does not establish a live-data restore.
 Actual Redis multipart-AOF replay and queue reconciliation also remain open;
-the earlier RDB load does not close them. Preserve the accepted `7a9d1b9`
-release boundary and run the full grouped local and exact-revision acceptance
-before marking any new work complete.
+the earlier RDB load and this release's offline AOF verifier do not close them.
 
 The user resumed the September 8 paused work and requested larger cohesive
 releases, with local validation, one grouped staging push, and exact-revision
 CI/deployment monitoring. [NEXT_SESSION_HANDOFF.md](NEXT_SESSION_HANDOFF.md)
-records the current candidate and [PROJECT_MAP.md](PROJECT_MAP.md) indexes the
-code and documentation. The current recovery release is accepted at
-`7a9d1b9942f1a48fb03f4ebfa32985ee71425100`: all four exact-revision CI workflows,
-both Railway source deployments and deployed acceptance passed. Live SSH
+records the accepted release and [PROJECT_MAP.md](PROJECT_MAP.md) indexes the
+code and documentation. The preceding recovery release was accepted at
+`7a9d1b9942f1a48fb03f4ebfa32985ee71425100`: all four exact-revision CI
+workflows, both Railway source deployments, and deployed acceptance passed. Live SSH
 confirms the fixed Debian 13 PCRE2 package in both application containers.
 The packaged PostgreSQL auditor now evaluates on live 16.11 and correctly
 rejects its administrator identity. The release also carries the validated

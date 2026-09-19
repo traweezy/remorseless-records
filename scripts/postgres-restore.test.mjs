@@ -13,6 +13,7 @@ import { join } from "node:path"
 import test from "node:test"
 import {
   buildRestoreInvariantsSql,
+  buildRestoreTableListSql,
   parseRestoreInvariants,
   parseRestoreInventory,
   parseRestoreReceipt,
@@ -94,6 +95,21 @@ test("table list and generated read-only SQL reject unsafe identifiers", () => {
   const sql = buildRestoreInvariantsSql(tables)
   assert.match(sql, /BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY/u)
   assert.match(sql, /SELECT count\(\*\) FROM "app"\."artists"/u)
+  const snapshot = "00000003-0000001B-1"
+  for (const statement of [
+    buildRestoreTableListSql(snapshot),
+    buildRestoreInvariantsSql(tables, snapshot),
+  ]) {
+    assert.match(
+      statement,
+      /^BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY;\nSET TRANSACTION SNAPSHOT '00000003-0000001B-1';/u
+    )
+    assert.doesNotMatch(statement, /\b(?:INSERT|UPDATE|DELETE)\b/u)
+  }
+  for (const badSnapshot of ["", "x'; DROP TABLE app.artists; --", "x\n"]) {
+    assert.throws(() => buildRestoreTableListSql(badSnapshot))
+    assert.throws(() => buildRestoreInvariantsSql(tables, badSnapshot))
+  }
   for (const bad of [
     [{ schema: "app", table: "artists;drop" }],
     [tables[1], tables[0]],

@@ -57,6 +57,7 @@
     "data:build-import": "go run ./scripts/generate_remorseless_import.go",
     "data:apply-import": "go run ./scripts/apply_remorseless_import.go",
     "data:postgres:backup": "node scripts/postgres-logical-backup.mjs",
+    "data:postgres:snapshot-backup": "node scripts/postgres-snapshot-backup.mjs",
     "data:postgres:restore-receipt": "node scripts/postgres-restore-receipt.mjs",
     "data:postgres:restore-drill": "node scripts/postgres-restore-drill.mjs",
     "data:redis:audit": "node scripts/redis-capacity-audit.mjs",

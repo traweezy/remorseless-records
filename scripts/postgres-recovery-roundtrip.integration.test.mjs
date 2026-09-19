@@ -7,6 +7,7 @@ import {
   readFile,
   readlink,
   readdir,
+  rename,
   rm,
   stat,
   writeFile,
@@ -18,6 +19,10 @@ import test from "node:test"
 import { setTimeout as delay } from "node:timers/promises"
 import { fileURLToPath } from "node:url"
 import { createPostgresClientEnvironment } from "./lib/postgres-logical-backup.mjs"
+import {
+  openPrivateOutputDirectory,
+  publishSnapshotDirectory,
+} from "./lib/postgres-snapshot.mjs"
 import {
   RESTORE_TARGET_INVENTORY_SQL,
   snapshotBackupArchive,
@@ -640,6 +645,248 @@ test(`real PostgreSQL ${expectedVersion} backup, restore, rejection, rollback an
           }
         }
       )
+    await t.test(
+      "shared snapshot binds receipt and dump while a source write commits",
+      async () => {
+        const snapshotSource = await database()
+        const snapshotTarget = await database()
+        const output = join(directory, "snapshot-bundle")
+        await snapshotSource.client.query(
+          "CREATE SCHEMA app; CREATE TABLE app.items (id integer PRIMARY KEY, name text NOT NULL); INSERT INTO app.items VALUES (1, 'before')"
+        )
+        await snapshotSource.client.query("BEGIN")
+        await snapshotSource.client.query(
+          "INSERT INTO app.items VALUES (2, 'after')"
+        )
+        let running
+        try {
+          running = start(
+            process.execPath,
+            [
+              join(scripts, "postgres-snapshot-backup.mjs"),
+              "--output-dir",
+              output,
+            ],
+            { ...environment, DATABASE_BACKUP_URL: snapshotSource.url }
+          )
+          await waitUntil(
+            async () =>
+              Number(
+                (
+                  await administrator.query(
+                    "SELECT count(*) FROM pg_stat_activity WHERE datname=$1 AND application_name='remorseless-recovery' AND state='idle in transaction' AND query LIKE '%pg_export_snapshot%'",
+                    [snapshotSource.name]
+                  )
+                ).rows[0].count
+              ) === 1
+          )
+          await snapshotSource.client.query("COMMIT")
+          const result = await running.completed
+          assert.equal(result.code, 0, result.stderr)
+          assert.equal(result.stderr, "")
+          assert.doesNotMatch(
+            result.stdout,
+            /local_integration_only|postgresql:\/\//u
+          )
+          const bundle = JSON.parse(result.stdout)
+          assert.equal(bundle.status, "snapshot_bundle_verified")
+          assert.equal(
+            bundle.sourceMajor,
+            Number(expectedVersion.split(".")[0])
+          )
+          assert.equal((await readdir(output)).length, 1)
+          for (const path of [
+            bundle.archivePath,
+            bundle.manifestPath,
+            bundle.receiptPath,
+          ])
+            assert.equal((await stat(path)).mode & 0o777, 0o600)
+          const receipt = JSON.parse(await readFile(bundle.receiptPath, "utf8"))
+          assert.deepEqual(receipt.invariants.tableRows, [
+            { schema: "app", table: "items", rows: 1 },
+          ])
+          assert.equal(
+            (
+              await snapshotSource.client.query(
+                "SELECT count(*) FROM app.items"
+              )
+            ).rows[0].count,
+            "2"
+          )
+          const restored = await restore(bundle, ["--apply"], {
+            DATABASE_RESTORE_URL: snapshotTarget.url,
+            DATABASE_RESTORE_CONFIRM: snapshotTarget.fingerprint,
+          })
+          assert.equal(restored.status, "restore_verified")
+          assert.deepEqual(
+            (
+              await snapshotTarget.client.query(
+                "SELECT * FROM app.items ORDER BY id"
+              )
+            ).rows,
+            [{ id: 1, name: "before" }]
+          )
+          await waitUntil(
+            async () =>
+              Number(
+                (
+                  await administrator.query(
+                    "SELECT count(*) FROM pg_stat_activity WHERE datname=$1 AND application_name='remorseless-recovery'",
+                    [snapshotSource.name]
+                  )
+                ).rows[0].count
+              ) === 0
+          )
+        } finally {
+          await snapshotSource.client.query("ROLLBACK")
+          if (running) {
+            running.child.kill("SIGTERM")
+            await running.completed.catch(() => {})
+          }
+        }
+      }
+    )
+    await t.test(
+      "snapshot failure removes pending bundle and reaps its exporter",
+      async () => {
+        const emptySource = await database()
+        const output = join(directory, "snapshot-empty")
+        await invoke(
+          "snapshot-backup",
+          ["--output-dir", output],
+          { DATABASE_BACKUP_URL: emptySource.url },
+          "source_inventory"
+        )
+        assert.deepEqual(await readdir(output), [])
+        await waitUntil(
+          async () =>
+            Number(
+              (
+                await administrator.query(
+                  "SELECT count(*) FROM pg_stat_activity WHERE datname=$1 AND application_name='remorseless-recovery'",
+                  [emptySource.name]
+                )
+              ).rows[0].count
+            ) === 0
+        )
+      }
+    )
+    await t.test(
+      "snapshot cancellation reaps blocked readers and leaves no bundle",
+      async () => {
+        const blockedSource = await database()
+        const locker = await connect(blockedSource.url)
+        const output = join(directory, "snapshot-cancel")
+        let running
+        try {
+          await blockedSource.client.query(
+            "CREATE SCHEMA app; CREATE TABLE app.items (id integer PRIMARY KEY); INSERT INTO app.items VALUES (1)"
+          )
+          await locker.query(
+            "BEGIN; LOCK TABLE app.items IN ACCESS EXCLUSIVE MODE"
+          )
+          running = start(
+            process.execPath,
+            [
+              join(scripts, "postgres-snapshot-backup.mjs"),
+              "--output-dir",
+              output,
+            ],
+            { ...environment, DATABASE_BACKUP_URL: blockedSource.url }
+          )
+          await waitUntil(
+            async () =>
+              Number(
+                (
+                  await administrator.query(
+                    "SELECT count(*) FROM pg_stat_activity WHERE datname=$1 AND application_name='remorseless-recovery' AND wait_event_type='Lock'",
+                    [blockedSource.name]
+                  )
+                ).rows[0].count
+              ) === 1
+          )
+          running.child.kill("SIGTERM")
+          const result = await running.completed
+          assert.equal(result.code, 1)
+          assert.equal(result.stdout, "")
+          assert.equal(JSON.parse(result.stderr).phase, "source_inventory")
+          assert.deepEqual(await readdir(output), [])
+          await locker.query("ROLLBACK")
+          await waitUntil(
+            async () =>
+              Number(
+                (
+                  await administrator.query(
+                    "SELECT count(*) FROM pg_stat_activity WHERE datname=$1 AND application_name='remorseless-recovery'",
+                    [blockedSource.name]
+                  )
+                ).rows[0].count
+              ) === 0
+          )
+        } finally {
+          if (running) {
+            running.child.kill("SIGTERM")
+            await running.completed.catch(() => {})
+          }
+          await locker.query("ROLLBACK")
+          await locker.end()
+        }
+      }
+    )
+    await t.test(
+      "snapshot output identity rejects a swapped private parent",
+      async () => {
+        const parent = join(directory, "snapshot-identity-parent")
+        const output = join(parent, "output")
+        const moved = join(directory, "snapshot-identity-parent-moved")
+        await mkdir(parent, { mode: 0o700 })
+        await mkdir(output, { mode: 0o700 })
+        const anchor = await openPrivateOutputDirectory(output)
+        try {
+          await rename(parent, moved)
+          await mkdir(parent, { mode: 0o700 })
+          await mkdir(output, { mode: 0o700 })
+          await assert.rejects(anchor.assertStable())
+        } finally {
+          await anchor.close()
+        }
+      }
+    )
+    await t.test(
+      "snapshot publication transfers cleanup ownership before an abort",
+      async () => {
+        const output = join(directory, "snapshot-publication-abort")
+        await mkdir(output, { mode: 0o700 })
+        const pending = await mkdtemp(join(output, ".postgres-snapshot-"))
+        const published = join(output, "postgres-snapshot-test")
+        const anchor = await openPrivateOutputDirectory(output)
+        const controller = new AbortController()
+        let cleanupTarget = pending
+        try {
+          await assert.rejects(
+            publishSnapshotDirectory({
+              pendingDirectory: pending,
+              publishedDirectory: published,
+              signal: controller.signal,
+              outputDirectory: anchor,
+              onRenamed: (path) => {
+                cleanupTarget = path
+              },
+              renameDirectory: async (source, target) => {
+                await rename(source, target)
+                controller.abort()
+              },
+            }),
+            { name: "AbortError" }
+          )
+          assert.equal(cleanupTarget, published)
+        } finally {
+          await rm(cleanupTarget, { force: true, recursive: true })
+          await anchor.close()
+        }
+        assert.deepEqual(await readdir(output), [])
+      }
+    )
   } finally {
     const failures = []
     for (const client of clients)

@@ -11,12 +11,40 @@ reviewed scope. Do not invent missing production, legal, tax, or provider facts.
 Use [PROJECT_MAP.md](PROJECT_MAP.md) for the indexed code/documentation entrypoints.
 Preserve unrelated `Default/` unread, untouched, and unstaged.
 
-### September 19 batch — local work, not release acceptance
+### Accepted September 19 recovery evidence release: `f635cec`
+
+Commit `f635cec6e8443efa87e50901befc353ebd752fa8` groups the
+receipt-required PostgreSQL restore checks, offline multipart-AOF verification,
+and CI contract correction. Root CI `35464924483`, Backend CI `35464924485`,
+Storefront CI `35464924472`, and Runtime Images `35464924837` all passed on
+that exact SHA. The measured CI critical path fell from 14m09s to 10m33s.
+Railway Backend deployment `76eab912-2faf-4e12-bbd6-802924d643d3` and
+Storefront deployment `356e9ed7-f952-41c6-9791-7e5789db09da` both reached
+`SUCCESS` with the exact commit identity.
+
+Both services returned HTTP 200 for `/live` and `/ready` with the exact SHA.
+Backend readiness reported four dependencies and seven capabilities `ok`;
+`/health/operations`, `/health/scheduler`, and `/health/retention` returned
+healthy with zero reasons, Redis `ok`, no scheduler incident, and completed
+anonymous-cart and abandoned-checkout retention jobs. Storefront readiness
+reported Backend and Redis `ok`; `/` and `/catalog` returned HTTP 200. Manual
+Staging Operations Monitor `35465867127` and Staging Scheduler Monitor
+`35465869762` passed, with bounded catalog counts of 461 Products, 442
+Discography records, three shelves, and 25 memberships. Deployed browsers
+passed 75 cases with eight expected skips and 16/16 cross-browser cases.
+Bounded runtime-log review found no new error signature or HTTP 5xx.
+
+This accepts the release and its synthetic recovery tooling, not an actual
+staging-data PostgreSQL restore or live Redis multipart-AOF replay. A fresh
+source-bound PostgreSQL archive and receipt, isolated restore, live AOF capture,
+and queue reconciliation remain open. No production state changed.
+
+### September 19 implementation preparation (historical)
 
 At the start of the September 19 session, local `staging` HEAD was
 `33d2823ab03ef044aa017ba78878017395ab13d6`, one commit ahead of
-`origin/staging` and unpushed. The latest accepted deployment
-remains `7a9d1b9` below. Recovery documentation records a
+`origin/staging` and unpushed. At that point, the latest accepted deployment
+was `7a9d1b9` below. Recovery documentation records a
 scanned, recovery-only PostgreSQL 16.15 target and one verified export of the
 live 16.11 database. The private `/tmp` archive from that export is not
 available in this session. Preserve its receipt as historical evidence, but
@@ -28,15 +56,16 @@ counts and six schema counts while the source remains quiesced. Apply now
 requires that receipt and compares the restored target to it. The local tooling
 passed 45 focused tests and 12 real PostgreSQL 16.15 roundtrip cases, including
 row-count mismatch and populated-target rejection. See the
-[restore acceptance guide](POSTGRES_RESTORE_ACCEPTANCE.md). This is local
-tooling evidence; no live-data restore or staging release acceptance occurred.
+[restore acceptance guide](POSTGRES_RESTORE_ACCEPTANCE.md). This was local
+tooling evidence before the accepted release above; no live-data restore
+occurred.
 
 Actual Redis multipart-AOF export/replay and queue reconciliation remain
 pending. The accepted Redis RDB load proves only the narrower boundary below.
 Measure CI's critical path before changing the release matrix. Group compatible
 hardening, focused regressions, policy checks, and documentation into one
 staging push after local gates pass; then complete exact-revision CI, deployment,
-and live acceptance. No result from this resumed batch is accepted yet.
+and live acceptance. Those release gates subsequently passed as recorded above.
 
 ### Accepted recovery release: `7a9d1b9`
 

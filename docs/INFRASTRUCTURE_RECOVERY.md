@@ -738,10 +738,36 @@ guide](https://redis.io/docs/latest/operate/oss_and_stack/management/persistence
 The disposable integration gate creates a synthetic BASE plus INCR in the
 digest-pinned, scanned Redis 8.10.1 image and checks it with that image's real
 checker; it also checks BASE-only and HISTORY-inventory variants. The gate
-binds the checker wrapper to the scanned image ID. A
-current staging AOF capture, actual server startup replay, source/target
-identity binding, queue reconciliation and timed operational recovery remain
-unproven. Do not count this syntax verification as a completed restore drill.
+binds the checker wrapper to the scanned image ID. A second fixture runs that
+image with no network or published ports, a read-only root and bounded CPU,
+memory and PIDs. Synthetic BullMQ `events-queue` and `medusa-workflows` jobs
+cover completed, failed, waiting and delayed states. It rewrites a BASE, adds
+INCR writes and a key with an absolute expiration, shuts down the source and
+verifies a private copy with the offline checker. A separate worker-free
+Redis 8.10.1 startup loads that copy; the test compares queue counts and job
+states, confirms the post-rewrite marker and expiration, then retains a
+target-only write across a second startup. Source and archive hashes remain
+unchanged. This proves only synthetic AOF replay and BullMQ state serialization,
+without live queues, PostgreSQL, Stripe or provider egress.
+
+September 19 read-only staging preflight found Redis 8.0.3 still running from
+deployment `f75e3583-3d71-4787-9ada-12852e976fa0`, without a recorded image
+digest. The current AOF directory is `/bitnami/redis/data/appendonlydir`:
+manifest sequence 23 lists one 1,633,389-byte BASE and one 60,352,828-byte
+INCR, with no HISTORY or extra files. AOF is enabled with `everysec`, last
+write/rewrite status `ok`, no current rewrite, and automatic rewrites still
+enabled at 100%. The live directory/files are 0755/0644, so they do not meet
+the offline verifier's private 0700/0600 archive precondition. Current size is
+under its default 512 MiB limit, but a fresh preflight is required at capture.
+Redis 8.0.3 lacks the [8.10 `BACKUP START`/`BACKUP SEAL`
+boundary](https://redis.io/docs/latest/commands/backup-start/). Its
+[multipart-AOF backup procedure](https://redis.io/docs/latest/operate/oss_and_stack/management/persistence/)
+requires a controlled temporary rewrite hold, checking that no rewrite is
+active, a bounded copy, and restoration of the prior setting. That live
+configuration change and source export were not performed here. Current
+staging AOF capture/replay, source/target identity binding, queue and business
+reconciliation, and timed operational recovery remain unproven. Do not count
+the synthetic fixture as a completed staging or production restore drill.
 
 ### Recovery policy
 

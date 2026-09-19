@@ -2,11 +2,36 @@
 
 Use this workflow for a trusted custom-format archive and an owned, empty,
 disposable PostgreSQL database on the **same server major** as its source.
-The archive source must be quiesced before `pg_dump` starts and remain quiesced
-until the receipt has been captured. Otherwise the post-export row counts may
-describe a different state from the archive. The receipt cannot retroactively
-establish consistency for an earlier export. Keep the source and target isolated
-from application workers, providers, and other writers throughout the drill.
+The two-command capture path below requires source writes to be quiesced before
+`pg_dump` starts and until the receipt has been captured. Otherwise the
+post-export row counts may describe a different state from the archive. The
+receipt cannot retroactively establish consistency for an earlier export. Keep
+the disposable target isolated from application workers, providers, and other
+writers throughout the drill.
+
+When application DML must continue, use this **alternative to steps 1–2**. Pause
+schema DDL before starting it and until it finishes. The command holds a
+read-only exported PostgreSQL snapshot open, imports that same snapshot for the
+complete source table/count inventory, and passes it to `pg_dump --snapshot`.
+It publishes a private `0700` bundle containing a `0600` custom archive,
+manifest, and restore receipt only after all three pass validation:
+
+```bash
+DATABASE_BACKUP_URL='<source-backup-role-url>' \
+  pnpm run data:postgres:snapshot-backup -- \
+    --output-dir /absolute/private/backup-directory
+```
+
+Use the three absolute paths emitted by that successful command in steps 3–4.
+This shared snapshot makes the dump and row counts consistent despite DML
+commits after snapshot export. It does not freeze external systems or make
+uncommitted rows visible. A long-running exported snapshot can retain old row
+versions on the source, so budget the bounded command deadline and monitor
+source load. The command requires trusted `psql`, `pg_dump`, and `pg_restore`
+clients matching the source server major. See PostgreSQL's
+[`pg_dump --snapshot`](https://www.postgresql.org/docs/16/app-pgdump.html),
+[`pg_export_snapshot`](https://www.postgresql.org/docs/16/functions-admin.html),
+and [`SET TRANSACTION SNAPSHOT`](https://www.postgresql.org/docs/16/sql-set-transaction.html).
 
 1. Create the archive using the existing backup command, preserving its
    private `0600` archive and manifest. Reserve enough disk space for one
@@ -93,3 +118,29 @@ approved application, migration, catalog, and health acceptance on the
 isolated target. Do not promote the target or retire the source based on this
 receipt alone. A private `/tmp` archive is drill evidence, not scheduled or
 off-site retention.
+
+As of September 19, 2026, the previously reviewed reduced PostgreSQL 16.15
+recovery image is present in the local Docker `default` context by exact image
+ID `sha256:76db58e52e571729aa4ab51a5c597189e6f570086345c29b68b358067a6547e8`.
+Its private build recipe and original receipt are absent from this session;
+the earlier provenance and runtime evidence remain recorded in
+[Infrastructure recovery](INFRASTRUCTURE_RECOVERY.md). A fresh Trivy 0.74.0
+scan of that exact image ID with the September 19 07:03 UTC database found
+zero CRITICAL, HIGH, or UNKNOWN package findings, 46 MEDIUM, and 28 LOW;
+the private report is `/tmp/rr-pg16-private-rescan-20260919.json`. This package
+scan does not establish complete compiled-server coverage. A separate local
+`--network none`, read-only-root, tmpfs-only startup of that exact image
+initialized a fresh `en_US.utf8` cluster and returned PostgreSQL `16.15`,
+`UTF8`, database collate/ctype `en_US.utf8`, and declared/actual collation
+version `2.41` over an internal Unix socket; TCP listening was disabled. The
+ephemeral container was removed. This proves fresh-cluster locale parity, not
+a durable isolated target, archive restore, application acceptance, or live-data
+recovery.
+The newly republished official `postgres:16.15-trixie` linux/amd64 image, digest
+`sha256:a85daf0dbd5e79586e850e3fe4b21b796799828ad015ce2166aeb98cc24da61c`,
+was rejected as a recovery target: Trivy 0.74.0 with vulnerability database
+updated September 19 at 07:03:12 UTC found 2 CRITICAL, 82 HIGH, and 3 UNKNOWN
+package findings, including findings without listed fixes. The reduced image
+still needs a durable isolated target configured for live restore and
+source/target identity proof before a real-data drill. The local PostgreSQL
+16.15 integration fixture is not a live-source restore.

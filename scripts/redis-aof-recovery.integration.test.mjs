@@ -1,9 +1,22 @@
 import assert from "node:assert/strict"
 import { createHash } from "node:crypto"
-import { mkdtemp, readFile, rm, unlink, writeFile } from "node:fs/promises"
+import {
+  chmod,
+  copyFile,
+  mkdir,
+  mkdtemp,
+  readFile,
+  readdir,
+  rm,
+  stat,
+  unlink,
+  writeFile,
+} from "node:fs/promises"
+import { createRequire } from "node:module"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import test from "node:test"
+import { setTimeout as delay } from "node:timers/promises"
 import {
   parseAofManifest,
   verifyRedisAofArchive,
@@ -12,13 +25,17 @@ import { runIntegrationCommand } from "./run-disposable-integration.mjs"
 
 const imageTag = "remorseless-records-integration-redis:8.10.1-hardened"
 const imageIdPattern = /^(?:sha256:)?[a-f0-9]{64}$/u
+const containerIdPattern = /^[a-f0-9]{64}$/u
 const fixtureEnvironment = process.env
+const backendRequire = createRequire(
+  new URL("../backend/package.json", import.meta.url)
+)
+const eventBusRequire = createRequire(
+  backendRequire.resolve("@medusajs/event-bus-redis/package.json")
+)
+const { Queue, Worker } = eventBusRequire("bullmq")
 
-test("the pinned checker validates an isolated synthetic multipart AOF", async () => {
-  assert.equal(fixtureEnvironment.INTEGRATION_TESTS_ENABLED, "1")
-  assert.equal(typeof process.getuid, "function")
-  const uid = process.getuid()
-  const gid = process.getgid()
+const pinnedImageId = async () => {
   const imageId = await runIntegrationCommand(
     "docker",
     ["image", "inspect", "--format", "{{.Id}}", imageTag],
@@ -27,6 +44,37 @@ test("the pinned checker validates an isolated synthetic multipart AOF", async (
   assert.match(imageId, imageIdPattern)
   if (fixtureEnvironment.RR_INTEGRATION_REDIS_IMAGE_ID)
     assert.equal(imageId, fixtureEnvironment.RR_INTEGRATION_REDIS_IMAGE_ID)
+  return imageId
+}
+
+const checkerForImage = async (directory, imageId, uid, gid) => {
+  const checker = join(directory, "redis-check-aof")
+  await writeFile(
+    checker,
+    `#!/bin/sh
+set -eu
+if [ "$1" = "--version" ]; then
+  exec docker run --rm --pull never --network none --read-only --cap-drop ALL --security-opt no-new-privileges --memory 256m --pids-limit 64 --user ${uid}:${gid} --entrypoint redis-check-aof ${imageId} --version
+fi
+[ "$#" -eq 1 ]
+exec docker run --rm --pull never --network none --read-only --cap-drop ALL --security-opt no-new-privileges --memory 256m --pids-limit 64 --user ${uid}:${gid} --mount "type=bind,source=$(dirname "$1"),target=/aof" --entrypoint redis-check-aof ${imageId} /aof/appendonly.aof.manifest
+`,
+    { mode: 0o700 }
+  )
+  return {
+    checker,
+    checkerSha256: createHash("sha256")
+      .update(await readFile(checker))
+      .digest("hex"),
+  }
+}
+
+test("the pinned checker validates an isolated synthetic multipart AOF", async () => {
+  assert.equal(fixtureEnvironment.INTEGRATION_TESTS_ENABLED, "1")
+  assert.equal(typeof process.getuid, "function")
+  const uid = process.getuid()
+  const gid = process.getgid()
+  const imageId = await pinnedImageId()
 
   const archive = await mkdtemp(join(tmpdir(), "redis-aof-real-"))
   const tools = await mkdtemp(join(tmpdir(), "redis-aof-checker-"))
@@ -84,22 +132,12 @@ chmod 600 /artifact/*
       { capture: true, timeoutMs: 45_000 }
     )
 
-    const checker = join(tools, "redis-check-aof")
-    await writeFile(
-      checker,
-      `#!/bin/sh
-set -eu
-if [ "$1" = "--version" ]; then
-  exec docker run --rm --pull never --network none --read-only --cap-drop ALL --security-opt no-new-privileges --memory 256m --pids-limit 64 --user ${uid}:${gid} --entrypoint redis-check-aof ${imageId} --version
-fi
-[ "$#" -eq 1 ]
-exec docker run --rm --pull never --network none --read-only --cap-drop ALL --security-opt no-new-privileges --memory 256m --pids-limit 64 --user ${uid}:${gid} --mount "type=bind,source=$(dirname "$1"),target=/aof" --entrypoint redis-check-aof ${imageId} /aof/appendonly.aof.manifest
-`,
-      { mode: 0o700 }
+    const { checker, checkerSha256 } = await checkerForImage(
+      tools,
+      imageId,
+      uid,
+      gid
     )
-    const checkerSha256 = createHash("sha256")
-      .update(await readFile(checker))
-      .digest("hex")
     const report = await verifyRedisAofArchive({
       sourceDirectory: archive,
       checker,
@@ -159,4 +197,496 @@ exec docker run --rm --pull never --network none --read-only --cap-drop ALL --se
     await rm(tools, { recursive: true, force: true })
     await rm(archive, { recursive: true, force: true })
   }
+})
+
+const waitForFixture = async (phase, condition) => {
+  const deadline = Date.now() + 15_000
+  let commandFailed = false
+  while (Date.now() < deadline) {
+    const timer = new AbortController()
+    try {
+      const ready = await Promise.race([
+        condition(),
+        delay(deadline - Date.now(), false, { signal: timer.signal }),
+      ])
+      if (ready) return
+    } catch {
+      commandFailed = true
+    } finally {
+      timer.abort()
+    }
+    const remaining = deadline - Date.now()
+    if (remaining > 0) await delay(Math.min(100, remaining))
+  }
+  assert.fail(
+    `Disposable Redis ${phase} did not become ready within 15 seconds${commandFailed ? " after a probe failed" : ""}.`
+  )
+}
+
+const isolatedServer = async ({
+  data,
+  socketDirectory,
+  imageId,
+  uid,
+  gid,
+  ownedContainers,
+}) => {
+  const id = await runIntegrationCommand(
+    "docker",
+    [
+      "run",
+      "--detach",
+      "--pull",
+      "never",
+      "--network",
+      "none",
+      "--read-only",
+      "--cap-drop",
+      "ALL",
+      "--security-opt",
+      "no-new-privileges",
+      "--cpus",
+      "1",
+      "--memory",
+      "256m",
+      "--memory-swap",
+      "256m",
+      "--pids-limit",
+      "64",
+      "--user",
+      `${uid}:${gid}`,
+      "--mount",
+      `type=bind,source=${data},target=/data`,
+      "--mount",
+      `type=bind,source=${socketDirectory},target=/socket`,
+      "--entrypoint",
+      "redis-server",
+      imageId,
+      "--port",
+      "0",
+      "--unixsocket",
+      "/socket/redis.sock",
+      "--unixsocketperm",
+      "700",
+      "--dir",
+      "/data",
+      "--appendonly",
+      "yes",
+      "--appendfilename",
+      "appendonly.aof",
+      "--appenddirname",
+      "appendonlydir",
+      "--appendfsync",
+      "always",
+      "--auto-aof-rewrite-percentage",
+      "0",
+      "--aof-use-rdb-preamble",
+      "yes",
+      "--aof-load-truncated",
+      "no",
+      "--save",
+      "",
+      "--maxmemory",
+      "128mb",
+      "--maxmemory-policy",
+      "noeviction",
+    ],
+    { capture: true, timeoutMs: 15_000 }
+  )
+  assert.match(id, containerIdPattern)
+  ownedContainers.push(id)
+  const isolation = await runIntegrationCommand(
+    "docker",
+    [
+      "inspect",
+      "--format",
+      "{{.HostConfig.NetworkMode}}|{{.HostConfig.ReadonlyRootfs}}|{{.HostConfig.Privileged}}",
+      id,
+    ],
+    { capture: true, timeoutMs: 15_000 }
+  )
+  assert.equal(isolation, "none|true|false")
+  await waitForFixture(
+    "server",
+    async () =>
+      (await runIntegrationCommand(
+        "docker",
+        ["exec", id, "redis-cli", "-s", "/socket/redis.sock", "PING"],
+        { capture: true, timeoutMs: 2_000 }
+      )) === "PONG"
+  )
+  return id
+}
+
+const fixtureRedisCli = (id, args) =>
+  runIntegrationCommand(
+    "docker",
+    ["exec", id, "redis-cli", "-s", "/socket/redis.sock", ...args],
+    { capture: true, timeoutMs: 5_000 }
+  )
+
+const queueStates = [
+  "waiting",
+  "active",
+  "delayed",
+  "completed",
+  "failed",
+  "paused",
+  "waiting-children",
+]
+
+const queueSnapshot = async (queue, jobIds) => {
+  const counts = await queue.getJobCounts(...queueStates)
+  const jobs = await Promise.all(
+    jobIds.map(async (id) => {
+      const job = await queue.getJob(id)
+      return [id, job ? await job.getState() : "missing"]
+    })
+  )
+  return {
+    counts: Object.fromEntries(
+      queueStates.map((state) => [state, counts[state] ?? 0])
+    ),
+    jobs: Object.fromEntries(jobs),
+  }
+}
+
+test("an isolated Redis 8.10.1 startup replays synthetic BullMQ states from multipart AOF", {
+  timeout: 120_000,
+}, async () => {
+  assert.equal(fixtureEnvironment.INTEGRATION_TESTS_ENABLED, "1")
+  assert.equal(typeof process.getuid, "function")
+  const uid = process.getuid()
+  const gid = process.getgid()
+  const imageId = await pinnedImageId()
+  const sourceData = await mkdtemp(join(tmpdir(), "redis-aof-source-"))
+  const sourceSocket = await mkdtemp(join(tmpdir(), "redis-aof-source-socket-"))
+  const archive = await mkdtemp(join(tmpdir(), "redis-aof-queue-archive-"))
+  const targetData = await mkdtemp(join(tmpdir(), "redis-aof-target-"))
+  const targetSocket = await mkdtemp(join(tmpdir(), "redis-aof-target-socket-"))
+  const tools = await mkdtemp(join(tmpdir(), "redis-aof-queue-checker-"))
+  const ownedDirectories = [
+    sourceData,
+    sourceSocket,
+    archive,
+    targetData,
+    targetSocket,
+    tools,
+  ]
+  const ownedContainers = []
+  let worker
+  let eventQueue
+  let workflowQueue
+  let restoredEventQueue
+  let restoredWorkflowQueue
+  let testFailure
+  try {
+    const sourceId = await isolatedServer({
+      data: sourceData,
+      socketDirectory: sourceSocket,
+      imageId,
+      uid,
+      gid,
+      ownedContainers,
+    })
+    const connection = {
+      path: join(sourceSocket, "redis.sock"),
+      connectTimeout: 1_000,
+      maxRetriesPerRequest: null,
+      retryStrategy: () => null,
+    }
+    eventQueue = new Queue("events-queue", { connection })
+    workflowQueue = new Queue("medusa-workflows", { connection })
+    worker = new Worker(
+      "events-queue",
+      async (job) => {
+        if (job.name === "synthetic-failure")
+          throw new Error("Expected synthetic job failure")
+        return "synthetic-complete"
+      },
+      { connection, concurrency: 1 }
+    )
+    const workerErrors = []
+    worker.on("error", () => workerErrors.push("worker_error"))
+    await worker.waitUntilReady()
+    await eventQueue.add(
+      "synthetic-completion",
+      { fixture: true },
+      {
+        jobId: "event-complete",
+        removeOnComplete: false,
+      }
+    )
+    await eventQueue.add(
+      "synthetic-failure",
+      { fixture: true },
+      {
+        jobId: "event-failed",
+        removeOnFail: false,
+      }
+    )
+    await waitForFixture("BullMQ jobs", async () => {
+      const counts = await eventQueue.getJobCounts("completed", "failed")
+      return counts.completed === 1 && counts.failed === 1
+    })
+    assert.deepEqual(workerErrors, [])
+    await worker.close()
+    worker = undefined
+
+    await fixtureRedisCli(sourceId, ["BGREWRITEAOF"])
+    await waitForFixture("AOF rewrite", async () => {
+      const info = await fixtureRedisCli(sourceId, ["INFO", "persistence"])
+      const files = await readdir(join(sourceData, "appendonlydir"))
+      return (
+        /aof_rewrite_in_progress:0/u.test(info) &&
+        /aof_last_bgrewrite_status:ok/u.test(info) &&
+        files.some((name) => name.endsWith(".base.rdb"))
+      )
+    })
+
+    await eventQueue.add(
+      "synthetic-waiting",
+      { fixture: true },
+      {
+        jobId: "event-waiting",
+      }
+    )
+    await workflowQueue.add(
+      "synthetic-waiting",
+      { fixture: true },
+      {
+        jobId: "workflow-waiting",
+      }
+    )
+    await workflowQueue.add(
+      "synthetic-delayed",
+      { fixture: true },
+      {
+        jobId: "workflow-delayed",
+        delay: 30 * 60_000,
+      }
+    )
+    assert.equal(
+      await fixtureRedisCli(sourceId, [
+        "SET",
+        "synthetic:post-rewrite",
+        "present",
+      ]),
+      "OK"
+    )
+    const ttlDeadline = Date.now() + 45 * 60_000
+    assert.equal(
+      await fixtureRedisCli(sourceId, [
+        "SET",
+        "synthetic:ttl",
+        "present",
+        "PXAT",
+        String(ttlDeadline),
+      ]),
+      "OK"
+    )
+    assert.equal(
+      Number(await fixtureRedisCli(sourceId, ["PEXPIRETIME", "synthetic:ttl"])),
+      ttlDeadline
+    )
+    const eventIds = ["event-complete", "event-failed", "event-waiting"]
+    const workflowIds = ["workflow-waiting", "workflow-delayed"]
+    const expected = {
+      events: await queueSnapshot(eventQueue, eventIds),
+      workflows: await queueSnapshot(workflowQueue, workflowIds),
+    }
+    assert.equal(expected.events.counts.completed, 1)
+    assert.equal(expected.events.counts.failed, 1)
+    assert.equal(expected.events.counts.waiting, 1)
+    assert.equal(expected.workflows.counts.waiting, 1)
+    assert.equal(expected.workflows.counts.delayed, 1)
+    await eventQueue.close()
+    eventQueue = undefined
+    await workflowQueue.close()
+    workflowQueue = undefined
+    await runIntegrationCommand("docker", ["stop", "--time", "5", sourceId], {
+      capture: true,
+      timeoutMs: 15_000,
+    })
+
+    const sourceAofDirectory = join(sourceData, "appendonlydir")
+    const names = await readdir(sourceAofDirectory)
+    assert.ok(names.length >= 3 && names.length <= 5)
+    let totalBytes = 0
+    for (const name of names) {
+      const source = join(sourceAofDirectory, name)
+      const details = await stat(source)
+      assert.ok(details.isFile())
+      totalBytes += details.size
+      assert.ok(totalBytes <= 32 * 1024 * 1024)
+      await copyFile(source, join(archive, name))
+    }
+    for (const name of names) await chmod(join(archive, name), 0o600)
+    const sourceHashes = Object.fromEntries(
+      await Promise.all(
+        names.map(async (name) => [
+          name,
+          createHash("sha256")
+            .update(await readFile(join(sourceAofDirectory, name)))
+            .digest("hex"),
+        ])
+      )
+    )
+    const { checker, checkerSha256 } = await checkerForImage(
+      tools,
+      imageId,
+      uid,
+      gid
+    )
+    const verification = await verifyRedisAofArchive({
+      sourceDirectory: archive,
+      checker,
+      checkerSha256,
+      maxBytes: 32 * 1024 * 1024,
+    })
+    assert.equal(verification.status, "verified")
+    assert.equal(verification.replayProven, false)
+    assert.ok(verification.activeFileCount >= 2)
+
+    const targetAofDirectory = join(targetData, "appendonlydir")
+    await mkdir(targetAofDirectory, { mode: 0o700 })
+    for (const name of names)
+      await copyFile(join(archive, name), join(targetAofDirectory, name))
+    const targetId = await isolatedServer({
+      data: targetData,
+      socketDirectory: targetSocket,
+      imageId,
+      uid,
+      gid,
+      ownedContainers,
+    })
+    const targetConnection = {
+      ...connection,
+      path: join(targetSocket, "redis.sock"),
+    }
+    restoredEventQueue = new Queue("events-queue", {
+      connection: targetConnection,
+    })
+    restoredWorkflowQueue = new Queue("medusa-workflows", {
+      connection: targetConnection,
+    })
+    const observed = {
+      events: await queueSnapshot(restoredEventQueue, eventIds),
+      workflows: await queueSnapshot(restoredWorkflowQueue, workflowIds),
+    }
+    assert.deepEqual(observed, expected)
+    assert.equal(
+      await fixtureRedisCli(targetId, ["GET", "synthetic:post-rewrite"]),
+      "present"
+    )
+    assert.equal(
+      Number(await fixtureRedisCli(targetId, ["PEXPIRETIME", "synthetic:ttl"])),
+      ttlDeadline
+    )
+    assert.match(
+      await fixtureRedisCli(targetId, ["INFO", "server"]),
+      /redis_version:8\.10\.1/u
+    )
+    assert.equal(
+      await fixtureRedisCli(targetId, [
+        "SET",
+        "synthetic:target-only",
+        "present",
+      ]),
+      "OK"
+    )
+    await restoredEventQueue.close()
+    restoredEventQueue = undefined
+    await restoredWorkflowQueue.close()
+    restoredWorkflowQueue = undefined
+    await runIntegrationCommand("docker", ["stop", "--time", "5", targetId], {
+      capture: true,
+      timeoutMs: 15_000,
+    })
+    const restartedId = await isolatedServer({
+      data: targetData,
+      socketDirectory: targetSocket,
+      imageId,
+      uid,
+      gid,
+      ownedContainers,
+    })
+    assert.equal(
+      await fixtureRedisCli(restartedId, ["GET", "synthetic:target-only"]),
+      "present"
+    )
+    assert.equal(
+      Number(
+        await fixtureRedisCli(restartedId, ["PEXPIRETIME", "synthetic:ttl"])
+      ),
+      ttlDeadline
+    )
+    restoredEventQueue = new Queue("events-queue", {
+      connection: targetConnection,
+    })
+    restoredWorkflowQueue = new Queue("medusa-workflows", {
+      connection: targetConnection,
+    })
+    assert.deepEqual(
+      {
+        events: await queueSnapshot(restoredEventQueue, eventIds),
+        workflows: await queueSnapshot(restoredWorkflowQueue, workflowIds),
+      },
+      expected
+    )
+    for (const name of names) {
+      assert.equal(
+        createHash("sha256")
+          .update(await readFile(join(sourceAofDirectory, name)))
+          .digest("hex"),
+        sourceHashes[name]
+      )
+      assert.equal(
+        createHash("sha256")
+          .update(await readFile(join(archive, name)))
+          .digest("hex"),
+        sourceHashes[name]
+      )
+    }
+  } catch (error) {
+    testFailure = error
+  } finally {
+    const clientCleanup = await Promise.allSettled([
+      worker?.close(),
+      eventQueue?.close(),
+      workflowQueue?.close(),
+      restoredEventQueue?.close(),
+      restoredWorkflowQueue?.close(),
+    ])
+    const cleanup = await Promise.allSettled(
+      ownedContainers.map((id) =>
+        runIntegrationCommand("docker", ["rm", "--force", id], {
+          capture: true,
+          timeoutMs: 15_000,
+        })
+      )
+    )
+    const directoryCleanup = await Promise.allSettled(
+      ownedDirectories.map((directory) =>
+        rm(directory, { recursive: true, force: true })
+      )
+    )
+    const failedCount = [
+      ...clientCleanup,
+      ...cleanup,
+      ...directoryCleanup,
+    ].filter(({ status }) => status === "rejected").length
+    if (failedCount > 0) {
+      const cleanupError = new Error(
+        `Disposable Redis fixture cleanup failed for ${failedCount} resources.`
+      )
+      if (testFailure)
+        throw new AggregateError(
+          [testFailure, cleanupError],
+          "Disposable Redis fixture test and cleanup failed."
+        )
+      throw cleanupError
+    }
+  }
+  if (testFailure) throw testFailure
 })

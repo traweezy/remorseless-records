@@ -174,8 +174,16 @@ JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
 WHERE c.relkind = 'r' AND n.nspname !~ '^pg_'
   AND n.nspname <> 'information_schema'`
 
-export const RESTORE_TABLE_LIST_SQL = `BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY;
-SET LOCAL search_path = pg_catalog;
+const snapshotClause = (snapshot) => {
+  if (snapshot === undefined) return ""
+  assert.match(snapshot, /^[A-Za-z0-9:_-]{1,128}$/u)
+  return `SET TRANSACTION SNAPSHOT '${snapshot}';\n`
+}
+
+export const buildRestoreTableListSql = (
+  snapshot
+) => `BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY;
+${snapshotClause(snapshot)}SET LOCAL search_path = pg_catalog;
 SET LOCAL row_security = off;
 SET LOCAL lock_timeout = '10s';
 SELECT COALESCE(pg_catalog.json_agg(pg_catalog.json_build_object(
@@ -183,6 +191,8 @@ SELECT COALESCE(pg_catalog.json_agg(pg_catalog.json_build_object(
   ORDER BY n.nspname COLLATE "C", c.relname COLLATE "C"), '[]'::json)
 ${userTables};
 COMMIT;`
+
+export const RESTORE_TABLE_LIST_SQL = buildRestoreTableListSql()
 
 const identifier = /^[a-z_][a-z0-9_]*$/u
 
@@ -223,7 +233,7 @@ const schemaCountSql = {
 
 const countNames = Object.keys(schemaCountSql).sort()
 
-export const buildRestoreInvariantsSql = (tables) => {
+export const buildRestoreInvariantsSql = (tables, snapshot) => {
   assert.deepEqual(parseRestoreTableList(JSON.stringify(tables)), tables)
   const counts = countNames.flatMap((name) => [
     `'${name}'`,
@@ -234,7 +244,7 @@ export const buildRestoreInvariantsSql = (tables) => {
       `pg_catalog.json_build_object('schema', '${schema}', 'table', '${table}', 'rows', (SELECT count(*) FROM "${schema}"."${table}"))`
   )
   return `BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY;
-SET LOCAL search_path = pg_catalog;
+${snapshotClause(snapshot)}SET LOCAL search_path = pg_catalog;
 SET LOCAL row_security = off;
 SET LOCAL lock_timeout = '10s';
 SELECT pg_catalog.json_build_object(
