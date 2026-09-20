@@ -10,6 +10,20 @@ const passwordPath = "/run/recovery-password"
 const relayPort = 15432
 let bootstrapPhase = "credential"
 
+export const backendChildEnvironment = (password, revision) => ({
+  PATH: "/usr/local/bin:/usr/bin:/bin",
+  LD_LIBRARY_PATH: "/usr/local/lib",
+  HOME: "/tmp",
+  NODE_ENV: "development",
+  MEDUSA_WORKER_MODE: "server",
+  MEDUSA_DISABLE_ADMIN: "1",
+  DATABASE_URL: `postgresql://postgres:${encodeURIComponent(password)}@127.0.0.1:${relayPort}/postgres?sslmode=disable`,
+  REDIS_URL: "redis://127.0.0.1:6379",
+  COMMIT_SHA: revision,
+  JWT_SECRET: randomBytes(48).toString("base64url"),
+  COOKIE_SECRET: randomBytes(48).toString("base64url"),
+})
+
 export const startSocketRelay = async ({
   path = socketPath,
   port = relayPort,
@@ -63,18 +77,7 @@ const runBackend = async () => {
     ],
     {
       cwd: "/app",
-      env: {
-        PATH: "/usr/local/bin:/usr/bin:/bin",
-        HOME: "/tmp",
-        NODE_ENV: "development",
-        MEDUSA_WORKER_MODE: "server",
-        MEDUSA_DISABLE_ADMIN: "1",
-        DATABASE_URL: `postgresql://postgres:${encodeURIComponent(password)}@127.0.0.1:${relayPort}/postgres?sslmode=disable`,
-        REDIS_URL: "redis://127.0.0.1:6379",
-        COMMIT_SHA: process.env.COMMIT_SHA,
-        JWT_SECRET: randomBytes(48).toString("base64url"),
-        COOKIE_SECRET: randomBytes(48).toString("base64url"),
-      },
+      env: backendChildEnvironment(password, process.env.COMMIT_SHA),
       stdio: ["ignore", "pipe", "pipe"],
     }
   )

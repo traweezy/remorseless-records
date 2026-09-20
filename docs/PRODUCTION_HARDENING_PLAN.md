@@ -10,13 +10,26 @@ tracks what is still required before production traffic is approved.
 ## Active continuation — September 20 UTC onward
 
 The latest accepted staging pair is Backend and Storefront at
-`3b85c8e371148996d50e9f3f8549520a4141719e`. All four exact-SHA GitHub
-workflows and both Railway deployments passed. Both live processes run Node
-26.9.0; Backend readiness passed 11/11 checks, Storefront readiness passed
-2/2, and deployment-scoped HTTP 5xx counts were zero. The corrected runtime
-candidate scans reject every UNKNOWN, HIGH, and CRITICAL finding; the candidates
-were not published on `staging`. Three reviewed MEDIUM CodeQL findings remain
-visible under exact-fingerprint exceptions. The
+`a5d3d613ab09d859c16023f5e4958c9b3fad0cb0`. Exact-SHA Root, Backend,
+Storefront, and Runtime Images CI passed (runs `35534815566`, `35534815565`,
+`35534815571`, and `35534815623`). Railway waited for check suites, then
+Backend deployment `c55d1e3d-b862-4620-8c9a-2c355354dd44` and Storefront
+deployment `b7623645-279d-476c-8c1b-7e0af252cd00` succeeded. Both live
+health/readiness pairs were green. The first 20:28 UTC scheduled heartbeat
+carried the exact SHA, zero failures, and a verified digest. Scoped logs had
+321 Backend runtime/9 HTTP and 16 Storefront runtime/9 HTTP records, with zero
+errors or HTTP 5xx. A fresh, source-bound PostgreSQL 16.15 restore verified
+171 physical tables; the exact-revision Backend image then returned healthy
+`/live` and `/ready` with database and Redis checks in an isolated,
+worker-free, network-none startup smoke. This is local recovery acceptance,
+not production-provider or worker acceptance.
+
+The earlier `3b85c8e371148996d50e9f3f8549520a4141719e` staging pair ran
+Node 26.9.0; Backend readiness passed 11/11 checks, Storefront readiness
+passed 2/2, and deployment-scoped HTTP 5xx counts were zero. The corrected
+runtime candidate scans reject every UNKNOWN, HIGH, and CRITICAL finding; the
+candidates were not published on `staging`. Three reviewed MEDIUM CodeQL
+findings remain visible under exact-fingerprint exceptions. The
 [security incident report](SECURITY_INCIDENT_REPORT_2026-09-20.md) records the
 scanner history, credential-audit limits, and residual decisions. The scanned
 disposable Redis fixture and fake-RESP integration gate passed before the live
@@ -233,6 +246,18 @@ Client-keyed service provisioning must wait for those inputs through an
 approved secret channel. Never substitute owner credentials or deploy a client
 environment that could send to owner provider accounts.
 
+The [read-only client staging preflight](CLIENT_STAGING_PREFLIGHT.md) now checks
+an explicitly selected client project/workspace, seven-service topology,
+absence of autodeploy triggers, never-deployed application services, and exact
+live variable-name and sealed-name parity with a reviewed inventory. A recent
+names-only audit attestation records empty creation and no later sync; the
+Railway nullable source link alone cannot prove either. Reference targets
+remain attested rather than validated against effective values. The query
+requests no variable values and does not prove provider-key ownership. The
+real client target and inventory are still unavailable, so this gate has only
+synthetic and current owner-staging query-shape validation; it has not passed
+for a client.
+
 ### Ownership and isolation decision
 
 - [ ] Record who owns Railway billing, needs console/API access, operates the
@@ -278,7 +303,9 @@ environment that could send to owner provider accounts.
       `qa:railway-iac` with an explicit, tested allowlist of project and
       environment IDs before managing the client target. Their current guard
       accepts only `store/staging`, and the stable partial owns only Backend
-      and Storefront; the five support services are dashboard-managed. Review
+      and Storefront; the five support services are dashboard-managed. The
+      current `preserve()` configuration assumes existing variables, so it is
+      not an empty-environment provisioning template. Review
       the complete client plan for unexpected deletes, source changes, and
       owner-environment references before any apply.
 

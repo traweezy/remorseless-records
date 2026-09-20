@@ -352,6 +352,34 @@ test("preserves existing explicit security checks and both local typechecks", ()
   )
 })
 
+test("requires the client preflight security step and coverage contract", () => {
+  assert.throws(() =>
+    validate(
+      mutateScripts((scripts) => {
+        scripts["qa:client-staging-preflight"] = "true"
+      })
+    )
+  )
+  assert.throws(() =>
+    validate(
+      mutateScripts((scripts) => {
+        scripts["qa:client-staging-preflight"] = scripts[
+          "qa:client-staging-preflight"
+        ].replace("--test-coverage-branches=80", "--test-coverage-branches=79")
+      })
+    )
+  )
+  assert.throws(() =>
+    validate(
+      manifest,
+      replaceWorkflow(
+        "        run: pnpm run qa:client-staging-preflight\n",
+        "        run: true\n"
+      )
+    )
+  )
+})
+
 for (const axis of ["lines", "branches", "functions"]) {
   test(`rejects relaxed or removed toolchain ${axis} coverage`, () => {
     for (const replacement of [`--test-coverage-${axis}=79`, ""])

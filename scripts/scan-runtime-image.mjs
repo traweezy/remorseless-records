@@ -125,6 +125,7 @@ export const scanRuntimeImage = async (
       HOME: environment.HOME,
       PATH: environment.PATH,
       LANG: "C",
+      DOCKER_CONTEXT: "default",
     }
     const execute = (command, args, timeout = 300000) =>
       run(command, args, {

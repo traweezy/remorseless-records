@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import { createServer } from "node:net"
-import { chmod, mkdtemp, rm } from "node:fs/promises"
+import { chmod, mkdtemp, readFile, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { test } from "node:test"
@@ -13,6 +13,7 @@ import {
   runSmoke,
   validateHealth,
 } from "./backend-isolated-startup-smoke.mjs"
+import { backendChildEnvironment } from "./lib/backend-isolated-bootstrap.mjs"
 
 const revision = "e7a37c2180f890e0562495a5897b3cef7decc5c2"
 const backendImageId = `sha256:${"b".repeat(64)}`
@@ -30,12 +31,26 @@ const targetState = {
 
 const optionIndex = (args, flag) => args.indexOf(flag) + 1
 
+test("smoke child retains the exact runtime loader path without provider secrets", async () => {
+  const dockerfile = await readFile(
+    new URL("../backend/Dockerfile.runtime", import.meta.url),
+    "utf8"
+  )
+  const imageLoaderPath = /^\s+LD_LIBRARY_PATH=(\S+)/mu.exec(dockerfile)?.[1]
+  assert.equal(imageLoaderPath, "/usr/local/lib")
+  const environment = backendChildEnvironment("synthetic", revision)
+  assert.equal(environment.LD_LIBRARY_PATH, imageLoaderPath)
+  assert.equal(environment.COMMIT_SHA, revision)
+  assert.equal(Object.hasOwn(environment, "STRIPE_API_KEY"), false)
+})
+
 const fakeDocker = ({
   badRevision = false,
   failHealth = false,
   failCleanup = false,
   badNetwork = false,
   badBackendUser = false,
+  badImageUser = false,
 } = {}) => {
   const containers = new Map()
   const calls = []
@@ -60,7 +75,12 @@ const fakeDocker = ({
                   }
                 : {},
             Env: id === backendImageId ? [`COMMIT_SHA=${revision}`] : [],
-            User: id === backendImageId ? "node" : "",
+            User:
+              id === backendImageId
+                ? badImageUser
+                  ? "node"
+                  : "1000:1000"
+                : "",
           },
         },
       ])
@@ -258,6 +278,17 @@ test("smoke verifies source-bound target, local image identity, readiness and cl
 
 test("wrong image revision fails before any container is created", async () => {
   const fake = fakeDocker({ badRevision: true })
+  await assert.rejects(
+    runSmoke({ targetDir, backendImageId, revision }, dependencies(fake))
+  )
+  assert.equal(
+    fake.calls.some(([command]) => command === "run"),
+    false
+  )
+})
+
+test("named-user Backend image fails before any container is created", async () => {
+  const fake = fakeDocker({ badImageUser: true })
   await assert.rejects(
     runSmoke({ targetDir, backendImageId, revision }, dependencies(fake))
   )

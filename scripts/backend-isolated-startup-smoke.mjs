@@ -112,7 +112,7 @@ const assertImage = async (docker, imageId, revision) => {
       revision
     )
     assert.ok(image.Config?.Env?.includes(`COMMIT_SHA=${revision}`))
-    assert.equal(image.Config?.User, "node")
+    assert.equal(image.Config?.User, backendUser)
   }
 }
 

@@ -35,8 +35,9 @@ node scripts/backend-isolated-startup-smoke.mjs \
 ```
 
 The CLI rejects a nonlocal Docker default context, a source/target identity or
-receipt mismatch, an unexpected image ID/revision, changed container security
-settings, unavailable Redis, degraded health, and cleanup failure. It emits
+receipt mismatch, an unexpected image ID/revision or image user other than
+`1000:1000`, changed container security settings, unavailable Redis, degraded
+health, and cleanup failure. It emits
 only a bounded status JSON object, never raw Backend logs or credentials. It
 removes only its randomly labeled anchor, Redis, and Backend containers. The
 restored PostgreSQL target is intentionally left for inspection; use the
@@ -99,7 +100,18 @@ cancellation, network and user tampering, and owned-container cleanup.
 A later restored-target smoke exited before either health route with the fixed
 `filesystem_permission` diagnostic. The runner had forced UID 999 for the
 Backend, while the exact Backend image owns its application tree as UID 1000.
-The runner now uses UID 1000 for the Backend and network anchor; disposable
-Redis remains UID 999. This correction still needs a fresh source-bound restore
-and an exact-revision Backend startup smoke before restored-target acceptance
-can be claimed.
+The runner and exact-image inspection now require UID 1000 for the Backend and
+network anchor; disposable Redis remains UID 999. A subsequent startup exit
+exposed a second bootstrap boundary: its child environment dropped the image's
+required `LD_LIBRARY_PATH=/usr/local/lib`, so Node could not load
+`libatomic.so.1`. The fixed child environment preserves that exact path
+without inheriting provider secrets.
+
+On September 20, a new PostgreSQL 16.15 target was restored from a fresh
+source-bound private snapshot (171 physical tables verified). The Backend
+image `sha256:ff43bf8840eff19f485fe6f88197ce176bfbe96fd673a5640d77c76ca1b7b0af`
+at revision `a5d3d613ab09d859c16023f5e4958c9b3fad0cb0` returned HTTP 200 from
+both `/live` and `/ready`; database and Redis checks were `ok`, and the
+worker-free, network-none smoke containers were removed. This verifies local
+restored-database startup for the accepted staging SHA. It does not exercise
+production providers, worker jobs, or client credentials.
