@@ -10,6 +10,8 @@ import {
 import { resolveOperationalCapabilities } from "./capabilities"
 
 const DEPENDENCY_TIMEOUT_MS = 2_000
+// Cold pool creation can exceed 2s; do not let a health probe queue for Knex's 60s default.
+const DATABASE_ACQUIRE_TIMEOUT_MS = 5_000
 const STORAGE_TIMEOUT_MS = 5_000
 
 export type ReadinessCheck = {
@@ -31,6 +33,33 @@ export type ReadinessProbe = {
 }
 
 type ReadinessEnvironment = NodeJS.ProcessEnv
+
+type ConnectionOptionsWithPassword = { password?: unknown }
+type DatabaseConnection = {
+  config?: ConnectionOptionsWithPassword & {
+    authentication?: { options?: ConnectionOptionsWithPassword }
+  }
+}
+
+const hidePassword = (
+  options: ConnectionOptionsWithPassword | undefined
+): void => {
+  if (options?.password) {
+    Object.defineProperty(options, "password", {
+      enumerable: false,
+      value: options.password,
+    })
+  }
+}
+
+const hideDatabaseConnectionPasswords = (connection: unknown): void => {
+  if (typeof connection !== "object" || connection === null) {
+    return
+  }
+  const config = (connection as DatabaseConnection).config
+  hidePassword(config)
+  hidePassword(config?.authentication?.options)
+}
 
 const isDatabaseProbeTimings = (
   value: unknown
@@ -104,10 +133,29 @@ export const runReadinessChecks = async (
 const databaseProbe = (database: Knex): ReadinessProbe => ({
   name: "database",
   check: async () => {
+    const pool = database.client.pool
+    if (!pool) {
+      throw new Error("Database pool is unavailable.")
+    }
     const acquisitionStartedAt = performance.now()
-    const connection: unknown = await database.client.acquireConnection()
+    // Tarn abort removes this probe from the shared queue without changing
+    // application-wide pool deadlines. Knex does not expose a per-call limit.
+    const pending = pool.acquire()
+    const acquireTimer = setTimeout(
+      () => pending.abort(),
+      DATABASE_ACQUIRE_TIMEOUT_MS
+    )
+    let connection: unknown
+    try {
+      connection = await pending.promise
+    } finally {
+      clearTimeout(acquireTimer)
+    }
     const poolAcquireMs = Math.round(performance.now() - acquisitionStartedAt)
     try {
+      // Direct pool acquisition skips Knex's credential masking. Preserve it
+      // before passing the connection to the query builder or instrumentation.
+      hideDatabaseConnectionPasswords(connection)
       const queryStartedAt = performance.now()
       await database
         .select(database.raw("1 as ready"))

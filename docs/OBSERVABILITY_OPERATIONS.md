@@ -33,7 +33,9 @@ text.
   `query_ms` beside its total duration. The external operations monitor retains
   only these bounded timings and fixed dependency status; it never records SQL,
   connection details, or query values. The existing 1,000 ms database
-  operations threshold is unchanged.
+  operations threshold is unchanged. Its pending pool acquisition is aborted
+  after five seconds, independently of the two-second SQL cancellation budget;
+  application queries retain their own pool settings.
 - The staging scheduler monitor runs every ten minutes. The staging operations
   monitor runs on the alternate ten-minute boundary and again at `05:03 UTC`,
   after both retention jobs. The operations monitor also authenticates a

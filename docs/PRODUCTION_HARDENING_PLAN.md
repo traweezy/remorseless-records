@@ -3209,9 +3209,12 @@ Both commands explicitly reported that no files or database records changed.
       the connection and 6 ms on SQL; first operations spent 611 of 637 ms
       acquiring and 26 ms on SQL. Five warm samples fell to 39, 4, 3, 3 and
       3 ms acquiring, with 4–7 ms queries and no 5xx. Cold acquisition is a
-      plausible cause of the old alert, not a historical proof. Separate
-      connection creation from contention and review the current 60-second
-      acquisition limit before changing the health threshold or rollout.
+      plausible cause of the old alert, not a historical proof. A probe-only
+      five-second pending-acquisition abort now bounds this health check without
+      changing the application pool, two-second SQL timeout, or 1,000 ms
+      operations threshold. A disposable PostgreSQL test covers late creation
+      after abort and retry. Separate connection creation from contention on
+      the next cold deployment before changing the threshold or rollout.
 - [x] Define availability, latency, recovery-time, and recovery-point goals
       before adding replicas, PgBouncer, overlap/draining, or paid monitoring.
 - [x] Gate Backend Railway releases on `/ready` rather than the less-complete

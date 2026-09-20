@@ -629,9 +629,14 @@ pool acquisition and SQL time without changing its threshold. Its first
 acquisition fell from 39 ms to 4, 3, 3 and 3 ms; query time stayed at 4–7 ms.
 This makes cold acquisition a plausible explanation for the earlier one-off
 503, but does not prove whether the old delay was connection creation or pool
-contention. Knex's 2-second query timeout does not bound acquisition; the
-current pool acquire limit can reach 60 seconds. Keep that separate timeout
-design and a later cold-deploy comparison open. No health threshold was relaxed.
+contention. Knex's 2-second query timeout did not bound acquisition, which
+could otherwise wait up to 60 seconds. The database health probe now aborts
+only its own pending pool request after five seconds; it preserves Knex's
+credential masking and the existing query timeout without changing the pool
+deadline for application traffic. A disposable PostgreSQL test covers a late
+connection creation after abort and a successful retry. Compare the next cold
+deployment before closing the historical 503 investigation. No health
+threshold was relaxed.
 
 ## Media backup and restore
 

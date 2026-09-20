@@ -1,9 +1,13 @@
 import type { ILockingModule } from "@medusajs/framework/types"
 import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
 import { medusaIntegrationTestRunner } from "@medusajs/test-utils"
-import type { Knex } from "@mikro-orm/knex"
+import { knex, type Knex } from "@mikro-orm/knex"
 import { createClient } from "redis"
 
+import {
+  createBackendReadinessProbes,
+  runReadinessChecks,
+} from "../src/lib/health/readiness"
 import { PAYMENT_LIFECYCLE_MODULE } from "../src/modules/payment-lifecycle/constants"
 import type PaymentLifecycleModuleService from "../src/modules/payment-lifecycle/service"
 
@@ -59,7 +63,7 @@ medusaIntegrationTestRunner({
     REDIS_URL: redisUrl,
   },
   moduleName: "RemorselessDisposableInfrastructure",
-  testSuite: ({ api, getContainer }) => {
+  testSuite: ({ api, dbConfig, getContainer }) => {
     describe("disposable PostgreSQL and Redis integration", () => {
       it("boots the real API with healthy disposable dependencies", async () => {
         const responses: unknown[] = await Promise.all([
@@ -101,6 +105,67 @@ medusaIntegrationTestRunner({
           )
           expect(repeatedReadiness.status).toBe("ok")
           assertDatabaseReadinessTiming(repeatedReadiness.checks)
+        }
+      })
+
+      it("abandons a timed-out pool request and can reuse a late-created connection", async () => {
+        const database = knex({
+          client: "pg",
+          connection: dbConfig.clientUrl,
+          pool: { min: 0, max: 1 },
+        })
+        const pool = database.client.pool
+        if (!pool) {
+          throw new Error("Disposable PostgreSQL pool is unavailable.")
+        }
+        let allowCreation: () => void = () => undefined
+        const creationGate = new Promise<void>((resolve) => {
+          allowCreation = resolve
+        })
+        const originalAcquire = database.client.acquireRawConnection.bind(
+          database.client
+        )
+        const delayedAcquire = jest
+          .spyOn(database.client, "acquireRawConnection")
+          .mockImplementation(async () => {
+            await creationGate
+            return originalAcquire()
+          })
+        const probes = createBackendReadinessProbes({
+          database,
+          environment: { NODE_ENV: "test" },
+        })
+        try {
+          const checks = await runReadinessChecks(probes)
+          expect(checks).toEqual([
+            {
+              duration_ms: expect.any(Number),
+              name: "database",
+              status: "error",
+            },
+          ])
+          expect(delayedAcquire).toHaveBeenCalledTimes(1)
+          expect(pool.numPendingAcquires()).toBe(0)
+          expect(pool.numUsed()).toBe(0)
+
+          allowCreation()
+          const deadline = Date.now() + 5_000
+          while (pool.numPendingCreates() > 0 && Date.now() < deadline) {
+            await new Promise((resolve) => setTimeout(resolve, 20))
+          }
+          expect(pool.numPendingCreates()).toBe(0)
+          expect(pool.numPendingAcquires()).toBe(0)
+          expect(pool.numUsed()).toBe(0)
+          expect(pool.numFree()).toBe(1)
+
+          const recovered = await runReadinessChecks(probes)
+          expect(recovered[0]?.status).toBe("ok")
+          expect(pool.numUsed()).toBe(0)
+          expect(pool.numPendingAcquires()).toBe(0)
+        } finally {
+          allowCreation()
+          delayedAcquire.mockRestore()
+          await database.destroy()
         }
       })
 
