@@ -2,7 +2,10 @@ import type { NextRequest } from "next/server"
 import { z } from "zod"
 
 import { PRODUCT_DETAIL_FIELDS } from "@/lib/data/products"
-import { providerProblem } from "@/lib/http/provider-boundary"
+import {
+  ProviderRequestError,
+  providerProblem,
+} from "@/lib/http/provider-boundary"
 import { correlatedMedusaFetch } from "@/lib/medusa/correlated-client"
 import { readStoreProductListResponse } from "@/lib/products/response-contract"
 import { resolveRegionId } from "@/lib/regions"
@@ -75,6 +78,21 @@ export const GET = async (
 
     return jsonApiResponse({ product })
   } catch (error) {
+    // The provider boundary records which outcome won the read/cancellation
+    // race. A later disconnect must not hide an upstream failure.
+    if (
+      _request.signal.aborted &&
+      error instanceof ProviderRequestError &&
+      error.callerAborted
+    ) {
+      return jsonApiError(
+        _request,
+        "The request was canceled.",
+        499,
+        "request_cancelled"
+      )
+    }
+
     console.error("Failed to load product for quick shop")
     const problem = providerProblem(error, "catalog")
     if (problem) {

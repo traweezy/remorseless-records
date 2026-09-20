@@ -143,6 +143,29 @@ describe("correlatedMedusaFetch", () => {
     expect(init.signal?.aborted).toBe(true)
   })
 
+  it("does not rewrite an earlier Medusa API failure after a caller abort", async () => {
+    const controller = new AbortController()
+    const request = new Request("https://storefront.test/api/products", {
+      signal: controller.signal,
+    })
+    fetchMock.mockRejectedValue(
+      new FetchError("private provider detail", "Bad Request", 400)
+    )
+
+    const failure = correlatedMedusaFetch(request, "/store/products").catch(
+      (error: unknown) => error
+    )
+    controller.abort()
+
+    const result = await failure
+    expect(result).toMatchObject({
+      callerAborted: false,
+      kind: "unavailable",
+      name: "ProviderRequestError",
+    })
+    expect(JSON.stringify(result)).not.toContain("private provider detail")
+  })
+
   it("stops an in-flight read when the incoming request is canceled", async () => {
     const providerDetail = "customer@example.test"
     const requestController = new AbortController()

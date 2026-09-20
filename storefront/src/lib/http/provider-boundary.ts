@@ -12,8 +12,12 @@ export type ProviderFailureKind = "timeout" | "unavailable"
 
 export class ProviderRequestError extends Error {
   readonly kind: ProviderFailureKind
+  readonly callerAborted: boolean
 
-  constructor(kind: ProviderFailureKind) {
+  constructor(
+    kind: ProviderFailureKind,
+    { callerAborted = false }: { callerAborted?: boolean } = {}
+  ) {
     super(
       kind === "timeout"
         ? "The upstream provider request timed out"
@@ -21,6 +25,7 @@ export class ProviderRequestError extends Error {
     )
     this.name = "ProviderRequestError"
     this.kind = kind
+    this.callerAborted = callerAborted
   }
 }
 
@@ -93,6 +98,49 @@ export type ProviderReadOperationOptions = ProviderReadOptions & {
   signal?: AbortSignal | null
 }
 
+const callerWonAbort = (
+  signal: AbortSignal,
+  callerSignal: AbortSignal | null | undefined
+): boolean =>
+  callerSignal?.aborted === true && signal.reason === callerSignal.reason
+
+const readAttempt = async <T>(
+  operation: (signal: AbortSignal) => Promise<T>,
+  signal: AbortSignal,
+  callerSignal: AbortSignal | null | undefined
+): Promise<T> => {
+  if (signal.aborted) {
+    throw new ProviderRequestError("timeout", {
+      callerAborted: callerWonAbort(signal, callerSignal),
+    })
+  }
+
+  let onAbort: (() => void) | undefined
+  const cancellation = new Promise<never>((_resolve, reject) => {
+    onAbort = () =>
+      reject(
+        new ProviderRequestError("timeout", {
+          callerAborted: callerWonAbort(signal, callerSignal),
+        })
+      )
+    signal.addEventListener("abort", onAbort, { once: true })
+  })
+
+  try {
+    let pending: Promise<T>
+    try {
+      pending = operation(signal)
+    } catch (error) {
+      pending = Promise.reject(error)
+    }
+    return await Promise.race([pending, cancellation])
+  } finally {
+    if (onAbort) {
+      signal.removeEventListener("abort", onAbort)
+    }
+  }
+}
+
 const assertBoundedInteger = (
   value: number,
   name: string,
@@ -146,16 +194,28 @@ const retryDelayMs = (
   return Math.max(backoffMs, retryAfterMs ?? 0)
 }
 
-const waitForRetry = (delayMs: number, signal: AbortSignal): Promise<void> =>
+const waitForRetry = (
+  delayMs: number,
+  signal: AbortSignal,
+  callerSignal?: AbortSignal | null
+): Promise<void> =>
   new Promise((resolve, reject) => {
     if (signal.aborted) {
-      reject(new ProviderRequestError("timeout"))
+      reject(
+        new ProviderRequestError("timeout", {
+          callerAborted: callerWonAbort(signal, callerSignal),
+        })
+      )
       return
     }
 
     const onAbort = (): void => {
       clearTimeout(timeout)
-      reject(new ProviderRequestError("timeout"))
+      reject(
+        new ProviderRequestError("timeout", {
+          callerAborted: callerWonAbort(signal, callerSignal),
+        })
+      )
     }
     const timeout = setTimeout(() => {
       signal.removeEventListener("abort", onAbort)
@@ -193,11 +253,13 @@ export const runProviderReadOperation = async <T>(
   const signal = createProviderSignal(callerSignal, timeoutMs)
   for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
     if (signal.aborted) {
-      throw new ProviderRequestError("timeout")
+      throw new ProviderRequestError("timeout", {
+        callerAborted: callerWonAbort(signal, callerSignal),
+      })
     }
 
     try {
-      return await operation(signal)
+      return await readAttempt(operation, signal, callerSignal)
     } catch (error) {
       const providerError = toProviderRequestError(error)
       if (
@@ -205,9 +267,9 @@ export const runProviderReadOperation = async <T>(
         providerError.kind === "timeout" ||
         attempt + 1 >= maxAttempts
       ) {
-        throw signal.aborted
-          ? new ProviderRequestError("timeout")
-          : providerError
+        // The operation's failure can win before a later disconnect. The
+        // race's own cancellation error is marked at the abort event.
+        throw providerError
       }
 
       const decision = classifyRetry(error)
@@ -227,7 +289,7 @@ export const runProviderReadOperation = async <T>(
         delayMs,
         maxAttempts,
       })
-      await waitForRetry(delayMs, signal)
+      await waitForRetry(delayMs, signal, callerSignal)
     }
   }
 

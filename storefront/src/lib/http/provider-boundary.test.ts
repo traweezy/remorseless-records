@@ -5,6 +5,7 @@ import {
   fetchProviderRead,
   ProviderRequestError,
   providerProblem,
+  runProviderReadOperation,
   type ProviderReadMetric,
   toProviderRequestError,
 } from "@/lib/http/provider-boundary"
@@ -62,6 +63,95 @@ describe("provider boundary", () => {
     expect(JSON.stringify([timeout, unavailable])).not.toContain("secret")
     expect(JSON.stringify([timeout, unavailable])).not.toContain("customer")
     expect(toProviderRequestError(timeout)).toBe(timeout)
+  })
+
+  it("preserves a settled upstream failure when the caller aborts before handling", async () => {
+    const caller = new AbortController()
+    const failure = runProviderReadOperation(
+      () => Promise.reject(new Error("private upstream detail")),
+      {
+        classifyRetry: () => ({ retry: false }),
+        signal: caller.signal,
+      }
+    ).catch((error: unknown) => error)
+    caller.abort()
+
+    const result = await failure
+    expect(result).toMatchObject({
+      callerAborted: false,
+      kind: "unavailable",
+      name: "ProviderRequestError",
+    })
+    expect(JSON.stringify(result)).not.toContain("private upstream detail")
+  })
+
+  it("marks an in-flight caller abort without retaining provider details", async () => {
+    const caller = new AbortController()
+    const failure = runProviderReadOperation(
+      (signal) =>
+        new Promise((_resolve, reject) => {
+          signal.addEventListener(
+            "abort",
+            () => reject(new DOMException("private detail", "AbortError")),
+            { once: true }
+          )
+        }),
+      {
+        classifyRetry: () => ({ retry: false }),
+        signal: caller.signal,
+      }
+    ).catch((error: unknown) => error)
+    caller.abort()
+
+    const result = await failure
+    expect(result).toMatchObject({
+      callerAborted: true,
+      kind: "timeout",
+      name: "ProviderRequestError",
+    })
+    expect(JSON.stringify(result)).not.toContain("private detail")
+  })
+
+  it("keeps a provider deadline distinct from a later caller abort", async () => {
+    const caller = new AbortController()
+    const failure = runProviderReadOperation(
+      () => new Promise<never>(() => undefined),
+      {
+        classifyRetry: () => ({ retry: false }),
+        signal: caller.signal,
+        timeoutMs: 20,
+      }
+    ).catch((error: unknown) => error)
+
+    const result = await failure
+    caller.abort()
+    expect(result).toMatchObject({
+      callerAborted: false,
+      kind: "timeout",
+      name: "ProviderRequestError",
+    })
+  })
+
+  it("marks caller cancellation during retry backoff", async () => {
+    const caller = new AbortController()
+    const onRetry = vi.fn()
+    const failure = runProviderReadOperation(
+      () => Promise.reject(new TypeError("private transport detail")),
+      {
+        classifyRetry: () => ({ retry: true }),
+        onRetry,
+        signal: caller.signal,
+      }
+    ).catch((error: unknown) => error)
+    await vi.waitFor(() => expect(onRetry).toHaveBeenCalledOnce())
+    caller.abort()
+
+    const result = await failure
+    expect(result).toMatchObject({
+      callerAborted: true,
+      kind: "timeout",
+      name: "ProviderRequestError",
+    })
   })
 
   it("retries a transient safe read under one shared deadline", async () => {
