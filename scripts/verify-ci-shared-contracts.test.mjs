@@ -428,6 +428,18 @@ for (const axis of ["lines", "branches", "functions"]) {
         )
       )
   })
+  test(`rejects relaxed or removed Redis/PostgreSQL triage ${axis} coverage`, () => {
+    for (const replacement of [`--test-coverage-${axis}=79`, ""])
+      assert.throws(() =>
+        validate(
+          mutateScripts((scripts) => {
+            scripts["qa:redis-pg-evidence-triage"] = scripts[
+              "qa:redis-pg-evidence-triage"
+            ].replace(`--test-coverage-${axis}=80`, replacement)
+          })
+        )
+      )
+  })
 }
 
 test("rejects disabled parity coverage or omitted validator coverage scope", () => {
@@ -638,6 +650,32 @@ test("rejects omission of offline Redis failed-job classifier scope or tests", (
         mutateScripts((scripts) => {
           scripts["qa:redis-failed-job-classifier"] = scripts[
             "qa:redis-failed-job-classifier"
+          ].replace(marker, "")
+        })
+      )
+    )
+})
+
+test("keeps offline Redis/PostgreSQL triage in release QA with its test scope", () => {
+  assert.throws(() =>
+    validate(
+      mutateScripts((scripts) => {
+        scripts["qa:database-release-boundary"] = removeCommand(
+          scripts["qa:database-release-boundary"],
+          "pnpm run qa:redis-pg-evidence-triage"
+        )
+      })
+    )
+  )
+  for (const marker of [
+    "--test-coverage-include=scripts/lib/redis-pg-evidence-triage.mjs",
+    "scripts/redis-pg-evidence-triage.test.mjs",
+  ])
+    assert.throws(() =>
+      validate(
+        mutateScripts((scripts) => {
+          scripts["qa:redis-pg-evidence-triage"] = scripts[
+            "qa:redis-pg-evidence-triage"
           ].replace(marker, "")
         })
       )

@@ -1539,6 +1539,27 @@ is mode `0600` under a mode `0700` directory, SHA-256
 This proves the read-only private-source aggregate path and is still not
 Stripe or business reconciliation.
 
+The offline `compareRecoveryEvidence` reader in
+`scripts/lib/redis-pg-evidence-triage.mjs` accepts only the SHA-256-pinned raw
+replay-classification, live Redis, and live PostgreSQL reports above. It
+enforces byte caps, exact report shapes, startup/restart failed-count
+agreement, fixed classifier bucket totals, source-check flags, and bounded UTC
+observation windows before returning a count-only comparison. The focused
+`pnpm run qa:redis-pg-evidence-triage` coverage gate is in the root database
+release boundary. Against the
+three private September 20 reports (SHA-256 values recorded above), it found
+238 isolated failed jobs and 238 live failed jobs: 164 stored
+`reconcile-checkout-payments` schedules, 73 `sync-taxrate-io-quota` schedules,
+and one event failure. The later PostgreSQL observation counted seven
+payments and seven orders. The Redis and PostgreSQL observation windows did
+not overlap. These reports contain no common job-to-business identifier and
+cannot identify affected payments, prove provider-side delivery, or establish
+retry safety. The comparison therefore always returns
+`jobToBusinessIdentityVerified: false`, `providerReconciled: false`,
+`queueReconciled: false`, `businessReconciled: false`, and
+`retryAuthorized: false`, even when failed counts match. Any count drift or
+report-hash mismatch requires fresh evidence, not a queue retry.
+
 The next offline diagnostic is
 `pnpm run data:postgres:isolated-target -- business-parity --target-dir <restored-dir>`.
 It accepts only a previously restored target created by the guarded isolated

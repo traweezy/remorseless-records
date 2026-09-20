@@ -3271,9 +3271,10 @@ backup command emits a custom-format `0600` archive plus SHA-256 manifest after
 `pg_restore --list` verification. Restore defaults to dry-run, rejects
 non-canonical/symlink inputs, checksum drift, the source service, and non-empty
 targets, and requires the dry-run target fingerprint before applying to a
-disposable database. Railway volume schedules/PITR and an off-site media target
-still require controlled environment changes and timed drills, so those items
-remain open rather than being closed on documentation alone.
+disposable database. Staging Railway volume schedules are now present for
+PostgreSQL, Redis, and Bucket; the first scheduled run has not been verified.
+PITR, an off-site media target, and timed restores still require controlled
+environment changes, so the broader recovery items remain open.
 
 The same runbook defines launch objectives, capacity-budgeted Redis memory with
 `noeviction` plus AOF-every-second durability, authoritative-source recovery,

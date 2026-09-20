@@ -23,7 +23,7 @@ const sharedContracts = Object.freeze({
     "node scripts/verify-storefront-response-boundary.mjs",
   "qa:admin-browser-boundary": "node scripts/verify-admin-browser-boundary.mjs",
   "qa:database-release-boundary":
-    "node --test scripts/release-prepare.test.mjs scripts/postgres-logical-backup.test.mjs scripts/postgres-restore.test.mjs scripts/recovery-process.test.mjs scripts/postgres-recovery-cli.test.mjs scripts/postgres-staging-snapshot.test.mjs scripts/postgres-business-aggregate.test.mjs scripts/postgres-business-parity.test.mjs scripts/postgres-stripe-parity.test.mjs scripts/postgres-isolated-target.test.mjs scripts/provision-postgres-recovery-client.test.mjs scripts/media-backup.test.mjs scripts/media-object-checksum.test.mjs scripts/media-backup-cli.test.mjs scripts/media-restore-drill.test.mjs scripts/redis-aof-recovery.test.mjs scripts/redis-aof-capture.test.mjs scripts/redis-aof-isolated-replay.test.mjs scripts/backend-isolated-startup-smoke.test.mjs && pnpm run qa:postgres-live-business-aggregate && pnpm run qa:postgres-observability-preflight && pnpm run qa:redis-capacity && pnpm run qa:redis-live-aggregate && pnpm run qa:redis-failed-job-classifier",
+    "node --test scripts/release-prepare.test.mjs scripts/postgres-logical-backup.test.mjs scripts/postgres-restore.test.mjs scripts/recovery-process.test.mjs scripts/postgres-recovery-cli.test.mjs scripts/postgres-staging-snapshot.test.mjs scripts/postgres-business-aggregate.test.mjs scripts/postgres-business-parity.test.mjs scripts/postgres-stripe-parity.test.mjs scripts/postgres-isolated-target.test.mjs scripts/provision-postgres-recovery-client.test.mjs scripts/media-backup.test.mjs scripts/media-object-checksum.test.mjs scripts/media-backup-cli.test.mjs scripts/media-restore-drill.test.mjs scripts/redis-aof-recovery.test.mjs scripts/redis-aof-capture.test.mjs scripts/redis-aof-isolated-replay.test.mjs scripts/backend-isolated-startup-smoke.test.mjs && pnpm run qa:postgres-live-business-aggregate && pnpm run qa:postgres-observability-preflight && pnpm run qa:redis-capacity && pnpm run qa:redis-live-aggregate && pnpm run qa:redis-failed-job-classifier && pnpm run qa:redis-pg-evidence-triage",
   "qa:storefront-provider-fixture":
     "node --test storefront/scripts/ci-medusa-fixture.test.mjs",
   "qa:dashboard-product-create":
@@ -70,6 +70,8 @@ const postgresObservabilityCoverageCommand =
   "node --test --experimental-test-coverage --test-coverage-include=scripts/postgres-observability-preflight.mjs --test-coverage-include=scripts/lib/postgres-observability-preflight.mjs --test-coverage-lines=80 --test-coverage-branches=80 --test-coverage-functions=80 scripts/postgres-observability-preflight.test.mjs"
 const failedJobCoverageCommand =
   "node --test --experimental-test-coverage --test-coverage-include=scripts/lib/redis-failed-job-classifier.mjs --test-coverage-lines=80 --test-coverage-branches=80 --test-coverage-functions=80 scripts/redis-failed-job-classifier.test.mjs"
+const evidenceTriageCoverageCommand =
+  "node --test --experimental-test-coverage --test-coverage-include=scripts/lib/redis-pg-evidence-triage.mjs --test-coverage-lines=80 --test-coverage-branches=80 --test-coverage-functions=80 scripts/redis-pg-evidence-triage.test.mjs"
 
 const scriptChain = (source) => {
   assert.equal(typeof source, "string")
@@ -236,6 +238,11 @@ export const validateCiSharedContracts = ({
     scripts["qa:redis-failed-job-classifier"],
     failedJobCoverageCommand,
     "Offline Redis failed-job coverage/test scope must remain enforced"
+  )
+  assert.equal(
+    scripts["qa:redis-pg-evidence-triage"],
+    evidenceTriageCoverageCommand,
+    "Offline Redis/PostgreSQL evidence coverage/test scope must remain enforced"
   )
   assert.equal(
     scripts["qa:scheduler-observation"],
