@@ -35,7 +35,7 @@ const validate = (application, source = workflows[application]) =>
   validateApplicationReleaseGraph(source, application)
 
 for (const application of ["backend", "storefront"]) {
-  test(`${application} retains every job and the reviewed security-first graph`, () => {
+  test(`${application} retains every required security gate and parallel runtime graph`, () => {
     assert.deepEqual(validate(application), {
       application,
       jobs: application === "storefront" ? 11 : 9,
@@ -78,7 +78,11 @@ for (const application of ["backend", "storefront"]) {
   for (const name of runtimeJobs) {
     test(`${application}.${name} rejects removed prerequisites, restored serial waits, and failure suppression`, () => {
       const source = workflows[application]
-      for (const gate of ["lint", "typecheck", "codeql", "secrets"]) {
+      const prerequisites =
+        name === "build"
+          ? ["lint", "typecheck", "codeql", "secrets"]
+          : ["lint", "typecheck", "secrets"]
+      for (const gate of prerequisites) {
         const changed = mutateJob(source, name, (job) =>
           job.replace(
             /^    needs: \[([^\]]+)\]/mu,
@@ -90,6 +94,19 @@ for (const application of ["backend", "storefront"]) {
           )
         )
         assert.throws(() => validate(application, changed))
+      }
+      if (name !== "build") {
+        assert.throws(() =>
+          validate(
+            application,
+            mutateJob(source, name, (job) =>
+              job.replace(
+                "    needs: [lint, typecheck, secrets]",
+                "    needs: [lint, typecheck, codeql, secrets]"
+              )
+            )
+          )
+        )
       }
       for (const controls of [
         "    continue-on-error: true",

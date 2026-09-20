@@ -241,7 +241,7 @@ jobs:
     name: Unit Tests (storefront)
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    needs: [lint, typecheck, codeql, secrets]
+    needs: [lint, typecheck, secrets]
     permissions:
       contents: read
     steps:
@@ -282,7 +282,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     if: ${{ github.event_name != 'pull_request' || github.base_ref == 'master' || (vars.ENABLE_STOREFRONT_BUILD == 'true' && vars.ENABLE_STOREFRONT_E2E == 'true') }}
-    needs: [lint, typecheck, codeql, secrets]
+    needs: [lint, typecheck, secrets]
     env:
       CI_MEDUSA_FIXTURE_URL: http://127.0.0.1:4010
       CI_MEDUSA_PUBLISHABLE_KEY: pk_ci_storefront_fixture_20260831
@@ -383,7 +383,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     if: ${{ github.event_name != 'pull_request' || github.base_ref == 'master' || (vars.ENABLE_STOREFRONT_BUILD == 'true' && vars.ENABLE_STOREFRONT_A11Y == 'true') }}
-    needs: [lint, typecheck, codeql, secrets]
+    needs: [lint, typecheck, secrets]
     env:
       CI_MEDUSA_FIXTURE_URL: http://127.0.0.1:4010
       CI_MEDUSA_PUBLISHABLE_KEY: pk_ci_storefront_fixture_20260831
@@ -548,7 +548,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 40
     if: ${{ github.event_name != 'pull_request' || github.base_ref == 'master' || (vars.ENABLE_STOREFRONT_BUILD == 'true' && vars.ENABLE_STOREFRONT_LIGHTHOUSE == 'true') }}
-    needs: [lint, typecheck, codeql, secrets]
+    needs: [lint, typecheck, secrets]
     env:
       CI_MEDUSA_FIXTURE_URL: http://127.0.0.1:4010
       CI_MEDUSA_PUBLISHABLE_KEY: pk_ci_storefront_fixture_20260831

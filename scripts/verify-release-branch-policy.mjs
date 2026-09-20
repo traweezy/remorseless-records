@@ -11,6 +11,9 @@ const workflowPaths = [
 const expectedBranches = "branches: [staging, master]"
 
 const staticGates = ["lint", "typecheck", "codeql", "secrets"]
+// Long-running checks can overlap CodeQL; the independent CodeQL job remains
+// required for the workflow to pass before release acceptance.
+const runtimeStartGates = ["lint", "typecheck", "secrets"]
 const dependencyReviewCondition =
   '${{ contains(fromJson(\'["pull_request","merge_group"]\'), github.event_name) }}'
 const buildCondition =
@@ -30,7 +33,7 @@ const commonJobs = {
   lint: ["security"],
   codeql: ["security"],
   typecheck: ["security"],
-  unit: staticGates,
+  unit: runtimeStartGates,
 }
 
 // Accept only the reviewed workflow layout. Reject ambiguous or conditional
@@ -129,9 +132,9 @@ export const validateApplicationReleaseGraph = (source, application) => {
     ...(storefront
       ? {
           build: staticGates,
-          e2e: staticGates,
-          accessibility: staticGates,
-          lighthouse: staticGates,
+          e2e: runtimeStartGates,
+          accessibility: runtimeStartGates,
+          lighthouse: runtimeStartGates,
         }
       : {
           integration: ["lint", "typecheck", "secrets"],

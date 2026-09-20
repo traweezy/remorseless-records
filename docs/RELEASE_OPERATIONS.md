@@ -33,9 +33,16 @@ It does not authorize a production deployment by itself.
 5. Confirm both exact-SHA Railway deployments enter `WAITING` while GitHub
    checks run. A deployment that starts building first is a release-control
    failure even if it later succeeds.
-6. Wait for Root, Backend, and Storefront CI to succeed on the exact SHA.
+6. Wait for Root, Backend, Storefront, and Runtime Images CI to succeed on the
+   exact SHA.
 7. Wait for both Railway staging services to deploy that exact SHA, then run
    health, readiness, route/API, log, and applicable browser acceptance.
+
+The Backend unit job and the Storefront unit, browser, accessibility, and
+Lighthouse jobs start after security, lint, typecheck, and secret-scan gates.
+They overlap the independent CodeQL job to shorten the critical CI path.
+CodeQL and the production-build jobs still have to pass before exact-SHA
+acceptance; no failed or skipped required job may be treated as a release.
 
 Browser navigation gates must wait for an explicit rendered contract after
 `domcontentloaded`. Do not use page-wide `networkidle` as a readiness signal:
@@ -245,9 +252,9 @@ client-supplied forwarding chain as an emergency workaround.
    authorize or trigger production deployment.
 
 GitHub enforces the Backend and Storefront builds, Playwright smoke suite,
-pa11y, Lighthouse, and the SBOM/license job as required master checks. Their
-dependency chains also require security scans, CodeQL, lint, strict typecheck,
-and unit/coverage tests.
+pa11y, Lighthouse, and the SBOM/license job as required master checks. Security
+scans, CodeQL, lint, strict typecheck, and unit/coverage jobs remain mandatory;
+long-running jobs may overlap CodeQL but cannot replace its result.
 
 ## Manual production release
 
