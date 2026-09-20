@@ -179,6 +179,8 @@ const classifyInner = async ({
         id.includes("\0") ||
         id.includes("\ufffd") ||
         Buffer.byteLength(id) > 256 ||
+        (queueName === "scheduledJobs" &&
+          !/^repeat:schedule_job-[A-Za-z0-9_-]{1,80}:[0-9]{13}$/u.test(id)) ||
         seen.has(id)
       )
         throw unavailable()

@@ -77,10 +77,11 @@ evidence gate passed with its reviewed Trivy 0.70.0 scanner and fresh database:
 4 CRITICAL and 52 HIGH findings, none with a listed fix. A scan of the prior
 `e7a37c2180f890e0562495a5897b3cef7decc5c2` image against the same
 database revision had identical package and advisory sets and counts. The
-scan policy accepts zero fixed HIGH/CRITICAL findings, as observed here. The
-remaining preexisting no-fix findings require a named release-owner risk
-decision before image publication. Local evidence does not replace the CI
-publication gate; rebuild and repeat the check for the final integrated SHA.
+policy in force for that historical check accepted zero fixed HIGH/CRITICAL
+findings. The September 20 security correction superseded that policy: a
+fresh final-image scan must report zero UNKNOWN, HIGH, and CRITICAL findings.
+Local evidence does not replace the CI publication gate; rebuild and repeat
+the check for the final integrated SHA.
 
 The focused tests do not touch the private source bundle or target:
 
@@ -90,7 +91,15 @@ RR_DOCKER_FIXTURE=1 node --test scripts/backend-isolated-startup-smoke.test.mjs
 ```
 
 The Docker fixture uses a synthetic Unix echo socket and pinned local Redis
-image. It verifies UID 999 access, loopback relay, shared network namespace,
-no published ports, and blocked external traffic. The fake-backed tests cover
-exact revision, target preflight, health, cancellation, network tampering, and
-owned-container cleanup.
+image. It verifies Backend UID 1000 and Redis UID 999 access, loopback relay,
+shared network namespace, no published ports, and blocked external traffic.
+The fake-backed tests cover exact revision, target preflight, health,
+cancellation, network and user tampering, and owned-container cleanup.
+
+A later restored-target smoke exited before either health route with the fixed
+`filesystem_permission` diagnostic. The runner had forced UID 999 for the
+Backend, while the exact Backend image owns its application tree as UID 1000.
+The runner now uses UID 1000 for the Backend and network anchor; disposable
+Redis remains UID 999. This correction still needs a fresh source-bound restore
+and an exact-revision Backend startup smoke before restored-target acceptance
+can be claimed.

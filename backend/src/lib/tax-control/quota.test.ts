@@ -4,7 +4,11 @@ jest.mock("../constants", () => ({
   REDIS_URL: "",
 }))
 
-import { persistTaxRateIoQuota, syncTaxRateIoQuota } from "./quota"
+import {
+  persistTaxRateIoQuota,
+  syncTaxRateIoQuota,
+  type TaxRateIoQuotaSyncObservation,
+} from "./quota"
 import type TaxControlModuleService from "../../modules/tax-control/service"
 
 const quota = (observedAt: string) => ({
@@ -67,6 +71,11 @@ describe("TaxRate.io quota persistence", () => {
   })
 
   it("updates an older persisted snapshot", async () => {
+    const observation: TaxRateIoQuotaSyncObservation = {
+      redisSnapshotsValidated: 0,
+      quotaRowsReturned: 0,
+      quotaWritesConfirmed: 0,
+    }
     const updated = record("2026-07-26T12:05:00.000Z")
     const service = {
       listTaxProviderQuotas: jest.fn(async () => [
@@ -80,8 +89,35 @@ describe("TaxRate.io quota persistence", () => {
         quota: quota("2026-07-26T12:05:00.000Z"),
         service,
         source: "checkout_lookup",
+        observation,
       })
     ).resolves.toEqual(updated)
+    expect(observation).toEqual({
+      redisSnapshotsValidated: 0,
+      quotaRowsReturned: 1,
+      quotaWritesConfirmed: 1,
+    })
+  })
+
+  it("counts a confirmed equal-snapshot write without claiming a value change", async () => {
+    const same = record("2026-07-26T12:00:00.000Z")
+    const observation: TaxRateIoQuotaSyncObservation = {
+      redisSnapshotsValidated: 0,
+      quotaRowsReturned: 0,
+      quotaWritesConfirmed: 0,
+    }
+    const service = {
+      listTaxProviderQuotas: jest.fn(async () => [same]),
+      updateTaxProviderQuotas: jest.fn(async () => [same]),
+    } as unknown as TaxControlModuleService
+    await persistTaxRateIoQuota({
+      quota: quota("2026-07-26T12:00:00.000Z"),
+      service,
+      source: "checkout_lookup",
+      observation,
+    })
+    expect(observation.quotaWritesConfirmed).toBe(1)
+    expect(observation.quotaRowsReturned).toBe(1)
   })
 
   it("re-reads and updates the winner of a first-write race", async () => {
@@ -111,6 +147,11 @@ describe("TaxRate.io quota persistence", () => {
   })
 
   it("normalizes a complete persisted snapshot during synchronization", async () => {
+    const observation: TaxRateIoQuotaSyncObservation = {
+      redisSnapshotsValidated: 0,
+      quotaRowsReturned: 0,
+      quotaWritesConfirmed: 0,
+    }
     const service = {
       listTaxProviderQuotas: jest.fn(async () => [
         {
@@ -125,6 +166,7 @@ describe("TaxRate.io quota persistence", () => {
       syncTaxRateIoQuota({
         logger: { warn: jest.fn() } as never,
         service,
+        observation,
       })
     ).resolves.toEqual({
       observedAt: "2026-07-26T12:00:00.000Z",
@@ -133,6 +175,44 @@ describe("TaxRate.io quota persistence", () => {
       source: "manual_refresh",
       usage: 25,
       usagePercent: 25,
+    })
+    expect(observation).toEqual({
+      redisSnapshotsValidated: 0,
+      quotaRowsReturned: 1,
+      quotaWritesConfirmed: 0,
+    })
+  })
+
+  it("fails the scheduled sync when a valid Redis snapshot cannot be persisted", async () => {
+    const observation: TaxRateIoQuotaSyncObservation = {
+      redisSnapshotsValidated: 0,
+      quotaRowsReturned: 0,
+      quotaWritesConfirmed: 0,
+    }
+    const failure = new Error("private persistence failure")
+    const service = {
+      listTaxProviderQuotas: jest.fn(async () => [
+        record("2026-07-26T12:00:00.000Z"),
+      ]),
+      updateTaxProviderQuotas: jest.fn(async () => {
+        throw failure
+      }),
+    } as unknown as TaxControlModuleService
+
+    await expect(
+      syncTaxRateIoQuota({
+        logger: { warn: jest.fn() } as never,
+        service,
+        observation,
+        redisReader: async () =>
+          JSON.stringify(quota("2026-07-26T12:05:00.000Z")),
+      })
+    ).rejects.toBe(failure)
+    expect(service.listTaxProviderQuotas).toHaveBeenCalledTimes(1)
+    expect(observation).toEqual({
+      redisSnapshotsValidated: 1,
+      quotaRowsReturned: 1,
+      quotaWritesConfirmed: 0,
     })
   })
 

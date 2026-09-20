@@ -35,6 +35,7 @@ const fakeDocker = ({
   failHealth = false,
   failCleanup = false,
   badNetwork = false,
+  badBackendUser = false,
 } = {}) => {
   const containers = new Map()
   const calls = []
@@ -102,7 +103,10 @@ const fakeDocker = ({
               "com.remorseless.recovery.backend-smoke":
                 planned[optionIndex(planned, "--label")].split("=")[1],
             },
-            User: planned[optionIndex(planned, "--user")],
+            User:
+              badBackendUser && args[2].endsWith("backend")
+                ? "999:999"
+                : planned[optionIndex(planned, "--user")],
           },
           HostConfig: {
             NetworkMode:
@@ -224,12 +228,14 @@ test("plans isolate all containers and keep target credentials off Docker argv",
     assert.equal(plan.includes("-p"), false)
     assert.equal(plan.includes("--publish"), false)
     assert.ok(plan.includes("--read-only"))
-    assert.equal(plan[optionIndex(plan, "--user")], "999:999")
     assert.equal(
       plan.some((part) => part.includes("postgresql://")),
       false
     )
   }
+  assert.equal(plans.anchor[optionIndex(plans.anchor, "--user")], "1000:1000")
+  assert.equal(plans.backend[optionIndex(plans.backend, "--user")], "1000:1000")
+  assert.equal(plans.redis[optionIndex(plans.redis, "--user")], "999:999")
   assert.ok(plans.backend.includes(`COMMIT_SHA=${revision}`))
   assert.equal(
     plans.backend.filter((part) => part.includes("readonly")).length,
@@ -285,6 +291,14 @@ test("an unexpected network mode fails closed and cleans started containers", as
   assert.equal(fake.containers.size, 0)
 })
 
+test("an unexpected Backend user fails closed and cleans started containers", async () => {
+  const fake = fakeDocker({ badBackendUser: true })
+  await assert.rejects(
+    runSmoke({ targetDir, backendImageId, revision }, dependencies(fake))
+  )
+  assert.equal(fake.containers.size, 0)
+})
+
 test("cleanup failure prevents a verified-success result", async () => {
   const fake = fakeDocker({ failCleanup: true })
   await assert.rejects(
@@ -323,7 +337,7 @@ test("local Docker fixture relays only loopback traffic from a network-none name
       "--security-opt",
       "no-new-privileges",
       "--user",
-      "999:999",
+      "1000:1000",
       "--mount",
       `type=bind,source=${directory},target=/run/recovery-pg,readonly`,
       "--mount",
@@ -430,6 +444,7 @@ test("local Docker fixture relays only loopback traffic from a network-none name
       ])
     )[0]
     assert.equal(inspect.HostConfig.NetworkMode, "none")
+    assert.equal(inspect.Config.User, "1000:1000")
     assert.deepEqual(inspect.HostConfig.PortBindings, {})
     const redisInspect = JSON.parse(
       await runBounded("docker", [
@@ -441,6 +456,7 @@ test("local Docker fixture relays only loopback traffic from a network-none name
       ])
     )[0]
     assert.equal(redisInspect.HostConfig.NetworkMode, `container:${inspect.Id}`)
+    assert.equal(redisInspect.Config.User, "999:999")
     assert.deepEqual(redisInspect.HostConfig.PortBindings, {})
   } finally {
     await runBounded("docker", [

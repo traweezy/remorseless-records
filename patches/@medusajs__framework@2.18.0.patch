@@ -1,5 +1,5 @@
 diff --git a/dist/http/express-loader.d.ts b/dist/http/express-loader.d.ts
-index f31efe196cec67342e4f671a2469e825d4433137..5d570ddc9130685c0fca0d5ae655a915f9059ab6 100644
+index f31efe196cec67342e4f671a2469e825d4433137..6603cf18bf50616d1d41ab2aab9e86d9ce302e03 100644
 --- a/dist/http/express-loader.d.ts
 +++ b/dist/http/express-loader.d.ts
 @@ -1,5 +1,25 @@
@@ -30,10 +30,10 @@ index f31efe196cec67342e4f671a2469e825d4433137..5d570ddc9130685c0fca0d5ae655a915
   * Resolves the `sameSite` and `secure` flags used for the session cookie.
   *
 diff --git a/dist/http/express-loader.js b/dist/http/express-loader.js
-index 0a46fc5e3428d1a0ef0d6dea24840321a185f4ca..61b01f38fb33ec0a08f6dfda914d5f8e169007b7 100644
+index 0a46fc5e3428d1a0ef0d6dea24840321a185f4ca..fe4b2b53b460a3fa3a15760b65e83eb11742b916 100644
 --- a/dist/http/express-loader.js
 +++ b/dist/http/express-loader.js
-@@ -3,6 +3,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
+@@ -3,9 +3,11 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
      return (mod && mod.__esModule) ? mod : { "default": mod };
  };
  Object.defineProperty(exports, "__esModule", { value: true });
@@ -42,6 +42,9 @@ index 0a46fc5e3428d1a0ef0d6dea24840321a185f4ca..61b01f38fb33ec0a08f6dfda914d5f8e
  exports.expressLoader = expressLoader;
  const utils_1 = require("@medusajs/framework/utils");
 +const api_1 = require("@opentelemetry/api");
+ const utils_2 = require("@medusajs/utils");
+ const compression_1 = __importDefault(require("compression"));
+ const connect_redis_1 = __importDefault(require("connect-redis"));
 @@ -19,6 +21,66 @@ const config_1 = require("../config");
  const http_compression_1 = require("./utils/http-compression");
  const NOISY_ENDPOINTS_CHUNKS = ["@fs", "@id", "@vite", "@react", "node_modules"];
@@ -167,13 +170,14 @@ index 0a46fc5e3428d1a0ef0d6dea24840321a185f4ca..61b01f38fb33ec0a08f6dfda914d5f8e
      /**
       * Register the HTTP compression middleware when it's enabled through
       * `projectConfig.http.compression`. It has to be registered before the
-@@ -108,41 +221,32 @@ async function expressLoader({ app, container, }) {
+@@ -107,42 +220,33 @@ async function expressLoader({ app, container, }) {
+      */
      function shouldSkipHttpLog(req, res) {
          return (isTest ||
 -            isHealthCheck(req) ||
-+            isOperationalProbe(req) ||
 -            NOISY_ENDPOINTS_CHUNKS.some((chunk) => req.url.includes(chunk)) ||
 -            !logger.shouldLog("http"));
++            isOperationalProbe(req) ||
 +            NOISY_ENDPOINTS_CHUNKS.some((chunk) => req.url.includes(chunk)));
      }
      let loggingMiddleware;
@@ -230,3 +234,40 @@ index 0a46fc5e3428d1a0ef0d6dea24840321a185f4ca..61b01f38fb33ec0a08f6dfda914d5f8e
      }
      else {
          loggingMiddleware = (0, morgan_1.default)(":method :url ← :referrer (:status) - :response-time ms", {
+diff --git a/dist/jobs/job-loader.js b/dist/jobs/job-loader.js
+index 1c5616bcbc41167b4d7d9da4970bc9534c5473ac..d56cfdd5931e0d31c2c5e6a4315dd53526fd578b 100644
+--- a/dist/jobs/job-loader.js
++++ b/dist/jobs/job-loader.js
+@@ -55,6 +55,7 @@ class JobLoader extends resource_loader_1.ResourceLoader {
+                 scheduledFor: input?.scheduledFor
+                     ? new Date(input.scheduledFor)
+                     : new Date(),
++                bullJobIdSha256: input?.bullJobIdSha256,
+             };
+             try {
+                 const res = await handler(container, context);
+@@ -62,6 +63,6 @@ class JobLoader extends resource_loader_1.ResourceLoader {
+                 return new workflows_sdk_1.StepResponse(res, res);
+             }
+             catch (error) {
+-                this.logger.error(`Scheduled job ${config.name} failed with error: ${error.message}`);
++                this.logger.error("Scheduled job failed");
+                 throw error;
+             }
+diff --git a/dist/jobs/types.d.ts b/dist/jobs/types.d.ts
+index f1f6885ee0d3affb05c35f110fa2291e31ec72cd..1560c0e07a0093c331a37a0ed70f3293b77a6474 100644
+--- a/dist/jobs/types.d.ts
++++ b/dist/jobs/types.d.ts
+@@ -4,9 +4,12 @@ export type ScheduledJobContext = {
+      * The timestamp for which the job was scheduled.
+      */
+     scheduledFor: Date;
++    /** SHA-256 of a bounded BullMQ ID when Redis runs this job. */
++    bullJobIdSha256?: string;
+ };
+ export type ScheduledJobHandler = (container: MedusaContainer, context?: ScheduledJobContext) => Promise<unknown>;
+ export type ScheduledJobWorkflowInput = {
+     scheduledFor: string;
++    bullJobIdSha256?: string;
+ };
+ //# sourceMappingURL=types.d.ts.map

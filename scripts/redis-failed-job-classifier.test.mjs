@@ -9,6 +9,8 @@ import {
 const eventPrefix = "RedisEventBusService:events-queue"
 const scheduledPrefix = "bull:medusa-workflows-jobs"
 const jobsDirectory = new URL("../backend/src/jobs/", import.meta.url)
+const scheduledId = (index) =>
+  `repeat:schedule_job-sync-taxrate-io-quota:${1_790_000_000_000 + index}`
 
 test("scheduled category allowlist matches every checked-in app job", () => {
   const names = readdirSync(jobsDirectory)
@@ -75,7 +77,7 @@ const fixture = ({ event = [], scheduled = [] } = {}) => {
 
 test("classifies all 238 captured failures with fixed count-only buckets", async () => {
   const scheduled = Array.from({ length: 237 }, (_, index) => ({
-    id: `private-scheduled-${index}`,
+    id: scheduledId(index),
     fields: {
       name: "schedule",
       data: JSON.stringify({
@@ -187,13 +189,41 @@ test("rejects oversized or missing set memory before reading any failed IDs", as
   }
 })
 
+test("rejects unsafe scheduled job IDs without printing or fetching their hashes", async () => {
+  for (const id of [
+    "private/job",
+    "private\njob",
+    "x".repeat(129),
+    `repeat:${"a".repeat(32)}:1790000000000`,
+  ]) {
+    const { client, readFields } = fixture({
+      scheduled: [{ id, fields: { name: "schedule" } }],
+    })
+    await assert.rejects(
+      classifyIsolatedFailedJobs({
+        client,
+        expectedFailed: { eventBus: 0, scheduledJobs: 1 },
+      }),
+      (error) => {
+        assert.equal(
+          error.message,
+          "Redis failed-job classification unavailable."
+        )
+        assert.ok(!error.stack.includes(id))
+        return true
+      }
+    )
+    assert.deepEqual(readFields, [])
+  }
+})
+
 test("counts missing and oversized metadata without retrieving oversized values", async () => {
   const oversized = "private".repeat(1_000)
   const { client, readFields } = fixture({
     event: [{ id: "missing-hash" }],
     scheduled: [
       {
-        id: "oversized",
+        id: scheduledId(0),
         fields: {
           name: "n".repeat(129),
           failedReason: oversized,
@@ -201,7 +231,7 @@ test("counts missing and oversized metadata without retrieving oversized values"
         },
       },
       {
-        id: "missing-fields",
+        id: scheduledId(1),
         fields: {},
       },
     ],
@@ -221,9 +251,11 @@ test("counts missing and oversized metadata without retrieving oversized values"
 })
 
 test("classifies only installed Medusa schedule IDs from bounded data", async () => {
+  const oversizedId = scheduledId(3)
+  const notScheduleId = scheduledId(6)
   const scheduled = [
     {
-      id: "known",
+      id: scheduledId(0),
       fields: {
         name: "schedule",
         data: JSON.stringify({
@@ -234,28 +266,28 @@ test("classifies only installed Medusa schedule IDs from bounded data", async ()
       },
     },
     {
-      id: "unknown",
+      id: scheduledId(1),
       fields: {
         name: "schedule",
         data: JSON.stringify({ jobId: "private-unknown-task" }),
         atm: "1",
       },
     },
-    { id: "missing", fields: { name: "schedule", atm: "1" } },
+    { id: scheduledId(2), fields: { name: "schedule", atm: "1" } },
     {
-      id: "oversized",
+      id: oversizedId,
       fields: { name: "schedule", data: "private".repeat(150), atm: "1" },
     },
     {
-      id: "invalid-json",
+      id: scheduledId(4),
       fields: { name: "schedule", data: "{private", atm: "1" },
     },
     {
-      id: "invalid-id",
+      id: scheduledId(5),
       fields: { name: "schedule", data: '{"jobId":42}', atm: "1" },
     },
     {
-      id: "not-schedule",
+      id: notScheduleId,
       fields: {
         name: "private-other-kind",
         data: JSON.stringify({ jobId: "job-sync-taxrate-io-quota" }),
@@ -280,7 +312,7 @@ test("classifies only installed Medusa schedule IDs from bounded data", async ()
     valueReads.some(
       ([key, field]) =>
         field === "data" &&
-        (key.endsWith(":oversized") || key.endsWith(":not-schedule"))
+        (key.endsWith(`:${oversizedId}`) || key.endsWith(`:${notScheduleId}`))
     ),
     false
   )
@@ -291,7 +323,7 @@ test("fails closed on data-length drift and aggregate data cap", async () => {
   const one = fixture({
     scheduled: [
       {
-        id: "one",
+        id: scheduledId(0),
         fields: {
           name: "schedule",
           data: '{"jobId":"job-sync-taxrate-io-quota"}',
@@ -312,7 +344,7 @@ test("fails closed on data-length drift and aggregate data cap", async () => {
   )
 
   const many = Array.from({ length: 300 }, (_, index) => ({
-    id: `job-${index}`,
+    id: scheduledId(index),
     fields: {
       name: "schedule",
       data: JSON.stringify({

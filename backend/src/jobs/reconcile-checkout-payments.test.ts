@@ -95,9 +95,11 @@ describe("checkout reconciliation scheduled job", () => {
 
   it("uses an owned lock and emits a bounded structured completion", async () => {
     const fixture = fixtures()
+    const digest = "a".repeat(64)
 
     await reconcileCheckoutPaymentsJob(fixture.container, {
       scheduledFor: new Date(),
+      bullJobIdSha256: digest,
     })
 
     expect(fixture.lockingService.acquire).toHaveBeenCalledWith(
@@ -130,7 +132,18 @@ describe("checkout reconciliation scheduled job", () => {
       service: "backend",
       timeCapped: false,
       heldForReview: 0,
+      bull_job_id_sha256: digest,
+      bull_job_identity_verified: true,
+      counts_available: true,
+      carts_examined: 0,
+      carts_completed: 0,
     })
+    expect(parseEvent(fixture.logger.info).run_id).toEqual(
+      expect.stringMatching(/^[0-9a-f-]{36}$/u)
+    )
+    expect(parseEvent(fixture.logger.info).finished_at).toEqual(
+      expect.any(String)
+    )
   })
 
   it("warns when scheduler delay crosses the former lock window", async () => {
@@ -189,9 +202,67 @@ describe("checkout reconciliation scheduled job", () => {
       failure_stage: "reconciliation",
       lock_released: true,
       message: "Checkout reconciliation failed",
+      counts_available: false,
+      carts_examined: null,
+      carts_completed: null,
+      bull_job_identity_verified: false,
     })
     expect(fixture.logger.error.mock.calls[0]?.[0]).not.toContain(
       "private@example.com"
     )
+  })
+
+  it("reports unavailable counts when lock acquisition fails", async () => {
+    const fixture = fixtures()
+    fixture.lockingService.acquire.mockRejectedValue(
+      new Error("private lock detail")
+    )
+
+    await expect(
+      reconcileCheckoutPaymentsJob(fixture.container)
+    ).rejects.toThrow("private lock detail")
+    expect(fixture.query.graph).not.toHaveBeenCalled()
+    expect(parseEvent(fixture.logger.error)).toMatchObject({
+      event: "job.checkout_reconciliation.failed",
+      failure_stage: "lock_acquisition",
+      counts_available: false,
+      carts_examined: null,
+      carts_completed: null,
+    })
+    expect(fixture.logger.error.mock.calls[0]?.[0]).not.toContain(
+      "private lock detail"
+    )
+  })
+
+  it("does not log an untrusted identity when reconciliation is disabled", async () => {
+    process.env.CHECKOUT_RECONCILIATION_ENABLED = "false"
+    const fixture = fixtures()
+    await reconcileCheckoutPaymentsJob(fixture.container, {
+      bullJobIdSha256: "private@example.com",
+    })
+    expect(fixture.query.graph).not.toHaveBeenCalled()
+    expect(parseEvent(fixture.logger.info)).toMatchObject({
+      event: "job.checkout_reconciliation.disabled",
+      bull_job_id_sha256: null,
+      bull_job_identity_verified: false,
+      counts_available: true,
+      carts_examined: 0,
+      carts_completed: 0,
+    })
+    expect(fixture.logger.info.mock.calls[0]?.[0]).not.toContain(
+      "private@example.com"
+    )
+  })
+
+  it("does not turn a disabled job into a failure if logging fails", async () => {
+    process.env.CHECKOUT_RECONCILIATION_ENABLED = "false"
+    const fixture = fixtures()
+    fixture.logger.info.mockImplementation(() => {
+      throw new Error("log transport failed")
+    })
+    await expect(
+      reconcileCheckoutPaymentsJob(fixture.container)
+    ).resolves.toBeUndefined()
+    expect(fixture.query.graph).not.toHaveBeenCalled()
   })
 })

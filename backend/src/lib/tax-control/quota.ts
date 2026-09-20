@@ -26,6 +26,12 @@ import {
 let quotaRedisClient: RedisClientType | null = null
 let quotaRedisConnectPromise: Promise<RedisClientType | null> | null = null
 
+export type TaxRateIoQuotaSyncObservation = {
+  redisSnapshotsValidated: number
+  quotaRowsReturned: number
+  quotaWritesConfirmed: number
+}
+
 const warn = (logger: Logger, event: string, message: string): void => {
   logger.warn(JSON.stringify(buildBackendRuntimeEvent(event, message)))
 }
@@ -140,10 +146,12 @@ export const persistTaxRateIoQuota = async ({
   quota,
   service,
   source,
+  observation,
 }: {
   quota: TaxRateIoQuota
   service: TaxControlModuleService
   source: "checkout_lookup" | "manual_refresh"
+  observation?: TaxRateIoQuotaSyncObservation | undefined
 }) => {
   const validatedQuota = validQuota(quota)
   const existing = taxProviderQuotaListFrom(
@@ -153,6 +161,7 @@ export const persistTaxRateIoQuota = async ({
     ),
     1
   )
+  if (observation) observation.quotaRowsReturned += existing.length
   const observedAt = new Date(validatedQuota.observedAt)
   const payload = {
     id: TAXRATE_IO_QUOTA_ID,
@@ -178,11 +187,13 @@ export const persistTaxRateIoQuota = async ({
     const updated = taxProviderQuotaMutationFrom(
       await service.updateTaxProviderQuotas([{ ...payload, id: current.id }])
     )
-    return exactQuota(
+    const confirmed = exactQuota(
       updated,
       expected,
       "The persisted TaxRate.io quota update does not match the snapshot."
     )
+    if (observation) observation.quotaWritesConfirmed += 1
+    return confirmed
   }
   const current = existing[0]
   if (current) {
@@ -193,11 +204,13 @@ export const persistTaxRateIoQuota = async ({
     const created = taxProviderQuotaMutationFrom(
       await service.createTaxProviderQuotas([payload])
     )
-    return exactQuota(
+    const confirmed = exactQuota(
       created,
       { ...payload, id: created.id, provider: "taxrate_io" },
       "The persisted TaxRate.io quota creation does not match the snapshot."
     )
+    if (observation) observation.quotaWritesConfirmed += 1
+    return confirmed
   } catch (error) {
     if (
       !MedusaError.isMedusaError(error) ||
@@ -212,6 +225,7 @@ export const persistTaxRateIoQuota = async ({
       ),
       1
     )
+    if (observation) observation.quotaRowsReturned += concurrent.length
     const winner = concurrent[0]
     if (!winner) {
       throw error
@@ -223,28 +237,36 @@ export const persistTaxRateIoQuota = async ({
 export const syncTaxRateIoQuota = async ({
   logger,
   service,
+  observation,
+  redisReader,
 }: {
   logger: Logger
   service: TaxControlModuleService
+  observation?: TaxRateIoQuotaSyncObservation
+  redisReader?: (key: string) => Promise<string | null>
 }) => {
-  const client = await redisClient(logger)
+  const client = redisReader ? { get: redisReader } : await redisClient(logger)
   if (client) {
+    let cached: string | null = null
     try {
-      const quota = parseQuota(await client.get(TAXRATE_IO_QUOTA_REDIS_KEY))
-      if (quota) {
-        const persisted = await persistTaxRateIoQuota({
-          quota,
-          service,
-          source: "checkout_lookup",
-        })
-        return persisted ? validPersistedQuota(persisted) : null
-      }
+      cached = await client.get(TAXRATE_IO_QUOTA_REDIS_KEY)
     } catch {
       warn(
         logger,
         "tax.quota.synchronization_failed",
         "Tax quota synchronization failed"
       )
+    }
+    const quota = parseQuota(cached)
+    if (quota) {
+      if (observation) observation.redisSnapshotsValidated += 1
+      const persisted = await persistTaxRateIoQuota({
+        quota,
+        service,
+        source: "checkout_lookup",
+        observation,
+      })
+      return persisted ? validPersistedQuota(persisted) : null
     }
   }
 
@@ -255,5 +277,6 @@ export const syncTaxRateIoQuota = async ({
     ),
     1
   )
+  if (observation) observation.quotaRowsReturned += persisted.length
   return persisted[0] ? validPersistedQuota(persisted[0]) : null
 }
