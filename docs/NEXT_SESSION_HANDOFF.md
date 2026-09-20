@@ -2,6 +2,23 @@
 
 Last updated: 2026-09-20 (America/New_York)
 
+## September 20 security incident hold
+
+Read the [security incident report](SECURITY_INCIDENT_REPORT_2026-09-20.md)
+before resuming hardening features. The green `b0c88b3` workflows did not
+enforce all scanner findings: each candidate runtime image had four CRITICAL,
+52 HIGH, and three UNKNOWN results, and CodeQL had 20 open HIGH alerts.
+Complete exact-revision security CI, review the credential-access evidence and
+remaining limits, and enforce branch checks before accepting a new release.
+The unrelated local feature/recovery batch remains paused and must not be
+mixed into the security fix. Preserve `Default/` unread and unstaged.
+
+For later feature work, keep logical Conventional Commits reviewable but group
+several completed hardening outcomes into one staging push. Do not repeat the
+recent cadence of tiny or documentation-only pushes. Run the combined local
+gates, exact-head CI, and staging acceptance once for each substantive batch;
+see [Release and Branch Operations](RELEASE_OPERATIONS.md).
+
 ## Resumed work — September 14 onward
 
 The user resumed implementation, requested substantially larger cohesive batches

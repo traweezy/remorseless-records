@@ -13,30 +13,50 @@ It does not authorize a production deployment by itself.
   passed local gates, GitHub CI, Railway deployment, and post-deploy checks.
 - `main` is retired and must not be recreated.
 - GitHub CI runs for pushes and pull requests targeting either `staging` or
-  `master`. A pull request targeting `master` always runs the Storefront build,
-  Playwright, pa11y, and Lighthouse jobs; those expensive jobs remain optional
-  for ordinary pull requests targeting `staging`.
+  `master`. The Storefront build runs for both targets and is a required check.
+  A pull request targeting `master` also runs Playwright, pa11y, and
+  Lighthouse; those expensive jobs remain optional for ordinary pull requests
+  targeting `staging`.
 - Railway production must have automatic GitHub deploys disabled. Deploying an
   exact `master` commit is a separate manual operation after release approval.
-- Both Railway staging deployment triggers must retain `checkSuites: true` so
-  a source commit waits for GitHub checks before either service builds. Railway
-  source reconnection can reset this field; verify it after every source or
+- Both Railway staging deployment triggers must retain `checkSuites: true`.
+  They have been observed to wait for relevant CI suites, but Backend can
+  begin before Storefront CI finishes. Protected pull-request checks provide
+  the full cross-workflow gate before merging to `staging`; do not treat the
+  Railway trigger as proof that every workflow passed. Railway source
+  reconnection can reset this field; verify it after every source or
   repository-link change.
 
 ## Normal staging workflow
 
 1. Confirm `git status -sb` reports `staging...origin/staging` and a clean tree.
-2. Implement one cohesive hardening slice and update the authoritative docs.
+2. Assemble a cohesive batch of several related, independently reviewable
+   hardening outcomes and update the authoritative docs. Keep each logical
+   change in its own small Conventional Commit.
 3. Run focused checks plus lint, strict typecheck, relevant coverage, security
    scans, and both production builds.
-4. Create reviewable Conventional Commits and push only to `origin/staging`.
-5. Confirm both exact-SHA Railway deployments enter `WAITING` while GitHub
-   checks run. A deployment that starts building first is a release-control
-   failure even if it later succeeds.
+4. Review the complete batch, push its topic branch once, and merge it through
+   a protected `staging` pull request after required checks pass. Do not push
+   each commit as it is created.
+5. Confirm both exact-SHA Railway deployments honor their relevant CI wait.
+   If either starts before its required service checks finish, treat that as
+   a release-control failure even if the deployment later succeeds.
 6. Wait for Root, Backend, Storefront, and Runtime Images CI to succeed on the
    exact SHA.
 7. Wait for both Railway staging services to deploy that exact SHA, then run
    health, readiness, route/API, log, and applicable browser acceptance.
+
+Treat the **push**, rather than each commit, as the expensive release unit.
+The batch should close multiple concrete items from the hardening plan, not
+just record evidence or adjust one small helper. Build and test the whole batch
+locally before the push, then run the exact-SHA CI and deployment checks once
+for the final staging merge head. Required pull-request checks run on the
+reviewed batch before that merge. Record post-deployment evidence in the
+handoff and fold it
+into the next substantive batch; do not routinely create a separate docs-only
+staging push. A release-control failure, urgent security fix, or rollback may
+require an immediate corrective push. Do not weaken or skip a gate to meet a
+batch target, and do not combine unrelated changes into one commit.
 
 The Backend unit job and the Storefront unit, browser, accessibility, and
 Lighthouse jobs start after security, lint, typecheck, and secret-scan gates.
@@ -85,7 +105,8 @@ report is a release-control defect; fix and rerun the monitor before accepting
 the observation evidence. Never clear the latch to make the observation
 healthy.
 
-Do not begin another slice while any exact-SHA staging gate is unresolved.
+Do not begin another staging release candidate while any exact-SHA staging gate
+is unresolved.
 
 ## Immutable runtime image candidates
 
@@ -95,25 +116,25 @@ immutable GHCR SHA tag. Manual dispatch does not broaden that rule. Each
 published subject must have all of the following on the same digest:
 
 - a passing non-root/package-manager-free runtime contract;
-- zero fixed high or critical Trivy findings under the reviewed policy;
+- zero unknown, high, or critical Trivy findings under the reviewed policy;
 - a retained CycloneDX SBOM and schema-checked image record;
 - GitHub build-provenance attestation; and
 - GitHub CycloneDX SBOM attestation pushed to the registry.
 
-The runtime recipes retain the reviewed Node image digest and install Debian
-`libpcre2-8-0=10.42-1+deb12u1` for
-[CVE-2026-86145](https://security-tracker.debian.org/tracker/CVE-2026-86145) and
-[CVE-2026-89161](https://security-tracker.debian.org/tracker/CVE-2026-89161).
-The amd64 and arm64 archive hashes in
-[`runtime-image-policy.json`](../scripts/security/runtime-image-policy.json)
-were verified against Debian's signed `bookworm-security` package indexes.
-Docker verifies those checksums before exposing the archives through a
-read-only build mount; package name, version, architecture, and installed
-status must match. Unsupported architectures fail. The archives do not remain
-in the runtime image. Refreshing this pin requires the same signed-metadata
-verification, policy review, package-identity checks, and full image scan.
-A package-only proof does not replace scanning the final application image or
-establish that Railway's source-built deployment contains the same OS update.
+The runtime recipes pin both the Node 26.9.0 source image and a distroless
+Debian 13 runtime base in
+[`runtime-image-policy.json`](../scripts/security/runtime-image-policy.json).
+They copy the exact Node executable and required `libatomic` shared library
+from the source image into the final base. Build and final-image smokes check
+the reviewed per-architecture hashes, and the latter also checks the exact
+Node version. The final image keeps UID 1000 and omits a shell, `npm`, and
+`npx`. The prior Bookworm PCRE2 archive override is no longer part of these
+candidate images. The final-image SBOM does not classify copied standalone
+executables and shared libraries as OS packages, so version/hash provenance
+and a Node security-advisory review remain separate gates. Refreshing either
+digest requires policy review, runtime smoke tests, and a fresh scan of both
+final application images. A package-only proof does not establish the security
+of the final image or of Railway's separately source-built deployment.
 
 ### Bound scan evidence
 
@@ -138,10 +159,10 @@ omits that current-time check so retained evidence remains reviewable.
 
 The schema 2 `<service>.image.json` record binds the image ID and revision to
 scanner identity, database hashes/timestamps, exact report/SBOM byte hashes,
-package coverage, complete severity counts, and fixed HIGH/CRITICAL findings.
+package coverage, complete severity counts, and every HIGH/CRITICAL finding.
 Package URLs bind the inventories across Debian revision/epoch formatting and
-scoped npm package names. Unfixed findings remain visible; the gate retains
-its existing fixed HIGH/CRITICAL policy. The workflow uploads the small
+scoped npm package names. Unfixed and UNKNOWN findings fail the gate rather
+than being treated as accepted risk. The workflow uploads the small
 metadata, full reports, records, and any failure markers even on failure;
 it never uploads the database itself. Hashes establish the exact bytes used
 by the trusted scan job, while replaying a historical scan would also require

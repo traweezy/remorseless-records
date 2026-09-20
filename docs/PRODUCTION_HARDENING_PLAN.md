@@ -3349,6 +3349,10 @@ not permission to allocate 70% of the Railway plan maximum.
       Publication and attestations correctly skipped on `staging`. Source-built
       Railway acceptance is complete; approved `master` publication, digest
       verification, Railway image-source cutover, and rollback proof remain.
+      The fixed-only acceptance criterion was superseded by the September 20
+      [security gate incident](SECURITY_INCIDENT_REPORT_2026-09-20.md). Require
+      zero UNKNOWN/HIGH/CRITICAL findings in fresh final-image scans and clean
+      exact-revision CI before any image publication or cutover.
       A current-time check now rejects scan evidence older than 30 minutes or
       an expired vulnerability database immediately before master publication;
       it does not waive the unresolved image findings or authorize cutover.

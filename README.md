@@ -1714,7 +1714,13 @@ action pins, or loss of the Shai-Hulud scan controls. Trivy ignores generated
 `.medusa` output and resolves its vulnerability database only from the reviewed
 GHCR source. Root CI retains the verified filesystem SBOM and license
 inventory for 30 days. The Runtime Images pipeline separately binds each
-container SBOM to its OCI digest and rejects fixed high/critical findings.
+container SBOM to its OCI digest and rejects every unknown, high, or critical
+finding, including findings without an available package fix. The Backend and
+Storefront CodeQL jobs fail when their local SARIF contains high or critical
+findings instead of treating a successful upload as a clean analysis.
+The [September 20 security incident report](docs/SECURITY_INCIDENT_REPORT_2026-09-20.md)
+records the earlier fail-open gates, remediation evidence, and limits of the
+credential-access review.
 Railway still deploys source-built Railpack artifacts until the separately
 reviewed registry-source cutover in
 [`docs/RELEASE_OPERATIONS.md`](docs/RELEASE_OPERATIONS.md); do not claim the
