@@ -11,6 +11,33 @@ reviewed scope. Do not invent missing production, legal, tax, or provider facts.
 Use [PROJECT_MAP.md](PROJECT_MAP.md) for the indexed code/documentation entrypoints.
 Preserve unrelated `Default/` unread, untouched, and unstaged.
 
+### Accepted September 20 UTC private recovery batch: `7ed55bc`
+
+Exact SHA `7ed55bc0e47ebee9d7dc90e97766b018b83d95a6` passed Root CI
+`35500902742`, Backend CI `35500902732`, Storefront CI `35500902738`, and
+Runtime Images `35500902825`. Local database-release, lint/typecheck, and
+pre-push coverage gates passed. The commit accepts the exact
+PostgreSQL private source through the guarded tunnel; a second commit records
+the verified private snapshot, read-only probes, scoped MinIO volume checkpoint,
+and current-object inventory. The new private archive has not been restored or
+moved off-site.
+
+Railway skipped exact-SHA Backend candidate
+`33d2d14d-3be3-4d04-ac35-eaa0ff41311d` and Storefront candidate
+`fabecbbc-4894-4df2-b182-e676dbf9324d` because no watched application
+files changed. Retained Backend `059436d` and Storefront `7e743bf` deployments
+remained healthy: `/ready` returned 11 and 2 passing checks respectively,
+and Backend operations reported 11 healthy dependencies with no reasons.
+
+A separate read-only support-image audit found no proven immutable pin for
+Redis, PostgreSQL or Meilisearch. Railway exposes source strings but not their
+running OCI digests: Redis configuration names `railwayapp/redis` while the
+July 2025 active deployment names `bitnami/redis`; PostgreSQL still uses
+`postgres-ssl:latest`; Meilisearch uses `getmeili/meilisearch:v1.11.3` from
+July 2025. Current registry digests cannot prove the running bytes. Do not
+substitute them without an exact running-digest receipt or controlled backed-up
+cutover and rollback.
+
 ### Accepted September 20 UTC pool and scanner batch: `059436d`
 
 Exact SHA `059436d83e8836c0a5786f5b595fd44c70231b5b` passed Root CI
