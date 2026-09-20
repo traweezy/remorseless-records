@@ -47,7 +47,7 @@ const snapshotFailurePhases = new Set([
   "output_directory_cleanup",
 ])
 const scriptDirectory = dirname(fileURLToPath(import.meta.url))
-const sourceScopeQuery = `query SourceScope($environmentId: String!, $serviceId: String!, $volumeInstanceId: String!) {
+export const sourceScopeQuery = `query SourceScope($environmentId: String!, $serviceId: String!, $volumeInstanceId: String!) {
   serviceInstance(environmentId: $environmentId, serviceId: $serviceId) {
     id environmentId serviceId
     activeDeployments {
@@ -58,7 +58,7 @@ const sourceScopeQuery = `query SourceScope($environmentId: String!, $serviceId:
   volumeInstance(id: $volumeInstanceId) {
     id environmentId serviceId volumeId mountPath state
     deletedAt isPendingDeletion
-    environment { id projectId }
+    environment { id projectId name }
   }
 }`
 
@@ -178,6 +178,7 @@ export const normalizeRailwayScope = (raw, args) => {
   assert.equal(volume?.serviceId, args["--service-id"])
   assert.equal(volume?.environment?.id, args["--environment-id"])
   assert.equal(volume?.environment?.projectId, args["--project-id"])
+  assert.equal(volume?.environment?.name, "staging")
   assert.equal(volume?.state, "READY")
   assert.equal(volume?.deletedAt, null)
   assert.equal(volume?.isPendingDeletion, false)
@@ -524,7 +525,7 @@ const readPublishedBundle = async (
 const sourceSystemIdQuery =
   "SELECT system_identifier::text FROM pg_catalog.pg_control_system()"
 
-const readSourceSystemId = async (command, connection, signal, path) => {
+export const readSourceSystemId = async (command, connection, signal, path) => {
   const environment = {
     ...createPostgresClientEnvironment(
       connection.mappedUrl,

@@ -1101,9 +1101,9 @@ ongoing writes, TTL expiry and the moving AOF increment prevent a single
 cross-system snapshot. Classifying failed jobs and comparing PostgreSQL and
 Stripe evidence remain separate acceptance steps.
 
-The first PostgreSQL business-evidence query contract lives in
-`scripts/lib/postgres-business-aggregate.mjs`. It has no live-source CLI and
-has not run against staging. It requests one read-only, repeatable-read
+The PostgreSQL business-evidence query contract lives in
+`scripts/lib/postgres-business-aggregate.mjs`. It has not run against staging.
+It requests one read-only, repeatable-read
 PostgreSQL snapshot, fixes `statement_timeout` at five seconds and `lock_timeout`
 at one second, and returns only nine physical table row counts plus fixed
 active tax-evidence and Stripe-event status counts. Physical table counts
@@ -1114,11 +1114,25 @@ and always leaves `businessReconciled: false`. The fixed tax collection-mode
 columns are from the later `Migration20260830150000` migration. The query
 and parser pass a disposable local PostgreSQL 18 fixture via
 `RR_POSTGRES_TEST_BIN=/usr/lib/postgresql/18/bin node --test scripts/postgres-business-aggregate.test.mjs`.
-Before live use, a runner must bind the existing seven-ID Railway PostgreSQL
-source guard and private transport, verify the current schema, and measure the
-full-table count cost. Comparing identified Medusa payments and tax evidence
-with bounded Stripe test-mode reads requires a separate privacy-preserving
-step; a PostgreSQL snapshot alone cannot establish cross-system parity.
+The guarded runner is `pnpm run data:postgres:live-business-aggregate -- --help`.
+It requires the seven exact Railway PostgreSQL source IDs, system ID, and
+original endpoint fingerprint from the private staging snapshot scope receipt.
+It reuses the strict SSH host-key, exact single-deployment/instance/volume,
+loopback TLS tunnel and source system-ID guards, adding pre/post Railway and
+database identity checks around the query. The returned report includes only
+fixed counts, a bounded UTC window and duration, `readOnly: true`, and
+`businessReconciled: false`; failures reveal no connection string, token,
+query error or row data. Its mocked local boundary tests run in the shared
+CI contract, while the SQL itself has the disposable PostgreSQL fixture test.
+The runner has **not** been executed against Railway. Before live use, verify
+the current schema and measure the full-table count cost on restored data;
+the five-second statement timeout limits work but does not prove an acceptable
+load. A read-capable PostgreSQL identity must also be able to call
+`pg_control_system()` for the existing source-system guard. This bounded
+aggregate remains diagnostic only. Comparing identified Medusa payments and
+tax evidence with bounded Stripe test-mode reads requires a separate
+privacy-preserving step; a PostgreSQL snapshot alone cannot establish
+cross-system parity.
 
 ### Recovery policy
 

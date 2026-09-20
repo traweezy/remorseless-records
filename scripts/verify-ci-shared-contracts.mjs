@@ -21,7 +21,7 @@ const sharedContracts = Object.freeze({
     "node scripts/verify-storefront-response-boundary.mjs",
   "qa:admin-browser-boundary": "node scripts/verify-admin-browser-boundary.mjs",
   "qa:database-release-boundary":
-    "node --test scripts/release-prepare.test.mjs scripts/postgres-logical-backup.test.mjs scripts/postgres-restore.test.mjs scripts/recovery-process.test.mjs scripts/postgres-recovery-cli.test.mjs scripts/postgres-staging-snapshot.test.mjs scripts/postgres-business-aggregate.test.mjs scripts/postgres-isolated-target.test.mjs scripts/provision-postgres-recovery-client.test.mjs scripts/media-backup.test.mjs scripts/media-object-checksum.test.mjs scripts/media-backup-cli.test.mjs scripts/redis-aof-recovery.test.mjs scripts/redis-aof-capture.test.mjs scripts/redis-aof-isolated-replay.test.mjs scripts/backend-isolated-startup-smoke.test.mjs && pnpm run qa:redis-capacity && pnpm run qa:redis-live-aggregate",
+    "node --test scripts/release-prepare.test.mjs scripts/postgres-logical-backup.test.mjs scripts/postgres-restore.test.mjs scripts/recovery-process.test.mjs scripts/postgres-recovery-cli.test.mjs scripts/postgres-staging-snapshot.test.mjs scripts/postgres-business-aggregate.test.mjs scripts/postgres-isolated-target.test.mjs scripts/provision-postgres-recovery-client.test.mjs scripts/media-backup.test.mjs scripts/media-object-checksum.test.mjs scripts/media-backup-cli.test.mjs scripts/redis-aof-recovery.test.mjs scripts/redis-aof-capture.test.mjs scripts/redis-aof-isolated-replay.test.mjs scripts/backend-isolated-startup-smoke.test.mjs && pnpm run qa:postgres-live-business-aggregate && pnpm run qa:redis-capacity && pnpm run qa:redis-live-aggregate",
   "qa:storefront-provider-fixture":
     "node --test storefront/scripts/ci-medusa-fixture.test.mjs",
   "qa:dashboard-product-create":
@@ -61,6 +61,8 @@ const compilerCommands = Object.freeze([
 ])
 const redisCoverageCommand =
   "node --test --experimental-test-coverage --test-coverage-include=scripts/lib/redis-capacity-audit.mjs --test-coverage-include=scripts/lib/redis-audit-client.mjs --test-coverage-include=scripts/lib/cli-arguments.mjs --test-coverage-lines=80 --test-coverage-branches=80 --test-coverage-functions=80 scripts/cli-arguments.test.mjs scripts/redis-capacity-audit.test.mjs scripts/redis-audit-client.test.mjs scripts/redis-audit-cli.test.mjs"
+const postgresAggregateCoverageCommand =
+  "node --test --experimental-test-coverage --test-coverage-include=scripts/postgres-live-business-aggregate.mjs --test-coverage-lines=80 --test-coverage-branches=80 --test-coverage-functions=80 scripts/postgres-live-business-aggregate.test.mjs"
 
 const scriptChain = (source) => {
   assert.equal(typeof source, "string")
@@ -212,6 +214,11 @@ export const validateCiSharedContracts = ({
     scripts["qa:redis-capacity"],
     redisCoverageCommand,
     "Redis helper coverage/test scope must remain enforced"
+  )
+  assert.equal(
+    scripts["qa:postgres-live-business-aggregate"],
+    postgresAggregateCoverageCommand,
+    "PostgreSQL live aggregate coverage/test scope must remain enforced"
   )
 
   const local = scriptChain(scripts["qa:lint"])

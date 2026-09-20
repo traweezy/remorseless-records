@@ -368,6 +368,18 @@ for (const axis of ["lines", "branches", "functions"]) {
         )
       )
   })
+  test(`rejects relaxed or removed PostgreSQL aggregate ${axis} coverage`, () => {
+    for (const replacement of [`--test-coverage-${axis}=79`, ""])
+      assert.throws(() =>
+        validate(
+          mutateScripts((scripts) => {
+            scripts["qa:postgres-live-business-aggregate"] = scripts[
+              "qa:postgres-live-business-aggregate"
+            ].replace(`--test-coverage-${axis}=80`, replacement)
+          })
+        )
+      )
+  })
 }
 
 test("rejects disabled parity coverage or omitted validator coverage scope", () => {

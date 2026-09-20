@@ -88,7 +88,11 @@ const apiScope = () => ({
       state: "READY",
       deletedAt: null,
       isPendingDeletion: false,
-      environment: { id: ids.environment, projectId: ids.project },
+      environment: {
+        id: ids.environment,
+        projectId: ids.project,
+        name: "staging",
+      },
     },
   },
 })
