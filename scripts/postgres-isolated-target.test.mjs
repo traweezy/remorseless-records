@@ -18,8 +18,12 @@ import { fileURLToPath } from "node:url"
 import { createPostgresClientEnvironment } from "./lib/postgres-logical-backup.mjs"
 import {
   assertContainerBoundary,
+  createPhaseFailure,
+  finishFailedCreate,
+  isolatedTargetFailureEvent,
   main,
   parseArguments,
+  runCreatePhase,
   runBounded,
   verifySourceScope,
 } from "./postgres-isolated-target.mjs"
@@ -103,6 +107,125 @@ test("isolated target arguments reject missing, extra and implicit apply flags",
   )
   assert.throws(() =>
     parseArguments(["stripe-parity", "--target-dir", "/tmp/x"])
+  )
+})
+
+test("create diagnostics expose only fixed subphases and preserve cleanup", async () => {
+  const privateDetail = "private-password-and-target-path"
+  const preRootArgs = [
+    "create",
+    "--base-dir",
+    `/tmp/${privateDetail}-absent`,
+    "--source-scope",
+    "/tmp/absent/source-scope.receipt.json",
+    "--archive",
+    "/tmp/absent/database.dump",
+    "--manifest",
+    "/tmp/absent/database.manifest.json",
+    "--receipt",
+    "/tmp/absent/database.restore-receipt.json",
+  ]
+  await assert.rejects(main(preRootArgs), (error) => {
+    assert.deepEqual(isolatedTargetFailureEvent(error), {
+      status: "failed",
+      phase: "isolated_target",
+      subphase: "base_directory",
+    })
+    return true
+  })
+  assert.deepEqual(isolatedTargetFailureEvent(new Error(privateDetail)), {
+    status: "failed",
+    phase: "isolated_target",
+  })
+  assert.throws(() => createPhaseFailure(privateDetail))
+
+  let provisioningFailure
+  try {
+    await runCreatePhase("volume_create", async () => {
+      throw new Error(privateDetail)
+    })
+  } catch (error) {
+    provisioningFailure = error
+  }
+  assert.ok(provisioningFailure)
+  let cleaned = false
+  await assert.rejects(
+    finishFailedCreate(provisioningFailure, async () => {
+      cleaned = true
+    }),
+    (error) => {
+      assert.equal(error, provisioningFailure)
+      assert.deepEqual(isolatedTargetFailureEvent(error), {
+        status: "failed",
+        phase: "isolated_target",
+        subphase: "volume_create",
+      })
+      return true
+    }
+  )
+  assert.equal(cleaned, true)
+  await assert.rejects(
+    finishFailedCreate(provisioningFailure, async () => {
+      throw new Error(privateDetail)
+    }),
+    (error) => {
+      assert.deepEqual(isolatedTargetFailureEvent(error), {
+        status: "failed",
+        phase: "isolated_target",
+        subphase: "cleanup",
+      })
+      assert.ok(
+        !JSON.stringify(isolatedTargetFailureEvent(error)).includes(
+          privateDetail
+        )
+      )
+      return true
+    }
+  )
+})
+
+test("CLI failure event adds only the allowlisted create subphase", async () => {
+  const runCli = async (args) => {
+    const child = spawn(
+      process.execPath,
+      [join(scripts, "postgres-isolated-target.mjs"), ...args],
+      { env: privateEnvironment(), stdio: ["ignore", "pipe", "pipe"] }
+    )
+    let stdout = ""
+    let stderr = ""
+    child.stdout.on("data", (chunk) => {
+      stdout += chunk.toString("utf8")
+    })
+    child.stderr.on("data", (chunk) => {
+      stderr += chunk.toString("utf8")
+    })
+    const code = await new Promise((resolve) => child.once("close", resolve))
+    assert.equal(code, 1)
+    assert.equal(stdout, "")
+    return stderr
+  }
+  const secretMarker = "private-secret-marker"
+  const createError = await runCli([
+    "create",
+    "--base-dir",
+    `/tmp/${secretMarker}-absent`,
+    "--source-scope",
+    "/tmp/absent/source-scope.receipt.json",
+    "--archive",
+    "/tmp/absent/database.dump",
+    "--manifest",
+    "/tmp/absent/database.manifest.json",
+    "--receipt",
+    "/tmp/absent/database.restore-receipt.json",
+  ])
+  assert.equal(
+    createError,
+    '{"status":"failed","phase":"isolated_target","subphase":"base_directory"}\n'
+  )
+  assert.ok(!createError.includes(secretMarker))
+  assert.equal(
+    await runCli(["unsupported"]),
+    '{"status":"failed","phase":"isolated_target"}\n'
   )
 })
 

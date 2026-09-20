@@ -66,6 +66,55 @@ const states = new Set([
   "restore_attempted",
   "restored",
 ])
+const createSubphases = new Set([
+  "base_directory",
+  "source_bundle",
+  "docker_daemon",
+  "image_identity",
+  "client_toolchain",
+  "disk_capacity",
+  "port_selection",
+  "target_directory",
+  "local_access",
+  "state_persist",
+  "volume_create",
+  "cluster_init",
+  "server_start",
+  "target_verify",
+  "cleanup",
+])
+class CreateFailure extends Error {
+  constructor(subphase) {
+    super("Isolated target creation failed.")
+    this.subphase = subphase
+  }
+}
+export const createPhaseFailure = (subphase) => {
+  assert.ok(createSubphases.has(subphase))
+  return new CreateFailure(subphase)
+}
+export const runCreatePhase = async (subphase, operation) => {
+  try {
+    return await operation()
+  } catch {
+    throw createPhaseFailure(subphase)
+  }
+}
+export const isolatedTargetFailureEvent = (error) => ({
+  status: "failed",
+  phase: "isolated_target",
+  ...(error instanceof CreateFailure && createSubphases.has(error.subphase)
+    ? { subphase: error.subphase }
+    : {}),
+})
+export const finishFailedCreate = async (failure, cleanup) => {
+  try {
+    await cleanup()
+  } catch {
+    throw createPhaseFailure("cleanup")
+  }
+  throw failure
+}
 const sourceIdPattern = /^[1-9]\d{9,19}$/u
 const ownerPattern = /^[a-f0-9]{32}$/u
 const containerIdPattern = /^[a-f0-9]{64}$/u
@@ -754,24 +803,34 @@ const selectedPort = async () => {
 
 const create = async (baseDir, paths, signal) => {
   signal?.throwIfAborted()
-  await canonicalPrivateDirectory(baseDir)
-  const { scope, hashes } = await verifySourceScope(paths)
-  const daemonId = await localDockerIdentity()
-  const image = await dockerObject("image", imageId)
-  assert.equal(image.Id, imageId)
-  const clientVersion = await runBounded(psqlPath, ["--version"])
-  assert.match(clientVersion, /^psql \(PostgreSQL\) 16\.15(?:\s|$)/u)
-  const restoreVersion = await runBounded(
-    "/usr/lib/postgresql/16/bin/pg_restore",
-    ["--version"]
+  await runCreatePhase("base_directory", () =>
+    canonicalPrivateDirectory(baseDir)
   )
-  assert.match(restoreVersion, /^pg_restore \(PostgreSQL\) 16\.15(?:\s|$)/u)
-  const disk = await statfs(baseDir)
-  assert.ok(disk.bavail * disk.bsize >= 512 * 1024 * 1024)
-  const port = await selectedPort()
+  const { scope, hashes } = await runCreatePhase("source_bundle", () =>
+    verifySourceScope(paths)
+  )
+  const daemonId = await runCreatePhase("docker_daemon", localDockerIdentity)
+  await runCreatePhase("image_identity", async () => {
+    const image = await dockerObject("image", imageId)
+    assert.equal(image.Id, imageId)
+  })
+  await runCreatePhase("client_toolchain", async () => {
+    const clientVersion = await runBounded(psqlPath, ["--version"])
+    assert.match(clientVersion, /^psql \(PostgreSQL\) 16\.15(?:\s|$)/u)
+    const restoreVersion = await runBounded(
+      "/usr/lib/postgresql/16/bin/pg_restore",
+      ["--version"]
+    )
+    assert.match(restoreVersion, /^pg_restore \(PostgreSQL\) 16\.15(?:\s|$)/u)
+  })
+  await runCreatePhase("disk_capacity", async () => {
+    const disk = await statfs(baseDir)
+    assert.ok(disk.bavail * disk.bsize >= 512 * 1024 * 1024)
+  })
+  const port = await runCreatePhase("port_selection", selectedPort)
   const owner = randomUUID().replaceAll("-", "")
   const root = join(baseDir, `pg16-target-${owner}`)
-  await mkdir(root, { mode: 0o700 })
+  await runCreatePhase("target_directory", () => mkdir(root, { mode: 0o700 }))
   const state = {
     schemaVersion: 1,
     owner,
@@ -789,6 +848,7 @@ const create = async (baseDir, paths, signal) => {
     port,
     phase: "provisioning",
   }
+  let subphase = "local_access"
   try {
     await mkdir(join(root, "socket"), { mode: 0o700 })
     const password = randomBytes(36).toString("base64url")
@@ -798,7 +858,9 @@ const create = async (baseDir, paths, signal) => {
     })
     await runBounded("setfacl", ["-m", "u:999:rwx", join(root, "socket")])
     await runBounded("setfacl", ["-m", "u:999:r--", join(root, "password")])
+    subphase = "state_persist"
     await writeState(state)
+    subphase = "volume_create"
     await docker(
       [
         "volume",
@@ -809,6 +871,7 @@ const create = async (baseDir, paths, signal) => {
       ],
       { signal }
     )
+    subphase = "cluster_init"
     await docker(
       [
         "run",
@@ -850,6 +913,7 @@ const create = async (baseDir, paths, signal) => {
       ],
       { timeoutMs: 60_000, signal }
     )
+    subphase = "server_start"
     const id = await docker(
       [
         "run",
@@ -897,7 +961,9 @@ const create = async (baseDir, paths, signal) => {
     )
     assert.match(id, containerIdPattern)
     state.containerId = id
+    subphase = "state_persist"
     await writeState(state)
+    subphase = "target_verify"
     const deadline = Date.now() + 10_000
     while (Date.now() < deadline) {
       try {
@@ -910,6 +976,7 @@ const create = async (baseDir, paths, signal) => {
     signal?.throwIfAborted()
     state.targetSystemId = facts.systemId
     state.phase = "ready"
+    subphase = "state_persist"
     await writeState(state)
     signal?.throwIfAborted()
     return {
@@ -920,16 +987,11 @@ const create = async (baseDir, paths, signal) => {
       targetSystemId: facts.systemId,
       sourceSystemId: scope.sourceSystemId,
     }
-  } catch (error) {
-    try {
+  } catch {
+    await finishFailedCreate(createPhaseFailure(subphase), async () => {
       await cleanupResources(state)
       await rm(root, { recursive: true })
-    } catch {
-      throw new Error(
-        `Provisioning failed; inspect owned target ${root} before cleanup.`
-      )
-    }
-    throw error
+    })
   }
 }
 
@@ -1344,8 +1406,10 @@ if (
     process.stdout.write(
       typeof result === "string" ? result : `${JSON.stringify(result)}\n`
     )
-  } catch {
-    process.stderr.write('{"status":"failed","phase":"isolated_target"}\n')
+  } catch (error) {
+    process.stderr.write(
+      `${JSON.stringify(isolatedTargetFailureEvent(error))}\n`
+    )
     process.exitCode = 1
   } finally {
     process.off("SIGINT", abort)

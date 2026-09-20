@@ -185,6 +185,15 @@ has no hard disk quota. This isolated database check does not itself prove
 application startup, payment/provider behavior, durable backup retention, or
 production recovery time.
 
+A failed `create` emits the existing fixed `failed`/`isolated_target` event
+with an allowlisted `subphase` such as `source_bundle`, `volume_create`,
+`cluster_init`, `server_start`, or `target_verify`. It never emits the raw
+exception, source data, credentials, paths, or hashes. `cleanup` means automatic
+cleanup itself failed; inspect only the newly owned target resources before
+attempting any removal. No subphase on other runner failures preserves the
+existing generic event. Do not retry a failed create without resolving its
+reported subphase and checking for owned resources.
+
 These checks detect missing/extra physical tables, row-count drift, and broad
 schema drift. Matching counts do not prove byte-for-byte row equality, exact
 constraint definitions, permissions, extension behavior, application startup,
@@ -254,3 +263,31 @@ The guarded wrapper and target runner shipped at exact staging revision
 `e7a37c2180f890e0562495a5897b3cef7decc5c2`; its CI, deployment,
 browser, and bounded runtime acceptance are recorded in the
 [session handoff](NEXT_SESSION_HANDOFF.md).
+
+### Private-source repeat drill — September 20, 2026 UTC
+
+A guarded private-endpoint capture at `2026-09-20T08:46:22.703Z` produced a
+1,852,120-byte custom archive with SHA-256
+`f328bc9b2fcff825bb6f37cf68b20818f125000776591314f38397bfc004ab0a`.
+The source scope binds staging PostgreSQL deployment
+`50c57d73-0457-4bdc-8765-99fa22a6c084`, its READY volume, PostgreSQL
+major 16, and source system identifier `7527124368992473123`.
+
+The first local `create` returned only the prior generic failure event. No
+new owned directory, container, or volume remained, but the exact cause is
+unknown and may have been transient. A fresh guarded attempt using pinned Node
+26.5.0 and the accepted image ID
+`sha256:76db58e52e571729aa4ab51a5c597189e6f570086345c29b68b358067a6547e8`
+succeeded in the private `0700` directory
+`/tmp/rr-pg-private-restore-20260920-diag1`. The isolated target system
+identifier `7687554849411788814` differed from the source. Empty-target
+verification and checksum-bound preflight passed; one-shot apply restored all
+171 tables with 171 matching row-count comparisons, and a separate verify
+returned `isolated_restored_target_verified`. The owned target remains running
+for inspection; it has **not** been cleaned up or promoted.
+
+This repeat proves the private-source archive can be restored into an isolated
+same-major target with the recorded row/schema invariants. It does not prove
+exact row values, role/extension fidelity, application startup, provider
+behavior, PITR, off-site retention, or production recovery time. The archive
+and local target remain temporary drill evidence.
