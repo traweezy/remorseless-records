@@ -163,8 +163,20 @@ Both images must pass before their IDs are exported to the integration runner.
 `--no-build` requires those two IDs and checks the actual running containers;
 it neither rebuilds after scanning nor falls back to a registry pull.
 
+The normal CI scan downloads one database into an owned private cache, makes
+its `trivy.db` and `metadata.json` files read-only, then removes write access
+from their directory. It independently hashes the bounded database bytes and
+metadata before and after both image scans. The on-disk metadata must match
+Trivy's reported vulnerability database at both checks; its freshness is
+re-evaluated after the final scanner check. Each accepted image record binds
+both hashes, the scan interval, and the database age at completion. Byte or
+metadata drift, expiry, a malformed cache, or a scan finding fails before
+either image ID is exported. The optional `--offline` mode leaves the user's
+existing cache unchanged, verifies its bytes before and after the scans, and
+records its age; it does not claim a frozen or fresh CI database.
+
 CI retains the image-bound JSON vulnerability reports, CycloneDX SBOMs and
-identity/checksum records in the private `disposable-integration-images`
+identity/checksum/database-byte records in the private `disposable-integration-images`
 artifact for 14 days, including available evidence when a gate fails.
 The local scanner accepts `--output <new-directory>` and optional `--offline`;
 offline mode records the cached database's age and is not a fresh-DB CI result.

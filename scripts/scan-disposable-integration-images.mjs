@@ -12,6 +12,7 @@ import {
 import { tmpdir } from "node:os"
 import { dirname, join, parse, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
+import { isDeepStrictEqual } from "node:util"
 import { normalizeScriptArguments } from "./lib/cli-arguments.mjs"
 import {
   publicTrivyFailureFields,
@@ -21,6 +22,14 @@ import {
   createRecoveryScope,
   runRecoveryCommand,
 } from "./lib/recovery-process.mjs"
+import {
+  checkedEvidenceDirectory,
+  cleanupEvidenceCache,
+  freezeEvidenceFile,
+  hashEvidenceFile,
+  readEvidenceFile,
+  setEvidenceDirectoryMode,
+} from "./lib/runtime-image-evidence.mjs"
 
 export const INTEGRATION_IMAGES = Object.freeze([
   Object.freeze({
@@ -36,6 +45,8 @@ export const INTEGRATION_IMAGES = Object.freeze([
 ])
 const idPattern = /^sha256:[a-f0-9]{64}$/u
 const limit = 32 * 1024 * 1024
+const databaseLimit = 4 * 1024 * 1024 * 1024
+const databaseMetadataLimit = 64 * 1024
 const freshnessFailure = Symbol("reviewed Trivy DB freshness failure")
 const phases = Object.freeze([
   "arguments",
@@ -71,6 +82,39 @@ const decode = (source) => {
   }
 }
 const hash = (source) => createHash("sha256").update(source).digest("hex")
+const databaseSnapshot = async (cache, privateMode) => ({
+  data: await hashEvidenceFile(join(cache, "db", "trivy.db"), databaseLimit, {
+    privateMode,
+  }),
+  metadata: await hashEvidenceFile(
+    join(cache, "db", "metadata.json"),
+    databaseMetadataLimit,
+    { privateMode }
+  ),
+})
+const readBoundDatabaseMetadata = async (cache, snapshot, privateMode) => {
+  const source = await readEvidenceFile(
+    join(cache, "db", "metadata.json"),
+    databaseMetadataLimit,
+    { privateMode }
+  )
+  requireValue(
+    source.byteLength === snapshot.metadata.bytes &&
+      hash(source) === snapshot.metadata.sha256
+  )
+  return decode(new TextDecoder("utf-8", { fatal: true }).decode(source))
+}
+const freezeDownloadedDatabase = async (cache) => {
+  const directory = join(cache, "db")
+  await checkedEvidenceDirectory(directory)
+  await setEvidenceDirectoryMode(directory, 0o700)
+  await freezeEvidenceFile(join(directory, "trivy.db"), databaseLimit)
+  await freezeEvidenceFile(
+    join(directory, "metadata.json"),
+    databaseMetadataLimit
+  )
+  await setEvidenceDirectoryMode(directory, 0o500)
+}
 const freeze = (value) => {
   if (object(value) || Array.isArray(value)) {
     for (const child of Object.values(value)) freeze(child)
@@ -401,6 +445,7 @@ export const scanDisposableIntegrationImages = async (
       maxOutputBytes: limit,
     })
   let temporaryCache
+  let temporaryCacheIdentity
   let phase = "initialize"
   try {
     requireValue(
@@ -461,6 +506,8 @@ export const scanDisposableIntegrationImages = async (
     const cache = options.offline
       ? join(environment.HOME, ".cache", "trivy")
       : (temporaryCache = await mkdtemp(join(tmpdir(), "rr-fixture-trivy-")))
+    if (temporaryCache)
+      temporaryCacheIdentity = await checkedEvidenceDirectory(temporaryCache)
     const base = ["--config", "/dev/null", "--cache-dir", cache, "--quiet"]
     const common = [
       "image",
@@ -496,12 +543,34 @@ export const scanDisposableIntegrationImages = async (
     if (!options.offline)
       await execute("trivy", [...common, "--download-db-only"])
     phase = "validate_db"
+    if (!options.offline) await freezeDownloadedDatabase(cache)
+    const databaseBefore = await databaseSnapshot(cache, !options.offline)
+    const metadataBefore = await readBoundDatabaseMetadata(
+      cache,
+      databaseBefore,
+      !options.offline
+    )
+    const startedMs = now()
+    const startedDate = new Date(startedMs)
+    requireValue(
+      Number.isSafeInteger(startedMs) && Number.isFinite(startedDate.getTime())
+    )
+    const startedAt = startedDate.toISOString()
+    const scannerSource = await execute("trivy", [
+      ...base,
+      "--version",
+      "--format",
+      "json",
+    ])
     const scanner = parseScannerIdentity(
-      await execute("trivy", [...base, "--version", "--format", "json"]),
-      now(),
+      scannerSource,
+      startedMs,
       options.offline
     )
-    const records = []
+    requireValue(
+      isDeepStrictEqual(decode(scannerSource).VulnerabilityDB, metadataBefore)
+    )
+    const pendingRecords = []
     for (const image of images) {
       phase = `scan_${image.service}`
       activeSignal.throwIfAborted()
@@ -533,7 +602,7 @@ export const scanDisposableIntegrationImages = async (
       )
       const sbom = validateImageSbom(decode(sbomSource), image, report)
       const { inventory: _inventory, ...summary } = report
-      const record = freeze({
+      pendingRecords.push({
         schemaVersion: 1,
         service: image.service,
         localTag: image.tag,
@@ -546,30 +615,70 @@ export const scanDisposableIntegrationImages = async (
         reports: [reportFile, sbomFile],
         compiledServerCoverage: "not-established",
       })
-      await writeEvidence(
-        options.output,
-        `${image.service}.image.json`,
-        `${JSON.stringify(record, null, 2)}\n`
-      )
-      records.push(record)
     }
     phase = "validate_db"
+    const afterSource = await execute("trivy", [
+      ...base,
+      "--version",
+      "--format",
+      "json",
+    ])
+    const databaseAfter = await databaseSnapshot(cache, !options.offline)
+    const metadataAfter = await readBoundDatabaseMetadata(
+      cache,
+      databaseAfter,
+      !options.offline
+    )
+    requireValue(
+      ["data", "metadata"].every(
+        (key) =>
+          databaseAfter[key].bytes === databaseBefore[key].bytes &&
+          databaseAfter[key].sha256 === databaseBefore[key].sha256
+      )
+    )
+    const completedMs = now()
+    const completedDate = new Date(completedMs)
+    requireValue(
+      Number.isSafeInteger(completedMs) &&
+        completedMs >= startedMs &&
+        Number.isFinite(completedDate.getTime())
+    )
+    const completedAt = completedDate.toISOString()
     const after = parseScannerIdentity(
-      await execute("trivy", [...base, "--version", "--format", "json"]),
-      now(),
+      afterSource,
+      completedMs,
       options.offline
     )
     requireValue(
-      after.version === scanner.version &&
+      isDeepStrictEqual(decode(afterSource).VulnerabilityDB, metadataAfter) &&
+        after.version === scanner.version &&
         ["version", "updatedAt", "nextUpdate", "downloadedAt"].every(
           (key) => after.database[key] === scanner.database[key]
         )
     )
     phase = "validate_policy"
-    requireValue(records.every((record) => record.clean))
+    requireValue(pendingRecords.every((record) => record.clean))
+    const scan = freeze({
+      startedAt,
+      completedAt,
+      database: {
+        before: databaseBefore,
+        after: databaseAfter,
+        ageAtCompletionMs: after.database.ageMs,
+      },
+    })
+    const records = pendingRecords.map((pending) =>
+      freeze({ ...pending, scan })
+    )
+    for (const record of records)
+      await writeEvidence(
+        options.output,
+        `${record.service}.image.json`,
+        `${JSON.stringify(record, null, 2)}\n`
+      )
     phase = "cleanup"
     if (temporaryCache) {
-      await rm(temporaryCache, { recursive: true, force: true })
+      await cleanupEvidenceCache(temporaryCache, temporaryCacheIdentity)
       temporaryCache = undefined
     }
     activeSignal.throwIfAborted()
@@ -580,6 +689,7 @@ export const scanDisposableIntegrationImages = async (
       event: "integration.images.verified",
       images: images.map(({ service, id }) => ({ service, id })),
       scanner,
+      scan,
     })
   } catch (error) {
     throw Object.assign(failure(), {
@@ -590,7 +700,9 @@ export const scanDisposableIntegrationImages = async (
     scope?.close()
     if (temporaryCache) {
       try {
-        await rm(temporaryCache, { recursive: true, force: true })
+        if (temporaryCacheIdentity)
+          await cleanupEvidenceCache(temporaryCache, temporaryCacheIdentity)
+        else await rm(temporaryCache, { recursive: true, force: true })
       } catch {
         throw Object.assign(failure(), { phase: "cleanup" })
       }

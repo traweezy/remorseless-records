@@ -10,6 +10,30 @@ const significant = (source) =>
   source
     .split(/\r?\n/u)
     .filter((line) => line.trim() && !line.trimStart().startsWith("#"))
+export const validateFixtureScanEvidenceSource = (source) => {
+  for (const marker of [
+    "await freezeDownloadedDatabase(cache)",
+    "const databaseBefore = await databaseSnapshot(cache, !options.offline)",
+    "const metadataBefore = await readBoundDatabaseMetadata(",
+    "isDeepStrictEqual(decode(scannerSource).VulnerabilityDB, metadataBefore)",
+    'const afterSource = await execute("trivy", [',
+    "const databaseAfter = await databaseSnapshot(cache, !options.offline)",
+    "databaseAfter[key].sha256 === databaseBefore[key].sha256",
+    "isDeepStrictEqual(decode(afterSource).VulnerabilityDB, metadataAfter)",
+    "const completedMs = now()",
+    "startedAt,",
+    "completedAt,",
+    "before: databaseBefore,",
+    "after: databaseAfter,",
+    "ageAtCompletionMs: after.database.ageMs",
+    "freeze({ ...pending, scan })",
+    "await cleanupEvidenceCache(temporaryCache, temporaryCacheIdentity)",
+  ])
+    assert.ok(
+      source.includes(marker),
+      `Fixture scan evidence guard lost: ${marker}`
+    )
+}
 export const validateHardenedFixtureWiring = ({
   backendWorkflow,
   compose,
@@ -289,13 +313,17 @@ export const verifyDisposableIntegrationBoundary = async () => {
     integrationTest,
     orchestrator,
     packageSource,
+    scannerSource,
   ] = await Promise.all([
     read(".github/workflows/backend.yml"),
     read("compose.integration.yml"),
     read("backend/integration-tests/disposable-infrastructure.test.ts"),
     read("scripts/run-disposable-integration.mjs"),
     read("package.json"),
+    read("scripts/scan-disposable-integration-images.mjs"),
   ])
+
+  validateFixtureScanEvidenceSource(scannerSource)
 
   validateHardenedFixtureWiring({
     backendWorkflow,

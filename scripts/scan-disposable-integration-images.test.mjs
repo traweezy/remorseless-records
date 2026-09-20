@@ -1,6 +1,7 @@
 import assert from "node:assert/strict"
 import { createHash } from "node:crypto"
 import {
+  chmod,
   mkdtemp,
   mkdir,
   open,
@@ -96,6 +97,16 @@ const addGosu = (value) => {
 const makeFixture = async (t, changes = {}) => {
   const directory = await mkdtemp(join(tmpdir(), "rr-image-scan-test-"))
   t.after(() => rm(directory, { recursive: true, force: true }))
+  const offlineCache = join(directory, ".cache", "trivy")
+  await mkdir(join(offlineCache, "db"), { recursive: true, mode: 0o700 })
+  await writeFile(join(offlineCache, "db", "trivy.db"), "fixture-db", {
+    mode: 0o600,
+  })
+  await writeFile(
+    join(offlineCache, "db", "metadata.json"),
+    JSON.stringify(scanner().VulnerabilityDB),
+    { mode: 0o600 }
+  )
   const envFile = join(directory, "github-env")
   await writeFile(envFile, "EXISTING=kept\n", { mode: 0o600 })
   const calls = []
@@ -121,7 +132,20 @@ const makeFixture = async (t, changes = {}) => {
         os: "linux",
         architecture: "amd64",
       })
-    if (args.includes("--download-db-only")) return ""
+    if (args.includes("--download-db-only")) {
+      const cache = args[args.indexOf("--cache-dir") + 1]
+      await mkdir(join(cache, "db"), { mode: 0o700 })
+      await writeFile(join(cache, "db", "trivy.db"), "fixture-db", {
+        mode: 0o644,
+      })
+      await writeFile(
+        join(cache, "db", "metadata.json"),
+        JSON.stringify(scanner().VulnerabilityDB),
+        { mode: 0o644 }
+      )
+      await changes.downloaded?.(cache)
+      return ""
+    }
     if (args.includes("--version"))
       return JSON.stringify(changes.scanner?.(calls) ?? scanner())
     const id = args.at(-1)
@@ -133,6 +157,7 @@ const makeFixture = async (t, changes = {}) => {
   return {
     directory,
     output: join(directory, "artifacts", "scan"),
+    offlineCache,
     envFile,
     calls,
     environment,
@@ -140,7 +165,7 @@ const makeFixture = async (t, changes = {}) => {
     execute: async (offline = true) =>
       scanDisposableIntegrationImages(
         { output: join(directory, "artifacts", "scan"), offline },
-        { environment, run, now: () => clock }
+        { environment, run, now: changes.now ?? (() => clock) }
       ),
   }
 }
@@ -253,6 +278,27 @@ test("reports sanitized expired DB metadata without scanning or exporting", asyn
       updatedAt: "2026-09-06T19:00:00.000Z",
       nextUpdate: "2026-09-06T21:00:00.000Z",
     },
+  })
+  assert.equal(
+    fixture.calls.some(({ args }) => args.includes("--skip-db-update")),
+    false
+  )
+  assert.equal(await readFile(fixture.envFile, "utf8"), "EXISTING=kept\n")
+})
+test("rejects on-disk metadata that disagrees with Trivy's reported database", async (t) => {
+  const fixture = await makeFixture(t, {
+    downloaded: async (cache) => {
+      const metadata = scanner().VulnerabilityDB
+      metadata.NextUpdate = "2026-09-07T20:00:00Z"
+      await writeFile(
+        join(cache, "db", "metadata.json"),
+        JSON.stringify(metadata)
+      )
+    },
+  })
+  await assert.rejects(fixture.execute(false), {
+    message: "Disposable image evidence rejected.",
+    phase: "validate_db",
   })
   assert.equal(
     fixture.calls.some(({ args }) => args.includes("--skip-db-update")),
@@ -534,6 +580,28 @@ test("scans both fixed IDs unsuppressed and exports both only after all evidence
   assert.equal(record.imageId, ids[0])
   assert.equal(record.published, false)
   assert.equal(record.compiledServerCoverage, "not-established")
+  assert.equal(record.scan.startedAt, new Date(clock).toISOString())
+  assert.equal(record.scan.completedAt, new Date(clock).toISOString())
+  for (const key of ["data", "metadata"]) {
+    assert.deepEqual(
+      record.scan.database.before[key],
+      record.scan.database.after[key]
+    )
+    assert.match(record.scan.database.before[key].sha256, /^[a-f0-9]{64}$/u)
+    assert.ok(record.scan.database.before[key].bytes > 0)
+  }
+  const redisRecord = JSON.parse(
+    await readFile(join(fixture.output, "redis.image.json"), "utf8")
+  )
+  assert.deepEqual(redisRecord.scan, record.scan)
+  assert.equal(
+    await readFile(join(fixture.offlineCache, "db", "trivy.db"), "utf8"),
+    "fixture-db"
+  )
+  assert.equal(
+    (await stat(join(fixture.offlineCache, "db", "trivy.db"))).mode & 0o777,
+    0o600
+  )
   for (const evidence of record.reports) {
     const content = await readFile(join(fixture.output, evidence.file))
     assert.equal(evidence.bytes, content.length)
@@ -544,7 +612,15 @@ test("scans both fixed IDs unsuppressed and exports both only after all evidence
   }
 })
 test("online mode refreshes one fresh cache and removes it after all scans", async (t) => {
-  const fixture = await makeFixture(t)
+  const fixture = await makeFixture(t, {
+    run: async (command, args) => {
+      if (command !== "trivy" || !args.includes("--skip-db-update")) return
+      const cache = args[args.indexOf("--cache-dir") + 1]
+      assert.equal((await stat(join(cache, "db"))).mode & 0o777, 0o500)
+      for (const name of ["trivy.db", "metadata.json"])
+        assert.equal((await stat(join(cache, "db", name))).mode & 0o777, 0o400)
+    },
+  })
   delete fixture.environment.GITHUB_ENV
   const result = await fixture.execute(false)
   assert.equal(result.scanner.offline, false)
@@ -555,6 +631,90 @@ test("online mode refreshes one fresh cache and removes it after all scans", asy
   const cache = updates[0].args[updates[0].args.indexOf("--cache-dir") + 1]
   await assert.rejects(stat(cache), { code: "ENOENT" })
   assert.equal(await readFile(fixture.envFile, "utf8"), "EXISTING=kept\n")
+})
+for (const name of ["trivy.db", "metadata.json"]) {
+  test(`rejects ${name} byte drift despite unchanged Trivy version metadata`, async (t) => {
+    const fixture = await makeFixture(t, {
+      run: async (command, args) => {
+        if (
+          command !== "trivy" ||
+          !args.includes("--skip-db-update") ||
+          !args.includes("cyclonedx") ||
+          args.at(-1) !== ids[1]
+        )
+          return
+        const cache = args[args.indexOf("--cache-dir") + 1]
+        const databaseDirectory = join(cache, "db")
+        const file = join(databaseDirectory, name)
+        await chmod(databaseDirectory, 0o700)
+        await chmod(file, 0o600)
+        await writeFile(file, name === "trivy.db" ? "other-db!" : "different")
+        await chmod(file, 0o400)
+        await chmod(databaseDirectory, 0o500)
+      },
+    })
+    await assert.rejects(fixture.execute(false), {
+      message: "Disposable image evidence rejected.",
+      phase: "validate_db",
+    })
+    assert.equal(await readFile(fixture.envFile, "utf8"), "EXISTING=kept\n")
+    await assert.rejects(stat(join(fixture.output, "postgres.image.json")), {
+      code: "ENOENT",
+    })
+    const download = fixture.calls.find(({ args }) =>
+      args.includes("--download-db-only")
+    )
+    const cache = download.args[download.args.indexOf("--cache-dir") + 1]
+    await assert.rejects(stat(cache), { code: "ENOENT" })
+  })
+}
+test("rejects symlink and oversized cached database files before scanning", async (t) => {
+  const symlinkFixture = await makeFixture(t)
+  const data = join(symlinkFixture.offlineCache, "db", "trivy.db")
+  await rm(data)
+  await symlink(join(symlinkFixture.directory, "env"), data)
+  await assert.rejects(symlinkFixture.execute(true), {
+    message: "Disposable image evidence rejected.",
+    phase: "validate_db",
+  })
+  assert.equal(
+    symlinkFixture.calls.some(({ args }) => args.includes("--skip-db-update")),
+    false
+  )
+
+  const oversizedFixture = await makeFixture(t)
+  await writeFile(
+    join(oversizedFixture.offlineCache, "db", "metadata.json"),
+    "x".repeat(64 * 1024 + 1)
+  )
+  await assert.rejects(oversizedFixture.execute(true), {
+    message: "Disposable image evidence rejected.",
+    phase: "validate_db",
+  })
+  assert.equal(
+    oversizedFixture.calls.some(({ args }) =>
+      args.includes("--skip-db-update")
+    ),
+    false
+  )
+})
+test("rejects a database that expires during the fixture scan", async (t) => {
+  const times = [
+    Date.parse("2026-09-07T18:59:59Z"),
+    Date.parse("2026-09-07T19:00:01Z"),
+  ]
+  const fixture = await makeFixture(t, {
+    now: () => times.shift() ?? Date.parse("2026-09-07T19:00:01Z"),
+  })
+  await assert.rejects(fixture.execute(false), {
+    message: "Disposable image evidence rejected.",
+    phase: "validate_db",
+    reasonCode: "database_expired",
+  })
+  assert.equal(await readFile(fixture.envFile, "utf8"), "EXISTING=kept\n")
+  await assert.rejects(stat(join(fixture.output, "redis.image.json")), {
+    code: "ENOENT",
+  })
 })
 for (const kind of [
   "first high",

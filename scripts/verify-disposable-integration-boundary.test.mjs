@@ -2,6 +2,7 @@ import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import test from "node:test"
 import {
+  validateFixtureScanEvidenceSource,
   validateHardenedFixtureWiring,
   verifyDisposableIntegrationBoundary,
 } from "./verify-disposable-integration-boundary.mjs"
@@ -33,6 +34,29 @@ test("accepts reviewed build, scan, immutable-start and isolated-fixture wiring"
 
 test("retains full service, recovery, audit, API and root-contract assertions", async () => {
   await verifyDisposableIntegrationBoundary()
+})
+
+test("requires frozen database bytes, semantic metadata, final freshness and bound records", () => {
+  const source = read("scripts/scan-disposable-integration-images.mjs")
+  validateFixtureScanEvidenceSource(source)
+  for (const marker of [
+    "await freezeDownloadedDatabase(cache)",
+    "databaseAfter[key].sha256 === databaseBefore[key].sha256",
+    "isDeepStrictEqual(decode(scannerSource).VulnerabilityDB, metadataBefore)",
+    "isDeepStrictEqual(decode(afterSource).VulnerabilityDB, metadataAfter)",
+    "const completedMs = now()",
+    "startedAt,",
+    "completedAt,",
+    "before: databaseBefore,",
+    "after: databaseAfter,",
+    "ageAtCompletionMs: after.database.ageMs",
+    "freeze({ ...pending, scan })",
+  ]) {
+    assert.ok(source.includes(marker))
+    assert.throws(() =>
+      validateFixtureScanEvidenceSource(source.replace(marker, "removed"))
+    )
+  }
 })
 
 for (const [name, command] of [

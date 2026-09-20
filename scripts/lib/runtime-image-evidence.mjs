@@ -143,21 +143,30 @@ const withEvidenceFile = async (file, flags, privateMode, operation) => {
     await parent.handle.close()
   }
 }
-export const readEvidenceFile = (file, limit = evidenceLimit) =>
-  withEvidenceFile(file, constants.O_RDONLY, true, async (handle, before) => {
-    fileInfo(before, limit, true)
-    const chunks = []
-    let bytes = 0
-    for await (const chunk of handle.createReadStream({ autoClose: false })) {
-      bytes += chunk.length
-      assert.ok(bytes <= limit)
-      chunks.push(chunk)
+export const readEvidenceFile = (
+  file,
+  limit = evidenceLimit,
+  { privateMode = true } = {}
+) =>
+  withEvidenceFile(
+    file,
+    constants.O_RDONLY,
+    privateMode,
+    async (handle, before) => {
+      fileInfo(before, limit, privateMode)
+      const chunks = []
+      let bytes = 0
+      for await (const chunk of handle.createReadStream({ autoClose: false })) {
+        bytes += chunk.length
+        assert.ok(bytes <= limit)
+        chunks.push(chunk)
+      }
+      const result = Buffer.concat(chunks)
+      unchangedFile(before, await handle.stat({ bigint: true }))
+      assert.equal(BigInt(result.length), before.size)
+      return result
     }
-    const result = Buffer.concat(chunks)
-    unchangedFile(before, await handle.stat({ bigint: true }))
-    assert.equal(BigInt(result.length), before.size)
-    return result
-  })
+  )
 export const writeEvidenceFile = async (directory, name, source) => {
   assert.match(name, /^[a-z][a-z0-9.-]*\.json$/u)
   assert.ok(
