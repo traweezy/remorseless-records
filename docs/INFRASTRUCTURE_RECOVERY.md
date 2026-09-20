@@ -617,12 +617,21 @@ and the HTTP request took 1,241 ms. The first `/ready` had returned 200 in
 2,128 ms, while the first operations probe overlapped completion of a
 461-product index. The next operations request took 64 ms; later requests
 took 23–48 ms with database probes at 6–9 ms. Railway's 30-second CPU and
-memory samples do not resolve the brief interval, and the current `select 1`
-probe measures pool acquisition and SQL execution together. The cause remains
-unproven. On a subsequent deployment, measure pool acquisition and SQL
-round-trip separately and correlate both with index timing before changing
-the health threshold or rollout behavior. Preserve the single 503 in release
-evidence.
+memory samples do not resolve the brief interval, and the `select 1` probe at
+that deployment measured pool acquisition and SQL execution together.
+The cause remains unproven. Preserve the single 503 in release evidence.
+
+The later `33de0ec` cold deployment split the same fixed database probe into
+pool acquisition and SQL time without changing its threshold. Its first
+`/ready` database check took 1,866 ms: 1,859 ms acquiring a connection and
+6 ms executing the query. Its first operations check was healthy at 637 ms:
+611 ms acquiring and 26 ms querying. In five later healthy operations samples,
+acquisition fell from 39 ms to 4, 3, 3 and 3 ms; query time stayed at 4–7 ms.
+This makes cold acquisition a plausible explanation for the earlier one-off
+503, but does not prove whether the old delay was connection creation or pool
+contention. Knex's 2-second query timeout does not bound acquisition; the
+current pool acquire limit can reach 60 seconds. Keep that separate timeout
+design and a later cold-deploy comparison open. No health threshold was relaxed.
 
 ## Media backup and restore
 
@@ -631,6 +640,23 @@ different provider/account or failure domain. Prefer bucket replication when
 version history and delete markers must survive. `mc mirror` copies only the
 latest object and is therefore acceptable only for an explicitly current-state
 copy. Run a dry-run first and use `--checksum SHA256` for copied objects.
+
+The September 20 staging Bucket source audit found a recovery hazard before
+any image change. Railway still configures `minio/minio:latest` on Docker Hub,
+which now denies both tag and digest pulls. The running deployment reports
+`RELEASE.2025-09-07T16-13-09Z` and image digest
+`sha256:14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e`;
+the official Quay release manifest has exactly that digest. The Bucket volume
+is READY with about 1,529 MB used of 50,000 MB, but its only listed backup is
+from October 29, 2025 and it has no backup schedule. A source switch to
+`quay.io/minio/minio@sha256:14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e`
+would preserve image bytes, not guarantee volume or service recovery. Before
+that controlled cutover, create a fresh scoped volume snapshot, complete a
+versioned off-site object backup and isolated restore with checksums, verify
+the retained-deployment rollback path, and record the object inventory. After
+cutover, require the same volume identity, healthy Bucket/Backend/Storefront
+probes, signed S3 read/write smoke on a disposable key, and unchanged object
+checksums. Do not rely on another Docker Hub pull for rollback.
 
 Configure credential-bearing `MC_HOST_<alias>` values only in the operator's
 secret environment. Then dry-run a current-state copy:

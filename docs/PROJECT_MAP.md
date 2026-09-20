@@ -1,7 +1,7 @@
 # Project map and continuation guide
 
-Last indexed: September 19, 2026 (America/New_York). Latest application staging
-release acceptance completed September 20, 2026 UTC.
+Last indexed: September 20, 2026 (UTC). Latest application staging release
+acceptance is recorded in the handoff linked below.
 
 ## Start here
 
@@ -99,7 +99,14 @@ contracts before applying generic framework examples from those files.
 
 ## Verified continuation boundary
 
-Both Railway applications now run accepted revision
+At the 07:54 UTC acceptance, the application pair was Backend `33de0ec` and
+Storefront `7e743bf`; the exact CI runs, deployments, health probes, scheduler
+heartbeat, and cold database timings are in
+[NEXT_SESSION_HANDOFF.md](NEXT_SESSION_HANDOFF.md).
+The following `48b3376` evidence is a historical acceptance snapshot, not the
+current deployed revision.
+
+Both Railway applications ran accepted revision
 `48b33765bb98637d61acc36d1addba708b0d7f84`. Root, Backend, Storefront,
 and Runtime Images CI passed on that exact SHA (runs `35481443600`,
 `35481443610`, `35481443578`, `35481443603`); Backend deployment
@@ -156,13 +163,13 @@ startup against the target, or production RTO.
 
 Production remains absent. Redis's configured/running image mismatch and
 documented live-version risk remain open. PostgreSQL retains a public TCP
-proxy; MinIO and Console retain public domains. The approved September 20
-MeiliSearch staging-domain removal left its scoped domain list empty and the
-old public hostname returning Railway 404. Actual Redis RDB
-export/isolated loading and the staging-data PostgreSQL logical restore now
-pass; AOF/queue, role cutover,
-support-image migration, network changes, backup schedules,
-registry publication/source cutover, and production provisioning remain open.
+proxy, and the MinIO Bucket retains a public domain; the approved Console and
+MeiliSearch staging-domain removals left their scoped domain lists empty.
+Actual Redis RDB export/isolated loading, bounded staging multipart-AOF capture
+and worker-free replay, and the staging-data PostgreSQL logical restore pass.
+Queue/business reconciliation, role cutover, support-image migration,
+PostgreSQL proxy review, backup schedules, registry publication/source
+cutover, and production provisioning remain open.
 The user's autonomous-work authorization supersedes historical permission-only
 holds; missing operational, licensing and business facts still require evidence.
 

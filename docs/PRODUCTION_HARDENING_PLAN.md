@@ -3172,7 +3172,15 @@ Both commands explicitly reported that no files or database records changed.
       bounded deadlines, real socket cancellation and disposable integration
       coverage. This does not apply settings or close the operational item.
 - [ ] Pin Redis, PostgreSQL, MinIO, and Meilisearch images by tested version and
-      immutable digest; remove floating `latest` tags.
+      immutable digest; remove floating `latest` tags. A September 20
+      read-only audit matched the live MinIO Bucket image exactly to official
+      Quay release `RELEASE.2025-09-07T16-13-09Z` at digest
+      `sha256:14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e`,
+      while its configured Docker Hub `minio/minio:latest` source now denies
+      pulls. Its sole listed volume backup is from October 2025, no schedule
+      exists, and an off-site restore is unproven. Complete backup, isolated
+      restore, and rollback checks before a same-digest Quay source cutover;
+      the other support images lack equal live-digest proof.
 - [ ] Enable `pg_stat_statements`, slow-query logging, I/O timing, and relevant
       database/volume metrics with an overhead budget. A September 20 scoped,
       read-only staging inventory found no `pg_stat_statements` preload or
@@ -3196,8 +3204,14 @@ Both commands explicitly reported that no files or database records changed.
       HTTP 5xx; measure those two phases and correlate them with indexing on a
       later deploy before changing the 1,000 ms threshold or rollout behavior.
       The readiness probe and sanitized external monitor now expose both phase
-      timings, with a real PostgreSQL contract in disposable CI; the cause
-      remains open until a subsequent cold-deploy sample is captured.
+      timings, with a real PostgreSQL contract in disposable CI. At the
+      `33de0ec` cold deploy, first `/ready` spent 1,859 of 1,866 ms acquiring
+      the connection and 6 ms on SQL; first operations spent 611 of 637 ms
+      acquiring and 26 ms on SQL. Five warm samples fell to 39, 4, 3, 3 and
+      3 ms acquiring, with 4–7 ms queries and no 5xx. Cold acquisition is a
+      plausible cause of the old alert, not a historical proof. Separate
+      connection creation from contention and review the current 60-second
+      acquisition limit before changing the health threshold or rollout.
 - [x] Define availability, latency, recovery-time, and recovery-point goals
       before adding replicas, PgBouncer, overlap/draining, or paid monitoring.
 - [x] Gate Backend Railway releases on `/ready` rather than the less-complete

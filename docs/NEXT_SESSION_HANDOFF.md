@@ -11,6 +11,71 @@ reviewed scope. Do not invent missing production, legal, tax, or provider facts.
 Use [PROJECT_MAP.md](PROJECT_MAP.md) for the indexed code/documentation entrypoints.
 Preserve unrelated `Default/` unread, untouched, and unstaged.
 
+### Accepted September 20 UTC database timing batch: `33de0ec`
+
+Exact SHA `33de0ec55c4bd859e6c9781a8507a00c3b4cf8e5` passed Root CI
+`35497381132`, Backend CI `35497381194`, Storefront CI `35497381113`, and
+Runtime Images `35497381173`. Backend passed 2,220 unit tests at 91.92% line
+coverage, plus 43 disposable PostgreSQL/Redis integration and 41 payment
+contract tests. The real `/ready` integration repeats the new database timing
+checks. Storefront passed 81 responsive, 20 launch and 48 critical browser
+cases; accessibility, Lighthouse, unit and build gates were green. Both runtime
+candidate scans passed with four CRITICAL and 52 HIGH findings each, zero
+fixable HIGH/CRITICAL; publication was skipped on staging.
+
+Railway Backend deployment `5a0b2726-328e-4a29-82d1-051beead3684`
+reached `SUCCESS` at the exact SHA. The unwatched Storefront candidate was
+`SKIPPED`; its accepted `7e743bf` deployment remained healthy. Backend live,
+ready (11/11), API health, operations, scheduler and retention all returned
+200/healthy. The 07:54 UTC ordinary scheduler heartbeat carried exact SHA
+`33de0ec` and had zero failures. Product and private-search smoke passed on
+the retained Storefront. Bounded Backend candidate and retained Storefront
+logs had zero error-level rows and zero HTTP 5xx.
+
+The first cold Backend `/ready` database check took 1,866 ms, split into
+1,859 ms pool acquisition and 6 ms SQL. First operations was healthy at
+637 ms, split 611/26 ms; five warm operations checks stayed healthy with
+acquisition 39, 4, 3, 3, 3 ms and SQL 4–7 ms. Product indexing overlapped
+these cold checks. This narrows the earlier `9835767` one-off operations 503
+toward cold acquisition, without proving connection creation versus contention
+or historical causality. The 1,000 ms operations threshold remains intact.
+The separate 60-second Knex pool-acquire limit still needs a cancellation and
+credential-redaction design before any change.
+
+### Accepted September 20 UTC scanner recovery batch: `7e743bf`
+
+The prior four-commit candidate `005b209` passed local gates, but exact-SHA
+Runtime image and disposable integration scans failed before vulnerability
+classification because all official Trivy DB mirrors served metadata whose
+`NextUpdate` had passed at 07:03 UTC. Railway correctly skipped both
+candidates; accepted `9835767` services continued serving. The upstream DB
+build recovered and published fresh metadata at 07:15 UTC. No freshness rule
+was relaxed. The corrective scanner code emits only a fixed expiry reason and
+canonical DB timestamps while failing closed; its diagnostic tests are in the
+required runtime-image gate.
+
+Exact corrective SHA `7e743bf806fd17c233233bdca1648c970d0486b6` passed
+Root `35496579825`, Backend `35496579785`, Storefront `35496579942`, and
+Runtime Images `35496579775`. Backend passed 2,215 unit and 84 disposable
+integration tests at 91.92% line coverage; Storefront browser, accessibility,
+Lighthouse and build gates passed. Both images completed fresh Trivy scans
+with zero fixable HIGH/CRITICAL findings. Railway Backend deployment
+`d1969334-707e-47a5-ab87-623d7233f973` and Storefront
+`a1884de5-09e0-4903-9220-7e7e3e7056d9` reached `SUCCESS`; readiness,
+operations, retention, catalog, product, private search and exact-SHA
+scheduler heartbeat were healthy. Candidate logs had no errors or HTTP 5xx.
+The scoped PostgreSQL observability preflight also ran read-only against
+staging at 07:05 UTC, confirming the disabled monitoring settings without
+changing them. See [recovery evidence](INFRASTRUCTURE_RECOVERY.md).
+
+The September 20 support-image audit identified a separate MinIO recovery
+risk. Its running Bucket digest exactly matches an official Quay release, but
+the configured Docker Hub `minio/minio:latest` source no longer permits pulls.
+The only listed volume backup is from October 2025, with no schedule or
+off-site restore proof. Do not switch the source until fresh scoped and
+off-site backups, isolated restore, and prior-deployment rollback are proven;
+the exact digest and acceptance checks are in the recovery runbook.
+
 ### Accepted September 20 UTC account-bound diagnostic batch: `9835767`
 
 Exact staging SHA `98357677f3b422b843703391d66d73004def2e62` passed Root
@@ -3483,13 +3548,12 @@ When explicitly resumed:
    workflows, both Railway deployments and live probes/browser/runtime logs.
    Candidate runtime images and Railway source-build images remain distinct.
 
-Two later safe engineering opportunities were identified but not implemented:
-bind runtime-image scan evidence to the actual vulnerability-database bytes and
-scan interval, and add a durable synthetic PostgreSQL CLI backup/restore
-round-trip against the existing disposable fixture. Current runtime-image
-records do not prove those database-byte identities; current fake CLI and
-catalog-preflight tests are not that real round-trip. Neither item authorizes
-live restores, paid infrastructure, schema changes or weaker scanning policy.
+These two opportunities were later implemented. Runtime-image scans now freeze
+and hash the exact Trivy database bytes before and after each scan and record
+the scan interval. The disposable PostgreSQL gate now runs a real CLI
+backup/restore round-trip with rejection, rollback, and cancellation coverage.
+These local proofs do not authorize live restores, paid infrastructure, schema
+changes, or weaker scanning policy.
 
 Private evidence and prepared-but-uninvoked release helpers:
 
