@@ -10,6 +10,16 @@ tracks what is still required before production traffic is approved.
 ## Active continuation — September 20 UTC onward
 
 The latest accepted staging pair is Backend and Storefront at
+`7d14cf5ea7c05f6af9aeb4ff3da8887928f274da`. Exact-SHA Root, Backend,
+Storefront, and Runtime Images CI passed (runs `35537432411`, `35537432386`,
+`35537432400`, and `35537432408`). Railway waited for check suites, then
+Backend deployment `42d05ea0-8758-489b-aed0-a71525e4c063` and Storefront
+deployment `84fe5ecf-b909-47e4-9e40-9cedf72bdaf5` succeeded. Backend
+readiness passed 11/11 checks and Storefront readiness passed 2/2. Scoped
+deployment logs showed no runtime errors or HTTP 5xx, and the next scheduled
+heartbeat carried the exact SHA with zero failures.
+
+The preceding accepted staging pair was
 `a5d3d613ab09d859c16023f5e4958c9b3fad0cb0`. Exact-SHA Root, Backend,
 Storefront, and Runtime Images CI passed (runs `35534815566`, `35534815565`,
 `35534815571`, and `35534815623`). Railway waited for check suites, then
@@ -216,7 +226,7 @@ provider evidence and legal/business requirements remain open as recorded.
 topology for the client, with client-owned provider accounts and domains,
 independently generated internal credentials, and isolated data. “Clone” means
 configuration and behavior parity, not a copy of our customers, orders, media,
-secrets, or historical deployments. This planning update provisions no
+secrets, or historical deployments. The dormant shell below has no running
 services or credentials and sends no client traffic.
 
 Railway's [Duplicate Environment](https://docs.railway.com/environments)
@@ -234,16 +244,31 @@ one-click duplicate of the present secret-bearing environment. Reconsider
 duplication only after a reviewed source-secret sealing and access plan proves
 that no original credential can cross the boundary.
 
-**Read-only readiness check (September 20, 2026):** the accessible Railway
-account shows the existing `store/staging` target and two unrelated projects,
-but no identifiable client-owned workspace or project. No client staging
-domain or client-specific provider credential entries were discoverable by
-name in the available Railway, GitHub, local-environment, or CLI metadata.
-The Stripe CLI default profile is not authenticated. These names-only checks
-do not establish that credentials cannot exist elsewhere; they establish that
-a client target and client credentials are not available to this workflow now.
-Client-keyed service provisioning must wait for those inputs through an
-approved secret channel. Never substitute owner credentials or deploy a client
+**Dormant shell (September 20, 2026):** a private `store-client-staging`
+project (`42d7b49a-3379-4a99-8464-02f678fb7936`) now exists in the
+pre-existing `Trawspace` Hobby workspace
+(`54d68ca0-e718-42e7-977d-7075facc36e5`), separate from the owner's
+`store` workspace. Its sole `client-staging` environment
+(`0618f901-5c15-4c3c-9f49-b17d2113adee`) contains seven **empty,
+source-free service shells** with the expected names. Live names-only API
+checks confirmed zero deployments, sources, variables, triggers, volumes, and
+public domains; PR deploys and public access are disabled. The project's current
+Railway usage readout was `$0.00`. No new subscription was opened. This is a
+holding shell owned only by the current operator, **not yet a client-owned or
+configured clone**. Do not attach a repository, image, database shortcut,
+volume, domain, or credential, or deploy it while the no-spend hold applies.
+See the [dormant target record](CLIENT_STAGING_DORMANT.md) and repeat its
+read-only verification before any handoff.
+
+No client workspace, domain, or client-specific provider credential entries
+were discoverable by name in the available Railway, GitHub, local-environment,
+or CLI metadata. The Stripe CLI default profile is not authenticated. These
+names-only checks do not establish that credentials cannot exist elsewhere.
+Transfer the empty project to a client-owned workspace once its access and
+billing are established; [Railway workspaces](https://docs.railway.com/projects/workspaces)
+may require a separate Pro or Enterprise subscription, and its
+[base fee](https://docs.railway.com/pricing/plans) applies even with zero
+resource use. Never substitute owner credentials or deploy a client
 environment that could send to owner provider accounts.
 
 The [read-only client staging preflight](CLIENT_STAGING_PREFLIGHT.md) now checks
@@ -254,9 +279,10 @@ names-only audit attestation records empty creation and no later sync; the
 Railway nullable source link alone cannot prove either. Reference targets
 remain attested rather than validated against effective values. The query
 requests no variable values and does not prove provider-key ownership. The
-real client target and inventory are still unavailable, so this gate has only
-synthetic and current owner-staging query-shape validation; it has not passed
-for a client.
+service and workspace shell now exists, but there is no client identity or
+credential inventory. This later-stage gate has only synthetic and current
+owner-staging query-shape validation; it has not passed for a client and is
+expected to fail while all variables remain absent.
 
 ### Ownership and isolation decision
 
