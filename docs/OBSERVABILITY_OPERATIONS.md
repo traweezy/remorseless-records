@@ -29,6 +29,11 @@ text.
 - `/health/operations` aggregates readiness, scheduler, retention, payment/tax
   mismatch, and webhook-processing state. A component reason or dependency
   error makes the endpoint fail closed with `503`.
+- A successful database readiness check reports rounded `pool_acquire_ms` and
+  `query_ms` beside its total duration. The external operations monitor retains
+  only these bounded timings and fixed dependency status; it never records SQL,
+  connection details, or query values. The existing 1,000 ms database
+  operations threshold is unchanged.
 - The staging scheduler monitor runs every ten minutes. The staging operations
   monitor runs on the alternate ten-minute boundary and again at `05:03 UTC`,
   after both retention jobs. The operations monitor also authenticates a
@@ -274,8 +279,13 @@ include a request URL, customer or order data, or raw provider error.
 
 ### Database saturation or failure
 
-1. Check pool busy/wait duration, active connections, locks, slow statements,
-   storage, and provider health.
+1. Check the database probe's pool-acquisition and query timings against its
+   total duration. Correlate a cold-deploy sample with Product indexing time,
+   then check pool busy/wait duration, active connections, locks, slow
+   statements, storage, and provider health. A slow probe alone does not
+   establish whether pool wait or SQL execution is responsible. The 2-second
+   query timeout does not bound pool acquisition; review pool saturation and
+   its acquire timeout separately.
 2. Correlate traces to bounded operation names; do not enable query-value
    logging.
 3. Cancel only a proven runaway query through an approved provider procedure.

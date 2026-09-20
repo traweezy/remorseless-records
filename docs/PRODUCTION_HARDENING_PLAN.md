@@ -3191,10 +3191,13 @@ Both commands explicitly reported that no files or database records changed.
       operations request took 1,241 ms while a 461-product index was finishing.
       The next operations request took 64 ms, with later checks at 23–48 ms
       and database durations of 6–9 ms. Railway's 30-second resource samples
-      cannot exclude a short spike, and current probes cannot separate pool
-      acquisition from SQL round-trip time. Preserve the single HTTP 5xx;
-      measure those two phases and correlate them with indexing on a later
-      deploy before changing the 1,000 ms threshold or rollout behavior.
+      cannot exclude a short spike, and the probe at that deployment could not
+      separate pool acquisition from SQL round-trip time. Preserve the single
+      HTTP 5xx; measure those two phases and correlate them with indexing on a
+      later deploy before changing the 1,000 ms threshold or rollout behavior.
+      The readiness probe and sanitized external monitor now expose both phase
+      timings, with a real PostgreSQL contract in disposable CI; the cause
+      remains open until a subsequent cold-deploy sample is captured.
 - [x] Define availability, latency, recovery-time, and recovery-point goals
       before adding replicas, PgBouncer, overlap/draining, or paid monitoring.
 - [x] Gate Backend Railway releases on `/ready` rather than the less-complete
