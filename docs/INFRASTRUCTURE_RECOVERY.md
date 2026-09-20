@@ -1051,13 +1051,27 @@ any replay or cutover; this aggregate does not identify their jobs, causes or
 business impact. No workers ran on the target, and both reconciliation flags
 remain false.
 
-For a later live comparison, add a dedicated read-only, source-bound collector
-that executes inside the pinned Redis container and emits only this fixed
-aggregate schema. The existing SSH capture transport can carry raw command
-replies; sending `SCAN` through it would expose private key names. A live
-collector must instead validate the seven Railway source IDs, volume mount,
-Redis run ID and AOF health before and after a bounded scan, cap keys/pages,
-bytes and time, and keep all discovered keys and errors inside the container.
+For a later live comparison, `pnpm run data:redis:live-aggregate -- --help`
+describes the dedicated read-only command. Supply the seven Railway source IDs
+from a fresh AOF preflight and the expected run-ID SHA from the private capture
+receipt. The command checks Railway source identity before and after, and its
+checked-in helper checks container identity, Redis run ID, DB0-only keyspace
+count and AOF health on both sides of a bounded scan. It rejects a changing
+key count or a scan that missed the observed DB0 count. It uses one persistent
+loopback RESP connection with a fixed read-only command allowlist. The existing
+SSH capture transport can carry
+raw command replies; sending `SCAN` through it would expose private key names.
+This helper keeps key names, replies and errors inside the container and emits
+only the fixed aggregate schema plus a bounded UTC observation window. It caps
+keys, pages, bytes and time.
+The disposable fake-RESP integration test passed locally with an explicitly
+inspected image ID, `--pull never`, no network and a read-only filesystem. To
+repeat it, set `INTEGRATION_TESTS_ENABLED=1` and
+`RR_REDIS_AGGREGATE_TEST_IMAGE_ID=sha256:<reviewed-local-image-id>` before
+`pnpm run qa:redis-live-aggregate:integration`. The governed PostgreSQL and
+Redis CI fixture images do not include Perl; this test is **not yet in CI**.
+Add a pinned, scanned CI fixture and run this integration gate there before
+executing the live collector.
 Even matching aggregates from a live scan and this capture would be diagnostic:
 ongoing writes, TTL expiry and the moving AOF increment prevent a single
 cross-system snapshot. Classifying failed jobs and comparing PostgreSQL and
