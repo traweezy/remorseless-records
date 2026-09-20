@@ -42,6 +42,22 @@ assert.equal(
   "/base/foo:bar"
 )
 
+for (const [candidate, expectedPathname] of [
+  ["./foo:bar", "/base/foo:bar"],
+  ["../foo:bar", "/foo:bar"],
+  ["foo//bar:baz", "/base/foo/bar:baz"],
+  ["/foo//bar:baz", "/foo/bar:baz"],
+  ["//external.example/foo:bar", "/external.example/foo:bar"],
+  ["///external.example/foo:bar", "/external.example/foo:bar"],
+  ["\\\\external.example/foo:bar", "/external.example/foo:bar"],
+]) {
+  assert.equal(
+    remixRouter.resolvePath(candidate, "/base").pathname,
+    expectedPathname,
+    `Unexpected navigation target for ${JSON.stringify(candidate)}`
+  )
+}
+
 for (const location of [
   "//localhost/safe",
   "\\\\localhost/safe",

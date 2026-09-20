@@ -180,9 +180,9 @@ supported Medusa configuration:
 - React Router 7 removed the legacy data helpers rather than promising
   compatibility through user patches.
 
-The supported override is therefore exactly 6.30.4. Three React Router
-advisories published on July 22–23 have fixes only in v7.18, and one explicitly
-has no patched v6 release:
+The Medusa-supported override remains exactly 6.30.4. Three React Router
+advisories published on July 22–23 were reviewed against that dependency
+contract:
 
 - [GHSA-wrjc-x8rr-h8h6](https://github.com/remix-run/react-router/security/advisories/GHSA-wrjc-x8rr-h8h6)
   and upstream [PR 15176](https://github.com/remix-run/react-router/pull/15176)
@@ -197,6 +197,15 @@ plus hydration-error constructor restrictions in
 `react-router-dom@6.30.4`. Both development and production artifacts were
 rebuilt from the official 6.30.4 source tag. The focused upstream suite passed
 293 tests.
+
+Upstream subsequently published [React Router 6.30.6](https://github.com/remix-run/react-router/blob/v6/CHANGELOG.md#v6306)
+for GHSA-jjmj-jmhj-qwj2. Its double-slash and colon-path normalization matches
+the existing reviewed `@remix-run/router` backport. The production-artifact
+verifier now covers relative colon paths, embedded double slashes, and
+protocol-relative paths together. GitHub's two open alerts identify the
+unmodified 6.30.4 version string in the Backend manifest and lockfile; they
+do not inspect the installed patched bytes. A future Medusa dependency upgrade
+should replace these local backports with compatible upstream releases.
 
 pnpm’s audit is version-based and cannot detect a patched package, so these
 three React Router GHSA records are listed under `auditConfig.ignoreGhsas`.
