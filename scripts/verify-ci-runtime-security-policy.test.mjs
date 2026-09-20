@@ -108,15 +108,18 @@ describe("CI runtime security policy", () => {
     )
   })
 
-  it("keeps the pinned runtime installer endpoint exact and blocked by default", () => {
+  it("keeps reviewed runtime registry and installer endpoints exact", () => {
     const runtimePolicy = manifest.workflows.find(
       ({ path }) => path === ".github/workflows/runtime-images.yml"
     )
     assert.ok(runtimePolicy.allowedEndpoints.includes("get.trivy.dev:443"))
+    assert.ok(runtimePolicy.allowedEndpoints.includes("gcr.io:443"))
     for (const changed of [
       runtimeWorkflow.replace("            get.trivy.dev:443\n", ""),
       runtimeWorkflow.replace("get.trivy.dev:443", "*.trivy.dev:443"),
       runtimeWorkflow.replace("get.trivy.dev:443", "get.trivy.dev:80"),
+      runtimeWorkflow.replace("            gcr.io:443\n", ""),
+      runtimeWorkflow.replace("gcr.io:443", "*.gcr.io:443"),
       runtimeWorkflow.replace("egress-policy: block", "egress-policy: audit"),
     ]) {
       assert.notEqual(changed, runtimeWorkflow)

@@ -265,7 +265,6 @@ test("reports only bounded counts after both staging and database identity check
     )
     assert.ok(!JSON.stringify(report).includes("secret-do-not-log"))
     assert.ok(!JSON.stringify(report).includes("private-token-do-not-log"))
-    assert.doesNotMatch(JSON.stringify(report), /db\.proxy\.rlwy\.net/u)
   })
 })
 

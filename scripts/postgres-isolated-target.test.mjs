@@ -1,11 +1,13 @@
 import assert from "node:assert/strict"
 import { spawn } from "node:child_process"
 import { createHash, randomUUID } from "node:crypto"
+import { constants } from "node:fs"
 import {
   chmod,
   mkdir,
   mkdtemp,
   lstat,
+  open,
   readFile,
   readdir,
   rm,
@@ -35,6 +37,16 @@ import {
 const scripts = fileURLToPath(new URL("./", import.meta.url))
 const sourcePassword = "local_integration_only"
 const sha256 = (bytes) => createHash("sha256").update(bytes).digest("hex")
+const readStateMetadata = async (path) => {
+  const handle = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW)
+  try {
+    const stat = await handle.stat()
+    const state = JSON.parse(await handle.readFile("utf8"))
+    return { mode: stat.mode & 0o777, state }
+  } finally {
+    await handle.close()
+  }
+}
 
 test("private target reads are bounded and state replacement stays atomic", async (t) => {
   const root = await mkdtemp(join(tmpdir(), "rr-target-file-test-"))
@@ -51,16 +63,16 @@ test("private target reads are bounded and state replacement stays atomic", asyn
 
   const statePath = join(root, "state.json")
   await writeState({ root, phase: "ready" })
-  assert.equal((await lstat(statePath)).mode & 0o777, 0o600)
-  assert.equal(JSON.parse(await readFile(statePath, "utf8")).phase, "ready")
+  const savedState = await readStateMetadata(statePath)
+  assert.equal(savedState.mode, 0o600)
+  assert.equal(savedState.state.phase, "ready")
   const outside = join(root, "outside.json")
   await writeFile(outside, "untouched", { mode: 0o600 })
   await rm(statePath)
   await symlink(outside, statePath)
   await writeState({ root, phase: "restored" })
   assert.equal(await readFile(outside, "utf8"), "untouched")
-  assert.equal((await lstat(statePath)).isSymbolicLink(), false)
-  assert.equal(JSON.parse(await readFile(statePath, "utf8")).phase, "restored")
+  assert.equal((await readStateMetadata(statePath)).state.phase, "restored")
   assert.deepEqual(
     (await readdir(root)).filter((entry) => entry.startsWith(".state-")),
     []
