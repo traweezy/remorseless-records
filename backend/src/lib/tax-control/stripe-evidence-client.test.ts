@@ -5,7 +5,9 @@ import {
 } from "./stripe-evidence-client"
 
 const paymentIntent = {
+  amount: 1_080,
   amount_received: 1_080,
+  currency: "usd",
   id: "pi_test",
   last_payment_error: null,
   latest_charge: {
@@ -124,12 +126,14 @@ describe("Stripe evidence safe-read client", () => {
         paymentIntentId: "pi_test",
       },
       intent: {
+        amountMinor: 1_080,
         amountReceived: 1_080,
         charge: {
           amountRefunded: 400,
           disputed: false,
           id: "ch_test",
         },
+        currencyCode: "usd",
         id: "pi_test",
         lastPaymentErrorCode: null,
         livemode: false,
@@ -139,6 +143,7 @@ describe("Stripe evidence safe-read client", () => {
       refunds: [
         {
           amount: 400,
+          currencyCode: "usd",
           failureReason: null,
           id: "re_test",
           status: "succeeded",
@@ -334,6 +339,10 @@ describe("Stripe evidence safe-read client", () => {
 
   it.each([
     { ...paymentIntent, object: "charge" },
+    { ...paymentIntent, amount: 0 },
+    { ...paymentIntent, amount: Number.MAX_SAFE_INTEGER + 1 },
+    { ...paymentIntent, currency: "USD" },
+    { ...paymentIntent, currency: "private-currency-canary" },
     { ...paymentIntent, latest_charge: "ch_test" },
     {
       ...paymentIntent,
@@ -381,6 +390,7 @@ describe("Stripe evidence safe-read client", () => {
     { ...refundList, object: "refund" },
     { ...refundList, data: [refund, refund] },
     { ...refundList, data: [{ ...refund, payment_intent: "pi_other" }] },
+    { ...refundList, data: [{ ...refund, currency: "USD" }] },
     { ...refundList, data: [{ ...refund, status: "unknown" }] },
     { ...refundList, data: Array.from({ length: 101 }, () => refund) },
   ])("rejects malformed or oversized refund evidence", async (response) => {

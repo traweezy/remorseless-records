@@ -122,8 +122,10 @@ export type StripeEvidenceCharge = {
 }
 
 export type StripeEvidenceIntent = {
+  amountMinor: number
   amountReceived: number
   charge: StripeEvidenceCharge | null
+  currencyCode: string
   id: string
   lastPaymentErrorCode: string | null
   livemode: boolean
@@ -133,6 +135,7 @@ export type StripeEvidenceIntent = {
 
 export type StripeEvidenceRefund = {
   amount: number
+  currencyCode: string
   failureReason: string | null
   id: string
   status: RefundStatus | null
@@ -406,14 +409,17 @@ const intentFrom = (
   ) {
     return fail("invalid_response")
   }
+  const amountMinor = positiveInteger(intent.amount)
   const amountReceived = nonnegativeInteger(intent.amount_received)
   const charge = chargeFrom(intent.latest_charge)
   if (charge && charge.amountRefunded > amountReceived) {
     return fail("invalid_response")
   }
   return {
+    amountMinor,
     amountReceived,
     charge,
+    currencyCode: currencyFrom(intent.currency),
     id: expectedId,
     lastPaymentErrorCode: paymentErrorCodeFrom(intent.last_payment_error),
     livemode: intent.livemode,
@@ -493,7 +499,6 @@ const refundFrom = (
   value: unknown,
   expectedPaymentIntentId?: string
 ): StripeEvidenceRefund & {
-  currencyCode: string
   paymentIntentId: string | null
 } => {
   const refund = asRecord(value)
@@ -549,12 +554,15 @@ const refundsFrom = (
     return fail("invalid_response")
   }
   return {
-    refunds: refunds.map(({ amount, failureReason, id, status }) => ({
-      amount,
-      failureReason,
-      id,
-      status,
-    })),
+    refunds: refunds.map(
+      ({ amount, currencyCode, failureReason, id, status }) => ({
+        amount,
+        currencyCode,
+        failureReason,
+        id,
+        status,
+      })
+    ),
     refundsTruncated: list.has_more,
   }
 }
