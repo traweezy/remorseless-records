@@ -29,8 +29,10 @@ for (const artifact of [
   ".medusa/server/package.json",
   ".medusa/server/medusa-config.js",
   ".medusa/server/src/api/middlewares.js",
+  ".medusa/server/src/cli/audit-database-role.js",
 ]) {
   if (process.env.MEDUSA_BUILD_FIXTURE_MODE === "incomplete" && artifact.endsWith("middlewares.js")) continue
+  if (process.env.MEDUSA_BUILD_FIXTURE_MODE === "missing-audit" && artifact.endsWith("audit-database-role.js")) continue
   mkdirSync(dirname(artifact), { recursive: true })
   writeFileSync(artifact, "{}")
 }
@@ -104,7 +106,7 @@ test("direct build uses the installed CLI and checks output before post-build", 
   await assertMissing(join(input.backend, "package-manager-ran"))
 })
 
-for (const mode of ["failure", "incomplete"]) {
+for (const mode of ["failure", "incomplete", "missing-audit"]) {
   test(`fails closed for ${mode} CLI output without invoking post-build`, async (context) => {
     const input = await fixture(context, mode)
     const result = input.run()
@@ -114,7 +116,11 @@ for (const mode of ["failure", "incomplete"]) {
     assert.equal(result.status, 1)
     assert.match(
       result.stderr,
-      mode === "failure" ? /exited with 9/u : /ENOENT/u
+      mode === "failure"
+        ? /exited with 9/u
+        : mode === "missing-audit"
+          ? /audit-database-role\.js/u
+          : /ENOENT/u
     )
     await assertMissing(input.staleArtifact)
     await assertMissing(join(input.backend, "post-build-ran"))

@@ -294,7 +294,17 @@ Never use a moving branch head as the release evidence.
 Database release preparation supports separate runtime and migration URLs.
 Keep `DATABASE_ROLE_SPLIT_REQUIRED=false` only during the documented staged
 role rollout. Once the distinct roles pass their audits, set it to `true` so a
-missing or reused migration URL stops the release before migration.
+missing or reused migration URL stops the release before migration. Enforced
+release preparation requires different PostgreSQL login names on the same host,
+port, and database; it allows only `application_name`, `sslmode`, and
+`uselibpqcompat` URL parameters and rejects encoded database path separators.
+It runs the read-only migration and runtime role audits before any
+database migration or link synchronization. A failed audit stops that release;
+the staged rollout flag must not be used to bypass a failed audit.
+The two roles must currently use the same private endpoint. A public-proxy
+migration URL paired with a private runtime URL requires a separately reviewed
+same-cluster attestation before changing this guard; different URL hosts alone
+cannot establish that both roles target one PostgreSQL instance.
 
 ## Rollback
 

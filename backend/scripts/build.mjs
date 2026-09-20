@@ -16,6 +16,7 @@ const requiredArtifacts = [
   join(medusaOutput, "server", "package.json"),
   join(medusaOutput, "server", "medusa-config.js"),
   join(medusaOutput, "server", "src", "api", "middlewares.js"),
+  join(medusaOutput, "server", "src", "cli", "audit-database-role.js"),
 ]
 
 assert.equal(dirname(medusaOutput), backendRoot)
