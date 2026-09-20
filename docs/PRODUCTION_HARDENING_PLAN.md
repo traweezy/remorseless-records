@@ -9,18 +9,16 @@ tracks what is still required before production traffic is approved.
 
 ## Active continuation — September 20 UTC onward
 
-The latest accepted staging pair is Backend
-`902c0040b3b7c60b54f6ddd923fc92e3b2658dff` and Storefront
-`2cf8e449f5e2c787b9ef43c3757ad3af667c3a03`. Both revisions passed all
-four exact-SHA GitHub workflows. The Storefront CI revision replaced live
-staging search and Medusa build inputs with local fixtures; its hosted builds,
-deployed browser matrix, readiness, scheduler, and bounded-log checks passed.
-Its Backend Railway candidate was correctly skipped, retaining the accepted
-902 Backend deployment. The Backend
-candidate image scan retained four CRITICAL and 52 HIGH findings without
-listed fixes; final image publication needs a named release-owner risk decision
-and exact-final-image scan. The [handoff](NEXT_SESSION_HANDOFF.md) has the
-release evidence.
+The latest accepted staging pair is Backend and Storefront at
+`9020b7798ed4fd5e156f379e8e879b84d3178e71`. All four exact-SHA GitHub
+workflows and both Railway deployments passed; both services report that
+revision and healthy readiness, the Backend scheduler has a fresh successful
+heartbeat, and Storefront home, catalog and same-origin search passed. The
+scanned disposable Redis fixture and fake-RESP integration gate passed before
+the live count-only collector ran. Runtime candidate image scans retained
+four CRITICAL and 52 HIGH findings each without listed fixes; final image
+publication needs a named release-owner risk decision and exact-final-image
+scan. The [handoff](NEXT_SESSION_HANDOFF.md) has the release evidence.
 
 After explicit approval on September 20, a guarded capture copied the pinned
 staging Redis 8.0.3 multipart AOF to a private local directory. Immediate
@@ -39,10 +37,17 @@ production RTO. BullMQ jobs/locks and PostgreSQL/Stripe business state still
 need reconciliation; neither `queueReconciled` nor `businessReconciled` is
 true. A subsequent isolated, read-only aggregate saw one failed Medusa event
 job and 237 historical failed scheduled-job entries in the aging copy, with
-no waiting or active entries at that observation point. Classify the failed
-jobs and compare source-bound live aggregates before worker or traffic cutover;
-the captured counts alone cannot establish business impact. Scheduled/off-site
-PostgreSQL backup, PITR, media restore, and production
+no waiting or active entries at that observation point. The guarded live Redis
+scan at 04:34 UTC matched both failed-job counts and found no waiting or active
+jobs. Its 1,282 keys versus the replay's 1,277 reflect different observation
+times; no job identities or causes were exposed. A separate source-bound live
+PostgreSQL read counted 68 carts and seven each of orders, payments and
+captures; only carts increased by one from the verified restore receipt.
+It also counted two succeeded collection-mode tax quotes and ten ignored
+Stripe lifecycle events. Classify failed jobs and compare identified records
+with Stripe before worker or traffic cutover; these fixed counts alone cannot
+establish business impact. Scheduled/off-site PostgreSQL backup, PITR, media
+restore, and production
 recovery timing remain open. See [infrastructure recovery](INFRASTRUCTURE_RECOVERY.md)
 for the scoped evidence and limits.
 

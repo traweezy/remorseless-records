@@ -1089,21 +1089,37 @@ network and a read-only filesystem. It covers normal and empty aggregates plus
 wrong type, oversized response, run-ID drift, other DB, count drift and key
 replacement failures. A local 0.74.0 Trivy scan of the new fixture, using the
 September 19 database, found zero UNKNOWN/HIGH/CRITICAL findings and validated
-all 24 detected Alpine packages against the SBOM. CI acceptance of this wiring
-must be observed on the exact pushed SHA before any live collector execution.
+all 24 detected Alpine packages against the SBOM. At exact staging SHA
+`9020b7798ed4fd5e156f379e8e879b84d3178e71`, Backend CI integration job
+`106021157990` built the pinned fixture, scanned its exact image
+`sha256:4e307ae819327efb553462276460c961e5b7cc2c893f125bb2f2ba81b68d6356`
+with zero findings, retained its 25-component CycloneDX SBOM, and passed the
+fake-RESP test. This satisfied the live collector's CI prerequisite.
 For a direct local repeat, build the checked-in Redis fixture on the local
 `default` Docker context, inspect its `sha256:` image ID, then set
 `DOCKER_CONTEXT=default`, `INTEGRATION_TESTS_ENABLED=1` and
 `RR_REDIS_AGGREGATE_TEST_IMAGE_ID=sha256:<reviewed-local-image-id>` before
 `pnpm run qa:redis-live-aggregate:integration`.
-Even matching aggregates from a live scan and this capture would be diagnostic:
-ongoing writes, TTL expiry and the moving AOF increment prevent a single
-cross-system snapshot. Classifying failed jobs and comparing PostgreSQL and
-Stripe evidence remain separate acceptance steps.
+The first live read-only aggregate ran from 04:34:24 to 04:34:29 UTC on
+September 20. An immediate AOF preflight matched the captured seven source
+IDs, fingerprint, manifest and run-ID SHA, with rewrite percentage 100 and no
+configuration change. The guarded collector verified source identity before
+and after and counted 1,282 keys. The event queue held one failed job and no
+waiting or active jobs; scheduled jobs held 237 failed, 1,000 completed, six
+delayed and no waiting or active jobs. The workflow and cleaner queues also
+had no waiting or active jobs. These failed-job counts match the isolated AOF
+replay, although normal writes and TTL expiry changed other counts. The
+count-only evidence is private at
+`/tmp/rr-live-aggregate-20260920/redis-live-aggregate.json` (0600 in a 0700
+directory), SHA-256
+`47d0e26f04281b5fa8c59449deaf9903594b0cbc0e455dcd5abe2097a711c007`.
+The live and captured aggregates are diagnostic rather than one cross-system
+snapshot. No failed-job identities or causes have been classified;
+`queueReconciled` and `businessReconciled` remain false.
 
 The PostgreSQL business-evidence query contract lives in
-`scripts/lib/postgres-business-aggregate.mjs`. It has not run against staging.
-It requests one read-only, repeatable-read
+`scripts/lib/postgres-business-aggregate.mjs`. It requests one read-only,
+repeatable-read
 PostgreSQL snapshot, fixes `statement_timeout` at five seconds and `lock_timeout`
 at one second, and returns only nine physical table row counts plus fixed
 active tax-evidence and Stripe-event status counts. Physical table counts
@@ -1124,15 +1140,27 @@ fixed counts, a bounded UTC window and duration, `readOnly: true`, and
 `businessReconciled: false`; failures reveal no connection string, token,
 query error or row data. Its mocked local boundary tests run in the shared
 CI contract, while the SQL itself has the disposable PostgreSQL fixture test.
-The runner has **not** been executed against Railway. Before live use, verify
-the current schema and measure the full-table count cost on restored data;
-the five-second statement timeout limits work but does not prove an acceptable
-load. A read-capable PostgreSQL identity must also be able to call
-`pg_control_system()` for the existing source-system guard. This bounded
-aggregate remains diagnostic only. Comparing identified Medusa payments and
-tax evidence with bounded Stripe test-mode reads requires a separate
-privacy-preserving step; a PostgreSQL snapshot alone cannot establish
-cross-system parity.
+The live run followed the schema and count-cost rehearsal below. It used the
+same exact source IDs and endpoint fingerprint as the verified staging
+snapshot. The wrapper checked Railway deployment, instance, volume and
+database system ID before and after the read-only query. At 04:35:53–04:35:58
+UTC it counted 68 carts, 49 payment collections, 44 sessions, seven each of
+orders, payments, captures, order-cart links and order transactions, and zero
+refunds. The snapshot receipt had 67 carts and identical counts for the other
+eight physical tables. The live query also counted two active succeeded tax
+quotes in collection mode and ten active ignored Stripe lifecycle events;
+all other fixed event statuses and livemode were zero. These counts contain
+no row identities and do not establish whether the ignored events need
+action. The private count-only evidence is
+`/tmp/rr-pg-live-business-20260920.0JLSyT/counts.json` (0600 in a 0700
+directory), SHA-256
+`2a6365434aa9c9b2ca5cc0a2dad5cb5f63653cd036fef838833ee0e5386b821f`.
+The five-second statement timeout bounds query work but these small staging
+tables do not prove a production-scale cost. A future least-privilege role
+must retain guarded `pg_control_system()` access or use a reviewed equivalent
+identity check. Comparing identified Medusa payments and tax evidence with
+bounded Stripe test-mode reads requires a separate privacy-preserving step;
+`businessReconciled` remains false.
 
 An offline measurement on September 20 reused the previously verified private
 staging snapshot and a fresh, isolated PostgreSQL 16.15 restore. The target had

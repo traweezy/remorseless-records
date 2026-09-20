@@ -11,6 +11,50 @@ reviewed scope. Do not invent missing production, legal, tax, or provider facts.
 Use [PROJECT_MAP.md](PROJECT_MAP.md) for the indexed code/documentation entrypoints.
 Preserve unrelated `Default/` unread, untouched, and unstaged.
 
+### Accepted September 20 UTC source-bound diagnostic release: `9020b77`
+
+Exact staging SHA `9020b7798ed4fd5e156f379e8e879b84d3178e71` passed
+Root CI `35489146476`, Backend CI `35489146513`, Storefront CI
+`35489146477`, and Runtime Images `35489146466`. Backend's disposable
+integration job `106021157990` built and scanned the exact pinned Redis
+8.10.1/Perl fixture image (zero findings), retained its CycloneDX SBOM, and
+passed the fake-RESP aggregate test. This fulfilled the documented gate before
+any live Redis collection. Storefront CI browser smoke passed 48/48 across
+Chromium, Firefox and WebKit; Lighthouse passed. Runtime candidate image
+scans still report four CRITICAL and 52 HIGH findings each, zero fixable
+HIGH/CRITICAL, with publication skipped. The Railway source-build image IDs
+are separate from those CI runtime candidates.
+
+Railway Backend deployment `50bd0f9f-f789-4787-838e-5b983d30f0f7` and
+Storefront deployment `2956fc8c-75fd-4b8a-bff8-f3a0789fcb1e` reached
+`SUCCESS` on the exact SHA. Both `/live` and `/ready` returned HTTP 200/ok
+at that revision; Backend passed all 11 readiness checks, operations and
+retention were healthy, and its 04:44 UTC scheduler heartbeat was successful
+with no incident. Storefront Backend/Redis readiness, home, catalog, and
+same-origin search passed. A search POST without `Origin` correctly returned
+403 under the security guard; a valid same-origin request returned three hits
+out of seven. Bounded candidate runtime error and HTTP 5xx logs were empty.
+No source-level abort claim is inferred from this window.
+
+After an immediate seven-ID AOF preflight matched the private capture receipt,
+the approved, guarded Redis live aggregate ran read-only at 04:34 UTC. It
+verified source identity on both sides of a bounded scan, counted 1,282 keys,
+and found one failed event job and 237 failed scheduled jobs, with no waiting
+or active jobs in the four known queues. Those failed counts match the
+earlier isolated replay, but writes and TTL expiry changed the total keys.
+Evidence SHA-256:
+`47d0e26f04281b5fa8c59449deaf9903594b0cbc0e455dcd5abe2097a711c007`.
+The guarded PostgreSQL live read at 04:35 UTC independently matched its
+source and system ID before and after. It counted 68 carts (one more than
+the verified restore receipt), seven each of orders/payments/captures, two
+succeeded collection-mode tax quotes, and ten ignored test-mode Stripe
+lifecycle events. Evidence SHA-256:
+`2a6365434aa9c9b2ca5cc0a2dad5cb5f63653cd036fef838833ee0e5386b821f`.
+Both result files are count-only and private under `/tmp`; the exact paths
+and limits are in [infrastructure recovery](INFRASTRUCTURE_RECOVERY.md).
+Neither failed-job causes nor provider-side record parity have been proved;
+`queueReconciled` and `businessReconciled` remain false.
+
 ### Accepted September 20 UTC diagnostic tooling release: `efc4b65`
 
 Exact staging SHA `efc4b654b0589f4529e7f91e1c9c5e0a6771880d` passed Root CI

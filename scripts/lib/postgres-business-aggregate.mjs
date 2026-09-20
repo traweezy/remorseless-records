@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 
-// This is an offline query contract, not a live-source CLI. A future runner
-// must bind it to the exact Railway PostgreSQL instance before execution.
+// The live runner binds this query to the exact Railway source; isolated tests
+// also exercise its schema and bounded execution on restored data.
 export const businessAggregateSql = `
 BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY;
 SET LOCAL statement_timeout = '5000ms';
