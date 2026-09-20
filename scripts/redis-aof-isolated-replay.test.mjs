@@ -204,6 +204,7 @@ test("tampered receipt and AOF fail before checker or target startup without raw
   try {
     assert.equal(
       await runIsolatedRedisReplay({
+        verifyDockerSocket: async () => undefined,
         ...options,
         args: argumentsFor(archive, receiptPath, "0".repeat(64)),
       }),
@@ -216,6 +217,7 @@ test("tampered receipt and AOF fail before checker or target startup without raw
     })
     assert.equal(
       await runIsolatedRedisReplay({
+        verifyDockerSocket: async () => undefined,
         ...options,
         args: argumentsFor(archive, receiptPath, hash(receiptBytes)),
       }),
@@ -271,6 +273,7 @@ test("unsafe source files and inventory never reach the checker", async () => {
     try {
       assert.equal(
         await runIsolatedRedisReplay({
+          verifyDockerSocket: async () => undefined,
           args: argumentsFor(archive, receiptPath, hash(receiptBytes)),
           environment: { PATH: process.env.PATH, HOME: process.env.HOME },
           runCommand: async (_command, args) => {
@@ -317,6 +320,7 @@ test("failed target creation cleans only owned private copies", async () => {
   try {
     assert.equal(
       await runIsolatedRedisReplay({
+        verifyDockerSocket: async () => undefined,
         args: argumentsFor(archive, receiptPath, hash(receiptBytes)),
         environment: { PATH: process.env.PATH, HOME: process.env.HOME },
         runCommand: async (_command, args) => {
@@ -363,6 +367,7 @@ test("help and malformed receipt never contact Docker", async () => {
   try {
     assert.equal(
       await runIsolatedRedisReplay({
+        verifyDockerSocket: async () => undefined,
         args: ["--help"],
         runCommand: () => assert.fail("help contacted Docker"),
         write: (line) => output.push(line),
@@ -376,6 +381,7 @@ test("help and malformed receipt never contact Docker", async () => {
     const bytes = await readFile(f.receiptPath)
     assert.equal(
       await runIsolatedRedisReplay({
+        verifyDockerSocket: async () => undefined,
         args: argumentsFor(f.archive, f.receiptPath, hash(bytes)),
         runCommand: () => assert.fail("malformed receipt contacted Docker"),
         writeError: (line) => errors.push(JSON.parse(line)),
@@ -397,6 +403,17 @@ test("remote Docker context, image identity and checker drift fail before copyin
       checker: "valid",
     },
     {
+      context: '"unix:///tmp/remote-proxy.sock"',
+      image: `${imageId}|amd64|linux`,
+      checker: "valid",
+    },
+    {
+      context: '"unix:///var/run/docker.sock"',
+      image: `${imageId}|amd64|linux`,
+      checker: "valid",
+      socket: "missing",
+    },
+    {
       context: '"unix:///var/run/docker.sock"',
       image: `${imageId}|arm64|linux`,
       checker: "valid",
@@ -413,6 +430,10 @@ test("remote Docker context, image identity and checker drift fail before copyin
       let detached = false
       assert.equal(
         await runIsolatedRedisReplay({
+          verifyDockerSocket: async () => {
+            if (value.socket === "missing")
+              throw new Error("Synthetic local socket is unavailable.")
+          },
           args: argumentsFor(f.archive, f.receiptPath, hash(f.receiptBytes)),
           environment: { PATH: process.env.PATH, HOME: process.env.HOME },
           runCommand: async (_command, args) => {
@@ -448,6 +469,7 @@ test("cleanup refuses an unowned container label and reports an incident", async
   try {
     assert.equal(
       await runIsolatedRedisReplay({
+        verifyDockerSocket: async () => undefined,
         args: argumentsFor(f.archive, f.receiptPath, hash(f.receiptBytes)),
         environment: { PATH: process.env.PATH, HOME: process.env.HOME },
         runCommand: async (_command, args) => {

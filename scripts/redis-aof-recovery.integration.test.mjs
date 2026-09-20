@@ -200,6 +200,17 @@ chmod 600 /artifact/*
     const replayOutput = []
     assert.equal(
       await runIsolatedRedisReplay({
+        // The CI fixture builds this scanned image from the pinned base but
+        // does not provision the named official image for the wrapper.
+        // Exercise receipt-bound replay with its separately verified checker.
+        verify: ({ sourceDirectory, maxBytes, signal }) =>
+          verifyRedisAofArchive({
+            sourceDirectory,
+            checker,
+            checkerSha256,
+            maxBytes,
+            signal,
+          }),
         args: [
           "--archive-dir",
           archive,

@@ -27,7 +27,7 @@ const checker = fileURLToPath(
 // A reviewed, committed wrapper: this hash does not replace the image and
 // checker-binary SHA pins enforced inside the wrapper.
 const checkerSha256 =
-  "8feaba3a17022480750cccca41bba3aa5b71ae6dc3ac7ff5a0bdf5d9b33f9b33"
+  "0b251dce0e7a0db2ecafb64626d30763d5ea6bfb6ec8f7086978676ac52fcc98"
 const redisCheckerBinarySha256 =
   "c9ed119a46bfe87ace4048eb22479da7d3ca4857f0ea5b1d1729e212bc5aabca"
 const manifestName = "appendonly.aof.manifest"
@@ -62,10 +62,11 @@ published port, provider credentials, or live-service connection. It is
 removed after bounded startup and restart evidence. This does not reconcile
 BullMQ queues or business state and does not authorize a cutover.
 
-Required local Docker default context must resolve to a Unix socket. Both the
-official checker image and the reviewed target image must already be present;
-no pull or build occurs. The target image ID must come from a separate image
-scan/review, not from this command. The receipt SHA must be recorded outside
+Docker's default context must resolve to /var/run/docker.sock, and that path
+must be a socket rather than a symlink. Both the official checker image and the
+reviewed target image must already be present; no pull or build occurs. The
+target image ID must come from a separate image scan/review, not from this
+command. The receipt SHA must be recorded outside
 the mutable capture bundle. Redis data can be sensitive; output omits keys,
 values, source paths, and raw checker or container diagnostics.
 
@@ -321,7 +322,12 @@ const dockerCommand =
       maxOutputBytes,
     })
 
-const assertDockerSource = async (runDocker, imageId) => {
+const assertLocalDockerSocket = async () => {
+  const socket = await lstat("/var/run/docker.sock")
+  if (!socket.isSocket() || socket.isSymbolicLink()) throw failure()
+}
+
+const assertDockerSource = async (runDocker, imageId, verifySocket) => {
   const host = await runDocker([
     "context",
     "inspect",
@@ -329,7 +335,8 @@ const assertDockerSource = async (runDocker, imageId) => {
     "--format",
     "{{json .Endpoints.docker.Host}}",
   ])
-  if (!/^"unix:\/\/\/[^"\r\n]+"$/u.test(host)) throw failure()
+  if (host !== '"unix:///var/run/docker.sock"') throw failure()
+  await verifySocket()
   const image = await runDocker([
     "image",
     "inspect",
@@ -496,6 +503,7 @@ export const runIsolatedRedisReplay = async ({
   environment = process.env,
   runCommand = runRecoveryCommand,
   verify = verifyRedisAofArchive,
+  verifyDockerSocket = assertLocalDockerSocket,
   write = (line) => process.stdout.write(line),
   writeError = (line) => process.stderr.write(line),
 } = {}) => {
@@ -545,7 +553,7 @@ export const runIsolatedRedisReplay = async ({
       )
         throw failure()
       phase = "docker_preflight"
-      await assertDockerSource(runDocker, options.imageId)
+      await assertDockerSource(runDocker, options.imageId, verifyDockerSocket)
       root = await mkdtemp("/tmp/rr-redis-replay-")
       if (Buffer.byteLength(root) > 160) throw failure()
       const space = await statfs(root, { bigint: true })

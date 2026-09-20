@@ -21,6 +21,7 @@ module.exports = {
     "/.medusa/",
     "/dist/",
     "/integration-tests/",
+    "/src/scripts/rewrite-runtime-aliases.test.cjs",
   ],
   modulePathIgnorePatterns: ["<rootDir>/.medusa/", "<rootDir>/dist/"],
   moduleNameMapper: {

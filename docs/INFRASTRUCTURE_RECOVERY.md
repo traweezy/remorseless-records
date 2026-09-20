@@ -834,12 +834,15 @@ REDIS_AOF_REPLAY_MAX_BYTES=536870912 REDIS_AOF_REPLAY_TIMEOUT_MS=120000 \
   --image-id 'sha256:<reviewed-scanned-local-redis-image-id>'
 ```
 
-The command requires Docker's explicit `default` context to resolve to a
-local Unix socket, uses `--pull never`, and checks that the target image's
-checker bytes match the official pin. It copies to owned private directories,
-then starts Redis as the current non-root user with no network, published
-ports, workers, provider credentials or external mounts, a read-only root,
-one CPU, 1 GiB memory, 64 PIDs and only private data/socket binds. It verifies
+The command and checker wrapper require Docker's explicit `default` context to
+resolve to the socket node at `/var/run/docker.sock`; alternate Unix proxy
+paths, symlink endpoints, and TCP contexts fail closed. The local Docker daemon
+remains an operator trust boundary. The command uses `--pull never` and checks
+that the target image's checker bytes match the official pin. It copies to
+owned private directories, then starts Redis as the current non-root user with
+no network, published ports, workers, provider credentials or external mounts,
+a read-only root, one CPU, 1 GiB memory, 64 PIDs and only private data/socket
+binds. It verifies
 those container facts, startup, Redis 8.10.1 AOF health and aggregate keyspace,
 then restarts and checks aggregate parity and a changed run ID. The exact
 owned container and private directories are removed before success output;
@@ -847,8 +850,12 @@ owned container and private directories are removed before success output;
 The report omits keys, values, paths and raw checker diagnostics and keeps
 `queueReconciled` and `businessReconciled` false. Source freshness, live
 staging replay, BullMQ state reconciliation and production recovery are still
-open. The disposable CI fixture exercises this path on synthetic BASE/INCR
-data and does not supply live recovery evidence.
+open. The disposable CI fixture exercises receipt-bound replay on synthetic
+BASE/INCR data with its separately verified fixture checker because that job
+does not provision the named historical official image. It does not execute the
+digest-pinned wrapper or supply live recovery evidence. Run the pinned wrapper
+on a host where its reviewed official image is already present before a
+staging-data replay.
 
 September 19 read-only staging preflight found Redis 8.0.3 still running from
 deployment `f75e3583-3d71-4787-9ada-12852e976fa0`, without a recorded image
