@@ -18,6 +18,7 @@ import {
 import { createConnection, createServer } from "node:net"
 import { basename, dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
+import { normalizeScriptArguments } from "./lib/cli-arguments.mjs"
 import {
   createPostgresClientEnvironment,
   hashFileSha256,
@@ -1074,8 +1075,10 @@ const restore = async (
 }
 
 export const parseArguments = (args) => {
-  if (args.length === 1 && args[0] === "--help") return { mode: "help" }
-  const [mode, ...tail] = args
+  const normalized = normalizeScriptArguments(args)
+  if (normalized.length === 1 && normalized[0] === "--help")
+    return { mode: "help" }
+  const [mode, ...tail] = normalized
   assert.ok(
     ["create", "verify", "preflight", "apply", "cleanup"].includes(mode)
   )

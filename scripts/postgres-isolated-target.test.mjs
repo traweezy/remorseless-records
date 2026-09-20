@@ -48,6 +48,12 @@ const privateEnvironment = (additional = {}) => ({
 
 test("isolated target arguments reject missing, extra and implicit apply flags", () => {
   assert.deepEqual(parseArguments(["--help"]), { mode: "help" })
+  assert.deepEqual(parseArguments(["--", "--help"]), { mode: "help" })
+  assert.deepEqual(parseArguments(["--", "verify", "--target-dir", "/tmp/x"]), {
+    mode: "verify",
+    options: { "--target-dir": "/tmp/x" },
+  })
+  assert.throws(() => parseArguments(["--", "--", "--help"]))
   assert.throws(() => parseArguments(["apply", "--target-dir", "/tmp/x"]))
   assert.throws(() =>
     parseArguments(["cleanup", "--target-dir", "/tmp/x", "--force", "1"])

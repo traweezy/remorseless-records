@@ -100,14 +100,14 @@ contracts before applying generic framework examples from those files.
 ## Verified continuation boundary
 
 Both Railway applications now run accepted revision
-`f635cec6e8443efa87e50901befc353ebd752fa8`. Root, Backend, Storefront,
+`8dae008e424e7ad3795d401971846650def8bf77`. Root, Backend, Storefront,
 and Runtime Images CI passed on that exact SHA; Backend deployment
-`76eab912-2faf-4e12-bbd6-802924d643d3` and Storefront deployment
-`356e9ed7-f952-41c6-9791-7e5789db09da` reached `SUCCESS`. Both health
+`8904e8e8-fd7d-474d-8c79-28120e01a2a4` and Storefront deployment
+`d0c4d956-2751-4332-b7ec-a37cc3b531dc` reached `SUCCESS`. Both health
 pairs, Backend operations/scheduler/retention, manual monitors, 75 deployed
 browser cases with eight expected skips, and 16/16 cross-browser cases passed.
-Bounded logs showed no new signature or HTTP 5xx. The prior accepted revision
-was `7a9d1b9942f1a48fb03f4ebfa32985ee71425100`. GitHub repository access
+Bounded logs showed no new error signature or HTTP 5xx. The prior accepted
+revision was `f635cec6e8443efa87e50901befc353ebd752fa8`. GitHub repository access
 and pinned Railway CLI access were verified. Railway project `store` has one
 environment, `staging`, containing Backend, Storefront, Postgres, Redis, Bucket (MinIO),
 Console, and MeiliSearch. All seven active deployments report `SUCCESS`.
@@ -133,15 +133,23 @@ At the start of the September 19 session, local `staging` HEAD was
 unavailable in this session. A new `data:postgres:restore-receipt` command and
 receipt-required restore verification passed 45 focused tests and 12 real
 same-major PostgreSQL 16.15 roundtrip cases locally. The earlier export cannot
-gain a receipt retroactively; an isolated staging-data restore still requires
-a fresh source-bound archive and receipt captured while the source is quiesced.
+gain a receipt retroactively; the later isolated staging-data restore required
+a fresh source-bound archive and receipt. The legacy two-command path requires
+quiescent source writes; the accepted shared-snapshot path permits DML to
+continue while schema DDL is paused.
 Actual Redis multipart-AOF replay and queue reconciliation are also pending.
-The recovery tooling is accepted on staging; those live-data drills are not.
+The subsequent September 20 UTC local staging-data PostgreSQL drill captured
+a source-scope-bound shared-snapshot archive and restored all 171 physical
+tables with matching row/schema counts to a distinct, isolated 16.15 target.
+Owned target cleanup passed. The live Redis multipart-AOF drill remains open;
+the PostgreSQL result does not establish PITR, off-site backup, application
+startup against the target, or production RTO.
 
 Production remains absent. Redis's configured/running image mismatch and
 documented live-version risk remain open. PostgreSQL retains a public TCP
 proxy; MinIO, Console, and MeiliSearch retain public domains. Actual Redis RDB
-export/isolated loading now pass; AOF/queue and PostgreSQL restore, role cutover,
+export/isolated loading and the staging-data PostgreSQL logical restore now
+pass; AOF/queue, role cutover,
 support-image migration, network changes, backup schedules,
 registry publication/source cutover, and production provisioning remain open.
 The user's autonomous-work authorization supersedes historical permission-only

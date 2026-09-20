@@ -265,7 +265,7 @@ the archive with `pg_restore --format=custom --list`, applies mode `0600`, and w
 manifest containing byte length, SHA-256, tool version, timestamp, and a
 credential-free source fingerprint.
 
-All three PostgreSQL commands accept `--help` without credentials and reject unknown,
+The legacy backup, receipt, and restore commands accept `--help` without credentials and reject unknown,
 duplicate, or incomplete arguments. One optional leading `--` forwarded by
 `pnpm run` is normalized before parsing; repeated or interior separators still
 fail. `DATABASE_RECOVERY_TIMEOUT_MS` bounds the
@@ -288,11 +288,14 @@ not a disk quota. A failure during the final two-file publication can leave an
 orphan archive without its manifest; do not treat that as verified evidence.
 
 A restore drill must target a new, empty, disposable database on the source's
-PostgreSQL major version. Before releasing source quiescence, capture a private
-source receipt after the archive is created. The receipt binds the archive
+PostgreSQL major version. The legacy two-command capture needs source writes
+quiesced until its private receipt is captured after the archive. The newer
+`data:postgres:snapshot-backup` shares one exported source snapshot across the
+archive and receipt, so DML may continue while schema DDL is paused. The
+receipt binds the archive
 checksum and source fingerprint to every physical user table and its row count,
 six schema counts, and the source major. It cannot retroactively certify an
-earlier export or a source that changed between dump and receipt capture. See
+earlier export or a source that changed between the legacy dump and receipt capture. See
 the [PostgreSQL restore acceptance guide](POSTGRES_RESTORE_ACCEPTANCE.md) for
 the complete sequence, isolation requirements, and failure handling:
 
@@ -302,6 +305,15 @@ DATABASE_BACKUP_URL='<backup-role-url>' \
   --manifest /absolute/path/postgres-....manifest.json \
   --output /absolute/private/postgres.restore-receipt.json
 ```
+
+For the live Railway staging source, use
+`data:postgres:staging-snapshot` to wrap the shared-snapshot capture with exact
+project, environment, service, sole active deployment/instance, READY volume,
+remote replica, and before/after database system-ID guards. It publishes a
+fourth private `source-scope.receipt.json` only after the archive, manifest and
+receipt validate. The [restore acceptance guide](POSTGRES_RESTORE_ACCEPTANCE.md)
+contains the guarded command and its source-URL/TLS rules. This local bundle is
+drill evidence, not scheduled or off-provider backup retention.
 
 First run the read-only target verification with the source receipt:
 
@@ -389,8 +401,8 @@ the default server does not poll for client disconnection during a query.
 The verified snapshot remains restorable after the original archive
 changes. The receipt-required path also has 45 focused tests and 12 real
 same-major PostgreSQL 16.15 roundtrip cases, including a row-count mismatch
-and populated-target rejection. These are local implementation results, not
-acceptance of an actual staging-data restore. Every database and temporary
+and populated-target rejection. These were local implementation results before
+the later staging-data drill below. Every database and temporary
 directory belongs to the test and is removed afterward.
 
 These tests require actual PostgreSQL 18.6 clients. Backend CI provisions exact
@@ -496,9 +508,36 @@ Its schema-1 archive manifest remains unchanged. Export acceptance alone does
 not establish restoration, production RTO, scheduled backups, PITR or off-site
 retention. Private `/tmp` archives are session evidence, not durable storage.
 The new restore receipt cannot be created after the fact for this earlier
-export. Its private archive is unavailable in the resumed session, so the
-isolated restore remains pending and needs a fresh source-bound archive plus a
-receipt captured while the source stays quiesced.
+export. Its private archive was unavailable in the resumed session, so a fresh
+source-bound archive and receipt were required. The later shared-snapshot path
+below allows DML to continue while schema DDL is paused.
+
+### Guarded staging-data logical restore — September 20, 2026 UTC
+
+The new staging wrapper captured a private, snapshot-bound archive, manifest,
+complete row/schema receipt, and Railway source-scope receipt at
+`2026-09-20T00:34:18.948Z`. The exact running Postgres deployment, instance,
+READY volume instance, SSH runtime identity and PostgreSQL system identifier
+matched before and after capture. The 1,851,532-byte archive SHA-256 is
+`50a2a91629429233bbaa126018f04b3d934187a9eceb3618ab7f9f7f6515417c`.
+The receipt covers 171 physical tables, 735 indexes, eight sequences and 385
+constraints. The first two guarded attempts published nothing while a real
+171-table limit in the inventory query was diagnosed and fixed. A native
+PostgreSQL 16 regression now exercises that scale.
+
+An owned, empty PostgreSQL 16.15 target from exact scanned image
+`sha256:76db58e52e571729aa4ab51a5c597189e6f570086345c29b68b358067a6547e8`
+had a different physical system identifier from the 16.11 source. Docker
+inspection confirmed no network or published ports and a read-only root.
+Private, checksum-bound preflight passed; one-shot apply restored all 171
+tables and matched every row count and six schema counts. A separate verify
+repeated that comparison. Backend readiness stayed healthy on accepted
+`8dae008`. The runner removed the owned target directory, container and volume;
+independent checks found none remaining. Full command and evidence limits are
+in the [PostgreSQL restore acceptance guide](POSTGRES_RESTORE_ACCEPTANCE.md).
+This closes the staging-data logical restore proof, not application startup
+against the target, scheduled/off-site backups, PITR, least-privilege roles,
+or production RTO.
 
 ## Media backup and restore
 

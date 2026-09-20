@@ -9,6 +9,24 @@ tracks what is still required before production traffic is approved.
 
 ## Active continuation — September 19 onward
 
+The shared-snapshot recovery release is accepted on staging at
+`8dae008e424e7ad3795d401971846650def8bf77`. Root, Backend, Storefront,
+and Runtime Images CI passed on the exact SHA (runs `35477624699`,
+`35477624694`, `35477624683`, `35477624691`). Railway Backend deployment
+`8904e8e8-fd7d-474d-8c79-28120e01a2a4` and Storefront deployment
+`d0c4d956-2751-4332-b7ec-a37cc3b531dc` succeeded. Both health pairs,
+Backend operations/scheduler/retention, manual operations and scheduler
+monitors, 75 deployed responsive browser cases with eight expected skips, and
+16/16 Firefox/WebKit cases passed. Bounded logs showed no new error family or
+HTTP 5xx. The shared-snapshot backup and BullMQ multipart-AOF replay passed
+with disposable data. The subsequent September 20 UTC local drill captured a
+fresh source-bound staging PostgreSQL archive and restored all 171 physical
+tables with exact row/schema counts to an isolated same-major target. Source
+and target physical identities differed; post-restore verification and owned
+cleanup passed. This closes that staging-data logical restore proof. Live Redis
+multipart-AOF replay, durable backups/PITR, and application startup against a
+restored target remain open; see the restore acceptance guide.
+
 The grouped recovery-evidence release is accepted on staging at
 `f635cec6e8443efa87e50901befc353ebd752fa8`. Root, Backend, Storefront,
 and Runtime Images CI passed on the exact revision (runs `35464924483`,
@@ -30,13 +48,17 @@ record describes a scanned, recovery-only PostgreSQL 16.15 target and an actual
 bounded export from the live 16.11 source. Its private `/tmp` archive is not
 available in this session. That export is evidence of backup execution, not
 evidence of an isolated restore or durable retained backup. A fresh guarded
-source-bound export and same-major isolated restore remain to be completed.
-The local `data:postgres:restore-receipt` implementation now requires a receipt
-captured after export while the source remains quiesced, and restore apply
+source-bound export and same-major isolated restore were still to be completed
+at that point; the later drill above completed them.
+The legacy `data:postgres:restore-receipt` path requires a receipt captured
+after export while source writes remain quiesced. The newer
+`data:postgres:snapshot-backup` uses one exported snapshot for archive and
+receipt while DML may continue, provided schema DDL is paused. Restore apply
 checks complete physical-table row counts, six schema counts, and server-major
 parity. Forty-five focused tests and 12 real PostgreSQL 16.15 roundtrip cases
 passed locally. See the [restore acceptance guide](POSTGRES_RESTORE_ACCEPTANCE.md).
-This does not establish a live-data restore.
+Those earlier local tests did not establish a live-data restore; the later
+staging-data drill above did.
 Actual Redis multipart-AOF replay and queue reconciliation also remain open;
 the earlier RDB load and this release's offline AOF verifier do not close them.
 
@@ -89,9 +111,11 @@ archive/source/target identities, measured fork headroom and independent
 cleanup/source-health checks. This proves RDB loading, not current multipart-AOF
 replay, queue reconciliation or a live image cutover. The PostgreSQL audit now
 supports the actual 16.11 source and still rejects its superuser identity; real
-16.15/18.6 integration checks pass. Private SSH transport is verified, but the
-reviewed same-major recovery image has unresolved security findings. Actual
-PostgreSQL isolated restore, scheduled backup/PITR, role cutover and Redis
+16.15/18.6 integration checks pass. Private SSH transport is verified. The
+exact reduced same-major recovery image passed a fresh September 19 package
+scan with zero CRITICAL, HIGH, or UNKNOWN findings; the restore acceptance
+guide records the scan's limits. The later staging-data PostgreSQL isolated
+restore passed; scheduled backup/PITR, role cutover and Redis
 migration remain open; see
 [INFRASTRUCTURE_RECOVERY.md](INFRASTRUCTURE_RECOVERY.md) for the precise evidence.
 

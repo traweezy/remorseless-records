@@ -11,6 +11,52 @@ reviewed scope. Do not invent missing production, legal, tax, or provider facts.
 Use [PROJECT_MAP.md](PROJECT_MAP.md) for the indexed code/documentation entrypoints.
 Preserve unrelated `Default/` unread, untouched, and unstaged.
 
+### Accepted September 19 shared-snapshot release: `8dae008`
+
+Commit `8dae008e424e7ad3795d401971846650def8bf77` adds a
+snapshot-bound PostgreSQL archive and inventory receipt, an isolated synthetic
+BullMQ multipart-AOF replay test, and the accompanying recovery runbooks.
+Root CI `35477624699`, Backend CI `35477624694`, Storefront CI `35477624683`,
+and Runtime Images `35477624691` passed on the exact SHA. Railway Backend
+deployment `8904e8e8-fd7d-474d-8c79-28120e01a2a4` and Storefront
+deployment `d0c4d956-2751-4332-b7ec-a37cc3b531dc` succeeded on that SHA.
+Both health/readiness pairs and Backend operations, scheduler, and retention
+were healthy. Manual operations run `35478350099` and the repeat scheduler
+run `35478469611` passed; the latter observed an ordinary heartbeat recorded
+on the exact SHA. Deployed responsive browsers passed 75 cases with eight
+expected skips, and Firefox/WebKit passed 16/16. Bounded application logs
+showed only the previously classified closed-stream cancellation signature
+`2991309508`; provider HTTP queries found no 5xx.
+
+This accepts the implementation and staging deployment. Its archive and AOF
+replay tests used disposable data. A later local staging-data PostgreSQL drill
+passed as recorded below; live Redis multipart-AOF replay remains open.
+
+### September 20 guarded staging-data PostgreSQL drill
+
+The new staging wrapper verified the exact Railway project/environment,
+Postgres service, sole running deployment/instance and READY volume against
+the SSH runtime and database system identifier before and after capture. A
+private exported-snapshot bundle was published at `2026-09-20T00:34:18.948Z`:
+1,851,532-byte custom archive, SHA-256
+`50a2a91629429233bbaa126018f04b3d934187a9eceb3618ab7f9f7f6515417c`,
+manifest, receipt for 171 physical tables, and source-scope receipt. The first
+two attempts failed closed without publishing while the real 171-table JSON
+argument limit was diagnosed. Its ordered-aggregate correction passed an
+actual PostgreSQL 16 regression with 171 tables.
+
+The exact scanned reduced 16.15 image ran as an isolated, read-only-root
+Docker target without a network or published ports. Its system identifier
+differed from staging. Empty-target preflight, one-shot restore, all 171
+row-count and six schema-count comparisons, and separate post-restore verify
+passed. The Backend remained ready on `8dae008`; owned target container,
+volume and directory were removed and independently confirmed absent. The
+private source bundle remains temporary drill evidence, not off-site storage.
+This proves staging-data logical recovery, not application startup against the
+target, exact row-value equality, PITR, scheduled backups, or production RTO.
+See [PostgreSQL restore acceptance](POSTGRES_RESTORE_ACCEPTANCE.md) for the
+commands, scope identities and limits.
+
 ### Accepted September 19 recovery evidence release: `f635cec`
 
 Commit `f635cec6e8443efa87e50901befc353ebd752fa8` groups the
