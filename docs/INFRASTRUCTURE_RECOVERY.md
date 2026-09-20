@@ -539,6 +539,12 @@ This closes the staging-data logical restore proof, not application startup
 against the target, scheduled/off-site backups, PITR, least-privilege roles,
 or production RTO.
 
+The guarded tooling subsequently passed exact-revision staging CI, both
+Railway deployments, deployed browsers and bounded runtime checks at
+`e7a37c2180f890e0562495a5897b3cef7decc5c2`; see the
+[session handoff](NEXT_SESSION_HANDOFF.md). This release acceptance does not
+expand the recovery proof above.
+
 ## Media backup and restore
 
 MinIO's application bucket requires versioning and an off-site target in a

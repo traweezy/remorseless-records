@@ -1,7 +1,7 @@
 # Project map and continuation guide
 
 Last indexed: September 19, 2026 (America/New_York). Latest application staging
-release acceptance completed September 19, 2026.
+release acceptance completed September 20, 2026 UTC.
 
 ## Start here
 
@@ -100,23 +100,29 @@ contracts before applying generic framework examples from those files.
 ## Verified continuation boundary
 
 Both Railway applications now run accepted revision
-`8dae008e424e7ad3795d401971846650def8bf77`. Root, Backend, Storefront,
-and Runtime Images CI passed on that exact SHA; Backend deployment
-`8904e8e8-fd7d-474d-8c79-28120e01a2a4` and Storefront deployment
-`d0c4d956-2751-4332-b7ec-a37cc3b531dc` reached `SUCCESS`. Both health
-pairs, Backend operations/scheduler/retention, manual monitors, 75 deployed
-browser cases with eight expected skips, and 16/16 cross-browser cases passed.
-Bounded logs showed no new error signature or HTTP 5xx. The prior accepted
-revision was `f635cec6e8443efa87e50901befc353ebd752fa8`. GitHub repository access
+`e7a37c2180f890e0562495a5897b3cef7decc5c2`. Root, Backend, Storefront,
+and Runtime Images CI passed on that exact SHA (runs `35479741881`,
+`35479741882`, `35479741926`, `35479741917`); Backend deployment
+`7c18c961-202f-4542-ad05-e9449c2a6005` and Storefront deployment
+`a8ed4c9f-dec7-41db-83e9-09d2c90fdfe3` reached `SUCCESS`. Both health
+pairs, Backend operations/scheduler/retention, an ordinary same-SHA scheduler
+heartbeat, and Storefront root/catalog passed. Deployed browsers passed 75
+cases with eight expected skips and 16/16 Firefox/WebKit. An exact public
+catalog request produced matching Backend/Storefront HTTP 200 completion logs;
+bounded provider HTTP queries found no 5xx through 01:18 UTC. The first
+browser attempt's nested Stripe dependency drift was corrected in the pinned
+exact-revision rerun; see the handoff. The prior accepted revision was
+`8dae008e424e7ad3795d401971846650def8bf77`. GitHub repository access
 and pinned Railway CLI access were verified. Railway project `store` has one
 environment, `staging`, containing Backend, Storefront, Postgres, Redis, Bucket (MinIO),
 Console, and MeiliSearch. All seven active deployments report `SUCCESS`.
 
-Both applications' liveness/readiness returned 200 with that revision. Backend
-scheduler, retention, operations, and dependency checks passed. Authenticated
-bounded catalog reads verified 461 Products, 442 Discography records, three
-shelves, and 25 shelf memberships; only aggregate counts were retained. Four
-data volumes were ready with no pending deletion. These checks establish
+Both applications' liveness/readiness returned 200 with the new revision.
+Backend scheduler, retention, operations, and dependency checks passed. The
+prior accepted release's authenticated bounded catalog reads verified 461
+Products, 442 Discography records, three shelves, and 25 shelf memberships;
+only aggregate counts were retained. Four data volumes were ready with no
+pending deletion at that check. These checks establish
 bounded live access and health, not a backup/restore or complete data audit.
 
 The earlier dependency findings and PCRE2 fixes passed their exact-revision

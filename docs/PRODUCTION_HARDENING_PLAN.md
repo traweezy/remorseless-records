@@ -1,13 +1,30 @@
 # Production Hardening Plan
 
-Last reviewed: September 19, 2026
+Last reviewed: September 20, 2026 UTC
 
 This is the authoritative launch-readiness backlog for Remorseless Records. It
 supersedes the local `tmp/HARDENING_NEXT_STEPS.md` working note. Detailed
 operating procedures remain in the linked runbooks and ADRs; this document
 tracks what is still required before production traffic is approved.
 
-## Active continuation — September 19 onward
+## Active continuation — September 20 UTC onward
+
+The guarded PostgreSQL recovery tooling release at
+`e7a37c2180f890e0562495a5897b3cef7decc5c2` passed exact-SHA Root,
+Backend, Storefront, and Runtime Images CI (runs `35479741881`,
+`35479741882`, `35479741926`, `35479741917`). Railway Backend deployment
+`7c18c961-202f-4542-ad05-e9449c2a6005` and Storefront deployment
+`a8ed4c9f-dec7-41db-83e9-09d2c90fdfe3` succeeded on that SHA. Both
+health/readiness pairs, Backend operations/scheduler/retention, an ordinary
+same-SHA scheduler heartbeat, and Storefront root/catalog passed. Deployed
+browsers passed 75 cases with eight expected skips and 16/16 Firefox/WebKit;
+the corrected exact-workspace run resolved an initial nested Stripe install
+drift. A single public catalog request had matching Backend/Storefront HTTP
+200 completion records with exact request, trace, and commit identity; bounded
+provider HTTP queries found no 5xx through 01:18 UTC. The earlier staging-data
+logical restore used these tools, but application startup against the target,
+live Redis AOF replay, durable backups/PITR, and production recovery timing
+remain open.
 
 The shared-snapshot recovery release is accepted on staging at
 `8dae008e424e7ad3795d401971846650def8bf77`. Root, Backend, Storefront,

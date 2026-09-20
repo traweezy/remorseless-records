@@ -240,3 +240,8 @@ for review; it is neither off-site nor scheduled backup storage.
 This proves a staging-data logical archive and isolated same-major row/schema
 restore. It does not prove application startup against the target, exact row
 values, extension/role fidelity, provider behavior, PITR, or production RTO.
+
+The guarded wrapper and target runner shipped at exact staging revision
+`e7a37c2180f890e0562495a5897b3cef7decc5c2`; its CI, deployment,
+browser, and bounded runtime acceptance are recorded in the
+[session handoff](NEXT_SESSION_HANDOFF.md).

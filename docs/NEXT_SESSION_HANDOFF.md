@@ -11,6 +11,45 @@ reviewed scope. Do not invent missing production, legal, tax, or provider facts.
 Use [PROJECT_MAP.md](PROJECT_MAP.md) for the indexed code/documentation entrypoints.
 Preserve unrelated `Default/` unread, untouched, and unstaged.
 
+### Accepted September 20 UTC guarded recovery release: `e7a37c2`
+
+Commit `e7a37c2180f890e0562495a5897b3cef7decc5c2` ships the guarded
+Railway PostgreSQL source capture and isolated target runner used in the
+staging-data drill below, plus their release checks. Root CI `35479741881`,
+Backend CI `35479741882`, Storefront CI `35479741926`, and Runtime Images
+`35479741917` all passed on that exact SHA. Railway Backend deployment
+`7c18c961-202f-4542-ad05-e9449c2a6005` and Storefront deployment
+`a8ed4c9f-dec7-41db-83e9-09d2c90fdfe3` reached `SUCCESS` with the same SHA.
+
+Both services returned HTTP 200 from `/live` and `/ready` with the exact SHA.
+Backend reported all four dependencies and seven capabilities `ok`; Storefront
+reported Backend and Redis `ok`. Backend `/health/operations`,
+`/health/scheduler`, and `/health/retention` returned healthy with zero reasons.
+The ordinary scheduler heartbeat recorded at `2026-09-20T01:06:00.136Z`
+completed on this SHA with Redis `ok` and no incident. Storefront `/` and
+`/catalog` returned HTTP 200. The deployed Desktop Chrome, Pixel 7, and
+iPhone 15 Pro matrix passed 75 cases with eight expected skips; Firefox and
+WebKit passed 16/16. The first browser attempt used an older worktree's nested
+unpatched Stripe 9.16 install and failed six synthetic CSP fixtures. After
+quarantining that nested lock, the exact-revision workspace with pinned patched
+Stripe 9.14 passed all six and the full matrices. This was local runner drift,
+not a deployed application failure.
+
+One read-only Storefront `/api/products?limit=1&offset=0` returned HTTP 200,
+one result, and 461 total. Exact request ID
+`rr-e7-catalog-0f45277c-31bf-4287-9e26-db4642f90249` and trace ID
+`3ce28cd79e920bddb9a10269a93b987f` appeared in Backend and Storefront
+`http.request.completed` records, each `info`, HTTP 200, `staging`, and this
+commit SHA. Bounded provider HTTP queries from deployment creation through
+`01:18 UTC` found no 5xx on either service. The private browser artifacts are
+under `/tmp/remorseless-e7a37c2-deployed-browser.nAAnW9/`; they are temporary
+session evidence.
+
+The staging-data PostgreSQL logical restore preceded this release and remains
+bounded as documented below. Live Redis multipart-AOF replay, restored-target
+application startup, scheduled/off-site backups, PITR, and production RTO
+remain open.
+
 ### Accepted September 19 shared-snapshot release: `8dae008`
 
 Commit `8dae008e424e7ad3795d401971846650def8bf77` adds a
