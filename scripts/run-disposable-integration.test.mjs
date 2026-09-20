@@ -157,6 +157,10 @@ test("builds before startup, verifies actual image IDs, runs full aggregate and 
   assert.deepEqual(tests.args, ["run", "qa:disposable-integration:services"])
   assert.equal(tests.options.timeoutMs, 900_000)
   assert.equal(tests.options.environment.INTEGRATION_TESTS_ENABLED, "1")
+  assert.equal(
+    tests.options.environment.RR_REDIS_AGGREGATE_TEST_IMAGE_ID,
+    redisId
+  )
   const cleanup = fixture.calls.at(-1)
   assert.deepEqual(actionOptions(cleanup), [
     "--volumes",
@@ -172,12 +176,23 @@ test("builds before startup, verifies actual image IDs, runs full aggregate and 
 test("no-build requires scanned IDs and never rebuilds or pulls after scan", async () => {
   const fixture = fakeRunner()
   assert.equal(
-    await fixture.invoke({ args: ["--no-build"], environment: scanned }),
+    await fixture.invoke({
+      args: ["--no-build"],
+      environment: {
+        ...scanned,
+        RR_REDIS_AGGREGATE_TEST_IMAGE_ID: `sha256:${"f".repeat(64)}`,
+      },
+    }),
     0
   )
   assert.equal(
     fixture.calls.some((call) => stage(call) === "build"),
     false
+  )
+  assert.equal(
+    fixture.calls.find((call) => stage(call) === "tests").options.environment
+      .RR_REDIS_AGGREGATE_TEST_IMAGE_ID,
+    redisId
   )
   for (const environment of [
     {},

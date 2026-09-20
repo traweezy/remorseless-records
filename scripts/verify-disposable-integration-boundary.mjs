@@ -57,6 +57,35 @@ export const validateHardenedFixtureWiring = ({
       ),
       `Redis security package pin lost: ${packagePin}`
     )
+  const redisLines = significant(redisDockerfile).map((line) => line.trim())
+  const perlArtifactPins = [
+    "ADD --checksum=sha256:9995840a76ac97ec006259391b7a81b73b73c5cf2f462bf12bb2250afbf665b9 https://dl-cdn.alpinelinux.org/alpine/v3.23/main/x86_64/libbz2-1.0.8-r6.apk /tmp/libbz2.apk",
+    "ADD --checksum=sha256:aed631849b8ccf66751452977ab7c64e1088143961a6bccc8cff3f37da5084fc https://dl-cdn.alpinelinux.org/alpine/v3.23/main/x86_64/perl-5.42.2-r0.apk /tmp/perl.apk",
+  ]
+  assert.deepEqual(
+    redisLines.filter((line) => line.startsWith("ADD ")),
+    perlArtifactPins,
+    "Only exact checksum-pinned Perl artifacts may enter the Redis fixture"
+  )
+  assert.equal(
+    redisLines.filter((line) => line.startsWith("RUN ")).length,
+    1,
+    "Redis fixture must keep one reviewed package installation"
+  )
+  assert.equal(
+    redisLines.some((line) => line.startsWith("COPY ")),
+    false,
+    "Redis fixture must not copy unreviewed package artifacts"
+  )
+  for (const instruction of [
+    "/tmp/libbz2.apk \\",
+    "/tmp/perl.apk \\",
+    "&& rm /tmp/libbz2.apk /tmp/perl.apk",
+  ])
+    assert.ok(
+      redisLines.includes(instruction),
+      `Redis Perl artifact pin lost: ${instruction}`
+    )
   const postgresLines = significant(postgresDockerfile).map((line) =>
     line.trim()
   )
@@ -319,11 +348,37 @@ export const verifyDisposableIntegrationBoundary = async () => {
   )
   assert.equal(
     packageManifest.scripts?.["qa:disposable-integration:services"],
-    "pnpm --filter backend run test:integration && pnpm run qa:postgres-recovery:integration && pnpm run qa:redis-capacity:integration && node --test scripts/redis-aof-recovery.integration.test.mjs && pnpm run qa:api-contract && node --test scripts/medusa-session-rotation.integration.test.mjs"
+    "pnpm --filter backend run test:integration && pnpm run qa:postgres-recovery:integration && pnpm run qa:redis-capacity:integration && node --test scripts/redis-aof-recovery.integration.test.mjs && pnpm run qa:redis-live-aggregate:integration && pnpm run qa:api-contract && node --test scripts/medusa-session-rotation.integration.test.mjs"
   )
   assert.equal(
     packageManifest.scripts?.["qa:redis-capacity:integration"],
     "node --test scripts/redis-capacity-audit.integration.test.mjs"
+  )
+  assert.equal(
+    packageManifest.scripts?.["qa:redis-live-aggregate:integration"],
+    "node --test scripts/redis-live-queue-aggregate.integration.test.mjs"
+  )
+  const liveAggregateTest = await read(
+    "scripts/redis-live-queue-aggregate.integration.test.mjs"
+  )
+  for (const marker of [
+    'assert.equal(process.env.INTEGRATION_TESTS_ENABLED, "1")',
+    "process.env.RR_REDIS_AGGREGATE_TEST_IMAGE_ID",
+    "assert.equal(imageId, expectedImageId)",
+    '"--pull",',
+    '"never",',
+    '"--network",',
+    '"none",',
+    '"--read-only",',
+    '"no-new-privileges",',
+  ])
+    assert.ok(
+      liveAggregateTest.includes(marker),
+      `Live aggregate fixture guard lost: ${marker}`
+    )
+  assert.ok(
+    orchestrator.includes("RR_REDIS_AGGREGATE_TEST_IMAGE_ID: imageIds.redis"),
+    "Fake-RESP test must receive the verified Redis fixture ID"
   )
   assert.ok(
     packageManifest.scripts?.["qa:database-release-boundary"]?.includes(

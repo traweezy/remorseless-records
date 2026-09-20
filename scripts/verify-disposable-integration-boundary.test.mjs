@@ -167,11 +167,30 @@ for (const key of ["postgresDockerfile", "redisDockerfile"])
   })
 
 test("rejects Redis security package pin removal and trust bypass", () => {
-  assert.throws(() =>
-    validateHardenedFixtureWiring(
-      mutate("redisDockerfile", "libssl3=3.5.8-r0", "libssl3")
+  for (const packagePin of ["libssl3=3.5.8-r0", "perl-5.42.2-r0.apk"])
+    assert.throws(() =>
+      validateHardenedFixtureWiring(
+        mutate("redisDockerfile", packagePin, "removed_security_pin")
+      )
     )
-  )
+  for (const digest of [
+    "9995840a76ac97ec006259391b7a81b73b73c5cf2f462bf12bb2250afbf665b9",
+    "aed631849b8ccf66751452977ab7c64e1088143961a6bccc8cff3f37da5084fc",
+  ])
+    assert.throws(() =>
+      validateHardenedFixtureWiring(
+        mutate("redisDockerfile", digest, "0".repeat(64))
+      )
+    )
+  for (const extra of [
+    "RUN apk add perl=5.42.3-r0",
+    "ADD https://example.invalid/perl.apk /tmp/unreviewed.apk",
+    "COPY unreviewed.apk /tmp/unreviewed.apk",
+  ]) {
+    const fixture = sources()
+    fixture.redisDockerfile += `\n${extra}\n`
+    assert.throws(() => validateHardenedFixtureWiring(fixture))
+  }
   assert.throws(() =>
     validateHardenedFixtureWiring(
       mutate(

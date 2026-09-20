@@ -1078,14 +1078,24 @@ raw command replies; sending `SCAN` through it would expose private key names.
 This helper keeps key names, replies and errors inside the container and emits
 only the fixed aggregate schema plus a bounded UTC observation window. It caps
 keys, pages, bytes and time.
-The disposable fake-RESP integration test passed locally with an explicitly
-inspected image ID, `--pull never`, no network and a read-only filesystem. To
-repeat it, set `INTEGRATION_TESTS_ENABLED=1` and
+The disposable fake-RESP integration test uses the pinned Redis 8.10.1 Alpine
+fixture with exact SHA-256-pinned Alpine `perl-5.42.2-r0.apk` and its
+`libbz2-1.0.8-r6.apk` dependency. Backend CI builds it, validates a fresh
+Trivy vulnerability report and CycloneDX SBOM for its exact image ID, and
+exports that ID only after both fixture scans pass. The no-build integration
+runner checks the scanned image and started container identities, then passes
+the verified Redis ID to the fake-RESP test. That test uses `--pull never`, no
+network and a read-only filesystem. It covers normal and empty aggregates plus
+wrong type, oversized response, run-ID drift, other DB, count drift and key
+replacement failures. A local 0.74.0 Trivy scan of the new fixture, using the
+September 19 database, found zero UNKNOWN/HIGH/CRITICAL findings and validated
+all 24 detected Alpine packages against the SBOM. CI acceptance of this wiring
+must be observed on the exact pushed SHA before any live collector execution.
+For a direct local repeat, build the checked-in Redis fixture on the local
+`default` Docker context, inspect its `sha256:` image ID, then set
+`DOCKER_CONTEXT=default`, `INTEGRATION_TESTS_ENABLED=1` and
 `RR_REDIS_AGGREGATE_TEST_IMAGE_ID=sha256:<reviewed-local-image-id>` before
-`pnpm run qa:redis-live-aggregate:integration`. The governed PostgreSQL and
-Redis CI fixture images do not include Perl; this test is **not yet in CI**.
-Add a pinned, scanned CI fixture and run this integration gate there before
-executing the live collector.
+`pnpm run qa:redis-live-aggregate:integration`.
 Even matching aggregates from a live scan and this capture would be diagnostic:
 ongoing writes, TTL expiry and the moving AOF increment prevent a single
 cross-system snapshot. Classifying failed jobs and comparing PostgreSQL and

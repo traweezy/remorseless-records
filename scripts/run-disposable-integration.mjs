@@ -328,7 +328,10 @@ export const runDisposableIntegration = async ({
         )
     }
     await run("pnpm", ["run", "qa:disposable-integration:services"], {
-      environment: fixtureEnvironment,
+      environment: {
+        ...fixtureEnvironment,
+        RR_REDIS_AGGREGATE_TEST_IMAGE_ID: imageIds.redis,
+      },
       timeoutMs: 900_000,
     })
   } catch (error) {
