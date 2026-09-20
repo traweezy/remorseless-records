@@ -23,6 +23,7 @@ import {
 } from "./lib/redis-aof-recovery.mjs"
 import { runIntegrationCommand } from "./run-disposable-integration.mjs"
 import { runIsolatedRedisReplay } from "./redis-aof-isolated-replay.mjs"
+import { collectRedisQueueAggregate } from "./lib/redis-queue-aggregate.mjs"
 
 const imageTag = "remorseless-records-integration-redis:8.10.1-hardened"
 const imageIdPattern = /^(?:sha256:)?[a-f0-9]{64}$/u
@@ -35,7 +36,22 @@ const eventBusRequire = createRequire(
   backendRequire.resolve("@medusajs/event-bus-redis/package.json")
 )
 const { Queue, Worker } = eventBusRequire("bullmq")
+const { createClient } = backendRequire("redis")
 const eventBusQueuePrefix = "RedisEventBusService"
+
+const aggregateForSocket = async (path) => {
+  const client = createClient({
+    socket: { path, connectTimeout: 1_000, reconnectStrategy: false },
+    disableOfflineQueue: true,
+  })
+  client.on("error", () => undefined)
+  try {
+    await client.connect()
+    return await collectRedisQueueAggregate({ client })
+  } finally {
+    client.destroy()
+  }
+}
 
 const pinnedImageId = async () => {
   const imageId = await runIntegrationCommand(
@@ -232,7 +248,12 @@ chmod 600 /artifact/*
     assert.equal(replay.startupProven, true)
     assert.equal(replay.restartProven, true)
     assert.equal(replay.keyCount, 2)
+    assert.equal(replay.aggregateStartup.scannedKeys, 2)
+    assert.deepEqual(replay.aggregateRestart, replay.aggregateStartup)
+    assert.equal(replay.aggregateRestart.categories.other.count, 2)
+    assert.doesNotMatch(replayOutput[0], /synthetic:base|synthetic:increment/u)
     assert.equal(replay.queueReconciled, false)
+    assert.equal(replay.businessReconciled, false)
     for (const file of capturedFiles)
       assert.equal(
         createHash("sha256")
@@ -602,6 +623,13 @@ test("an isolated Redis 8.10.1 startup replays synthetic BullMQ states from mult
     assert.equal(expected.events.counts.waiting, 1)
     assert.equal(expected.workflows.counts.waiting, 1)
     assert.equal(expected.workflows.counts.delayed, 1)
+    const sourceAggregate = await aggregateForSocket(connection.path)
+    assert.equal(sourceAggregate.queues.eventBus.states.completed, 1)
+    assert.equal(sourceAggregate.queues.eventBus.states.failed, 1)
+    assert.equal(sourceAggregate.queues.eventBus.states.wait, 1)
+    assert.equal(sourceAggregate.queues.workflows.states.wait, 1)
+    assert.equal(sourceAggregate.queues.workflows.states.delayed, 1)
+    assert.doesNotMatch(JSON.stringify(sourceAggregate), /event-complete/u)
     assert.equal(
       await fixtureRedisCli(sourceId, [
         "TYPE",
@@ -689,6 +717,10 @@ test("an isolated Redis 8.10.1 startup replays synthetic BullMQ states from mult
       workflows: await queueSnapshot(restoredWorkflowQueue, workflowIds),
     }
     assert.deepEqual(observed, expected)
+    assert.deepEqual(
+      await aggregateForSocket(targetConnection.path),
+      sourceAggregate
+    )
     assert.equal(
       await fixtureRedisCli(targetId, [
         "TYPE",

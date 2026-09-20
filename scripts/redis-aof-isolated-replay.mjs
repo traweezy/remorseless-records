@@ -16,6 +16,7 @@ import {
   parseAofManifest,
   verifyRedisAofArchive,
 } from "./lib/redis-aof-recovery.mjs"
+import { collectIsolatedRedisQueueAggregate } from "./lib/redis-queue-aggregate.mjs"
 import {
   createRecoveryScope,
   runRecoveryCommand,
@@ -443,7 +444,7 @@ const infoFields = (raw) => {
   return fields
 }
 
-const observeTarget = async (runDocker, id, signal) => {
+const observeTarget = async (runDocker, id, socketPath, signal) => {
   await waitForRedis(runDocker, id, signal)
   const cli = (args, limit = 4096) =>
     runDocker(
@@ -487,6 +488,7 @@ const observeTarget = async (runDocker, id, signal) => {
     !Number.isSafeInteger(keyCount) ||
     !Number.isSafeInteger(expiringKeys) ||
     expiringKeys > keyCount ||
+    [...keyspace.keys()].some((name) => name !== "db0") ||
     Number(dbsize) > keyCount
   )
     throw failure()
@@ -495,6 +497,7 @@ const observeTarget = async (runDocker, id, signal) => {
     keyCount,
     expiringKeys,
     databaseCount: keyspace.size,
+    aggregate: await collectIsolatedRedisQueueAggregate({ socketPath, signal }),
   }
 }
 
@@ -685,14 +688,20 @@ export const runIsolatedRedisReplay = async ({
       )
         throw failure()
       assertContainer(inspect[0], options.imageId, name, token, data, socket)
-      const first = await observeTarget(runDocker, id, scope.signal)
+      const socketPath = join(socket, "redis.sock")
+      const first = await observeTarget(runDocker, id, socketPath, scope.signal)
       phase = "restart"
       const restartResult = await runDocker(
         ["restart", "--timeout", "3", id],
         128
       )
       if (restartResult !== id) throw failure()
-      const second = await observeTarget(runDocker, id, scope.signal)
+      const second = await observeTarget(
+        runDocker,
+        id,
+        socketPath,
+        scope.signal
+      )
       if (
         first.runIdSha256 === second.runIdSha256 ||
         first.keyCount !== second.keyCount ||
@@ -714,6 +723,8 @@ export const runIsolatedRedisReplay = async ({
         keyCount: second.keyCount,
         expiringKeys: second.expiringKeys,
         databaseCount: second.databaseCount,
+        aggregateStartup: first.aggregate,
+        aggregateRestart: second.aggregate,
         startupProven: true,
         restartProven: true,
         queueReconciled: false,

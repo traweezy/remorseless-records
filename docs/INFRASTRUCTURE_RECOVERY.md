@@ -844,7 +844,17 @@ no network, published ports, workers, provider credentials or external mounts,
 a read-only root, one CPU, 1 GiB memory, 64 PIDs and only private data/socket
 binds. It verifies
 those container facts, startup, Redis 8.10.1 AOF health and aggregate keyspace,
-then restarts and checks aggregate parity and a changed run ID. The exact
+then restarts and checks aggregate parity and a changed run ID. A bounded
+read-only probe also scans at most 5,000 keys in database zero through the
+private target socket, classifies the four Medusa 2.18 BullMQ namespaces plus
+workflow checkpoints, locks, cart idempotency, health snapshots and rate
+limits, and records only category/type/TTL-bucket and fixed queue-state
+cardinalities after both startup and restart. It never emits discovered key
+names, job IDs, lock owners or values; malformed scan/type responses, a key
+cap, populated nonzero database, or a 15-second scan deadline fail the replay.
+The probe starts no BullMQ worker or provider client. These isolated summaries
+do not compare live staging, prove individual job delivery, or reconcile
+PostgreSQL and Stripe; `queueReconciled` remains false. The exact
 owned container and private directories are removed before success output;
 `cleanup_unverified` is an incident requiring private local inspection.
 The report omits keys, values, paths and raw checker diagnostics and keeps

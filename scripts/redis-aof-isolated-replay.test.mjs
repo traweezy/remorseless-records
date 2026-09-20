@@ -20,6 +20,10 @@ import {
   runIsolatedRedisReplay,
   validateCaptureReceipt,
 } from "./redis-aof-isolated-replay.mjs"
+import {
+  collectIsolatedRedisQueueAggregate,
+  collectRedisQueueAggregate,
+} from "./lib/redis-queue-aggregate.mjs"
 
 const hash = (bytes) => createHash("sha256").update(bytes).digest("hex")
 const manifest =
@@ -79,6 +83,76 @@ const fixture = async () => {
   await writeFile(receiptPath, receiptBytes, { mode: 0o600 })
   return { root, archive, receiptPath, receiptBytes, evidence }
 }
+
+test("recovery aggregate reports only bounded queue, lock, and idempotency counts", async () => {
+  const entries = new Map([
+    ["RedisEventBusService:events-queue:wait", ["list", -1, 2]],
+    ["bull:medusa-workflows-jobs:delayed", ["zset", -1, 3]],
+    ["medusa_lock:private-owner", ["string", 5_000, 0]],
+    ["dtrx:private-flow:private-transaction", ["string", -1, 0]],
+    ["dtrx:private-flow:private-transaction:lock", ["string", 1_000, 0]],
+    ["rr:cart:idempotency:v1:private-hash", ["string", 300_000, 0]],
+    ["rr:cart:idempotency:v1:private-hash:lock", ["string", 15_000, 0]],
+    ["unclassified:private-key", ["string", -1, 0]],
+  ])
+  const client = {
+    scan: async () => ({ cursor: "0", keys: [...entries.keys()] }),
+    type: async (key) => entries.get(key)[0],
+    pTTL: async (key) => entries.get(key)[1],
+    lLen: async (key) => entries.get(key)[2],
+    zCard: async (key) => entries.get(key)[2],
+  }
+  const result = await collectRedisQueueAggregate({ client })
+  assert.equal(result.scannedKeys, 8)
+  assert.equal(result.queues.eventBus.states.wait, 2)
+  assert.equal(result.queues.scheduledJobs.states.delayed, 3)
+  assert.equal(result.categories.medusaLocks.ttl.under30Seconds, 1)
+  assert.equal(result.categories.workflowCheckpoints.count, 1)
+  assert.equal(result.categories.workflowCheckpointLocks.count, 1)
+  assert.equal(result.categories.cartIdempotencyResults.count, 1)
+  assert.equal(result.categories.cartIdempotencyLocks.count, 1)
+  assert.equal(result.categories.other.count, 1)
+  assert.doesNotMatch(JSON.stringify(result), /private/u)
+})
+
+test("recovery aggregate fails closed on scan, type, cap, and deadline violations", async () => {
+  const client = {
+    scan: async () => ({ cursor: "0", keys: [] }),
+    type: async () => "string",
+    pTTL: async () => -1,
+  }
+  for (const changed of [
+    { ...client, scan: async () => ({ cursor: "invalid", keys: [] }) },
+    { ...client, scan: async () => ({ cursor: "0", keys: ["a", "b"] }) },
+    {
+      ...client,
+      scan: async () => ({
+        cursor: "0",
+        keys: ["RedisEventBusService:events-queue:wait"],
+      }),
+    },
+    { ...client, scan: () => new Promise(() => undefined) },
+  ]) {
+    await assert.rejects(
+      collectRedisQueueAggregate({
+        client: changed,
+        maxKeys: 1,
+        timeoutMs: 20,
+      }),
+      { message: "Redis recovery aggregate unavailable." }
+    )
+  }
+})
+
+test("recovery aggregate refuses arbitrary and missing local sockets", async () => {
+  for (const socketPath of [
+    "/tmp/arbitrary/redis.sock",
+    "/tmp/rr-redis-replay-missing/socket/redis.sock",
+  ])
+    await assert.rejects(collectIsolatedRedisQueueAggregate({ socketPath }), {
+      message: "Redis recovery aggregate unavailable.",
+    })
+})
 
 test("replay arguments require private absolute paths and pinned identities", () => {
   const args = argumentsFor(
