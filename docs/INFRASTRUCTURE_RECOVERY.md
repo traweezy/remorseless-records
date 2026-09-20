@@ -731,13 +731,17 @@ off-site backup. Establish an approved versioned destination, retention and
 restore procedure before any source-image switch.
 
 Configure credential-bearing `MC_HOST_<alias>` values only in the operator's
-secret environment. Then dry-run a current-state copy:
+secret environment. This `mc mirror` workflow never copies object version
+history or delete markers. Both modes require the explicit
+`--current-state-only` acknowledgement; this keeps an urgent current-object
+copy available for the currently unversioned staging bucket without presenting
+it as version-aware recovery. Then dry-run a current-state copy:
 
 ```bash
 MEDIA_BACKUP_SOURCE='source/catalog' \
 MEDIA_BACKUP_TARGET='offsite/catalog' \
 MEDIA_BACKUP_OUTPUT_DIR='/absolute/private/evidence' \
-  pnpm run data:media:backup
+  pnpm run data:media:backup -- --current-state-only
 ```
 
 The dry-run prints a direction-specific confirmation and the additional
@@ -754,7 +758,7 @@ MEDIA_BACKUP_TARGET='offsite/catalog' \
 MEDIA_BACKUP_OUTPUT_DIR='/absolute/private/evidence' \
 MEDIA_BACKUP_CONFIRM='<dry-run-confirmation>' \
 MEDIA_BACKUP_VERIFY_MAX_BYTES='<reviewed-total-verification-download-bytes>' \
-  pnpm run data:media:backup -- --apply
+  pnpm run data:media:backup -- --current-state-only --apply
 ```
 
 The command rejects old clients, overlapping literal source/target paths,
@@ -786,11 +790,13 @@ exclusively created manifest; a pre-existing file is never removed. If that
 cleanup itself fails, the reported `manifest_cleanup` phase requires operator
 inspection. Investigate any partial remote copy before rerunning.
 
-The private `0600` schema-version-2 manifest includes client version, endpoint
+The private `0600` schema-version-3 manifest includes an explicit
+`recoveryScope: current_state_only` alongside client version, endpoint
 fingerprints, canonical key/size inventory hashes, a combined key/size/content
 hash, verified object/read-byte counts, and total/verification durations. A
-version-1 manifest only established key/size inventory parity and is not
-content-verified evidence. No object bytes are retained locally. Use the same
+version-1 manifest only established key/size inventory parity; version 2 did
+not bind the current-state scope. Neither older schema is accepted by the
+guarded restore drill. No object bytes are retained locally. Use the same
 boundary from off-site storage to a disposable restore bucket for the weekly
 drill. Keep the source quiescent for a consistent current-state copy: sequential
 reads do not establish an atomic multi-object snapshot or prevent subsequent
@@ -808,16 +814,19 @@ comparison and record duration.
 ### Guarded full current-state restore drill
 
 `pnpm run data:media:restore-drill -- --help` describes a full off-site-to-
-disposable-bucket drill. Its default mode checks a private schema-version-2
-backup manifest against an independently recorded SHA-256, validates the
+disposable-bucket drill. Both modes require `--current-state-only` and accept
+only a private schema-version-3 backup manifest with that exact scope. The
+default mode checks the backup manifest against an independently recorded
+SHA-256, validates the
 off-site endpoint fingerprint and exact current object inventory, requires an
 empty pre-created disposable bucket, and runs `mc mirror --dry-run`. It prints
 only counts, planned bytes, a direction-and-manifest-specific confirmation, and
 opaque hashes. It does not print object keys or provider diagnostics.
 
 The backup manifest must have `preservedTargetObjects: 0` and matching source/
-target inventory hashes. Existing version-2 manifests with target-only objects
-cannot bind a full restored set to their recorded content hash and fail closed.
+target inventory hashes. Earlier schema-version-2 manifests lack the explicit
+current-state scope and fail closed. Manifests with target-only objects cannot
+bind the full restored set to their recorded content hash and also fail closed.
 Keep the off-site source and disposable target free of concurrent writers for
 the entire drill; the CLI rechecks the empty target immediately before copy,
 but it cannot lock either remote bucket or prove two aliases resolve to
@@ -832,7 +841,7 @@ MEDIA_RESTORE_TARGET='disposable/catalog' \
 MEDIA_RESTORE_MANIFEST='/absolute/private/media-backup-manifest.json' \
 MEDIA_RESTORE_MANIFEST_SHA256='<independently-recorded-sha256>' \
 MEDIA_RESTORE_OUTPUT_DIR='/absolute/private/restore-evidence' \
-  pnpm run data:media:restore-drill
+  pnpm run data:media:restore-drill -- --current-state-only
 
 MEDIA_RESTORE_SOURCE='offsite/catalog' \
 MEDIA_RESTORE_TARGET='disposable/catalog' \
@@ -842,7 +851,7 @@ MEDIA_RESTORE_OUTPUT_DIR='/absolute/private/restore-evidence' \
 MEDIA_RESTORE_CONFIRM='<dry-run-confirmation>' \
 MEDIA_RESTORE_MAX_TRANSFER_BYTES='<reviewed-source-bytes>' \
 MEDIA_RESTORE_VERIFY_MAX_BYTES='<reviewed-two-download-bytes>' \
-  pnpm run data:media:restore-drill -- --apply
+  pnpm run data:media:restore-drill -- --current-state-only --apply
 ```
 
 Apply mirrors current objects with SHA-256 upload checksums and no `--remove`,
@@ -850,7 +859,8 @@ then requires an exact key/size inventory and streams every off-site and
 restored object through SHA-256 readers. The recomputed full-set content hash
 must equal the original backup manifest before a private `0600` restore receipt
 is published. The receipt records only opaque endpoint identities, checksums,
-counts, bytes, client version and duration. A failed or cancelled partial copy
+counts, bytes, client version, duration and `current_state_only` scope in a
+schema-version-2 receipt. A failed or cancelled partial copy
 remains in the disposable bucket for inspection; no success receipt is
 published. The planned byte budgets do not cap provider metadata, retry or
 wire overhead. The current-state drill does not restore version history,

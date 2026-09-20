@@ -25,11 +25,14 @@ import {
   validateMediaRestoreSource,
 } from "./lib/media-restore-drill.mjs"
 
-const help = `Usage: pnpm run data:media:restore-drill -- [--apply | --help]
+const help = `Usage: pnpm run data:media:restore-drill -- --current-state-only [--apply]
+       pnpm run data:media:restore-drill -- --help
 
 Default: read-only preflight and mc mirror --dry-run. No object content reads.
+--current-state-only explicitly acknowledges that object version history and
+delete markers are not restored. This flag is required even for the dry-run.
 Required: MEDIA_RESTORE_SOURCE, MEDIA_RESTORE_TARGET (distinct mc alias/bucket
-paths), MEDIA_RESTORE_MANIFEST (private absolute schema-v2 backup manifest),
+paths), MEDIA_RESTORE_MANIFEST (private absolute schema-v3 backup manifest),
 MEDIA_RESTORE_MANIFEST_SHA256 (independently recorded lowercase SHA-256),
 MEDIA_RESTORE_OUTPUT_DIR (absolute private receipt directory).
 Apply also requires MEDIA_RESTORE_CONFIRM from the dry-run,
@@ -55,8 +58,11 @@ export const parseMediaRestoreArguments = (args, environment) => {
   if (normalized.length === 1 && normalized[0] === "--help")
     return { mode: "help" }
   if (
-    normalized.length > 1 ||
-    (normalized.length === 1 && normalized[0] !== "--apply")
+    !normalized.includes("--current-state-only") ||
+    normalized.some(
+      (argument) => !["--apply", "--current-state-only"].includes(argument)
+    ) ||
+    new Set(normalized).size !== normalized.length
   )
     throw failure()
   const source = validateMediaEndpoint(
@@ -79,7 +85,7 @@ export const parseMediaRestoreArguments = (args, environment) => {
     Buffer.byteLength(outputDirectory) > 1_024
   )
     throw failure()
-  const apply = normalized.length === 1
+  const apply = normalized.includes("--apply")
   const limits = apply ? parseMediaRestoreLimits(environment) : undefined
   const timeoutMs = parseMediaRestoreTimeout(environment)
   return {
@@ -143,6 +149,11 @@ export const runMediaRestoreDrill = async ({
       options.manifestSha256,
       signal
     )
+    if (
+      backup?.schemaVersion !== 3 ||
+      backup.recoveryScope !== "current_state_only"
+    )
+      throw failure()
     phase = "output_directory"
     await privateOutputDirectory(options.outputDirectory)
     phase = "client_version"
@@ -175,7 +186,7 @@ export const runMediaRestoreDrill = async ({
       ])
       signal.throwIfAborted()
       write(
-        `${JSON.stringify({ status: "dry_run", manifestSha256: options.manifestSha256, sourceId: backup.targetId, confirmation, objectCount: expected.objectCount, transferBytes: expected.bytes, verificationReadBytes: expected.bytes * 2, verificationReadRequests: expected.objectCount * 2 })}\n`
+        `${JSON.stringify({ status: "dry_run", recoveryScope: "current_state_only", manifestSha256: options.manifestSha256, sourceId: backup.targetId, confirmation, objectCount: expected.objectCount, transferBytes: expected.bytes, verificationReadBytes: expected.bytes * 2, verificationReadRequests: expected.objectCount * 2 })}\n`
       )
       return 0
     }
@@ -226,8 +237,9 @@ export const runMediaRestoreDrill = async ({
     )
       throw failure()
     const receipt = {
-      schemaVersion: 1,
+      schemaVersion: 2,
       status: "media_restore_verified",
+      recoveryScope: "current_state_only",
       backupManifestSha256: options.manifestSha256,
       backupContentSha256: expected.contentSha256,
       sourceId: backup.targetId,

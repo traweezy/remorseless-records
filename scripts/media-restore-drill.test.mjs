@@ -38,8 +38,9 @@ const contentSha256 = sha256(
   `${JSON.stringify([item.key, item.size, sha256("good")])}\n`
 )
 const backup = () => ({
-  schemaVersion: 2,
+  schemaVersion: 3,
   status: "verified",
+  recoveryScope: "current_state_only",
   sourceId: mediaBackupConfirmation("origin/catalog", "inventory"),
   targetId: mediaBackupConfirmation(source, "inventory"),
   inventorySha256,
@@ -123,6 +124,7 @@ const fixture = async (run) => {
       process.execPath,
       [
         resolve("scripts/media-restore-drill.mjs"),
+        "--current-state-only",
         ...(apply ? ["--apply"] : []),
       ],
       {
@@ -163,9 +165,16 @@ const calls = async (path) =>
 
 test("arguments and budgets are explicit and bounded", () => {
   assert.deepEqual(parseMediaRestoreArguments(["--help"], {}), { mode: "help" })
+  assert.throws(() => parseMediaRestoreArguments([], {}))
   assert.throws(() => parseMediaRestoreArguments(["--apply", "--apply"], {}))
   assert.throws(() =>
-    parseMediaRestoreArguments([], {
+    parseMediaRestoreArguments(
+      ["--current-state-only", "--current-state-only"],
+      {}
+    )
+  )
+  assert.throws(() =>
+    parseMediaRestoreArguments(["--current-state-only"], {
       MEDIA_RESTORE_SOURCE: source,
       MEDIA_RESTORE_TARGET: target,
       MEDIA_RESTORE_MANIFEST: "/tmp/private/backup.json",
@@ -201,7 +210,9 @@ test("backup manifest binds the off-site endpoint and exact content set", () => 
   )
   assert.equal(validateMediaRestoreSource(backup(), source, inventory).bytes, 4)
   for (const change of [
-    (value) => (value.schemaVersion = 1),
+    (value) => (value.schemaVersion = 2),
+    (value) => (value.recoveryScope = undefined),
+    (value) => (value.recoveryScope = "all_versions"),
     (value) => (value.targetId = "0".repeat(64)),
     (value) => (value.preservedTargetObjects = 1),
     (value) => (value.contentSha256 = "invalid"),
@@ -240,6 +251,46 @@ test("tampered manifest pin fails before contacting mc", () =>
     await assert.rejects(readFile(callsPath), { code: "ENOENT" })
   }))
 
+for (const [name, update] of [
+  ["legacy schema", (value) => (value.schemaVersion = 2)],
+  [
+    "unsupported history scope",
+    (value) => (value.recoveryScope = "all_versions"),
+  ],
+]) {
+  test(`${name} manifest fails before contacting mc`, () =>
+    fixture(async ({ manifestPath, invoke, callsPath }) => {
+      const modified = backup()
+      update(modified)
+      const bytes = `${JSON.stringify(modified)}\n`
+      await writeFile(manifestPath, bytes)
+      const result = invoke("success", true, {
+        MEDIA_RESTORE_MANIFEST_SHA256: sha256(bytes),
+      })
+      assert.equal(result.status, 1)
+      assert.equal(JSON.parse(result.stderr).phase, "manifest")
+      await assert.rejects(readFile(callsPath), { code: "ENOENT" })
+    }))
+}
+
+test("restore refuses an implicit current-state acknowledgement before contacting mc", () =>
+  fixture(async ({ environment, callsPath }) => {
+    for (const args of [
+      [],
+      ["--apply"],
+      ["--current-state-only", "--current-state-only"],
+    ]) {
+      const result = spawnSync(
+        process.execPath,
+        [resolve("scripts/media-restore-drill.mjs"), ...args],
+        { env: environment("success"), encoding: "utf8", timeout: 5_000 }
+      )
+      assert.equal(result.status, 1)
+      assert.equal(JSON.parse(result.stderr).phase, "arguments")
+    }
+    await assert.rejects(readFile(callsPath), { code: "ENOENT" })
+  }))
+
 test("dry run lists only and reports transfer and verification costs", () =>
   fixture(async ({ invoke, callsPath, outputDirectory }) => {
     const result = invoke("success", false, {
@@ -249,6 +300,7 @@ test("dry run lists only and reports transfer and verification costs", () =>
     assert.equal(result.status, 0, result.stderr)
     const report = JSON.parse(result.stdout)
     assert.equal(report.status, "dry_run")
+    assert.equal(report.recoveryScope, "current_state_only")
     assert.equal(report.transferBytes, 4)
     assert.equal(report.verificationReadBytes, 8)
     assert.deepEqual((await calls(callsPath)).at(-1).slice(0, 2), [
@@ -268,6 +320,8 @@ test("apply verifies restored bytes and publishes a private receipt", () =>
     assert.equal(result.status, 0, result.stderr)
     const report = JSON.parse(result.stdout)
     assert.equal(report.status, "media_restore_verified")
+    assert.equal(report.schemaVersion, 2)
+    assert.equal(report.recoveryScope, "current_state_only")
     assert.equal(report.contentSha256, contentSha256)
     assert.equal(report.objectCount, 1)
     const names = await readdir(outputDirectory)
@@ -344,7 +398,7 @@ test("failed receipt publication removes only the owned local receipt", () =>
     })
     const errors = []
     const result = await runMediaRestoreDrill({
-      args: ["--apply"],
+      args: ["--current-state-only", "--apply"],
       environment: environment("success"),
       runMc: async (args) => {
         if (args[0] === "--version")
@@ -372,7 +426,11 @@ test("SIGTERM cancels and reaps the active mc child without a receipt", () =>
   fixture(async ({ environment, ready, outputDirectory }) => {
     const child = spawn(
       process.execPath,
-      [resolve("scripts/media-restore-drill.mjs"), "--apply"],
+      [
+        resolve("scripts/media-restore-drill.mjs"),
+        "--current-state-only",
+        "--apply",
+      ],
       {
         env: environment("hang"),
         stdio: ["ignore", "pipe", "pipe"],

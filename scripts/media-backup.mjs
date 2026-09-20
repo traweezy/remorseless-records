@@ -21,17 +21,14 @@ import {
 
 const createEndpointId = (endpoint) =>
   mediaBackupConfirmation(endpoint, "inventory")
-if (
-  process.argv
-    .slice(2)
-    .some((argument) => !["--", "--apply", "--help"].includes(argument))
-) {
-  throw new Error("Only --apply and --help media backup flags are supported.")
-}
-if (process.argv.includes("--help")) {
-  process.stdout.write(`Usage: pnpm run data:media:backup -- [--apply | --help]
+const arguments_ = process.argv.slice(2).filter((argument) => argument !== "--")
+if (arguments_.length === 1 && arguments_[0] === "--help") {
+  process.stdout.write(`Usage: pnpm run data:media:backup -- --current-state-only [--apply]
+       pnpm run data:media:backup -- --help
 
 Default: dry-run only; no object writes or content downloads.
+--current-state-only explicitly acknowledges that object version history and
+delete markers are not copied. This flag is required even for the dry-run.
 Required: MEDIA_BACKUP_SOURCE, MEDIA_BACKUP_TARGET (distinct mc alias/bucket paths),
           MEDIA_BACKUP_OUTPUT_DIR (absolute private evidence directory).
 Apply also requires MEDIA_BACKUP_CONFIRM from the dry-run and
@@ -42,13 +39,12 @@ Listing/mirror commands time out after 600000 ms. Verification downloads each
 source and target object; GET/egress costs are additional to the mirror itself.
 SIGINT/SIGTERM cancel and reap the active mc child before the command exits.
 Metadata requests, retries and read-ahead are not included in that byte budget.
-Only successful SHA-256 comparisons produce schema-version-2 verified evidence.
+Only successful SHA-256 comparisons produce scoped schema-version-3 evidence.
 No deletions or rollback: failed verification may leave a partial mirror.
 See docs/INFRASTRUCTURE_RECOVERY.md for quiescence and alias-scope requirements.
 `)
   process.exit(0)
 }
-
 const main = async () => {
   const scope = createMediaBackupScope()
   let phase = "arguments"
@@ -56,6 +52,17 @@ const main = async () => {
   let evidence
   const workflowStartedAt = Date.now()
   try {
+    if (
+      !arguments_.includes("--current-state-only") ||
+      arguments_.some(
+        (argument) => !["--apply", "--current-state-only"].includes(argument)
+      ) ||
+      new Set(arguments_).size !== arguments_.length
+    ) {
+      throw new Error(
+        "Explicit --current-state-only acknowledgement is required."
+      )
+    }
     const source = validateMediaEndpoint(
       process.env.MEDIA_BACKUP_SOURCE,
       "MEDIA_BACKUP_SOURCE"
@@ -116,7 +123,7 @@ const main = async () => {
       "Media verification read size is unsafe."
     )
     const confirmation = mediaBackupConfirmation(source, target)
-    const apply = process.argv.includes("--apply")
+    const apply = arguments_.includes("--apply")
     if (!apply) {
       phase = "dry_run"
       await runMc([
@@ -134,6 +141,7 @@ const main = async () => {
         confirmation,
         mcVersion,
         objectCount: sourceInventory.objectCount,
+        recoveryScope: "current_state_only",
         sourceInventorySha256: sourceInventory.sha256,
         verificationReadBytes: sourceInventory.bytes * 2,
         verificationReadRequests: sourceInventory.objectCount * 2,
@@ -185,7 +193,8 @@ const main = async () => {
         mcVersion,
         objectCount: sourceInventory.objectCount,
         preservedTargetObjects: mirrorEvidence.preservedTargetObjects,
-        schemaVersion: 2,
+        recoveryScope: "current_state_only",
+        schemaVersion: 3,
         sourceId: createEndpointId(source),
         status: "verified",
         targetId: createEndpointId(target),

@@ -124,6 +124,7 @@ const withFixture = async (run) => {
           "--import",
           preloadPath,
           resolve("scripts/media-backup.mjs"),
+          "--current-state-only",
           ...(apply ? ["--apply"] : []),
         ],
         {
@@ -159,9 +160,28 @@ test("help explains mutation and verification costs without requiring credential
   )
   assert.equal(result.status, 0, result.stderr)
   assert.match(result.stdout, /Default: dry-run only/u)
+  assert.match(result.stdout, /--current-state-only/u)
   assert.match(result.stdout, /MEDIA_BACKUP_VERIFY_MAX_BYTES/u)
   assert.match(result.stdout, /No deletions or rollback/u)
 })
+
+test("backup refuses an implicit or duplicate current-state acknowledgement", () =>
+  withFixture(async ({ environment, callsPath }) => {
+    for (const args of [
+      [],
+      ["--apply"],
+      ["--current-state-only", "--current-state-only"],
+    ]) {
+      const result = spawnSync(
+        process.execPath,
+        [resolve("scripts/media-backup.mjs"), ...args],
+        { encoding: "utf8", timeout: 5_000, env: environment("success") }
+      )
+      assert.equal(result.status, 1)
+      assert.equal(JSON.parse(result.stderr).phase, "arguments")
+    }
+    await assert.rejects(readFile(callsPath), { code: "ENOENT" })
+  }))
 
 test("dry-run estimates content-read cost without downloading or writing objects", () =>
   withFixture(async ({ invoke, callsPath, outputDirectory }) => {
@@ -171,6 +191,7 @@ test("dry-run estimates content-read cost without downloading or writing objects
     assert.equal(result.status, 0, result.stderr)
     const evidence = JSON.parse(result.stdout)
     assert.equal(evidence.status, "dry_run")
+    assert.equal(evidence.recoveryScope, "current_state_only")
     assert.equal(evidence.verificationReadBytes, 8)
     assert.equal(evidence.verificationReadRequests, 2)
     const calls = (await readFile(callsPath, "utf8"))
@@ -185,13 +206,14 @@ test("dry-run estimates content-read cost without downloading or writing objects
     assert.deepEqual(await readdir(outputDirectory), [])
   }))
 
-test("apply emits private version-two content evidence only after both readers succeed", () =>
+test("apply emits scoped private content evidence only after both readers succeed", () =>
   withFixture(async ({ invoke, callsPath, outputDirectory }) => {
     const result = invoke("success")
     assert.equal(result.status, 0, result.stderr)
     const evidence = JSON.parse(result.stdout)
     assert.equal(evidence.status, "verified")
-    assert.equal(evidence.schemaVersion, 2)
+    assert.equal(evidence.schemaVersion, 3)
+    assert.equal(evidence.recoveryScope, "current_state_only")
     assert.equal(evidence.verifiedObjects, 1)
     assert.equal(evidence.verificationReadBytes, 8)
     assert.equal(evidence.preservedTargetObjects, 1)
@@ -349,6 +371,7 @@ for (const [phase, apply, callCount] of phaseCases) {
               process.execPath,
               [
                 resolve("scripts/media-backup.mjs"),
+                "--current-state-only",
                 ...(apply ? ["--apply"] : []),
               ],
               {

@@ -137,8 +137,9 @@ export const validateMediaRestoreSource = (
 ) => {
   const sha = (value) => sha256Pattern.test(value ?? "")
   if (
-    manifest?.schemaVersion !== 2 ||
+    manifest?.schemaVersion !== 3 ||
     manifest.status !== "verified" ||
+    manifest.recoveryScope !== "current_state_only" ||
     manifest.verificationAlgorithm !== "SHA256" ||
     !sha(manifest.sourceId) ||
     !sha(manifest.targetId) ||
