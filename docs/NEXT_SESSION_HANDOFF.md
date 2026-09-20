@@ -8,8 +8,12 @@ Read the [security incident report](SECURITY_INCIDENT_REPORT_2026-09-20.md)
 before resuming hardening features. The green `b0c88b3` workflows did not
 enforce all scanner findings: each candidate runtime image had four CRITICAL,
 52 HIGH, and three UNKNOWN results, and CodeQL had 20 open HIGH alerts.
-Complete exact-revision security CI, review the credential-access evidence and
-remaining limits, and enforce branch checks before accepting a new release.
+The security batch at `712c9bf` passed all four exact-revision workflows;
+staging now requires a pull request and 23 checks, while master requires 26.
+Read the credential-access evidence and its remaining limits before accepting
+a new release. The three intentional PostgreSQL downloader MEDIUM alerts remain
+visible; an exact-fingerprint CodeQL baseline in the incident follow-up rejects
+new MEDIUM findings. See the report for the owner decisions still needed.
 The unrelated local feature/recovery batch remains paused and must not be
 mixed into the security fix. Preserve `Default/` unread and unstaged.
 

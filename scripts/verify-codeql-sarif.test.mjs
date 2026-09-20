@@ -1,8 +1,9 @@
 import assert from "node:assert/strict"
-import { mkdtemp, rm, writeFile } from "node:fs/promises"
+import { copyFile, mkdtemp, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { spawnSync } from "node:child_process"
+import { pathToFileURL } from "node:url"
 import test from "node:test"
 
 import { inspectCodeqlSarif } from "./verify-codeql-sarif.mjs"
@@ -30,6 +31,10 @@ const sarif = (results) => ({
             rules: [
               { id: "high", properties: { "security-severity": "7.7" } },
               { id: "medium", properties: { "security-severity": "6.3" } },
+              {
+                id: "js/http-to-file-access",
+                properties: { "security-severity": "6.3" },
+              },
             ],
           },
         ],
@@ -50,6 +55,7 @@ test("accepts complete, empty CodeQL results", async () => {
       files: 1,
       findings: 0,
       blocking: 0,
+      reviewedMedium: 0,
     })
   })
 })
@@ -64,7 +70,8 @@ test("counts findings across every SARIF run and file", async () => {
       assert.deepEqual(await inspectCodeqlSarif(directory), {
         files: 2,
         findings: 2,
-        blocking: 1,
+        blocking: 2,
+        reviewedMedium: 0,
       })
       const result = spawnSync(
         process.execPath,
@@ -77,7 +84,7 @@ test("counts findings across every SARIF run and file", async () => {
       assert.notEqual(result.status, 0)
       assert.match(
         result.stderr,
-        /CodeQL reported 1 HIGH\/CRITICAL finding\(s\)/u
+        /CodeQL reported 2 unreviewed MEDIUM\/HIGH\/CRITICAL finding\(s\)/u
       )
     }
   )
@@ -125,15 +132,75 @@ test("rejects missing or malformed SARIF instead of passing an empty scan", asyn
   )
 })
 
-test("records medium findings without blocking the HIGH/CRITICAL gate", async () => {
+test("accepts only the three reviewed PostgreSQL downloads", async () => {
+  const knownFingerprints = [
+    "618dd3173c54437d:1",
+    "af39c0f818a42e41:1",
+    "78905d68e9c27ba6:1",
+  ]
+  const reviewed = knownFingerprints.map((fingerprint) => ({
+    ...finding("js/http-to-file-access", 2),
+    locations: [
+      {
+        physicalLocation: {
+          artifactLocation: {
+            uri: "scripts/provision-postgres-recovery-client.mjs",
+          },
+        },
+      },
+    ],
+    partialFingerprints: { primaryLocationLineHash: fingerprint },
+  }))
+  await withSarif({ "reviewed.sarif": sarif(reviewed) }, async (directory) => {
+    assert.deepEqual(await inspectCodeqlSarif(directory), {
+      files: 1,
+      findings: 3,
+      blocking: 0,
+      reviewedMedium: 3,
+    })
+  })
+  for (const altered of [
+    { ...reviewed[0], partialFingerprints: { primaryLocationLineHash: "new" } },
+    {
+      ...reviewed[0],
+      locations: [
+        {
+          physicalLocation: { artifactLocation: { uri: "scripts/other.mjs" } },
+        },
+      ],
+    },
+    finding("medium", 1),
+  ]) {
+    await withSarif(
+      { "new-medium.sarif": sarif([...reviewed, altered]) },
+      async (directory) => {
+        const result = await inspectCodeqlSarif(directory)
+        assert.equal(result.blocking, 1)
+        assert.equal(result.reviewedMedium, 3)
+      }
+    )
+  }
   await withSarif(
-    { "medium.sarif": sarif([finding("medium", 1)]) },
+    { "duplicate.sarif": sarif([...reviewed, reviewed[0]]) },
     async (directory) => {
-      assert.deepEqual(await inspectCodeqlSarif(directory), {
-        files: 1,
-        findings: 1,
-        blocking: 0,
-      })
+      assert.equal((await inspectCodeqlSarif(directory)).blocking, 1)
     }
   )
+  await withSarif({ "reviewed.sarif": sarif(reviewed) }, async (directory) => {
+    const isolatedGate = join(directory, "verify-codeql-sarif.mjs")
+    await copyFile(
+      new URL("./verify-codeql-sarif.mjs", import.meta.url),
+      isolatedGate
+    )
+    await writeFile(
+      join(directory, "provision-postgres-recovery-client.mjs"),
+      "changed"
+    )
+    const { inspectCodeqlSarif: inspectChangedSource } = await import(
+      pathToFileURL(isolatedGate).href
+    )
+    const result = await inspectChangedSource(directory)
+    assert.equal(result.blocking, 3)
+    assert.equal(result.reviewedMedium, 0)
+  })
 })

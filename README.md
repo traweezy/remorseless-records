@@ -1716,8 +1716,10 @@ GHCR source. Root CI retains the verified filesystem SBOM and license
 inventory for 30 days. The Runtime Images pipeline separately binds each
 container SBOM to its OCI digest and rejects every unknown, high, or critical
 finding, including findings without an available package fix. The Backend and
-Storefront CodeQL jobs fail when their local SARIF contains high or critical
-findings instead of treating a successful upload as a clean analysis.
+Storefront CodeQL jobs fail when their local SARIF contains high, critical, or
+unreviewed medium findings instead of treating a successful upload as a clean
+analysis. Three exact PostgreSQL recovery-client download findings remain
+visible under a reviewed medium baseline.
 The [September 20 security incident report](docs/SECURITY_INCIDENT_REPORT_2026-09-20.md)
 records the earlier fail-open gates, remediation evidence, and limits of the
 credential-access review.
