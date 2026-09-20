@@ -144,7 +144,10 @@ for (const application of ["backend", "storefront"]) {
   }
 
   test(`${application} rejects missing, duplicate, or conditional coverage commands`, () => {
-    const command = `        run: pnpm --filter ${application === "storefront" ? "remorseless-records-storefront" : "backend"} run test:coverage`
+    const command =
+      application === "storefront"
+        ? "        run: pnpm --filter remorseless-records-storefront run test:coverage"
+        : "        run: pnpm --filter backend run test:coverage --runInBand=false --maxWorkers=2"
     for (const replacement of [
       "        run: true",
       `        if: false\n${command}`,
@@ -163,6 +166,23 @@ for (const application of ["backend", "storefront"]) {
       )
     }
   })
+
+  if (application === "backend") {
+    test("Backend coverage retains two-worker cap and serial execution override", () => {
+      const command =
+        "        run: pnpm --filter backend run test:coverage --runInBand=false --maxWorkers=2"
+      for (const replacement of [
+        "        run: pnpm --filter backend run test:coverage",
+        "        run: pnpm --filter backend run test:coverage --maxWorkers=2",
+        "        run: pnpm --filter backend run test:coverage --runInBand=false",
+        "        run: pnpm --filter backend run test:coverage --runInBand=false --maxWorkers=4",
+        `${command} || true`,
+      ])
+        assert.throws(() =>
+          validate("backend", workflows.backend.replace(command, replacement))
+        )
+    })
+  }
 
   test(`${application} rejects duplicate jobs, aliases and ambiguous job controls`, () => {
     for (const suffix of [

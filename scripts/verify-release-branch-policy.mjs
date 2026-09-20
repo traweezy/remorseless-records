@@ -223,7 +223,14 @@ export const validateApplicationReleaseGraph = (source, application) => {
       ? `pnpm --filter ${filter} run typecheck`
       : "pnpm --filter backend exec tsc --noEmit"
   )
-  run("unit", `pnpm --filter ${filter} run test:coverage`)
+  const coverageCommand = storefront
+    ? `pnpm --filter ${filter} run test:coverage`
+    : "pnpm --filter backend run test:coverage --runInBand=false --maxWorkers=2"
+  run("unit", coverageCommand)
+  assert.ok(
+    stepFor("unit", coverageCommand),
+    "Coverage command must be an exact, unsuppressed run line"
+  )
   run("build", `pnpm --filter ${filter} run build`)
   if (storefront) {
     run("unit", `pnpm --filter ${filter} run test:runtime:images`)

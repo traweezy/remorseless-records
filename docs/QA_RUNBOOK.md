@@ -377,7 +377,11 @@ API, verifies liveness/readiness/dependency health, proves tax collection still
 defaults off, exercises persisted payment idempotency/failure/retry behavior,
 and verifies Redis lock serialization and recovery. It then runs the focused
 payment/queue regression suites and checks the generated API contract. The
-Backend CI build depends on the equivalent service-container job.
+Backend CI build depends on the equivalent service-container job. Backend CI
+caps Jest coverage at two workers to shorten its longest test job; the reviewed
+release policy pins the override of serial execution and the worker cap. The
+local `test:coverage` script remains serial. CI still runs the full suite with
+its 80% global coverage thresholds before release acceptance.
 
 Success or failure tears down the named Compose project, its network, and its
 ephemeral volumes. An interrupt is trapped so partial startup is cleaned too.
