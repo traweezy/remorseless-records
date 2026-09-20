@@ -11,6 +11,53 @@ reviewed scope. Do not invent missing production, legal, tax, or provider facts.
 Use [PROJECT_MAP.md](PROJECT_MAP.md) for the indexed code/documentation entrypoints.
 Preserve unrelated `Default/` unread, untouched, and unstaged.
 
+### Accepted September 20 UTC diagnostic tooling release: `efc4b65`
+
+Exact staging SHA `efc4b654b0589f4529e7f91e1c9c5e0a6771880d` passed Root CI
+`35487931306`, Backend CI `35487931315`, Storefront CI `35487931291`, and
+Runtime Images `35487931300`. The new read-only Redis collector and offline
+PostgreSQL count contract are diagnostic tooling; neither ran against the live
+source in this release. The Redis fake-RESP integration remained local-only at
+this SHA. Runtime candidate scans each found four CRITICAL and 52 HIGH
+findings, with zero fixable HIGH/CRITICAL, and publication skipped on staging.
+This is not a clean-image or release-owner risk decision.
+
+Root `package.json` is watched by both Railway applications, so Backend
+candidate `f9a562f1-d41b-413d-9157-1936f58d079d` and Storefront candidate
+`52fc8857-cbdd-424e-8946-082349418131` both built and reached `SUCCESS` at
+the exact SHA. Their Railway image IDs were respectively
+`sha256:bcc9d8f3ba7ded119c7ba3469771f0681bacb84fee4738e59be2c12cb00a84e7`
+and
+`sha256:5f91699a37413a962fa89f7a93a444f0b43b373fa68621bbab048206000ed777`.
+Both `/live` and `/ready` returned HTTP 200/ok at that SHA; Backend had all 11
+readiness checks and scheduler, operations and retention healthy. Storefront
+root and catalog and Backend `/api/health` were HTTP 200. Private-backed
+Storefront search returned three hits, and filtered exact-deployment HTTP 5xx
+counts were zero on both services.
+
+The deployed Desktop/Pixel/iPhone Playwright matrix passed 75 tests with eight
+expected skips in 1.5 minutes, with no package install or local server.
+Bounded post-browser Storefront logs included 90 lines in 18 previously known
+destination-stream-closed groups, one previously seen AppRender root-span
+diagnostic, and six quick-shop/API error lines at `04:14:51.867Z`. Two nearby
+product requests and matching Backend store requests returned HTTP 499 after
+client disconnects; the flattened app logs lack a request ID linking those
+six lines conclusively. Do not describe this as an error-free window. A
+focused abort/logging follow-up is under review; no 5xx or failing browser
+case was observed.
+
+A new read-only Redis AOF preflight after these deployments matched the
+approved capture's seven source IDs, source fingerprint and manifest SHA-256,
+reported rewrite percentage 100, and made no live configuration change. Its
+active AOF bytes had advanced to 63,976,501 under normal writes. The private
+capture receipt still matches its independently recorded SHA-256; a live queue
+aggregate must wait for the pinned Perl fixture's exact-SHA CI acceptance.
+The existing private PostgreSQL snapshot was also reverified and restored
+offline for the new business-count query. It passed the 171-table restore and
+the query completed in 12–22 ms on that small dataset; see
+[infrastructure recovery](INFRASTRUCTURE_RECOVERY.md). Neither result closes
+queue or PostgreSQL/Stripe business reconciliation.
+
 ### Approved September 20 UTC public MinIO Console domain removal
 
 The operator authorized routine staging exposure reduction without another

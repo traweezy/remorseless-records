@@ -1134,6 +1134,19 @@ tax evidence with bounded Stripe test-mode reads requires a separate
 privacy-preserving step; a PostgreSQL snapshot alone cannot establish
 cross-system parity.
 
+An offline measurement on September 20 reused the previously verified private
+staging snapshot and a fresh, isolated PostgreSQL 16.15 restore. The target had
+no network or published port, and its system ID differed from the source.
+The one-shot restore and independent check matched all 171 physical tables.
+The aggregate parsed successfully on that staging schema in three local psql
+runs of 22.14, 12.49 and 20.57 ms. `EXPLAIN ANALYZE BUFFERS` reported 3.952 ms
+planning, 0.573 ms execution, 29 shared buffer hits and zero reads for its
+small tables. The owned target container, volume and directories were removed
+and independently found absent. This is a small restored-data baseline under
+a superuser; a future least-privilege/RLS identity may see different rows, and
+these timings do not bound production-scale counts. No live aggregate or Stripe
+comparison was run.
+
 ### Recovery policy
 
 Redis contains rate limits, caches, BullMQ/workflow state, locks, event-bus
