@@ -603,9 +603,26 @@ identifier, and original endpoint fingerprint. It accepts only a scoped
 before and after a fixed read-only SQL transaction, and enforces a 90-second
 overall deadline. Its report contains only fixed configuration facts and
 database counters; failure output is redacted. A disposable PostgreSQL 16
-fixture passed, but this new CLI has not yet run against staging. Enabling
-query monitoring, changing settings, or certifying overhead still requires a
-separate rollout and measurement.
+fixture passed. The first scoped staging run completed at
+`2026-09-20T07:05:56.811Z` in 4,773 ms with both source checks verified. It
+reported PostgreSQL major 16, no `pg_stat_statements` preload or extension,
+`log_min_duration_statement=-1`, both I/O timing flags off, `compute_query_id`
+set to `auto`, three connections, and zero recorded deadlocks or temporary
+files. No settings changed. Enabling query monitoring or certifying overhead
+still requires a separate rollout and measurement.
+
+The accepted `9835767` Backend deployment had one post-deploy operations 503
+at `06:50:06Z`: its database dependency exceeded the 1,000 ms health threshold
+and the HTTP request took 1,241 ms. The first `/ready` had returned 200 in
+2,128 ms, while the first operations probe overlapped completion of a
+461-product index. The next operations request took 64 ms; later requests
+took 23–48 ms with database probes at 6–9 ms. Railway's 30-second CPU and
+memory samples do not resolve the brief interval, and the current `select 1`
+probe measures pool acquisition and SQL execution together. The cause remains
+unproven. On a subsequent deployment, measure pool acquisition and SQL
+round-trip separately and correlate both with index timing before changing
+the health threshold or rollout behavior. Preserve the single 503 in release
+evidence.
 
 ## Media backup and restore
 

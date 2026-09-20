@@ -3183,13 +3183,18 @@ Both commands explicitly reported that no files or database records changed.
       objects and rebuild affected ones before refreshing either database's
       collation metadata; matching versions alone cannot certify older indexes.
       A source-bound, count-only observability preflight now has disposable
-      PostgreSQL 16 acceptance but has not run against staging or changed any
-      setting.
+      PostgreSQL 16 acceptance and a successful scoped staging read at 07:05
+      UTC; it confirmed the settings without changing them.
 - [ ] Investigate the first post-deploy Backend operations 503 at exact staging
       SHA `9835767`: its database dependency exceeded the 1,000 ms health
-      threshold once, while five post-warmup checks were healthy at 6–9 ms.
-      Preserve the single bounded HTTP 5xx in release evidence and determine
-      whether startup/query warmup or database load needs a code or rollout fix.
+      threshold once. The first `/ready` returned 200 in 2,128 ms; the first
+      operations request took 1,241 ms while a 461-product index was finishing.
+      The next operations request took 64 ms, with later checks at 23–48 ms
+      and database durations of 6–9 ms. Railway's 30-second resource samples
+      cannot exclude a short spike, and current probes cannot separate pool
+      acquisition from SQL round-trip time. Preserve the single HTTP 5xx;
+      measure those two phases and correlate them with indexing on a later
+      deploy before changing the 1,000 ms threshold or rollout behavior.
 - [x] Define availability, latency, recovery-time, and recovery-point goals
       before adding replicas, PgBouncer, overlap/draining, or paid monitoring.
 - [x] Gate Backend Railway releases on `/ready` rather than the less-complete
