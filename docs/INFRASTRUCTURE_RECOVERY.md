@@ -652,6 +652,59 @@ Weekly, restore a deterministic sample plus the newest object to a disposable
 bucket and verify bytes and checksums. Quarterly, perform a full manifest
 comparison and record duration.
 
+### Guarded full current-state restore drill
+
+`pnpm run data:media:restore-drill -- --help` describes a full off-site-to-
+disposable-bucket drill. Its default mode checks a private schema-version-2
+backup manifest against an independently recorded SHA-256, validates the
+off-site endpoint fingerprint and exact current object inventory, requires an
+empty pre-created disposable bucket, and runs `mc mirror --dry-run`. It prints
+only counts, planned bytes, a direction-and-manifest-specific confirmation, and
+opaque hashes. It does not print object keys or provider diagnostics.
+
+The backup manifest must have `preservedTargetObjects: 0` and matching source/
+target inventory hashes. Existing version-2 manifests with target-only objects
+cannot bind a full restored set to their recorded content hash and fail closed.
+Keep the off-site source and disposable target free of concurrent writers for
+the entire drill; the CLI rechecks the empty target immediately before copy,
+but it cannot lock either remote bucket or prove two aliases resolve to
+different underlying locations. Review those identities independently.
+
+After reviewing the dry-run and provider transfer/GET/egress cost, set the
+explicit budgets and confirmation to apply:
+
+```bash
+MEDIA_RESTORE_SOURCE='offsite/catalog' \
+MEDIA_RESTORE_TARGET='disposable/catalog' \
+MEDIA_RESTORE_MANIFEST='/absolute/private/media-backup-manifest.json' \
+MEDIA_RESTORE_MANIFEST_SHA256='<independently-recorded-sha256>' \
+MEDIA_RESTORE_OUTPUT_DIR='/absolute/private/restore-evidence' \
+  pnpm run data:media:restore-drill
+
+MEDIA_RESTORE_SOURCE='offsite/catalog' \
+MEDIA_RESTORE_TARGET='disposable/catalog' \
+MEDIA_RESTORE_MANIFEST='/absolute/private/media-backup-manifest.json' \
+MEDIA_RESTORE_MANIFEST_SHA256='<independently-recorded-sha256>' \
+MEDIA_RESTORE_OUTPUT_DIR='/absolute/private/restore-evidence' \
+MEDIA_RESTORE_CONFIRM='<dry-run-confirmation>' \
+MEDIA_RESTORE_MAX_TRANSFER_BYTES='<reviewed-source-bytes>' \
+MEDIA_RESTORE_VERIFY_MAX_BYTES='<reviewed-two-download-bytes>' \
+  pnpm run data:media:restore-drill -- --apply
+```
+
+Apply mirrors current objects with SHA-256 upload checksums and no `--remove`,
+then requires an exact key/size inventory and streams every off-site and
+restored object through SHA-256 readers. The recomputed full-set content hash
+must equal the original backup manifest before a private `0600` restore receipt
+is published. The receipt records only opaque endpoint identities, checksums,
+counts, bytes, client version and duration. A failed or cancelled partial copy
+remains in the disposable bucket for inspection; no success receipt is
+published. The planned byte budgets do not cap provider metadata, retry or
+wire overhead. The current-state drill does not restore version history,
+delete markers, scheduled retention, or prove another provider/account is in
+use. These still need actual provider evidence and a controlled live drill;
+the production hardening checkbox remains open.
+
 Do not enable physical Catalog-media purge until a full off-site restore drill
 passes. Keep the MinIO API public only if immutable Storefront object delivery
 requires it. Remove the public Console domain or place it behind reviewed SSO;

@@ -37,7 +37,7 @@ framework scaffolding rather than project-specific operational instructions.
 | Storefront interactions and state | `storefront/src/components/`, `storefront/src/features/`, `storefront/src/lib/cart/`, `store/`, `query/`, and `storefront/src/providers/` |
 | Storefront provider decoding, search, security | `storefront/src/lib/data/`, `medusa/`, `search/`, `security/`, `http/`; `storefront/src/config/`; `storefront/next.config.ts` |
 | Health, telemetry, request correlation | Both applications' `src/lib/health/` and `src/lib/observability/`; Backend `src/api/health/`; `scripts/observe-*-health.mjs`, `scripts/verify-railway-runtime-log.mjs` |
-| Data maintenance and recovery | `backend/src/scripts/`, `backend/src/cli/`, root `scripts/postgres-*.mjs`, `media-backup.mjs`, `redis-capacity-audit.mjs`, `redis-aof-capture.mjs`, `redis-aof-recovery.mjs`, `redis-aof-isolated-replay.mjs`, `backend-isolated-startup-smoke.mjs` |
+| Data maintenance and recovery | `backend/src/scripts/`, `backend/src/cli/`, root `scripts/postgres-*.mjs`, `media-backup.mjs`, `media-restore-drill.mjs`, `redis-capacity-audit.mjs`, `redis-aof-capture.mjs`, `redis-aof-recovery.mjs`, `redis-aof-isolated-replay.mjs`, `backend-isolated-startup-smoke.mjs` |
 | Unit, service, browser, accessibility, performance QA | Application test/config files; `scripts/*.test.mjs`; `storefront/e2e/`; `storefront/playwright*.ts`; `qa/`; `lighthouse/` |
 | Disposable service tests | `scripts/run-disposable-integration.mjs`, `scripts/scan-disposable-integration-images.mjs`, `docker/integration/` |
 | Runtime image candidates | `backend/Dockerfile.runtime`, `storefront/Dockerfile.runtime`, `scripts/*runtime-image*.mjs`, `scripts/security/runtime-image-policy.json` |

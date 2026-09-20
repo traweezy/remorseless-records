@@ -3147,6 +3147,12 @@ Both commands explicitly reported that no files or database records changed.
       healthy. The exact Console hostname may not be recoverable.
 - [ ] Configure PostgreSQL backups/PITR and perform a timed restore drill.
 - [ ] Configure off-site media backup and verify object checksums and restores.
+      The guarded full restore-drill CLI now has a default dry-run, exact
+      private-manifest/content-hash binding, an empty disposable-target gate,
+      explicit transfer/read budgets, and synthetic corruption/cancellation
+      coverage. It has not been run against an approved off-site target; the
+      provider, credentials, retention/version-history policy, cost and actual
+      restore acceptance remain open.
 - [x] Document Redis recovery semantics and Meilisearch rebuild/snapshot
       recovery.
 - [x] Capture the pinned staging Redis multipart AOF under a bounded rewrite
