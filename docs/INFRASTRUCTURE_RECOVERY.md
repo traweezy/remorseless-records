@@ -891,6 +891,45 @@ digest-pinned wrapper or supply live recovery evidence. Run the pinned wrapper
 on a host where its reviewed official image is already present for any future
 staging-data replay.
 
+For optional **offline failed-job triage** on that same receipt-bound,
+worker-free target, append `--classify-failed-jobs` to the replay command.
+The opt-in reader checks the existing aggregate's failed counts against the
+BullMQ failed sorted sets before reading at most 500 members across the event
+and scheduled-job queues. Before either member-range read, it performs exact
+`MEMORY USAGE ... SAMPLES 0` checks and rejects any nonempty failed set over
+256 KiB or without a valid memory measurement. It caps each job ID at 256
+bytes and all IDs at 64 KiB, each reason at 4 KiB and all reasons at 1 MiB,
+and each startup/restart classification at 30 seconds. Oversized reasons are
+counted without reading their content. Only `name`, `failedReason`, and
+`attemptsMade` hash fields are requested for scheduled jobs; event jobs skip
+`name`. Job payloads, stack traces and results are never read.
+The output contains only fixed allowlisted scheduled-job name buckets,
+heuristic failure-reason buckets, attempt buckets, and totals. Names outside
+the six checked-in scheduled-job names remain `unlisted`; the event job name
+is never printed. Missing hashes and fields get explicit buckets. The
+classifier requires the startup and restart count reports to agree before
+success, and retains `queueReconciled: false` and
+`businessReconciled: false`. The reason buckets are lexical triage hints, not
+proof of cause, business impact, or retry safety. For this staging capture,
+compare its result with the independently recorded 237 scheduled failures and
+one event failure; do not treat the older AOF as a live snapshot.
+
+The first opt-in run on the verified private September 20 capture passed
+receipt/file checks and worker-free startup/restart, then cleaned up its
+owned container and temporary replay directory. It classified all 238
+failed-set entries: one event job with an `other` reason hint, and 237
+scheduled jobs with 73 `providerHint` and 164 `other` reason hints. Every
+scheduled-job name fell outside the initial static allowlist; every attempt
+field was absent or invalid under this reader's schema. This suggests the
+allowlist does not represent Medusa's stored scheduler job names, not that
+the app's six scheduled tasks were absent. No job identity or raw error was
+emitted, and the lexical hints do not prove provider causation. The count-only
+private report is
+`/tmp/rr-failed-jobs-20260920/classification.json` (0600 in a 0700
+directory), SHA-256
+`19e21adf217b8c992f1f7325d084c9dbd58dd0320668b8133b02c6080edffe23`.
+Both reconciliation flags remain false.
+
 September 19 read-only staging preflight found Redis 8.0.3 still running from
 deployment `f75e3583-3d71-4787-9ada-12852e976fa0`, without a recorded image
 digest. The current AOF directory is `/bitnami/redis/data/appendonlydir`:

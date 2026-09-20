@@ -1,6 +1,7 @@
 import { lstat, realpath } from "node:fs/promises"
 import { createRequire } from "node:module"
 import { dirname, resolve } from "node:path"
+import { classifyIsolatedFailedJobs } from "./redis-failed-job-classifier.mjs"
 
 const requireBackend = createRequire(
   new URL("../../backend/package.json", import.meta.url)
@@ -259,10 +260,7 @@ export const collectRedisQueueAggregate = async (options) => {
   }
 }
 
-export const collectIsolatedRedisQueueAggregate = async ({
-  socketPath,
-  signal,
-}) => {
+const withIsolatedRedisClient = async ({ socketPath, signal }, collect) => {
   if (
     typeof socketPath !== "string" ||
     !/^\/tmp\/rr-redis-replay-[A-Za-z0-9_-]+\/socket\/redis\.sock$/u.test(
@@ -304,10 +302,24 @@ export const collectIsolatedRedisQueueAggregate = async ({
   client.on("error", () => undefined)
   try {
     await client.connect()
-    return await collectRedisQueueAggregate({ client, signal })
+    return await collect(client, signal)
   } catch {
     throw failure()
   } finally {
     client.destroy()
   }
 }
+
+export const collectIsolatedRedisQueueAggregate = ({ socketPath, signal }) =>
+  withIsolatedRedisClient({ socketPath, signal }, (client) =>
+    collectRedisQueueAggregate({ client, signal })
+  )
+
+export const collectIsolatedRedisFailedJobs = ({
+  socketPath,
+  signal,
+  expectedFailed,
+}) =>
+  withIsolatedRedisClient({ socketPath, signal }, (client) =>
+    classifyIsolatedFailedJobs({ client, signal, expectedFailed })
+  )

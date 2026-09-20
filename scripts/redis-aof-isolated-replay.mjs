@@ -16,7 +16,10 @@ import {
   parseAofManifest,
   verifyRedisAofArchive,
 } from "./lib/redis-aof-recovery.mjs"
-import { collectIsolatedRedisQueueAggregate } from "./lib/redis-queue-aggregate.mjs"
+import {
+  collectIsolatedRedisFailedJobs,
+  collectIsolatedRedisQueueAggregate,
+} from "./lib/redis-queue-aggregate.mjs"
 import {
   createRecoveryScope,
   runRecoveryCommand,
@@ -54,7 +57,8 @@ const help = `Usage: node scripts/redis-aof-isolated-replay.mjs \\
   --archive-dir <absolute-private-appendonlydir> \\
   --capture-receipt <absolute-private-capture.receipt.json> \\
   --receipt-sha256 <independently-recorded-lowercase-sha256> \\
-  --image-id <reviewed-scanned-local-redis-image-sha256>
+  --image-id <reviewed-scanned-local-redis-image-sha256> \\
+  [--classify-failed-jobs]
 
 Copy a capture into private storage, bind every AOF file to the receipt,
 verify the copy with a digest-pinned Redis 8.10.1 checker, then replay it in
@@ -62,6 +66,12 @@ a disposable worker-free Redis 8.10.1 container. The target has no network,
 published port, provider credentials, or live-service connection. It is
 removed after bounded startup and restart evidence. This does not reconcile
 BullMQ queues or business state and does not authorize a cutover.
+
+The optional failed-job classifier reads only the two fixed failed sets and
+bounded job hash metadata through the isolated target's private Unix socket.
+It emits fixed job-name, heuristic failure-reason, and attempt counts. No job
+IDs, payloads, keys, stack traces, or raw errors enter CLI output. It does not
+authorize retries.
 
 Docker's default context must resolve to /var/run/docker.sock, and that path
 must be a socket rather than a symlink. Both the official checker image and the
@@ -89,17 +99,19 @@ export const parseReplayArguments = (args, environment = process.env) => {
   const normalized = args[0] === "--" ? args.slice(1) : args
   if (normalized.length === 1 && normalized[0] === "--help")
     return { mode: "help" }
+  const classifyFailedJobs = normalized.at(-1) === "--classify-failed-jobs"
+  const positional = classifyFailedJobs ? normalized.slice(0, -1) : normalized
   const flags = [
     "--archive-dir",
     "--capture-receipt",
     "--receipt-sha256",
     "--image-id",
   ]
-  if (normalized.length !== flags.length * 2) throw failure()
+  if (positional.length !== flags.length * 2) throw failure()
   const options = new Map()
-  for (let index = 0; index < normalized.length; index += 2) {
-    const flag = normalized[index]
-    const value = normalized[index + 1]
+  for (let index = 0; index < positional.length; index += 2) {
+    const flag = positional[index]
+    const value = positional[index + 1]
     if (!flags.includes(flag) || options.has(flag) || !value) throw failure()
     options.set(flag, value)
   }
@@ -136,6 +148,7 @@ export const parseReplayArguments = (args, environment = process.env) => {
     imageId,
     maxBytes,
     timeoutMs,
+    classifyFailedJobs,
   }
 }
 
@@ -444,7 +457,13 @@ const infoFields = (raw) => {
   return fields
 }
 
-const observeTarget = async (runDocker, id, socketPath, signal) => {
+const observeTarget = async (
+  runDocker,
+  id,
+  socketPath,
+  signal,
+  classifyFailedJobs
+) => {
   await waitForRedis(runDocker, id, signal)
   const cli = (args, limit = 4096) =>
     runDocker(
@@ -492,12 +511,27 @@ const observeTarget = async (runDocker, id, socketPath, signal) => {
     Number(dbsize) > keyCount
   )
     throw failure()
+  const aggregate = await collectIsolatedRedisQueueAggregate({
+    socketPath,
+    signal,
+  })
+  const failedJobs = classifyFailedJobs
+    ? await collectIsolatedRedisFailedJobs({
+        socketPath,
+        signal,
+        expectedFailed: {
+          eventBus: aggregate.queues.eventBus.states.failed,
+          scheduledJobs: aggregate.queues.scheduledJobs.states.failed,
+        },
+      })
+    : undefined
   return {
     runIdSha256: hash(server.get("run_id")),
     keyCount,
     expiringKeys,
     databaseCount: keyspace.size,
-    aggregate: await collectIsolatedRedisQueueAggregate({ socketPath, signal }),
+    aggregate,
+    ...(failedJobs ? { failedJobs } : {}),
   }
 }
 
@@ -689,7 +723,13 @@ export const runIsolatedRedisReplay = async ({
         throw failure()
       assertContainer(inspect[0], options.imageId, name, token, data, socket)
       const socketPath = join(socket, "redis.sock")
-      const first = await observeTarget(runDocker, id, socketPath, scope.signal)
+      const first = await observeTarget(
+        runDocker,
+        id,
+        socketPath,
+        scope.signal,
+        options.classifyFailedJobs
+      )
       phase = "restart"
       const restartResult = await runDocker(
         ["restart", "--timeout", "3", id],
@@ -700,13 +740,17 @@ export const runIsolatedRedisReplay = async ({
         runDocker,
         id,
         socketPath,
-        scope.signal
+        scope.signal,
+        options.classifyFailedJobs
       )
       if (
         first.runIdSha256 === second.runIdSha256 ||
         first.keyCount !== second.keyCount ||
         first.expiringKeys !== second.expiringKeys ||
-        first.databaseCount !== second.databaseCount
+        first.databaseCount !== second.databaseCount ||
+        (options.classifyFailedJobs &&
+          JSON.stringify(first.failedJobs) !==
+            JSON.stringify(second.failedJobs))
       )
         throw failure()
       report = {
@@ -725,6 +769,9 @@ export const runIsolatedRedisReplay = async ({
         databaseCount: second.databaseCount,
         aggregateStartup: first.aggregate,
         aggregateRestart: second.aggregate,
+        ...(options.classifyFailedJobs
+          ? { failedJobs: second.failedJobs }
+          : {}),
         startupProven: true,
         restartProven: true,
         queueReconciled: false,

@@ -164,6 +164,11 @@ test("replay arguments require private absolute paths and pinned identities", ()
     parseReplayArguments(["--", ...args], {}),
     parseReplayArguments(args, {})
   )
+  assert.equal(
+    parseReplayArguments([...args, "--classify-failed-jobs"], {})
+      .classifyFailedJobs,
+    true
+  )
   for (const changed of [
     args.slice(0, -2),
     [...args, "--image-id", imageId],
@@ -172,6 +177,8 @@ test("replay arguments require private absolute paths and pinned identities", ()
     argumentsFor(args[1], "relative-receipt", args[5]),
     argumentsFor(args[1], args[3], "not-a-hash"),
     [...args.slice(0, -1), "redis:latest"],
+    ["--classify-failed-jobs", ...args],
+    [...args, "--classify-failed-jobs", "--classify-failed-jobs"],
   ])
     assert.throws(() => parseReplayArguments(changed, {}), {
       message: "Redis isolated replay unavailable.",

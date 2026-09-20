@@ -1,6 +1,6 @@
 # Next-session handoff
 
-Last updated: 2026-09-19 (America/New_York)
+Last updated: 2026-09-20 (America/New_York)
 
 ## Resumed work — September 14 onward
 
@@ -54,6 +54,14 @@ Both result files are count-only and private under `/tmp`; the exact paths
 and limits are in [infrastructure recovery](INFRASTRUCTURE_RECOVERY.md).
 Neither failed-job causes nor provider-side record parity have been proved;
 `queueReconciled` and `businessReconciled` remain false.
+An opt-in, receipt-bound, worker-free replay subsequently classified the 238
+captured failed-set entries using fixed buckets only. Its 237 scheduled-job
+names were all outside the first static allowlist; failure text yielded 73
+provider-related lexical hints and 164 other hints. This does not establish
+job identities, actual provider causation, or retry safety. The private
+report SHA-256 is
+`19e21adf217b8c992f1f7325d084c9dbd58dd0320668b8133b02c6080edffe23`.
+The replay's container and temporary directory were removed.
 
 ### Accepted September 20 UTC diagnostic tooling release: `efc4b65`
 

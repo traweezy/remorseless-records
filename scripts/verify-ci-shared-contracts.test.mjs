@@ -380,6 +380,18 @@ for (const axis of ["lines", "branches", "functions"]) {
         )
       )
   })
+  test(`rejects relaxed or removed Redis failed-job ${axis} coverage`, () => {
+    for (const replacement of [`--test-coverage-${axis}=79`, ""])
+      assert.throws(() =>
+        validate(
+          mutateScripts((scripts) => {
+            scripts["qa:redis-failed-job-classifier"] = scripts[
+              "qa:redis-failed-job-classifier"
+            ].replace(`--test-coverage-${axis}=80`, replacement)
+          })
+        )
+      )
+  })
 }
 
 test("rejects disabled parity coverage or omitted validator coverage scope", () => {
@@ -578,6 +590,22 @@ test("rejects omitted Redis helper scopes, tests, and the independent parity tes
       })
     )
   )
+})
+
+test("rejects omission of offline Redis failed-job classifier scope or tests", () => {
+  for (const marker of [
+    "--test-coverage-include=scripts/lib/redis-failed-job-classifier.mjs",
+    "scripts/redis-failed-job-classifier.test.mjs",
+  ])
+    assert.throws(() =>
+      validate(
+        mutateScripts((scripts) => {
+          scripts["qa:redis-failed-job-classifier"] = scripts[
+            "qa:redis-failed-job-classifier"
+          ].replace(marker, "")
+        })
+      )
+    )
 })
 
 test("rejects malformed or oversized workflow and package-script inputs", () => {

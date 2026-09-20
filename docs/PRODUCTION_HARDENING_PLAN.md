@@ -44,8 +44,11 @@ times; no job identities or causes were exposed. A separate source-bound live
 PostgreSQL read counted 68 carts and seven each of orders, payments and
 captures; only carts increased by one from the verified restore receipt.
 It also counted two succeeded collection-mode tax quotes and ten ignored
-Stripe lifecycle events. Classify failed jobs and compare identified records
-with Stripe before worker or traffic cutover; these fixed counts alone cannot
+Stripe lifecycle events. An isolated, count-only failed-job classifier found
+73 provider-related lexical hints and 164 other hints among the 237 scheduled
+failures, but none of their names matched its initial static allowlist. Identify
+the affected jobs and compare identified records with Stripe before worker or
+traffic cutover; these fixed counts alone cannot
 establish business impact. Scheduled/off-site PostgreSQL backup, PITR, media
 restore, and production
 recovery timing remain open. See [infrastructure recovery](INFRASTRUCTURE_RECOVERY.md)

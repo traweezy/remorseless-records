@@ -24,6 +24,7 @@ import {
 import { runIntegrationCommand } from "./run-disposable-integration.mjs"
 import { runIsolatedRedisReplay } from "./redis-aof-isolated-replay.mjs"
 import { collectRedisQueueAggregate } from "./lib/redis-queue-aggregate.mjs"
+import { classifyIsolatedFailedJobs } from "./lib/redis-failed-job-classifier.mjs"
 
 const imageTag = "remorseless-records-integration-redis:8.10.1-hardened"
 const imageIdPattern = /^(?:sha256:)?[a-f0-9]{64}$/u
@@ -48,6 +49,20 @@ const aggregateForSocket = async (path) => {
   try {
     await client.connect()
     return await collectRedisQueueAggregate({ client })
+  } finally {
+    client.destroy()
+  }
+}
+
+const failedJobsForSocket = async (path, expectedFailed) => {
+  const client = createClient({
+    socket: { path, connectTimeout: 1_000, reconnectStrategy: false },
+    disableOfflineQueue: true,
+  })
+  client.on("error", () => undefined)
+  try {
+    await client.connect()
+    return await classifyIsolatedFailedJobs({ client, expectedFailed })
   } finally {
     client.destroy()
   }
@@ -237,6 +252,7 @@ chmod 600 /artifact/*
           createHash("sha256").update(receiptBytes).digest("hex"),
           "--image-id",
           imageId,
+          "--classify-failed-jobs",
         ],
         write: (line) => replayOutput.push(line),
         writeError: (line) => replayOutput.push(line),
@@ -251,6 +267,9 @@ chmod 600 /artifact/*
     assert.equal(replay.aggregateStartup.scannedKeys, 2)
     assert.deepEqual(replay.aggregateRestart, replay.aggregateStartup)
     assert.equal(replay.aggregateRestart.categories.other.count, 2)
+    assert.equal(replay.failedJobs.totalFailed, 0)
+    assert.equal(replay.failedJobs.queueReconciled, false)
+    assert.doesNotMatch(replayOutput[0], /event-failed|synthetic-failure/u)
     assert.doesNotMatch(replayOutput[0], /synthetic:base|synthetic:increment/u)
     assert.equal(replay.queueReconciled, false)
     assert.equal(replay.businessReconciled, false)
@@ -720,6 +739,18 @@ test("an isolated Redis 8.10.1 startup replays synthetic BullMQ states from mult
     assert.deepEqual(
       await aggregateForSocket(targetConnection.path),
       sourceAggregate
+    )
+    const failedJobs = await failedJobsForSocket(targetConnection.path, {
+      eventBus: 1,
+      scheduledJobs: 0,
+    })
+    assert.equal(failedJobs.totalFailed, 1)
+    assert.equal(failedJobs.queues.eventBus.names.unlisted, 1)
+    assert.equal(failedJobs.queues.eventBus.reasons.other, 1)
+    assert.equal(failedJobs.queueReconciled, false)
+    assert.doesNotMatch(
+      JSON.stringify(failedJobs),
+      /event-failed|synthetic-failure/u
     )
     assert.equal(
       await fixtureRedisCli(targetId, [
