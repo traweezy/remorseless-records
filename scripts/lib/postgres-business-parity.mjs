@@ -6,7 +6,14 @@ import assert from "node:assert/strict"
 const requiredColumns = {
   cart: ["id", "deleted_at"],
   order: ["id", "deleted_at"],
-  payment_collection: ["id", "currency_code", "deleted_at"],
+  payment_collection: [
+    "id",
+    "amount",
+    "authorized_amount",
+    "captured_amount",
+    "currency_code",
+    "deleted_at",
+  ],
   payment_session: ["id", "payment_collection_id", "deleted_at"],
   payment: [
     "id",
@@ -16,6 +23,7 @@ const requiredColumns = {
     "data",
     "payment_collection_id",
     "payment_session_id",
+    "created_at",
     "deleted_at",
   ],
   capture: ["id", "amount", "payment_id", "deleted_at"],
@@ -41,6 +49,7 @@ const requiredColumns = {
     "amount_minor",
     "currency_code",
     "status",
+    "created_at",
     "deleted_at",
   ],
   stripe_lifecycle_events: [
@@ -101,17 +110,33 @@ SET LOCAL search_path = pg_catalog;
 WITH
   carts AS MATERIALIZED (SELECT id FROM public.cart WHERE deleted_at IS NULL LIMIT 1001),
   orders AS MATERIALIZED (SELECT id FROM public."order" WHERE deleted_at IS NULL LIMIT 101),
-  collections AS MATERIALIZED (SELECT id, currency_code FROM public.payment_collection WHERE deleted_at IS NULL LIMIT 501),
+  collections AS MATERIALIZED (SELECT id, amount, authorized_amount, captured_amount, currency_code FROM public.payment_collection WHERE deleted_at IS NULL LIMIT 501),
   sessions AS MATERIALIZED (SELECT id, payment_collection_id FROM public.payment_session WHERE deleted_at IS NULL LIMIT 501),
-  payments AS MATERIALIZED (SELECT id, amount, currency_code, provider_id, data, payment_collection_id, payment_session_id FROM public.payment WHERE deleted_at IS NULL LIMIT 101),
+  payments AS MATERIALIZED (SELECT id, amount, currency_code, provider_id, data, payment_collection_id, payment_session_id, created_at FROM public.payment WHERE deleted_at IS NULL LIMIT 101),
   captures AS MATERIALIZED (SELECT id, amount, payment_id FROM public.capture WHERE deleted_at IS NULL LIMIT 101),
   refunds AS MATERIALIZED (SELECT id, amount, payment_id FROM public.refund WHERE deleted_at IS NULL LIMIT 101),
   order_carts AS MATERIALIZED (SELECT id, order_id, cart_id FROM public.order_cart WHERE deleted_at IS NULL LIMIT 101),
   order_collections AS MATERIALIZED (SELECT id, order_id, payment_collection_id FROM public.order_payment_collection WHERE deleted_at IS NULL LIMIT 101),
   cart_collections AS MATERIALIZED (SELECT id, cart_id, payment_collection_id FROM public.cart_payment_collection WHERE deleted_at IS NULL LIMIT 501),
-  tax AS MATERIALIZED (SELECT id, cart_id, order_id, payment_intent_id, amount_minor, currency_code, status FROM public.tax_quote_evidences WHERE deleted_at IS NULL LIMIT 101),
+  tax AS MATERIALIZED (SELECT id, cart_id, order_id, payment_intent_id, amount_minor, currency_code, status, created_at FROM public.tax_quote_evidences WHERE deleted_at IS NULL LIMIT 101),
   events AS MATERIALIZED (SELECT id, payment_intent_id, status, livemode FROM public.stripe_lifecycle_events WHERE deleted_at IS NULL LIMIT 501),
   stripe_payments AS MATERIALIZED (SELECT p.*, p.data->>'id' AS intent_id FROM payments p WHERE p.provider_id = 'pp_stripe_stripe'),
+  missing_tax_payments AS MATERIALIZED (SELECT p.created_at FROM stripe_payments p WHERE p.intent_id ~ '^pi_[A-Za-z0-9]+$' AND NOT EXISTS (SELECT 1 FROM tax t WHERE t.payment_intent_id = p.intent_id)),
+  money_pairs AS MATERIALIZED (
+    SELECT t.id AS tax_id, t.amount_minor, t.currency_code AS tax_currency,
+      p.amount AS payment_amount, p.currency_code AS payment_currency,
+      p.data AS payment_data, pc.amount AS collection_amount,
+      pc.authorized_amount, pc.captured_amount,
+      (SELECT coalesce(sum(c.amount), 0) FROM captures c WHERE c.payment_id = p.id) AS capture_amount
+    FROM tax t
+    JOIN stripe_payments p ON p.intent_id = t.payment_intent_id
+    LEFT JOIN collections pc ON pc.id = p.payment_collection_id
+  ),
+  mismatched_usd_pairs AS MATERIALIZED (
+    SELECT * FROM money_pairs
+    WHERE lower(tax_currency) = 'usd' AND lower(payment_currency) = 'usd'
+      AND (payment_amount * 100 <> amount_minor OR payment_amount < 0)
+  ),
   scanned AS (SELECT pg_catalog.json_build_object(
     'carts', (SELECT count(*) FROM carts),
     'orders', (SELECT count(*) FROM orders),
@@ -128,8 +153,23 @@ WITH
     'lifecycleEvents', (SELECT count(*) FROM events)
   ) AS value)
 SELECT pg_catalog.json_build_object(
-  'schemaVersion', 1,
+  'schemaVersion', 2,
   'scanned', (SELECT value FROM scanned),
+  'moneyProvenance', pg_catalog.json_build_object(
+    'matchedTaxPaymentPairs', (SELECT count(*) FROM money_pairs),
+    'mismatchedUsdPairs', (SELECT count(*) FROM mismatched_usd_pairs),
+    'mismatchedCaptureScaledMatch', (SELECT count(*) FROM mismatched_usd_pairs WHERE capture_amount * 100 = amount_minor),
+    'mismatchedCollectionScaledMatch', (SELECT count(*) FROM mismatched_usd_pairs WHERE collection_amount * 100 = amount_minor),
+    'mismatchedAuthorizedScaledMatch', (SELECT count(*) FROM mismatched_usd_pairs WHERE authorized_amount * 100 = amount_minor),
+    'mismatchedCollectionCapturedScaledMatch', (SELECT count(*) FROM mismatched_usd_pairs WHERE captured_amount * 100 = amount_minor),
+    'mismatchedPaymentCaptureMatch', (SELECT count(*) FROM mismatched_usd_pairs WHERE payment_amount = capture_amount),
+    'mismatchedProviderDataAmountValid', (SELECT count(*) FROM mismatched_usd_pairs WHERE payment_data->>'amount' ~ '^[0-9]{1,12}$'),
+    'mismatchedProviderDataAmountMatchesTax', (SELECT count(*) FROM mismatched_usd_pairs WHERE CASE WHEN payment_data->>'amount' ~ '^[0-9]{1,12}$' THEN (payment_data->>'amount')::numeric = amount_minor ELSE false END),
+    'mismatchedProviderDataCurrencyMatchesTax', (SELECT count(*) FROM mismatched_usd_pairs WHERE lower(payment_data->>'currency') = lower(tax_currency)),
+    'missingEvidenceBeforeFirstTaxRow', (SELECT count(*) FROM missing_tax_payments WHERE created_at < (SELECT min(created_at) FROM tax)),
+    'missingEvidenceAtOrAfterFirstTaxRow', (SELECT count(*) FROM missing_tax_payments WHERE created_at >= (SELECT min(created_at) FROM tax)),
+    'missingEvidenceWithoutTaxBaseline', (SELECT count(*) FROM missing_tax_payments WHERE NOT EXISTS (SELECT 1 FROM tax))
+  ),
   'mismatches', pg_catalog.json_build_object(
     'orderCartOrphan', (SELECT count(*) FROM order_carts l WHERE NOT EXISTS (SELECT 1 FROM orders o WHERE o.id = l.order_id) OR NOT EXISTS (SELECT 1 FROM carts c WHERE c.id = l.cart_id)),
     'orderPaymentOrphan', (SELECT count(*) FROM order_collections l WHERE NOT EXISTS (SELECT 1 FROM orders o WHERE o.id = l.order_id) OR NOT EXISTS (SELECT 1 FROM collections c WHERE c.id = l.payment_collection_id)),
@@ -214,33 +254,78 @@ const mismatchKeys = [
   "livemodeEvent",
 ]
 
+const moneyProvenanceKeys = [
+  "matchedTaxPaymentPairs",
+  "mismatchedUsdPairs",
+  "mismatchedCaptureScaledMatch",
+  "mismatchedCollectionScaledMatch",
+  "mismatchedAuthorizedScaledMatch",
+  "mismatchedCollectionCapturedScaledMatch",
+  "mismatchedPaymentCaptureMatch",
+  "mismatchedProviderDataAmountValid",
+  "mismatchedProviderDataAmountMatchesTax",
+  "mismatchedProviderDataCurrencyMatchesTax",
+  "missingEvidenceBeforeFirstTaxRow",
+  "missingEvidenceAtOrAfterFirstTaxRow",
+  "missingEvidenceWithoutTaxBaseline",
+]
+
 export const parseBusinessParityOutput = (raw) => {
   try {
     const value = parseLine(raw, "parity")
     assert.deepEqual(Object.keys(value).sort(), [
       "mismatches",
+      "moneyProvenance",
       "scanned",
       "schemaVersion",
     ])
-    assert.equal(value.schemaVersion, 1)
+    assert.equal(value.schemaVersion, 2)
     countObject(value.scanned, Object.keys(limits))
     countObject(value.mismatches, mismatchKeys)
+    countObject(value.moneyProvenance, moneyProvenanceKeys)
     for (const [key, limit] of Object.entries(limits))
       assert.ok(value.scanned[key] <= limit)
     assert.ok(value.scanned.stripePayments <= value.scanned.payments)
     assert.ok(value.scanned.payments === 0 || value.scanned.stripePayments > 0)
     for (const key of mismatchKeys) assert.ok(value.mismatches[key] <= 1000)
+    for (const key of moneyProvenanceKeys)
+      assert.ok(value.moneyProvenance[key] <= 1000)
+    assert.ok(
+      value.moneyProvenance.matchedTaxPaymentPairs <=
+        value.scanned.taxEvidence * value.scanned.stripePayments
+    )
+    assert.ok(
+      value.moneyProvenance.mismatchedUsdPairs <=
+        value.moneyProvenance.matchedTaxPaymentPairs
+    )
+    for (const key of moneyProvenanceKeys.filter(
+      (item) => item.startsWith("mismatched") && item !== "mismatchedUsdPairs"
+    ))
+      assert.ok(
+        value.moneyProvenance[key] <= value.moneyProvenance.mismatchedUsdPairs
+      )
+    assert.ok(
+      value.moneyProvenance.mismatchedProviderDataAmountMatchesTax <=
+        value.moneyProvenance.mismatchedProviderDataAmountValid
+    )
+    assert.equal(
+      value.moneyProvenance.missingEvidenceBeforeFirstTaxRow +
+        value.moneyProvenance.missingEvidenceAtOrAfterFirstTaxRow +
+        value.moneyProvenance.missingEvidenceWithoutTaxBaseline,
+      value.mismatches.stripePaymentTaxEvidenceMissing
+    )
     assert.equal(
       value.mismatches.unsupportedPaymentProvider,
       value.scanned.payments - value.scanned.stripePayments
     )
     return {
-      schemaVersion: 1,
+      schemaVersion: 2,
       source: "verified_isolated_postgres_restore_only",
       readOnly: true,
       businessReconciled: false,
       scanned: value.scanned,
       mismatches: value.mismatches,
+      moneyProvenance: value.moneyProvenance,
     }
   } catch {
     throw new Error("Invalid PostgreSQL business parity.")

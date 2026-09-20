@@ -46,26 +46,26 @@ const command = async (binary, args, environment, captureOutput = true) => {
 const fixtureSql = `
 CREATE TABLE public.cart (id text PRIMARY KEY, deleted_at timestamptz);
 CREATE TABLE public."order" (id text PRIMARY KEY, deleted_at timestamptz);
-CREATE TABLE public.payment_collection (id text PRIMARY KEY, currency_code text, deleted_at timestamptz);
+CREATE TABLE public.payment_collection (id text PRIMARY KEY, currency_code text, deleted_at timestamptz, amount numeric DEFAULT 25.00, authorized_amount numeric DEFAULT 25.00, captured_amount numeric DEFAULT 25.00);
 CREATE TABLE public.payment_session (id text PRIMARY KEY, payment_collection_id text, deleted_at timestamptz);
-CREATE TABLE public.payment (id text PRIMARY KEY, amount numeric, currency_code text, provider_id text, data jsonb, payment_collection_id text, payment_session_id text, deleted_at timestamptz);
+CREATE TABLE public.payment (id text PRIMARY KEY, amount numeric, currency_code text, provider_id text, data jsonb, payment_collection_id text, payment_session_id text, deleted_at timestamptz, created_at timestamptz DEFAULT now());
 CREATE TABLE public.capture (id text PRIMARY KEY, amount numeric, payment_id text, deleted_at timestamptz);
 CREATE TABLE public.refund (id text PRIMARY KEY, amount numeric, payment_id text, deleted_at timestamptz);
 CREATE TABLE public.order_cart (id text PRIMARY KEY, order_id text, cart_id text, deleted_at timestamptz);
 CREATE TABLE public.order_payment_collection (id text PRIMARY KEY, order_id text, payment_collection_id text, deleted_at timestamptz);
 CREATE TABLE public.cart_payment_collection (id text PRIMARY KEY, cart_id text, payment_collection_id text, deleted_at timestamptz);
-CREATE TABLE public.tax_quote_evidences (id text PRIMARY KEY, cart_id text, order_id text, payment_intent_id text, amount_minor integer, currency_code text, status text, deleted_at timestamptz);
+CREATE TABLE public.tax_quote_evidences (id text PRIMARY KEY, cart_id text, order_id text, payment_intent_id text, amount_minor integer, currency_code text, status text, deleted_at timestamptz, created_at timestamptz DEFAULT now());
 CREATE TABLE public.stripe_lifecycle_events (id text PRIMARY KEY, payment_intent_id text, status text, livemode boolean, deleted_at timestamptz);
 INSERT INTO public.cart VALUES ('cart_private_canary', NULL);
 INSERT INTO public."order" VALUES ('order_private_canary', NULL);
-INSERT INTO public.payment_collection VALUES ('paycol_private_canary', 'usd', NULL);
+INSERT INTO public.payment_collection (id, currency_code, deleted_at) VALUES ('paycol_private_canary', 'usd', NULL);
 INSERT INTO public.payment_session VALUES ('payses_private_canary', 'paycol_private_canary', NULL);
-INSERT INTO public.payment VALUES ('pay_private_canary', 25.00, 'usd', 'pp_stripe_stripe', '{"id":"pi_privatecanary"}', 'paycol_private_canary', 'payses_private_canary', NULL);
+INSERT INTO public.payment (id, amount, currency_code, provider_id, data, payment_collection_id, payment_session_id, deleted_at) VALUES ('pay_private_canary', 25.00, 'usd', 'pp_stripe_stripe', '{"id":"pi_privatecanary","amount":2500,"currency":"usd"}', 'paycol_private_canary', 'payses_private_canary', NULL);
 INSERT INTO public.capture VALUES ('cap_private_canary', 25.00, 'pay_private_canary', NULL);
 INSERT INTO public.order_cart VALUES ('ordercart_private_canary', 'order_private_canary', 'cart_private_canary', NULL);
 INSERT INTO public.order_payment_collection VALUES ('ordpay_private_canary', 'order_private_canary', 'paycol_private_canary', NULL);
 INSERT INTO public.cart_payment_collection VALUES ('capaycol_private_canary', 'cart_private_canary', 'paycol_private_canary', NULL);
-INSERT INTO public.tax_quote_evidences VALUES ('tax_private_canary', 'cart_private_canary', 'order_private_canary', 'pi_privatecanary', 2500, 'usd', 'succeeded', NULL);
+INSERT INTO public.tax_quote_evidences (id, cart_id, order_id, payment_intent_id, amount_minor, currency_code, status, deleted_at) VALUES ('tax_private_canary', 'cart_private_canary', 'order_private_canary', 'pi_privatecanary', 2500, 'usd', 'succeeded', NULL);
 INSERT INTO public.stripe_lifecycle_events VALUES ('evt_private_canary', 'pi_privatecanary', 'processed', false, NULL);
 `
 
@@ -148,7 +148,24 @@ test("parity parser accepts only bounded fixed counts and redacts failures", () 
       "livemodeEvent",
     ].map((key) => [key, 0])
   )
-  const valid = { schemaVersion: 1, scanned, mismatches }
+  const moneyProvenance = Object.fromEntries(
+    [
+      "matchedTaxPaymentPairs",
+      "mismatchedUsdPairs",
+      "mismatchedCaptureScaledMatch",
+      "mismatchedCollectionScaledMatch",
+      "mismatchedAuthorizedScaledMatch",
+      "mismatchedCollectionCapturedScaledMatch",
+      "mismatchedPaymentCaptureMatch",
+      "mismatchedProviderDataAmountValid",
+      "mismatchedProviderDataAmountMatchesTax",
+      "mismatchedProviderDataCurrencyMatchesTax",
+      "missingEvidenceBeforeFirstTaxRow",
+      "missingEvidenceAtOrAfterFirstTaxRow",
+      "missingEvidenceWithoutTaxBaseline",
+    ].map((key) => [key, 0])
+  )
+  const valid = { schemaVersion: 2, scanned, mismatches, moneyProvenance }
   assert.equal(
     parseBusinessParityOutput(JSON.stringify(valid)).businessReconciled,
     false
@@ -159,6 +176,17 @@ test("parity parser accepts only bounded fixed counts and redacts failures", () 
     { ...valid, scanned: { ...scanned, payments: 1 } },
     { ...valid, mismatches: { ...mismatches, taxAmountUsd: -1 } },
     { ...valid, mismatches: { ...mismatches, rawId: "pi_private_canary" } },
+    {
+      ...valid,
+      moneyProvenance: { ...moneyProvenance, rawId: "pi_private_canary" },
+    },
+    {
+      ...valid,
+      moneyProvenance: {
+        ...moneyProvenance,
+        missingEvidenceAtOrAfterFirstTaxRow: 1,
+      },
+    },
   ])
     assert.throws(
       () => parseBusinessParityOutput(JSON.stringify(value)),
@@ -240,12 +268,33 @@ test("bounded PostgreSQL fixture identifies relationships without returning IDs"
     const baseline = parseBusinessParityOutput(await psql(businessParitySql))
     assert.equal(baseline.scanned.payments, 1)
     assert.equal(baseline.scanned.stripePayments, 1)
+    assert.equal(baseline.moneyProvenance.matchedTaxPaymentPairs, 1)
+    assert.equal(baseline.moneyProvenance.mismatchedUsdPairs, 0)
     assert.ok(Object.values(baseline.mismatches).every((count) => count === 0))
     assert.equal(baseline.businessReconciled, false)
     assert.ok(!JSON.stringify(baseline).includes("private_canary"))
 
+    await psql(`
+UPDATE public.payment_collection SET deleted_at = now();
+UPDATE public.tax_quote_evidences SET amount_minor = 2501;
+`)
+    const missingCollection = parseBusinessParityOutput(
+      await psql(businessParitySql)
+    )
+    assert.equal(missingCollection.mismatches.paymentRelation, 1)
+    assert.equal(missingCollection.moneyProvenance.matchedTaxPaymentPairs, 1)
+    assert.equal(missingCollection.moneyProvenance.mismatchedUsdPairs, 1)
+    assert.equal(
+      missingCollection.moneyProvenance.mismatchedCollectionScaledMatch,
+      0
+    )
+    await psql(`
+UPDATE public.payment_collection SET deleted_at = NULL;
+UPDATE public.tax_quote_evidences SET amount_minor = 2500;
+`)
+
     await psql(
-      "INSERT INTO public.payment VALUES ('pay_other', 1, 'usd', 'pp_other', NULL, 'paycol_private_canary', 'payses_private_canary', NULL);"
+      "INSERT INTO public.payment (id, amount, currency_code, provider_id, data, payment_collection_id, payment_session_id, deleted_at) VALUES ('pay_other', 1, 'usd', 'pp_other', NULL, 'paycol_private_canary', 'payses_private_canary', NULL);"
     )
     const otherProvider = parseBusinessParityOutput(
       await psql(businessParitySql)
@@ -256,11 +305,28 @@ test("bounded PostgreSQL fixture identifies relationships without returning IDs"
     await psql("DELETE FROM public.payment WHERE id = 'pay_other';")
 
     await psql(
-      "INSERT INTO public.payment VALUES ('pay_legacy', 1, 'usd', 'pp_stripe_stripe', '{\"id\":\"pi_legacy\"}', 'paycol_private_canary', 'payses_private_canary', NULL);"
+      "INSERT INTO public.payment (id, amount, currency_code, provider_id, data, payment_collection_id, payment_session_id, deleted_at) VALUES ('pay_legacy', 1, 'usd', 'pp_stripe_stripe', '{\"id\":\"pi_legacy\"}', 'paycol_private_canary', 'payses_private_canary', NULL);"
     )
     const legacy = parseBusinessParityOutput(await psql(businessParitySql))
     assert.equal(legacy.mismatches.stripePaymentTaxEvidenceMissing, 1)
+    assert.equal(legacy.moneyProvenance.missingEvidenceAtOrAfterFirstTaxRow, 1)
     await psql("DELETE FROM public.payment WHERE id = 'pay_legacy';")
+
+    await psql(
+      "INSERT INTO public.payment (id, amount, currency_code, provider_id, data, payment_collection_id, payment_session_id, deleted_at, created_at) VALUES ('pay_older', 1, 'usd', 'pp_stripe_stripe', '{\"id\":\"pi_older\"}', 'paycol_private_canary', 'payses_private_canary', NULL, '2020-01-01T00:00:00Z');"
+    )
+    const older = parseBusinessParityOutput(await psql(businessParitySql))
+    assert.equal(older.moneyProvenance.missingEvidenceBeforeFirstTaxRow, 1)
+    await psql("DELETE FROM public.payment WHERE id = 'pay_older';")
+
+    await psql("UPDATE public.tax_quote_evidences SET deleted_at = now();")
+    const noBaseline = parseBusinessParityOutput(await psql(businessParitySql))
+    assert.equal(
+      noBaseline.moneyProvenance.missingEvidenceWithoutTaxBaseline,
+      1
+    )
+    assert.equal(noBaseline.moneyProvenance.matchedTaxPaymentPairs, 0)
+    await psql("UPDATE public.tax_quote_evidences SET deleted_at = NULL;")
 
     await psql(`
 INSERT INTO public.cart VALUES ('cart_other', NULL);
@@ -301,16 +367,49 @@ UPDATE public.tax_quote_evidences SET order_id = 'order_other';
       "UPDATE public.order_cart SET cart_id = 'cart_missing' WHERE id = 'ordercart_private_canary';"
     )
     await psql(
-      "INSERT INTO public.payment VALUES ('pay_duplicate', 25.00, 'usd', 'pp_stripe_stripe', '{\"id\":\"pi_privatecanary\"}', 'paycol_private_canary', 'payses_private_canary', NULL);"
+      "INSERT INTO public.payment (id, amount, currency_code, provider_id, data, payment_collection_id, payment_session_id, deleted_at) VALUES ('pay_duplicate', 25.00, 'usd', 'pp_stripe_stripe', '{\"id\":\"pi_privatecanary\"}', 'paycol_private_canary', 'payses_private_canary', NULL);"
     )
     const relational = parseBusinessParityOutput(await psql(businessParitySql))
     assert.equal(relational.mismatches.orderCartOrphan, 1)
     assert.equal(relational.mismatches.taxOrderCart, 1)
     assert.equal(relational.mismatches.duplicateStripeIntent, 1)
     assert.equal(relational.mismatches.taxAmountUsd, 1)
+    assert.equal(relational.moneyProvenance.mismatchedUsdPairs, 2)
+    assert.equal(relational.moneyProvenance.mismatchedPaymentCaptureMatch, 1)
+    assert.equal(
+      relational.moneyProvenance.mismatchedProviderDataAmountValid,
+      1
+    )
+    assert.equal(
+      relational.moneyProvenance.mismatchedProviderDataAmountMatchesTax,
+      0
+    )
+
+    await psql(`
+UPDATE public.payment_collection SET amount = 25.01, authorized_amount = 25.01, captured_amount = 25.01;
+UPDATE public.capture SET amount = 25.01;
+UPDATE public.payment SET data = jsonb_set(data, '{amount}', '2501'::jsonb) WHERE id = 'pay_private_canary';
+`)
+    const provenance = parseBusinessParityOutput(await psql(businessParitySql))
+    assert.equal(provenance.moneyProvenance.mismatchedUsdPairs, 2)
+    assert.equal(provenance.moneyProvenance.mismatchedCaptureScaledMatch, 1)
+    assert.equal(provenance.moneyProvenance.mismatchedCollectionScaledMatch, 2)
+    assert.equal(provenance.moneyProvenance.mismatchedAuthorizedScaledMatch, 2)
+    assert.equal(
+      provenance.moneyProvenance.mismatchedCollectionCapturedScaledMatch,
+      2
+    )
+    assert.equal(
+      provenance.moneyProvenance.mismatchedProviderDataAmountMatchesTax,
+      1
+    )
+    assert.equal(
+      provenance.moneyProvenance.mismatchedProviderDataCurrencyMatchesTax,
+      1
+    )
 
     await psql(
-      "INSERT INTO public.payment SELECT 'pay_extra_' || i, 1, 'usd', 'pp_other', NULL, 'paycol_private_canary', 'payses_private_canary', NULL FROM generate_series(1, 100) AS i;"
+      "INSERT INTO public.payment (id, amount, currency_code, provider_id, data, payment_collection_id, payment_session_id, deleted_at) SELECT 'pay_extra_' || i, 1, 'usd', 'pp_other', NULL, 'paycol_private_canary', 'payses_private_canary', NULL FROM generate_series(1, 100) AS i;"
     )
     await assert.rejects(
       async () => parseBusinessParityOutput(await psql(businessParitySql)),
