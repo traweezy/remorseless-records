@@ -14,6 +14,7 @@ const {
   rewriteLockfile,
 } = require("./post-build-configuration")
 const { verifyAdminCspBuild } = require("./verify-admin-csp-build")
+const { rewriteRuntimeAliases } = require("./rewrite-runtime-aliases")
 
 const MEDUSA_SERVER_PATH = path.join(process.cwd(), ".medusa", "server")
 const MEDUSA_PACKAGE_JSON = path.join(MEDUSA_SERVER_PATH, "package.json")
@@ -75,6 +76,12 @@ copyNewRegularFile(
   OBSERVABILITY_BOOTSTRAP_TARGET,
   0o644
 )
+
+const rewrittenAliases = rewriteRuntimeAliases(MEDUSA_SERVER_PATH)
+if (rewrittenAliases.aliases === 0) {
+  throw new Error("No runtime aliases were found in the Backend build.")
+}
+console.log(`Resolved ${rewrittenAliases.aliases} compiled runtime aliases.`)
 
 const adminDocumentFound = updateExistingRegularFile(
   MEDUSA_ADMIN_INDEX,

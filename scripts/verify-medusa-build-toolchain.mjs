@@ -37,6 +37,13 @@ execFileSync(
     "--test-timeout=30000",
     join(import.meta.dirname, "verify-medusa-build-toolchain.test.mjs"),
     join(import.meta.dirname, "swc-runtime.test.mjs"),
+    join(
+      repositoryRoot,
+      "backend",
+      "src",
+      "scripts",
+      "rewrite-runtime-aliases.test.cjs"
+    ),
   ],
   {
     cwd: repositoryRoot,
@@ -47,5 +54,5 @@ execFileSync(
 )
 
 console.log(
-  "Medusa build toolchain verified: Framework resolves TypeScript 5.9.3; 4 launcher and 4 real SWC compiler cases pass without package-manager auto-installation."
+  "Medusa build toolchain verified: Framework resolves TypeScript 5.9.3; launcher, SWC compiler, and runtime alias cases pass without package-manager auto-installation."
 )
