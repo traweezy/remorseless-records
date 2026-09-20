@@ -6,6 +6,10 @@ import { fileURLToPath } from "node:url"
 import { normalizeScriptArguments } from "./lib/cli-arguments.mjs"
 import { createRecoveryScope } from "./lib/recovery-process.mjs"
 import {
+  publicTrivyFailureFields,
+  trivyDatabaseFreshnessDiagnostic,
+} from "./lib/trivy-db-diagnostic.mjs"
+import {
   checkedEvidenceDirectory,
   cleanupEvidenceCache,
   createEvidenceDirectory,
@@ -95,6 +99,7 @@ export const scanRuntimeImage = async (
   let cache
   let cacheIdentity
   let outputCreated = false
+  let failureDiagnostic
   const scope = createRecoveryScope(15 * 60 * 1000)
   const activeSignal = signal
     ? AbortSignal.any([scope.signal, signal])
@@ -229,7 +234,19 @@ export const scanRuntimeImage = async (
       before,
       after: before,
     }
-    validateRuntimeDatabase(database, startedAt, startedAt)
+    const validateDatabase = (completedAt) => {
+      try {
+        validateRuntimeDatabase(database, startedAt, completedAt)
+      } catch (error) {
+        failureDiagnostic = trivyDatabaseFreshnessDiagnostic(
+          metadata,
+          Date.parse(completedAt),
+          Date.parse(startedAt)
+        )
+        throw error
+      }
+    }
+    validateDatabase(startedAt)
     const scannerBefore = await version()
     assert.equal(scannerBefore.Version, policy.trivy.scannerVersion.slice(1))
     assert.deepEqual(scannerBefore.VulnerabilityDB, metadata)
@@ -272,7 +289,7 @@ export const scanRuntimeImage = async (
     assert.deepEqual(await resolveScanner(childEnvironment.PATH), executable)
     assert.deepEqual(imageIdentity(await inspect(), options), beforeImage)
     const completedAt = new Date(now()).toISOString()
-    validateRuntimeDatabase(database, startedAt, completedAt)
+    validateDatabase(completedAt)
     const record = buildRuntimeImageRecord({
       ...options,
       scan: {
@@ -313,7 +330,7 @@ export const scanRuntimeImage = async (
         await writeEvidenceFile(
           options.output,
           "failure.json",
-          `${JSON.stringify({ event: "runtime.image.failed", phase })}\n`
+          `${JSON.stringify({ event: "runtime.image.failed", phase, ...publicTrivyFailureFields(failureDiagnostic) })}\n`
         )
       } catch {
         /* Never follow an unsafe replacement output path. */
@@ -321,6 +338,7 @@ export const scanRuntimeImage = async (
     }
     throw Object.assign(new Error("Runtime image evidence rejected."), {
       phase,
+      ...publicTrivyFailureFields(failureDiagnostic),
     })
   } finally {
     try {
@@ -365,6 +383,7 @@ if (
       JSON.stringify({
         event: "runtime.image.failed",
         phase: error?.phase ?? "arguments",
+        ...publicTrivyFailureFields(error),
       })
     )
     process.exitCode = 1

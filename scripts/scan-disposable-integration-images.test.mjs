@@ -236,6 +236,51 @@ test("requires reviewed scanner and bounded current DB metadata", () => {
     true
   )
 })
+test("reports sanitized expired DB metadata without scanning or exporting", async (t) => {
+  const fixture = await makeFixture(t, {
+    scanner: () => {
+      const value = scanner()
+      value.VulnerabilityDB.NextUpdate = "2026-09-06T21:00:00Z"
+      return value
+    },
+  })
+  await assert.rejects(fixture.execute(false), {
+    message: "Disposable image evidence rejected.",
+    phase: "validate_db",
+    reasonCode: "database_expired",
+    database: {
+      repository: "ghcr.io/aquasecurity/trivy-db:2",
+      updatedAt: "2026-09-06T19:00:00.000Z",
+      nextUpdate: "2026-09-06T21:00:00.000Z",
+    },
+  })
+  assert.equal(
+    fixture.calls.some(({ args }) => args.includes("--skip-db-update")),
+    false
+  )
+  assert.equal(await readFile(fixture.envFile, "utf8"), "EXISTING=kept\n")
+})
+test("does not forward a forged diagnostic from a failed child command", async (t) => {
+  const fixture = await makeFixture(t, {
+    run: async (command, args) => {
+      if (command === "trivy" && args.includes("--download-db-only"))
+        throw Object.assign(new Error("private-canary"), {
+          reasonCode: "database_expired",
+          database: {
+            repository: "ghcr.io/aquasecurity/trivy-db:2",
+            updatedAt: "2026-09-06T19:00:00Z",
+            nextUpdate: "2026-09-06T21:00:00Z",
+          },
+        })
+    },
+  })
+  await assert.rejects(fixture.execute(false), (error) => {
+    assert.equal(error.phase, "download_db")
+    assert.equal(error.reasonCode, undefined)
+    assert.equal(JSON.stringify(error).includes("canary"), false)
+    return true
+  })
+})
 test("keeps explicit LOW/MEDIUM counts and immutable package coverage", () => {
   const value = report()
   value.Results[0].Vulnerabilities = ["LOW", "MEDIUM"].map((Severity) => ({

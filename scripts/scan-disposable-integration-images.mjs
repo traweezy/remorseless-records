@@ -14,6 +14,10 @@ import { dirname, join, parse, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import { normalizeScriptArguments } from "./lib/cli-arguments.mjs"
 import {
+  publicTrivyFailureFields,
+  trivyDatabaseFreshnessDiagnostic,
+} from "./lib/trivy-db-diagnostic.mjs"
+import {
   createRecoveryScope,
   runRecoveryCommand,
 } from "./lib/recovery-process.mjs"
@@ -32,6 +36,7 @@ export const INTEGRATION_IMAGES = Object.freeze([
 ])
 const idPattern = /^sha256:[a-f0-9]{64}$/u
 const limit = 32 * 1024 * 1024
+const freshnessFailure = Symbol("reviewed Trivy DB freshness failure")
 const phases = Object.freeze([
   "arguments",
   "initialize",
@@ -126,10 +131,13 @@ export const parseScannerIdentity = (source, now, offline) => {
       Date.parse(db.NextUpdate) > updated
   )
   // A default CI run must use a current database, not silently reuse a stale one.
-  requireValue(
-    offline ||
-      (now < Date.parse(db.NextUpdate) && now - updated <= 48 * 60 * 60 * 1000)
+  if (
+    !offline &&
+    !(now < Date.parse(db.NextUpdate) && now - updated <= 48 * 60 * 60 * 1000)
   )
+    throw Object.assign(failure(), {
+      [freshnessFailure]: trivyDatabaseFreshnessDiagnostic(db, now),
+    })
   return freeze({
     version: value.Version,
     database: {
@@ -573,8 +581,11 @@ export const scanDisposableIntegrationImages = async (
       images: images.map(({ service, id }) => ({ service, id })),
       scanner,
     })
-  } catch {
-    throw Object.assign(failure(), { phase })
+  } catch (error) {
+    throw Object.assign(failure(), {
+      phase,
+      ...publicTrivyFailureFields(error?.[freshnessFailure]),
+    })
   } finally {
     scope?.close()
     if (temporaryCache) {
@@ -602,7 +613,11 @@ const main = async () => {
   } catch (error) {
     const phase = phases.includes(error?.phase) ? error.phase : "arguments"
     process.stderr.write(
-      `${JSON.stringify({ event: "integration.images.failed", phase })}\n`
+      `${JSON.stringify({
+        event: "integration.images.failed",
+        phase,
+        ...publicTrivyFailureFields(error),
+      })}\n`
     )
     process.exitCode = 1
   }

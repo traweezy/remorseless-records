@@ -540,7 +540,7 @@ export const verifyRuntimeImagePolicy = () => {
   )
   assert.equal(
     packageJson.scripts?.["qa:runtime-images"],
-    "node --test scripts/verify-runtime-image-policy.test.mjs scripts/runtime-image-evidence.test.mjs && node scripts/verify-runtime-image-policy.mjs"
+    "node --test scripts/verify-runtime-image-policy.test.mjs scripts/runtime-image-evidence.test.mjs scripts/lib/trivy-db-diagnostic.test.mjs && node scripts/verify-runtime-image-policy.mjs"
   )
   assert.match(
     packageJson.scripts?.["qa:lint"] ?? "",

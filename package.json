@@ -21,7 +21,7 @@
     "qa:release-policy": "node --test scripts/verify-release-branch-policy.test.mjs && node scripts/verify-release-branch-policy.mjs",
     "qa:dependency-supply-chain": "node --test scripts/verify-dependency-supply-chain-policy.test.mjs scripts/js-yaml-security.test.mjs && node scripts/verify-dependency-supply-chain-policy.mjs",
     "qa:ci-runtime-security": "node --test scripts/verify-ci-runtime-security-policy.test.mjs && node scripts/verify-ci-runtime-security-policy.mjs",
-    "qa:runtime-images": "node --test scripts/verify-runtime-image-policy.test.mjs scripts/runtime-image-evidence.test.mjs && node scripts/verify-runtime-image-policy.mjs",
+    "qa:runtime-images": "node --test scripts/verify-runtime-image-policy.test.mjs scripts/runtime-image-evidence.test.mjs scripts/lib/trivy-db-diagnostic.test.mjs && node scripts/verify-runtime-image-policy.mjs",
     "qa:service-container-resolution": "node scripts/verify-service-container-resolution.mjs",
     "qa:storefront-response-boundary": "node scripts/verify-storefront-response-boundary.mjs",
     "qa:admin-browser-boundary": "node scripts/verify-admin-browser-boundary.mjs",

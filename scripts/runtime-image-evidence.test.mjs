@@ -606,6 +606,7 @@ const fakeSession = async (t, change = {}) => {
   const root = await privateRoot(t)
   const options = { ...identity, output: join(root, "evidence") }
   const candidate = fixture()
+  const databaseMetadata = change.databaseMetadata ?? metadata
   change.candidate?.(candidate)
   let cache
   let downloaded = false
@@ -638,15 +639,17 @@ const fakeSession = async (t, change = {}) => {
     if (args.includes("--version"))
       return encode({
         Version: "0.70.0",
-        ...(downloaded ? { VulnerabilityDB: metadata } : {}),
+        ...(downloaded ? { VulnerabilityDB: databaseMetadata } : {}),
       })
     if (args.includes("--download-db-only")) {
       if (change.downloadFailure) throw new Error("download failed")
       await fs.mkdir(join(cache, "db"), { mode: 0o755 })
       await fs.writeFile(join(cache, "db", "trivy.db"), "db", { mode: 0o644 })
-      await fs.writeFile(join(cache, "db", "metadata.json"), encode(metadata), {
-        mode: 0o644,
-      })
+      await fs.writeFile(
+        join(cache, "db", "metadata.json"),
+        encode(databaseMetadata),
+        { mode: 0o644 }
+      )
       downloaded = true
       return Buffer.alloc(0)
     }
@@ -708,6 +711,37 @@ test("collects one fresh immutable DB session and cleans its private cache", asy
       join(setup.options.output, "backend.image.json")
     ),
     fixture().record
+  )
+  await assert.rejects(fs.lstat(setup.cache()), { code: "ENOENT" })
+})
+test("reports bounded expired DB details and still rejects the scan", async (t) => {
+  const expired = {
+    ...metadata,
+    NextUpdate: "2026-09-14T07:03:12Z",
+  }
+  const setup = await fakeSession(t, { databaseMetadata: expired })
+  await assert.rejects(scanRuntimeImage(setup.options, setup.dependencies), {
+    phase: "freeze_database",
+    reasonCode: "database_expired",
+  })
+  assert.deepEqual(
+    decodeEvidence(
+      await readEvidenceFile(join(setup.options.output, "failure.json"))
+    ),
+    {
+      event: "runtime.image.failed",
+      phase: "freeze_database",
+      reasonCode: "database_expired",
+      database: {
+        repository: "ghcr.io/aquasecurity/trivy-db:2",
+        updatedAt: metadata.UpdatedAt.replace("Z", ".000Z"),
+        nextUpdate: "2026-09-14T07:03:12.000Z",
+      },
+    }
+  )
+  assert.equal(
+    setup.calls.some((call) => call.args.includes("--skip-db-update")),
+    false
   )
   await assert.rejects(fs.lstat(setup.cache()), { code: "ENOENT" })
 })
