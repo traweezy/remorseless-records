@@ -22,6 +22,7 @@ import {
   verifyRedisAofArchive,
 } from "./lib/redis-aof-recovery.mjs"
 import { runIntegrationCommand } from "./run-disposable-integration.mjs"
+import { runIsolatedRedisReplay } from "./redis-aof-isolated-replay.mjs"
 
 const imageTag = "remorseless-records-integration-redis:8.10.1-hardened"
 const imageIdPattern = /^(?:sha256:)?[a-f0-9]{64}$/u
@@ -54,10 +55,10 @@ const checkerForImage = async (directory, imageId, uid, gid) => {
     `#!/bin/sh
 set -eu
 if [ "$1" = "--version" ]; then
-  exec docker run --rm --pull never --network none --read-only --cap-drop ALL --security-opt no-new-privileges --memory 256m --pids-limit 64 --user ${uid}:${gid} --entrypoint redis-check-aof ${imageId} --version
+  exec docker --context default run --rm --pull never --network none --read-only --cap-drop ALL --security-opt no-new-privileges --memory 256m --pids-limit 64 --user ${uid}:${gid} --entrypoint redis-check-aof ${imageId} --version
 fi
 [ "$#" -eq 1 ]
-exec docker run --rm --pull never --network none --read-only --cap-drop ALL --security-opt no-new-privileges --memory 256m --pids-limit 64 --user ${uid}:${gid} --mount "type=bind,source=$(dirname "$1"),target=/aof" --entrypoint redis-check-aof ${imageId} /aof/appendonly.aof.manifest
+exec docker --context default run --rm --pull never --network none --read-only --cap-drop ALL --security-opt no-new-privileges --memory 256m --pids-limit 64 --user ${uid}:${gid} --mount "type=bind,source=$(dirname "$1"),target=/aof" --entrypoint redis-check-aof ${imageId} /aof/appendonly.aof.manifest
 `,
     { mode: 0o700 }
   )
@@ -82,6 +83,12 @@ test("the pinned checker validates an isolated synthetic multipart AOF", async (
     const producer = `
 set -eu
 redis-server --daemonize yes --port 0 --unixsocket /data/redis.sock --unixsocketperm 700 --pidfile /data/redis.pid --dir /data --save '' --appendonly yes --appendfilename appendonly.aof --appenddirname appendonlydir --auto-aof-rewrite-percentage 0 --aof-use-rdb-preamble yes --logfile /data/redis.log
+socket_ready=0
+for attempt in $(seq 1 100); do
+  if redis-cli -s /data/redis.sock PING >/dev/null 2>&1; then socket_ready=1; break; fi
+  sleep 0.1
+done
+[ "$socket_ready" -eq 1 ]
 redis-cli -s /data/redis.sock SET synthetic:base durable >/dev/null
 redis-cli -s /data/redis.sock BGREWRITEAOF >/dev/null
 ready=0
@@ -149,6 +156,78 @@ chmod 600 /artifact/*
     assert.equal(report.replayProven, false)
     assert.ok(report.totalBytes > 0)
     assert.ok(report.fileCount >= 3)
+
+    const capturedFiles = await Promise.all(
+      (await readdir(archive))
+        .sort((left, right) =>
+          left === "appendonly.aof.manifest"
+            ? -1
+            : right === "appendonly.aof.manifest"
+              ? 1
+              : left.localeCompare(right)
+        )
+        .map(async (name) => {
+          const bytes = await readFile(join(archive, name))
+          return {
+            name,
+            bytes: bytes.length,
+            sha256: createHash("sha256").update(bytes).digest("hex"),
+          }
+        })
+    )
+    const receipt = {
+      schemaVersion: 1,
+      source: {
+        projectId: "11111111-1111-4111-8111-111111111111",
+        environmentId: "22222222-2222-4222-8222-222222222222",
+        serviceId: "33333333-3333-4333-8333-333333333333",
+        deploymentId: "44444444-4444-4444-8444-444444444444",
+        instanceId: "55555555-5555-4555-8555-555555555555",
+        volumeId: "66666666-6666-4666-8666-666666666666",
+        volumeInstanceId: "77777777-7777-4777-8777-777777777777",
+        mountPath: "/bitnami",
+      },
+      sourceFingerprint: "a".repeat(64),
+      runIdSha256: "b".repeat(64),
+      manifestSha256: capturedFiles[0].sha256,
+      files: capturedFiles,
+      totalBytes: capturedFiles.reduce((sum, file) => sum + file.bytes, 0),
+      rewriteRestored: true,
+    }
+    const receiptPath = join(tools, "capture.receipt.json")
+    const receiptBytes = Buffer.from(`${JSON.stringify(receipt)}\n`)
+    await writeFile(receiptPath, receiptBytes, { mode: 0o600 })
+    const replayOutput = []
+    assert.equal(
+      await runIsolatedRedisReplay({
+        args: [
+          "--archive-dir",
+          archive,
+          "--capture-receipt",
+          receiptPath,
+          "--receipt-sha256",
+          createHash("sha256").update(receiptBytes).digest("hex"),
+          "--image-id",
+          imageId,
+        ],
+        write: (line) => replayOutput.push(line),
+        writeError: (line) => replayOutput.push(line),
+      }),
+      0,
+      replayOutput.join("")
+    )
+    const replay = JSON.parse(replayOutput[0])
+    assert.equal(replay.startupProven, true)
+    assert.equal(replay.restartProven, true)
+    assert.equal(replay.keyCount, 2)
+    assert.equal(replay.queueReconciled, false)
+    for (const file of capturedFiles)
+      assert.equal(
+        createHash("sha256")
+          .update(await readFile(join(archive, file.name)))
+          .digest("hex"),
+        file.sha256
+      )
 
     const manifestPath = join(archive, "appendonly.aof.manifest")
     const entries = parseAofManifest(await readFile(manifestPath, "utf8"))

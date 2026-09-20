@@ -795,6 +795,61 @@ target-only write across a second startup. Source and archive hashes remain
 unchanged. This proves only synthetic AOF replay and BullMQ state serialization,
 without live queues, PostgreSQL, Stripe or provider egress.
 
+### Pinned offline checker and worker-free replay
+
+`pnpm run data:redis:aof:replay -- --help` describes the local isolated replay
+gate for a **captured, private copy**, never the live Redis volume. It requires
+the 0600 `capture.receipt.json`, an independently recorded SHA-256 of that
+receipt, the private 0700 `appendonlydir`, and an exact local image ID from the
+reviewed disposable-image scan. It checks every file name, size and SHA-256
+against the receipt before running the existing offline verifier. The checker
+sees another private writable copy because Redis opens AOF members with `r+`
+even without `--fix`; the capture remains read-only.
+
+The checked-in wrapper uses the historical [Docker Official Redis 8.10.1
+Alpine image](https://hub.docker.com/layers/library/redis/8-alpine3.23/images/sha256-9c3ecc609a8087c0f11c494fefaf37a8f7bf9a967631d4a0da8967a9810be354)
+at immutable index digest
+`sha256:becdda6c7f4b3fb42e42fd7f120bbf5c54c4caaaf16f26da24e4563d2c1f0576`,
+its Linux amd64 config/image ID
+`sha256:00c30ddf0ef8074bbc7b7e5ea655bb6d359dc66694edd57d70fe95ce6ba531aa`,
+and the independently recomputed `/usr/local/bin/redis-check-aof` SHA-256
+`c9ed119a46bfe87ace4048eb22479da7d3ca4857f0ea5b1d1729e212bc5aabca`.
+The [official Alpine Dockerfile](https://raw.githubusercontent.com/redis/docker-library-redis/v8.10.1/alpine/Dockerfile)
+pins its Redis full-source tarball SHA-256
+`e5cae2686231290bf55ae5cc4da01e646c3424233cae7618ebf3a64250ef1583`.
+The wrapper checks the local digest association, image ID, checker bytes and
+version every time; it never resolves the now-moving tag or pulls an image.
+No image signature was verified, and this historical image is not an accepted
+staging runtime image. It is used only as a no-network disposable checker.
+
+After a separately approved capture, record its receipt SHA-256 outside the
+mutable bundle and use a scan-approved local Redis 8.10.1 target image ID:
+
+```bash
+REDIS_AOF_REPLAY_MAX_BYTES=536870912 REDIS_AOF_REPLAY_TIMEOUT_MS=120000 \
+  pnpm run data:redis:aof:replay -- \
+  --archive-dir /absolute/private/capture/appendonlydir \
+  --capture-receipt /absolute/private/capture/capture.receipt.json \
+  --receipt-sha256 '<independently-recorded-receipt-sha256>' \
+  --image-id 'sha256:<reviewed-scanned-local-redis-image-id>'
+```
+
+The command requires Docker's explicit `default` context to resolve to a
+local Unix socket, uses `--pull never`, and checks that the target image's
+checker bytes match the official pin. It copies to owned private directories,
+then starts Redis as the current non-root user with no network, published
+ports, workers, provider credentials or external mounts, a read-only root,
+one CPU, 1 GiB memory, 64 PIDs and only private data/socket binds. It verifies
+those container facts, startup, Redis 8.10.1 AOF health and aggregate keyspace,
+then restarts and checks aggregate parity and a changed run ID. The exact
+owned container and private directories are removed before success output;
+`cleanup_unverified` is an incident requiring private local inspection.
+The report omits keys, values, paths and raw checker diagnostics and keeps
+`queueReconciled` and `businessReconciled` false. Source freshness, live
+staging replay, BullMQ state reconciliation and production recovery are still
+open. The disposable CI fixture exercises this path on synthetic BASE/INCR
+data and does not supply live recovery evidence.
+
 September 19 read-only staging preflight found Redis 8.0.3 still running from
 deployment `f75e3583-3d71-4787-9ada-12852e976fa0`, without a recorded image
 digest. The current AOF directory is `/bitnami/redis/data/appendonlydir`:
