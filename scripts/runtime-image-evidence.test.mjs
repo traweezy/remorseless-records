@@ -624,7 +624,7 @@ const fakeSession = async (t, change = {}) => {
     controls.signal.throwIfAborted()
     assert.equal(controls.environment.TRIVY_SKIP_DB_UPDATE, undefined)
     assert.equal(controls.environment.APP_SECRET, undefined)
-    assert.equal(controls.environment.DOCKER_CONTEXT, undefined)
+    assert.equal(controls.environment.DOCKER_CONTEXT, "default")
     if (command === "docker") {
       if (args.includes("context")) return encode("unix:///var/run/docker.sock")
       inspectCount++
