@@ -176,8 +176,10 @@ test("calibrates Lighthouse CPU slowdown without changing budgets", () => {
   )
 })
 
-test("pins Browser Smoke to the local fixture before deployment", () => {
+test("pins Storefront CI builds and Browser Smoke to local providers", () => {
   const workflow = fs.readFileSync(".github/workflows/storefront.yml", "utf8")
+  const workflowEnvironment =
+    workflow.match(/^env:\n[\s\S]*?^jobs:/mu)?.[0] ?? ""
   const ciConfig = fs.readFileSync("storefront/playwright.ci.config.ts", "utf8")
   const defaultConfig = fs.readFileSync(
     "storefront/playwright.config.ts",
@@ -200,6 +202,52 @@ test("pins Browser Smoke to the local fixture before deployment", () => {
     fs.readFileSync("storefront/package.json", "utf8")
   )
 
+  assert.match(
+    workflowEnvironment,
+    /^  MEILISEARCH_HOST: http:\/\/127\.0\.0\.1:7700$/mu
+  )
+  assert.match(
+    workflowEnvironment,
+    /^  MEILISEARCH_SEARCH_KEY: ci-launch-search-key-20260831$/mu
+  )
+  assert.doesNotMatch(
+    workflow,
+    /secrets\.NEXT_PUBLIC_MEILI_(?:HOST|SEARCH_KEY)/u
+  )
+  for (const jobName of ["accessibility", "build"]) {
+    const nextJobName = jobName === "accessibility" ? "build" : "lighthouse"
+    const job =
+      workflow.match(
+        new RegExp(`^  ${jobName}:\\n[\\s\\S]*?(?=^  ${nextJobName}:)`, "mu")
+      )?.[0] ?? ""
+    assert.match(job, new RegExp(`^  ${jobName}:`, "mu"))
+    assert.doesNotMatch(job, /^\s+MEILISEARCH_(?:HOST|SEARCH_KEY):/mu)
+    for (const provider of [
+      "CI_MEDUSA_FIXTURE_URL: http://127.0.0.1:4010",
+      "CI_MEDUSA_PUBLISHABLE_KEY: pk_ci_storefront_fixture_20260831",
+      "MEDUSA_BACKEND_URL: http://127.0.0.1:4010",
+      "NEXT_PUBLIC_MEDUSA_BACKEND_URL: http://127.0.0.1:4010",
+      "NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY: pk_ci_storefront_fixture_20260831",
+      "NEXT_PUBLIC_MEDUSA_URL: http://127.0.0.1:4010",
+    ]) {
+      assert.ok(job.includes(`      ${provider}`), `${jobName}: ${provider}`)
+    }
+    const startupIndex = job.indexOf(
+      "      - name: Start deterministic Medusa fixture"
+    )
+    const buildIndex = job.indexOf("      - name: Build storefront")
+    const stopIndex = job.indexOf(
+      "      - name: Stop deterministic Medusa fixture"
+    )
+    assert.ok(startupIndex >= 0 && startupIndex < buildIndex, jobName)
+    assert.ok(stopIndex > buildIndex, jobName)
+    assert.match(
+      job.slice(startupIndex, buildIndex),
+      /curl --fail --silent --show-error --max-time 2/u
+    )
+    assert.match(job.slice(startupIndex, buildIndex), /\n          exit 1\n/u)
+    assert.match(job.slice(stopIndex), /if: \$\{\{ always\(\) \}\}/u)
+  }
   assert.match(workflow, /CI_MEDUSA_FIXTURE_URL: http:\/\/127\.0\.0\.1:4010/u)
   assert.match(workflow, /Start deterministic Medusa fixture/u)
   assert.match(workflow, /Stop deterministic Medusa fixture/u)

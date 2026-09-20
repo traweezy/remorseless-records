@@ -448,6 +448,11 @@ and Discography; it rejects missing publishable keys, mutations, and unknown
 routes. Both CI Playwright configurations start it automatically when it is not
 already available. The Storefront CI job starts it before `next build` so no
 client-bundled provider URL can silently point at staging.
+All Storefront CI jobs point search at an intentionally unavailable loopback
+Meilisearch endpoint with a fixed, non-secret key. Build and accessibility
+start the same deterministic Medusa read fixture before `next build`, so the
+bounded catalog fallback stays inside the CI runner rather than querying
+staging. Live provider health and search parity remain post-deploy checks.
 
 Build with the fixture environment and production-like non-provider values,
 then run both browser matrices:

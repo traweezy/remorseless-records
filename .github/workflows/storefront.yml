@@ -31,10 +31,10 @@ env:
   NEXT_PUBLIC_MEDUSA_BACKEND_URL: ${{ secrets.NEXT_PUBLIC_MEDUSA_BACKEND_URL }}
   NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY }}
   NEXT_PUBLIC_STRIPE_PK: ${{ secrets.NEXT_PUBLIC_STRIPE_PK }}
-  # These are historical GitHub secret identifiers. The values are injected
-  # only into server-only runtime names and are scanned out of client assets.
-  MEILISEARCH_HOST: ${{ secrets.NEXT_PUBLIC_MEILI_HOST }}
-  MEILISEARCH_SEARCH_KEY: ${{ secrets.NEXT_PUBLIC_MEILI_SEARCH_KEY }}
+  # Pre-deploy jobs exercise the bounded catalog fallback against loopback;
+  # live Meilisearch belongs to separate post-deploy staging acceptance.
+  MEILISEARCH_HOST: http://127.0.0.1:7700
+  MEILISEARCH_SEARCH_KEY: ci-launch-search-key-20260831
   MEDUSA_BACKEND_URL: ${{ secrets.MEDUSA_BACKEND_URL }}
   # Non-production fixtures let `next start` exercise the fail-fast runtime
   # policy. The production build also proves these values never reach static
@@ -321,7 +321,7 @@ jobs:
           node storefront/scripts/ci-medusa-fixture.mjs > "$fixture_log" 2>&1 &
           fixture_pid=$!
           echo "CI_MEDUSA_FIXTURE_PID=${fixture_pid}" >> "$GITHUB_ENV"
-          for attempt in {1..30}; do
+          for _ in {1..30}; do
             if curl --fail --silent --show-error --max-time 2 \
               "${CI_MEDUSA_FIXTURE_URL}/live" >/dev/null; then
               exit 0
@@ -385,6 +385,14 @@ jobs:
     if: ${{ github.event_name != 'pull_request' || github.base_ref == 'master' || (vars.ENABLE_STOREFRONT_BUILD == 'true' && vars.ENABLE_STOREFRONT_A11Y == 'true') }}
     needs: [lint, typecheck, codeql, secrets]
     env:
+      CI_MEDUSA_FIXTURE_URL: http://127.0.0.1:4010
+      CI_MEDUSA_PUBLISHABLE_KEY: pk_ci_storefront_fixture_20260831
+      MEDUSA_BACKEND_URL: http://127.0.0.1:4010
+      NEXT_PUBLIC_MEDUSA_BACKEND_URL: http://127.0.0.1:4010
+      NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY: pk_ci_storefront_fixture_20260831
+      NEXT_PUBLIC_MEDUSA_URL: http://127.0.0.1:4010
+      NEXT_PUBLIC_BASE_URL: http://127.0.0.1:3000
+      NEXT_PUBLIC_SITE_URL: http://127.0.0.1:3000
       QA_BASE_URL: http://127.0.0.1:3000
       QA_PRODUCT_PATH: /products
       QA_PATHS: /about,/accessibility,/cookies,/terms
@@ -407,6 +415,23 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Start deterministic Medusa fixture
+        shell: bash
+        run: |
+          fixture_log="${RUNNER_TEMP}/ci-medusa-fixture-accessibility.log"
+          node storefront/scripts/ci-medusa-fixture.mjs > "$fixture_log" 2>&1 &
+          fixture_pid=$!
+          echo "CI_MEDUSA_FIXTURE_PID=${fixture_pid}" >> "$GITHUB_ENV"
+          for _ in {1..30}; do
+            if curl --fail --silent --show-error --max-time 2 \
+              "${CI_MEDUSA_FIXTURE_URL}/live" >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          tail -n 50 "$fixture_log"
+          exit 1
 
       - name: Build storefront
         run: pnpm --filter remorseless-records-storefront run build
@@ -437,6 +462,15 @@ jobs:
             kill "$(cat /tmp/storefront.pid)" || true
           fi
 
+      - name: Stop deterministic Medusa fixture
+        if: ${{ always() }}
+        shell: bash
+        run: |
+          if [[ "${CI_MEDUSA_FIXTURE_PID:-}" =~ ^[0-9]+$ ]]; then
+            kill "${CI_MEDUSA_FIXTURE_PID}" 2>/dev/null || true
+            wait "${CI_MEDUSA_FIXTURE_PID}" 2>/dev/null || true
+          fi
+
   build:
     name: Build (storefront)
     runs-on: ubuntu-latest
@@ -444,6 +478,15 @@ jobs:
     if: ${{ github.event_name != 'pull_request' || github.base_ref == 'master' || vars.ENABLE_STOREFRONT_BUILD == 'true' }}
     # Independent production builds follow the same static checks.
     needs: [lint, typecheck, codeql, secrets]
+    env:
+      CI_MEDUSA_FIXTURE_URL: http://127.0.0.1:4010
+      CI_MEDUSA_PUBLISHABLE_KEY: pk_ci_storefront_fixture_20260831
+      MEDUSA_BACKEND_URL: http://127.0.0.1:4010
+      NEXT_PUBLIC_MEDUSA_BACKEND_URL: http://127.0.0.1:4010
+      NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY: pk_ci_storefront_fixture_20260831
+      NEXT_PUBLIC_MEDUSA_URL: http://127.0.0.1:4010
+      NEXT_PUBLIC_BASE_URL: http://127.0.0.1:3000
+      NEXT_PUBLIC_SITE_URL: http://127.0.0.1:3000
     permissions:
       contents: read
     steps:
@@ -464,8 +507,34 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Start deterministic Medusa fixture
+        shell: bash
+        run: |
+          fixture_log="${RUNNER_TEMP}/ci-medusa-fixture-build.log"
+          node storefront/scripts/ci-medusa-fixture.mjs > "$fixture_log" 2>&1 &
+          fixture_pid=$!
+          echo "CI_MEDUSA_FIXTURE_PID=${fixture_pid}" >> "$GITHUB_ENV"
+          for _ in {1..30}; do
+            if curl --fail --silent --show-error --max-time 2 \
+              "${CI_MEDUSA_FIXTURE_URL}/live" >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          tail -n 50 "$fixture_log"
+          exit 1
+
       - name: Build storefront
         run: pnpm --filter remorseless-records-storefront run build
+
+      - name: Stop deterministic Medusa fixture
+        if: ${{ always() }}
+        shell: bash
+        run: |
+          if [[ "${CI_MEDUSA_FIXTURE_PID:-}" =~ ^[0-9]+$ ]]; then
+            kill "${CI_MEDUSA_FIXTURE_PID}" 2>/dev/null || true
+            wait "${CI_MEDUSA_FIXTURE_PID}" 2>/dev/null || true
+          fi
 
       # Optional: upload build artifact for deploy workflows to consume.
       # - name: Upload build artifact
@@ -522,7 +591,7 @@ jobs:
           node storefront/scripts/ci-medusa-fixture.mjs > "$fixture_log" 2>&1 &
           fixture_pid=$!
           echo "CI_MEDUSA_FIXTURE_PID=${fixture_pid}" >> "$GITHUB_ENV"
-          for attempt in {1..30}; do
+          for _ in {1..30}; do
             if curl --fail --silent --show-error --max-time 2 \
               "${CI_MEDUSA_FIXTURE_URL}/live" >/dev/null; then
               exit 0
