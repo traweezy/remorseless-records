@@ -25,6 +25,7 @@ import { runIntegrationCommand } from "./run-disposable-integration.mjs"
 import { runIsolatedRedisReplay } from "./redis-aof-isolated-replay.mjs"
 import { collectRedisQueueAggregate } from "./lib/redis-queue-aggregate.mjs"
 import { classifyIsolatedFailedJobs } from "./lib/redis-failed-job-classifier.mjs"
+import { inspectRedisQueueIntegrity } from "./lib/redis-queue-integrity.mjs"
 
 const imageTag = "remorseless-records-integration-redis:8.10.1-hardened"
 const imageIdPattern = /^(?:sha256:)?[a-f0-9]{64}$/u
@@ -214,6 +215,7 @@ chmod 600 /artifact/*
     )
     const receipt = {
       schemaVersion: 1,
+      capturedAt: new Date().toISOString(),
       source: {
         projectId: "11111111-1111-4111-8111-111111111111",
         environmentId: "22222222-2222-4222-8222-222222222222",
@@ -258,6 +260,7 @@ chmod 600 /artifact/*
           "--image-id",
           imageId,
           "--classify-failed-jobs",
+          "--inspect-queue-integrity",
         ],
         write: (line) => replayOutput.push(line),
         writeError: (line) => replayOutput.push(line),
@@ -274,6 +277,8 @@ chmod 600 /artifact/*
     assert.equal(replay.aggregateRestart.categories.other.count, 2)
     assert.equal(replay.failedJobs.totalFailed, 0)
     assert.equal(replay.failedJobs.queueReconciled, false)
+    assert.equal(replay.queueIntegrity.total.members, 0)
+    assert.equal(replay.queueIntegrity.queueReconciled, false)
     assert.doesNotMatch(replayOutput[0], /event-failed|synthetic-failure/u)
     assert.doesNotMatch(replayOutput[0], /synthetic:base|synthetic:increment/u)
     assert.equal(replay.queueReconciled, false)
@@ -810,6 +815,35 @@ test("an isolated Redis 8.10.1 startup replays synthetic BullMQ states from mult
     )
     assert.equal(failedJobs.queues.scheduledJobs.attempts.one, 1)
     assert.equal(failedJobs.queueReconciled, false)
+    const integrityClient = createClient({
+      socket: {
+        path: targetConnection.path,
+        connectTimeout: 1_000,
+        reconnectStrategy: false,
+      },
+      disableOfflineQueue: true,
+    })
+    integrityClient.on("error", () => undefined)
+    try {
+      await integrityClient.connect()
+      const integrity = await inspectRedisQueueIntegrity({
+        client: integrityClient,
+        expectedQueues: (await aggregateForSocket(targetConnection.path))
+          .queues,
+        capturedAt: new Date().toISOString(),
+      })
+      assert.equal(integrity.total.members, 6)
+      assert.equal(integrity.total.missingJobHash, 0)
+      assert.equal(integrity.total.presentInMultipleStates, 0)
+      assert.equal(integrity.queues.workflows.delayedAfterReceipt, 1)
+      assert.equal(integrity.queueReconciled, false)
+      assert.doesNotMatch(
+        JSON.stringify(integrity),
+        /event-failed|scheduled-failed|workflow-delayed/u
+      )
+    } finally {
+      integrityClient.destroy()
+    }
     assert.doesNotMatch(
       JSON.stringify(failedJobs),
       /event-failed|scheduled-failed|job-sync-taxrate-io-quota|synthetic-failure/u

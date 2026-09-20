@@ -19,6 +19,7 @@ import {
 import {
   collectIsolatedRedisFailedJobs,
   collectIsolatedRedisQueueAggregate,
+  collectIsolatedRedisQueueIntegrity,
 } from "./lib/redis-queue-aggregate.mjs"
 import {
   createRecoveryScope,
@@ -58,7 +59,7 @@ const help = `Usage: node scripts/redis-aof-isolated-replay.mjs \\
   --capture-receipt <absolute-private-capture.receipt.json> \\
   --receipt-sha256 <independently-recorded-lowercase-sha256> \\
   --image-id <reviewed-scanned-local-redis-image-sha256> \\
-  [--classify-failed-jobs]
+  [--classify-failed-jobs] [--inspect-queue-integrity]
 
 Copy a capture into private storage, bind every AOF file to the receipt,
 verify the copy with a digest-pinned Redis 8.10.1 checker, then replay it in
@@ -72,6 +73,11 @@ bounded job hash metadata through the isolated target's private Unix socket.
 It emits fixed job-name, heuristic failure-reason, and attempt counts. No job
 IDs, payloads, keys, stack traces, or raw errors enter CLI output. It does not
 authorize retries.
+
+The optional queue-integrity probe checks fixed BullMQ state memberships and
+job-hash presence with bounded reads. It emits only fixed counts and temporal
+buckets relative to the capture receipt, never IDs or payloads. It does not
+prove live queue reconciliation or authorize retries.
 
 Docker's default context must resolve to /var/run/docker.sock, and that path
 must be a socket rather than a symlink. Both the official checker image and the
@@ -99,8 +105,19 @@ export const parseReplayArguments = (args, environment = process.env) => {
   const normalized = args[0] === "--" ? args.slice(1) : args
   if (normalized.length === 1 && normalized[0] === "--help")
     return { mode: "help" }
-  const classifyFailedJobs = normalized.at(-1) === "--classify-failed-jobs"
-  const positional = classifyFailedJobs ? normalized.slice(0, -1) : normalized
+  const optionalFlags = new Set([
+    "--classify-failed-jobs",
+    "--inspect-queue-integrity",
+  ])
+  const selected = new Set()
+  let tail = normalized.length
+  while (tail > 0 && optionalFlags.has(normalized[tail - 1])) {
+    const flag = normalized[tail - 1]
+    if (selected.has(flag)) throw failure()
+    selected.add(flag)
+    tail--
+  }
+  const positional = normalized.slice(0, tail)
   const flags = [
     "--archive-dir",
     "--capture-receipt",
@@ -148,7 +165,8 @@ export const parseReplayArguments = (args, environment = process.env) => {
     imageId,
     maxBytes,
     timeoutMs,
-    classifyFailedJobs,
+    classifyFailedJobs: selected.has("--classify-failed-jobs"),
+    inspectQueueIntegrity: selected.has("--inspect-queue-integrity"),
   }
 }
 
@@ -462,7 +480,9 @@ const observeTarget = async (
   id,
   socketPath,
   signal,
-  classifyFailedJobs
+  classifyFailedJobs,
+  inspectQueueIntegrity,
+  capturedAt
 ) => {
   await waitForRedis(runDocker, id, signal)
   const cli = (args, limit = 4096) =>
@@ -525,6 +545,14 @@ const observeTarget = async (
         },
       })
     : undefined
+  const queueIntegrity = inspectQueueIntegrity
+    ? await collectIsolatedRedisQueueIntegrity({
+        socketPath,
+        signal,
+        expectedQueues: aggregate.queues,
+        capturedAt,
+      })
+    : undefined
   return {
     runIdSha256: hash(server.get("run_id")),
     keyCount,
@@ -532,6 +560,7 @@ const observeTarget = async (
     databaseCount: keyspace.size,
     aggregate,
     ...(failedJobs ? { failedJobs } : {}),
+    ...(queueIntegrity ? { queueIntegrity } : {}),
   }
 }
 
@@ -728,7 +757,9 @@ export const runIsolatedRedisReplay = async ({
         id,
         socketPath,
         scope.signal,
-        options.classifyFailedJobs
+        options.classifyFailedJobs,
+        options.inspectQueueIntegrity,
+        receipt.capturedAt
       )
       phase = "restart"
       const restartResult = await runDocker(
@@ -741,7 +772,9 @@ export const runIsolatedRedisReplay = async ({
         id,
         socketPath,
         scope.signal,
-        options.classifyFailedJobs
+        options.classifyFailedJobs,
+        options.inspectQueueIntegrity,
+        receipt.capturedAt
       )
       if (
         first.runIdSha256 === second.runIdSha256 ||
@@ -750,7 +783,10 @@ export const runIsolatedRedisReplay = async ({
         first.databaseCount !== second.databaseCount ||
         (options.classifyFailedJobs &&
           JSON.stringify(first.failedJobs) !==
-            JSON.stringify(second.failedJobs))
+            JSON.stringify(second.failedJobs)) ||
+        (options.inspectQueueIntegrity &&
+          JSON.stringify(first.queueIntegrity) !==
+            JSON.stringify(second.queueIntegrity))
       )
         throw failure()
       report = {
@@ -771,6 +807,9 @@ export const runIsolatedRedisReplay = async ({
         aggregateRestart: second.aggregate,
         ...(options.classifyFailedJobs
           ? { failedJobs: second.failedJobs }
+          : {}),
+        ...(options.inspectQueueIntegrity
+          ? { queueIntegrity: second.queueIntegrity }
           : {}),
         startupProven: true,
         restartProven: true,

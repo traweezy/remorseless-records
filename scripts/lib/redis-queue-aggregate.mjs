@@ -2,6 +2,7 @@ import { lstat, realpath } from "node:fs/promises"
 import { createRequire } from "node:module"
 import { dirname, resolve } from "node:path"
 import { classifyIsolatedFailedJobs } from "./redis-failed-job-classifier.mjs"
+import { inspectRedisQueueIntegrity } from "./redis-queue-integrity.mjs"
 
 const requireBackend = createRequire(
   new URL("../../backend/package.json", import.meta.url)
@@ -322,4 +323,19 @@ export const collectIsolatedRedisFailedJobs = ({
 }) =>
   withIsolatedRedisClient({ socketPath, signal }, (client) =>
     classifyIsolatedFailedJobs({ client, signal, expectedFailed })
+  )
+
+export const collectIsolatedRedisQueueIntegrity = ({
+  socketPath,
+  signal,
+  expectedQueues,
+  capturedAt,
+}) =>
+  withIsolatedRedisClient({ socketPath, signal }, (client) =>
+    inspectRedisQueueIntegrity({
+      client,
+      signal,
+      expectedQueues,
+      capturedAt,
+    })
   )

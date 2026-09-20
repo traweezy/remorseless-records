@@ -24,6 +24,7 @@ import {
   collectIsolatedRedisQueueAggregate,
   collectRedisQueueAggregate,
 } from "./lib/redis-queue-aggregate.mjs"
+import { inspectRedisQueueIntegrity } from "./lib/redis-queue-integrity.mjs"
 
 const hash = (bytes) => createHash("sha256").update(bytes).digest("hex")
 const manifest =
@@ -154,6 +155,138 @@ test("recovery aggregate refuses arbitrary and missing local sockets", async () 
     })
 })
 
+const queuePrefixes = {
+  eventBus: "RedisEventBusService:events-queue",
+  workflows: "bull:medusa-workflows",
+  scheduledJobs: "bull:medusa-workflows-jobs",
+  cleaner: "bull:workflows-cleaner",
+}
+const listStates = ["wait", "active", "paused"]
+const sortedStates = [
+  "delayed",
+  "prioritized",
+  "completed",
+  "failed",
+  "waiting-children",
+]
+const queueIntegrityFixture = () => {
+  const capturedAt = "2026-09-20T12:00:00.000Z"
+  const capturedAtMs = Date.parse(capturedAt)
+  const values = new Map([
+    [`${queuePrefixes.eventBus}:wait`, ["private-job-a", "private-job-a"]],
+    [`${queuePrefixes.eventBus}:active`, ["private-job-a"]],
+    [
+      `${queuePrefixes.eventBus}:delayed`,
+      [
+        {
+          value: "private-job-b",
+          score: (capturedAtMs - 1_000) * 4_096,
+        },
+        {
+          value: "private-job-c",
+          score: (capturedAtMs + 1_000) * 4_096,
+        },
+      ],
+    ],
+    [
+      `${queuePrefixes.eventBus}:completed`,
+      [{ value: "private-job-d", score: capturedAtMs + 1_000 }],
+    ],
+    [
+      `${queuePrefixes.eventBus}:failed`,
+      [{ value: "private-job-e", score: capturedAtMs - 1_000 }],
+    ],
+  ])
+  const expectedQueues = Object.fromEntries(
+    Object.entries(queuePrefixes).map(([queue, prefix]) => [
+      queue,
+      {
+        states: Object.fromEntries(
+          [...listStates, ...sortedStates].map((state) => [
+            state,
+            values.get(`${prefix}:${state}`)?.length ?? 0,
+          ])
+        ),
+      },
+    ])
+  )
+  const client = {
+    lLen: async (key) => values.get(key)?.length ?? 0,
+    zCard: async (key) => values.get(key)?.length ?? 0,
+    memoryUsage: async (key) => (values.has(key) ? 128 : null),
+    lRange: async (key) => values.get(key) ?? [],
+    zRangeWithScores: async (key) => values.get(key) ?? [],
+    type: async (key) => {
+      if (key.endsWith("private-job-b")) return "none"
+      if (key.endsWith("private-job-c")) return "string"
+      return "hash"
+    },
+  }
+  return { capturedAt, expectedQueues, client }
+}
+
+test("queue integrity emits fixed counts for memberships, hashes, and receipt-relative times", async () => {
+  const result = await inspectRedisQueueIntegrity(queueIntegrityFixture())
+  assert.equal(result.inspectedStates, 32)
+  assert.equal(result.total.members, 7)
+  assert.equal(result.total.duplicateWithinState, 1)
+  assert.equal(result.total.presentInMultipleStates, 1)
+  assert.equal(result.total.missingJobHash, 1)
+  assert.equal(result.total.wrongJobHashType, 1)
+  assert.equal(result.total.delayedDueByReceipt, 1)
+  assert.equal(result.total.delayedAfterReceipt, 1)
+  assert.equal(result.total.terminalAfterReceipt, 1)
+  assert.equal(result.queueReconciled, false)
+  assert.doesNotMatch(
+    JSON.stringify(result),
+    /private-job|RedisEventBusService/u
+  )
+})
+
+test("queue integrity rejects changed sets, oversized reads, invalid receipt time, and raw client errors", async () => {
+  const fixture = queueIntegrityFixture()
+  const reject = (options) =>
+    assert.rejects(inspectRedisQueueIntegrity(options), {
+      message: "Redis queue integrity unavailable.",
+    })
+  await reject({ ...fixture, capturedAt: "yesterday" })
+  await reject({
+    ...fixture,
+    expectedQueues: {
+      ...fixture.expectedQueues,
+      eventBus: {
+        states: { ...fixture.expectedQueues.eventBus.states, wait: 2_001 },
+      },
+    },
+  })
+  await reject({
+    ...fixture,
+    client: { ...fixture.client, lLen: async () => 999 },
+  })
+  await reject({
+    ...fixture,
+    client: { ...fixture.client, memoryUsage: async () => 600_000 },
+  })
+  await reject({
+    ...fixture,
+    client: {
+      ...fixture.client,
+      lRange: async () => ["secret:" + "x".repeat(257)],
+    },
+  })
+  await reject({
+    ...fixture,
+    client: {
+      ...fixture.client,
+      memoryUsage: async () => {
+        throw new Error("private job payload")
+      },
+    },
+  })
+  let tick = 0
+  await reject({ ...fixture, clock: () => ++tick, timeoutMs: 1 })
+})
+
 test("replay arguments require private absolute paths and pinned identities", () => {
   const args = argumentsFor(
     "/tmp/private/appendonlydir",
@@ -169,6 +302,18 @@ test("replay arguments require private absolute paths and pinned identities", ()
       .classifyFailedJobs,
     true
   )
+  assert.equal(
+    parseReplayArguments([...args, "--inspect-queue-integrity"], {})
+      .inspectQueueIntegrity,
+    true
+  )
+  assert.equal(
+    parseReplayArguments(
+      [...args, "--inspect-queue-integrity", "--classify-failed-jobs"],
+      {}
+    ).inspectQueueIntegrity,
+    true
+  )
   for (const changed of [
     args.slice(0, -2),
     [...args, "--image-id", imageId],
@@ -179,6 +324,7 @@ test("replay arguments require private absolute paths and pinned identities", ()
     [...args.slice(0, -1), "redis:latest"],
     ["--classify-failed-jobs", ...args],
     [...args, "--classify-failed-jobs", "--classify-failed-jobs"],
+    [...args, "--inspect-queue-integrity", "--inspect-queue-integrity"],
   ])
     assert.throws(() => parseReplayArguments(changed, {}), {
       message: "Redis isolated replay unavailable.",
