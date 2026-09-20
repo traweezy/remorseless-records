@@ -46,6 +46,7 @@ const existingContracts = Object.freeze([
   "qa:admin-accessibility-boundary",
   "qa:railway-iac",
   "qa:client-staging-preflight",
+  "qa:client-staging-dormant-preflight",
   "qa:browser-toolchain-security",
   "qa:medusa-build-toolchain",
   "qa:dashboard-product-import",
@@ -73,6 +74,8 @@ const failedJobCoverageCommand =
   "node --test --experimental-test-coverage --test-coverage-include=scripts/lib/redis-failed-job-classifier.mjs --test-coverage-lines=80 --test-coverage-branches=80 --test-coverage-functions=80 scripts/redis-failed-job-classifier.test.mjs"
 const clientStagingPreflightCommand =
   "node --test --experimental-test-coverage --test-coverage-include=scripts/lib/client-staging-preflight.mjs --test-coverage-lines=80 --test-coverage-branches=80 --test-coverage-functions=80 scripts/client-staging-preflight.test.mjs"
+const clientStagingDormantPreflightCommand =
+  "node --test --experimental-test-coverage --test-coverage-include=scripts/lib/client-staging-dormant.mjs --test-coverage-lines=80 --test-coverage-branches=80 --test-coverage-functions=80 scripts/client-staging-dormant-preflight.test.mjs"
 const evidenceTriageCoverageCommand =
   "node --test --experimental-test-coverage --test-coverage-include=scripts/lib/redis-pg-evidence-triage.mjs --test-coverage-lines=80 --test-coverage-branches=80 --test-coverage-functions=80 scripts/redis-pg-evidence-triage.test.mjs"
 
@@ -246,6 +249,11 @@ export const validateCiSharedContracts = ({
     scripts["qa:client-staging-preflight"],
     clientStagingPreflightCommand,
     "Client preflight metadata and redaction tests must be enforced"
+  )
+  assert.equal(
+    scripts["qa:client-staging-dormant-preflight"],
+    clientStagingDormantPreflightCommand,
+    "Client dormant metadata and redaction tests must be enforced"
   )
   assert.equal(
     scripts["qa:redis-pg-evidence-triage"],

@@ -1,5 +1,11 @@
 # Client staging preflight
 
+The current [dormant shell](CLIENT_STAGING_DORMANT.md) has seven source-free
+services and **no variables or credentials**. Use its separate read-only
+dormant check while the no-spend hold is active. This later-stage preflight is
+expected to fail until the project is transferred to the chosen client
+workspace and the reviewed client-only configuration is present.
+
 Run this read-only check after creating a separate client Railway workspace,
 project, and empty `client-staging` environment, and after provisioning the
 seven services. It requires a recent audit attestation that the environment
