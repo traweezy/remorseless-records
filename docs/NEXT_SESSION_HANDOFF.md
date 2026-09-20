@@ -11,6 +11,41 @@ reviewed scope. Do not invent missing production, legal, tax, or provider facts.
 Use [PROJECT_MAP.md](PROJECT_MAP.md) for the indexed code/documentation entrypoints.
 Preserve unrelated `Default/` unread, untouched, and unstaged.
 
+### Accepted September 20 UTC role/media release and volume cadence: `846832f`
+
+Exact SHA `846832f205a0e5b7a7e14dd7db9ca06b71b6cd9d` passed Root CI
+`35501541557`, Backend CI `35501541551`, Storefront CI `35501541547`, and
+Runtime Images `35501541553`. Railway Backend deployment
+`4241912a-d992-48f1-9c04-3ae95880cb93` reached `SUCCESS`; its live/ready
+checks returned 200 with 11 passing dependencies. Operations, scheduler,
+retention and incidents were healthy; an ordinary scheduler heartbeat carried
+the exact SHA with zero failures. Scoped error and HTTP 5xx logs were empty.
+The unwatched Storefront candidate was skipped; retained `7e743bf` passed
+live/ready (2 checks), catalog, product-page and private-search probes.
+
+The code now audits distinct migration/runtime PostgreSQL roles before release
+only when `DATABASE_ROLE_SPLIT_REQUIRED=true`; staging still has the flag off
+and no migration URL, so this does not claim a role cutover. Media backup and
+restore now require an explicit current-state-only scope and reject legacy or
+history-claiming manifests. Bucket versioning and versioned off-site recovery
+remain open.
+
+After exact-release acceptance, two scoped manual Railway volume checkpoints
+were recorded: PostgreSQL `270b4c48-6790-4391-b082-0785c7866d22` and
+Redis `5db11746-9af1-4537-8b52-475d710b852c`. The earlier Bucket checkpoint
+remained listed. PostgreSQL, Redis and Bucket each now report exactly one
+DAILY schedule with six-day retention; post-change Backend and Storefront
+readiness stayed healthy. The first scheduled snapshot has not run. The
+backups remain inside the same Railway project and do not establish PITR,
+off-site retention, an isolated restore, or working support-image rollback.
+See [Infrastructure recovery](INFRASTRUCTURE_RECOVERY.md) for exact volume,
+backup and schedule IDs.
+
+The next local commit `7f75505` makes operations/scheduler monitor input
+reads descriptor-bound and size-limited, with race tests and enforced coverage.
+Full local lint/typecheck and the commit hook passed. At this handoff, its
+next-push CI and Railway acceptance have not yet been established.
+
 ### Accepted September 20 UTC private recovery batch: `7ed55bc`
 
 Exact SHA `7ed55bc0e47ebee9d7dc90e97766b018b83d95a6` passed Root CI
@@ -122,10 +157,11 @@ changing them. See [recovery evidence](INFRASTRUCTURE_RECOVERY.md).
 The September 20 support-image audit identified a separate MinIO recovery
 risk. Its running Bucket digest exactly matches an official Quay release, but
 the configured Docker Hub `minio/minio:latest` source no longer permits pulls.
-The initial audit found only an October 2025 volume backup; a single named
-September 20 snapshot now exists on the exact staging volume, with no schedule
-or off-site restore proof. Do not switch the source until versioned off-site
-backup, isolated restore, and prior-deployment rollback are proven;
+The initial audit found only an October 2025 volume backup; a named
+September 20 snapshot now exists on the exact staging volume, and a DAILY
+schedule was added later that day. There is still no off-site restore proof.
+Do not switch the source until versioned off-site backup, isolated restore, and
+prior-deployment rollback are proven;
 the exact digest and acceptance checks are in the recovery runbook.
 A bounded exact-instance S3 inventory counted 1,168 current objects and
 436,743,909 bytes; bucket versioning is unconfigured. The new private-source

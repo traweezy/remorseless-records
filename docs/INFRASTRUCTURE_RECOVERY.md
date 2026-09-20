@@ -679,6 +679,40 @@ connection creation after abort and a successful retry. Compare the next cold
 deployment before closing the historical 503 investigation. No health
 threshold was relaxed.
 
+### September 20 staging volume backup cadence
+
+After Backend deployment `4241912a-d992-48f1-9c04-3ae95880cb93` reached
+`SUCCESS` at `846832f`, all four exact-revision CI workflows passed, and live
+readiness/operations/scheduler checks were healthy, fresh Railway preflights
+bound three READY volume instances to the staging project, environment,
+service, volume and mount. PostgreSQL and Redis each received one named
+`post-release-20260920` checkpoint. Their exact backup-list records are
+`270b4c48-6790-4391-b082-0785c7866d22` (PostgreSQL, `09:22:52Z`) and
+`5db11746-9af1-4537-8b52-475d710b852c` (Redis, `09:23:11Z`). The
+earlier Bucket checkpoint `262d1ef2-93a1-4a38-8e17-17a9c62425f4` remained
+listed. Each creation was issued once; the new records appeared with referenced
+sizes and later populated exclusive-size fields. The first PostgreSQL GraphQL
+request failed validation before execution because it omitted the required
+`workflowId` selection; the corrected request created the single checkpoint.
+
+The three exact volume instances then received one `DAILY` Railway schedule
+each, with `retentionSeconds=518400` (six days): PostgreSQL
+`b0f2f2a1-8fe2-43ca-a992-bc83bcf2442d` schedule
+`e70863a5-6a43-42f0-8937-3290300786e1`, Redis
+`1f83ec52-ded6-4c3b-a0cc-8622c3bdf5b6` schedule
+`5e900ad8-3be2-4261-a483-4074c01cbc7c`, and Bucket
+`1dc3f38c-79f7-4327-b679-8d242f7362fd` schedule
+`e17fec78-7494-43cc-b36f-8a35a64ccf2d`. A combined fresh query verified
+exactly one `DAILY` schedule per volume, and post-change Backend/Storefront
+readiness and Backend operations remained healthy. Railway's scheduled backups
+are incremental copy-on-write and bill exclusive retained data at the volume
+rate; inspect actual usage and future scheduled records instead of treating
+the current zero-exclusive new checkpoints as a cost cap. The first scheduled
+run has not yet occurred. These same-project volume snapshots are neither
+PITR nor off-site copies, and no volume restore, Redis queue reconciliation,
+or media version-history restore was performed. The floating/unpullable support
+image sources still block a proven service restore and rollback.
+
 ## Media backup and restore
 
 MinIO's application bucket requires versioning and an off-site target in a

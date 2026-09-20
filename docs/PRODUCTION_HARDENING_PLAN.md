@@ -3150,6 +3150,14 @@ Both commands explicitly reported that no files or database records changed.
       separate Bucket domain, and both application readiness checks remain
       healthy. The exact Console hostname may not be recoverable.
 - [ ] Configure PostgreSQL backups/PITR and perform a timed restore drill.
+- [x] Add staging daily Railway volume backup schedules for PostgreSQL, Redis,
+      and Bucket after exact-revision deployment acceptance. September 20
+      preflights bound each READY volume to the staging project/environment;
+      new PostgreSQL and Redis named checkpoints are listed, and each volume
+      reports exactly one DAILY schedule with six-day retention. The first
+      scheduled run and an isolated restore remain unverified. These snapshots
+      stay in the same Railway project and do not satisfy PITR or off-site
+      retention; monitor exclusive block growth and backup cost.
 - [ ] Configure off-site media backup and verify object checksums and restores.
       The guarded full restore-drill CLI now has a default dry-run, exact
       private-manifest/content-hash binding, an empty disposable-target gate,
@@ -3184,9 +3192,10 @@ Both commands explicitly reported that no files or database records changed.
       `sha256:14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e`,
       while its configured Docker Hub `minio/minio:latest` source now denies
       pulls. A September 20 named snapshot now protects the exact staging
-      volume alongside the older October 2025 checkpoint, but no schedule or
-      off-site restore exists. Complete versioned off-site backup, isolated
-      restore, and rollback checks before a same-digest Quay source cutover;
+      volume alongside the older October 2025 checkpoint, and a DAILY Railway
+      schedule is present. No off-site restore exists. Complete versioned
+      off-site backup, isolated restore, and rollback checks before a
+      same-digest Quay source cutover;
       the other support images lack equal live-digest proof.
 - [ ] Enable `pg_stat_statements`, slow-query logging, I/O timing, and relevant
       database/volume metrics with an overhead budget. A September 20 scoped,
