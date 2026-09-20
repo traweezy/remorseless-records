@@ -814,6 +814,100 @@ staging AOF capture/replay, source/target identity binding, queue and business
 reconciliation, and timed operational recovery remain unproven. Do not count
 the synthetic fixture as a completed staging or production restore drill.
 
+### Controlled staging multipart-AOF capture
+
+`pnpm run data:redis:aof:capture -- --help` describes the source-bound capture
+CLI. Its `preflight` mode is read-only: it queries Railway metadata and connects
+by exact deployment-instance ID, then checks the remote project, environment,
+service, deployment, replica, volume and `/bitnami` environment identities.
+It uses the existing `REDIS_PASSWORD` only through `REDISCLI_AUTH` in the
+container; no password is passed as a command argument or printed. The remote
+helper verifies Redis 8.0.3 primary status, `appendonly yes`, `everysec`,
+rewrite/write health, no active or scheduled rewrite, and the canonical
+`/bitnami/redis/data/appendonlydir` realpath. It opens the directory and every
+manifest-listed regular file with no-follow semantics, rejects extra files,
+and returns only bounded metadata and a SHA-256 fingerprint. It never scans
+keys or prints AOF data. Refresh all Railway IDs before each run; the September
+19 IDs and manifest hash above are observations, not permanent configuration.
+
+```bash
+pnpm run data:redis:aof:capture -- preflight \
+  --project-id '<reviewed-project-id>' \
+  --environment-id '<staging-environment-id>' \
+  --service-id '<redis-service-id>' \
+  --deployment-id '<active-redis-deployment-id>' \
+  --instance-id '<active-redis-deployment-instance-id>' \
+  --volume-id '<redis-volume-id>' \
+  --volume-instance-id '<redis-volume-instance-id>'
+```
+
+The live `capture` mode is a separate, controlled configuration change.
+Obtain operational approval for temporarily changing the exact staging Redis
+instance's `auto-aof-rewrite-percentage`; do not infer that approval from a
+successful preflight. Avoid deployment, restart, manual `BGREWRITEAOF`, and
+volume operations during the window. Create an operator-owned local 0700
+output parent on storage with sufficient free space, then invoke `capture`
+with the same seven pinned IDs, `--output-parent <absolute-private-path>`,
+and `--confirm <fingerprint-from-a-fresh-preflight>`. The default cap is
+512 MiB and the hold deadline is five minutes (`--max-bytes` up to 10 GiB;
+`--deadline-seconds` 30–600). A changed run ID, manifest, source identity,
+file set, or rewrite state fails closed before publication. A stale fingerprint
+cannot authorize a changed source.
+
+```bash
+pnpm run data:redis:aof:capture -- capture \
+  --project-id '<same-reviewed-project-id>' \
+  --environment-id '<same-staging-environment-id>' \
+  --service-id '<same-redis-service-id>' \
+  --deployment-id '<same-active-redis-deployment-id>' \
+  --instance-id '<same-active-redis-deployment-instance-id>' \
+  --volume-id '<same-redis-volume-id>' \
+  --volume-instance-id '<same-redis-volume-instance-id>' \
+  --output-parent /absolute/private/redis-captures \
+  --confirm '<fresh-preflight-fingerprint>'
+```
+
+The remote helper forks and acknowledges a detached watchdog **before** setting
+the live rewrite percentage to `0`. It uses `CONFIG SET` without
+`CONFIG REWRITE`, waits for no active/scheduled rewrite, and streams only the
+manifest plus listed BASE/INCR/HISTORY files through bounded base64 chunks.
+The source directory stays open by file descriptor; listed files are opened
+through that descriptor with `O_NOFOLLOW`. BASE/HISTORY and manifest metadata
+must remain unchanged; an active INCR is copied to a fixed observed size and
+may grow afterward. Redis's own normal AOF writes can continue. The helper
+does not copy onto or create any file in the source volume. It checks the
+manifest, file set, run ID and rewrite state again before restoring the prior
+percentage. Both the parent and watchdog attempt restoration on normal error,
+signal, timeout or SSH-stream loss. A second SSH session independently checks
+the exact prior value and run ID before an archive is published. An unexpected
+`restoreVerified:false` after `liveConfigChangeAttempted:true` is an active
+incident: verify and restore the prior setting on the pinned instance before
+repeating anything. No mechanism can
+promise restoration if Redis itself refuses commands or the whole host becomes
+unavailable; do not interpret a failed capture as a backup.
+
+The published directory contains `appendonlydir/` (0700 with 0600 AOF files)
+and `capture.receipt.json` (0600). The receipt binds Railway IDs, run-ID hash,
+manifest/file hashes, the previous rewrite setting and independent restore
+check. The AOF may contain sensitive application data; keep the archive private
+and apply the reviewed retention/encryption policy. Do not print its contents
+or place it in the repository. Failed partial local copies are removed; the
+source files are never repaired or modified by the capture helper.
+If `redis.aof_capture.cleanup_unverified` appears, inspect the private output
+parent for an owned partial before retrying; do not treat it as a backup.
+
+Capture success is **not** offline verification or replay. The separate
+`data:redis:aof:verify` gate still requires an independently reviewed SHA-256
+for a trusted Redis 8.10.1 checker; hashing an arbitrary runtime wrapper is not
+provenance. Apply the documented checker command to the returned
+`appendonlydir` only after that approval, without `--fix`. Then copy the
+verified set to a separate worker-free, no-egress Redis 8.10.1 target and
+record actual startup/restart, key/expiry, module and BullMQ
+`events-queue`/`medusa-workflows` state evidence. Compare live queue aggregates
+within the capture window, account for ongoing writes and expired keys, and
+reconcile carts/orders/payment state with PostgreSQL and Stripe before any
+worker or traffic cutover. A capture receipt alone closes none of those gates.
+
 ### Recovery policy
 
 Redis contains rate limits, caches, BullMQ/workflow state, locks, event-bus

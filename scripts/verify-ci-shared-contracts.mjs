@@ -21,7 +21,7 @@ const sharedContracts = Object.freeze({
     "node scripts/verify-storefront-response-boundary.mjs",
   "qa:admin-browser-boundary": "node scripts/verify-admin-browser-boundary.mjs",
   "qa:database-release-boundary":
-    "node --test scripts/release-prepare.test.mjs scripts/postgres-logical-backup.test.mjs scripts/postgres-restore.test.mjs scripts/recovery-process.test.mjs scripts/postgres-recovery-cli.test.mjs scripts/postgres-staging-snapshot.test.mjs scripts/postgres-isolated-target.test.mjs scripts/provision-postgres-recovery-client.test.mjs scripts/media-backup.test.mjs scripts/media-object-checksum.test.mjs scripts/media-backup-cli.test.mjs scripts/redis-aof-recovery.test.mjs && pnpm run qa:redis-capacity",
+    "node --test scripts/release-prepare.test.mjs scripts/postgres-logical-backup.test.mjs scripts/postgres-restore.test.mjs scripts/recovery-process.test.mjs scripts/postgres-recovery-cli.test.mjs scripts/postgres-staging-snapshot.test.mjs scripts/postgres-isolated-target.test.mjs scripts/provision-postgres-recovery-client.test.mjs scripts/media-backup.test.mjs scripts/media-object-checksum.test.mjs scripts/media-backup-cli.test.mjs scripts/redis-aof-recovery.test.mjs scripts/redis-aof-capture.test.mjs && pnpm run qa:redis-capacity",
   "qa:storefront-provider-fixture":
     "node --test storefront/scripts/ci-medusa-fixture.test.mjs",
   "qa:dashboard-product-create":
