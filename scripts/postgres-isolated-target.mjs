@@ -20,6 +20,12 @@ import { basename, dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import { normalizeScriptArguments } from "./lib/cli-arguments.mjs"
 import {
+  businessParitySchemaSql,
+  businessParitySql,
+  parseBusinessParityOutput,
+  parseBusinessParitySchema,
+} from "./lib/postgres-business-parity.mjs"
+import {
   createPostgresClientEnvironment,
   hashFileSha256,
 } from "./lib/postgres-logical-backup.mjs"
@@ -58,11 +64,12 @@ const containerIdPattern = /^[a-f0-9]{64}$/u
 const sha256Pattern = /^[a-f0-9]{64}$/u
 const uuidPattern =
   /^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/u
-const help = `Usage: postgres-isolated-target <create|verify|preflight|apply|cleanup> [options]
+const help = `Usage: postgres-isolated-target <create|verify|preflight|apply|business-parity|cleanup> [options]
 create --base-dir <absolute-private-dir> --source-scope <path> --archive <path> --manifest <path> --receipt <path>
 verify --target-dir <created-dir>
 preflight --target-dir <created-dir>
 apply --target-dir <created-dir> --confirm <fingerprint>
+business-parity --target-dir <restored-dir>
 cleanup --target-dir <created-dir>
 Uses only the pinned local Docker default-context image, a private Unix socket,
 and an in-process loopback relay. No provider connection or credentials are used.
@@ -1080,7 +1087,14 @@ export const parseArguments = (args) => {
     return { mode: "help" }
   const [mode, ...tail] = normalized
   assert.ok(
-    ["create", "verify", "preflight", "apply", "cleanup"].includes(mode)
+    [
+      "create",
+      "verify",
+      "preflight",
+      "apply",
+      "business-parity",
+      "cleanup",
+    ].includes(mode)
   )
   const allowed = {
     create: [
@@ -1093,6 +1107,7 @@ export const parseArguments = (args) => {
     verify: ["--target-dir"],
     preflight: ["--target-dir"],
     apply: ["--target-dir", "--confirm"],
+    "business-parity": ["--target-dir"],
     cleanup: ["--target-dir"],
   }[mode]
   assert.equal(tail.length, allowed.length * 2)
@@ -1149,6 +1164,31 @@ export const main = async (
         imageId,
         containerId: state.containerId,
         targetSystemId: facts.systemId,
+      }
+    }
+    if (mode === "business-parity") {
+      assert.equal(state.phase, "restored")
+      const receipt = await assertSourceScope(state)
+      const { facts, password } = await verifyTarget(state, {
+        expectEmpty: false,
+        receipt,
+      })
+      const closeRelay = await openRelay(state)
+      try {
+        parseBusinessParitySchema(
+          await query(state, password, businessParitySchemaSql, 10_000)
+        )
+        const report = parseBusinessParityOutput(
+          await query(state, password, businessParitySql, 10_000)
+        )
+        assert.equal(
+          JSON.parse(await query(state, password, targetFactsSql)).systemId,
+          facts.systemId
+        )
+        await assertSourceScope(state)
+        return report
+      } finally {
+        await closeRelay()
       }
     }
     return restore(state, options, mode === "apply", signal, runRestoreCommand)

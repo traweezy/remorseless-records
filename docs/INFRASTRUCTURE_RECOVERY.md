@@ -1287,6 +1287,60 @@ identity check. Comparing identified Medusa payments and tax evidence with
 bounded Stripe test-mode reads requires a separate privacy-preserving step;
 `businessReconciled` remains false.
 
+The next offline diagnostic is
+`pnpm run data:postgres:isolated-target -- business-parity --target-dir <restored-dir>`.
+It accepts only a previously restored target created by the guarded isolated
+target workflow. Under the target lock, it rechecks the private source-scope
+archive hashes and receipt, Docker/network/socket ownership, distinct source
+and target PostgreSQL system IDs, and the full restore invariants. It then
+checks columns verified in the archived staging schema and Medusa link tables
+before one repeatable-read, read-only relationship query. It uses a five-second
+statement timeout, a one-second lock timeout, and materialized row caps (100
+payments, orders, captures, refunds and tax records; 500 collection/session,
+cart-collection and event records; 1,000 carts). Hitting any cap fails closed.
+Only fixed scanned and mismatch counts leave PostgreSQL. The checks cover
+orphan and inconsistent cart/order/payment links, duplicate or malformed
+Stripe PaymentIntent references, tax-evidence payment/cart/order links
+(including the order–cart pair), currency and USD amount mismatches,
+excessive captures/refunds, and processed-event
+references or livemode events. The report counts recognized Stripe payments
+and flags other payment providers; a payment-bearing snapshot with no recognized
+Stripe payment fails closed. Non-USD tax amounts are reported as unsupported
+instead of being converted with an unreviewed currency exponent. The output
+also counts Stripe payments without a matching tax-evidence row; historical
+payments may predate that table, so this bucket needs business review rather
+than an automatic failure or backfill. The output contains no business IDs,
+PII, provider responses or raw SQL errors and always
+sets `businessReconciled: false`. A zero-mismatch report proves only these
+bounded internal relationships in that restored PostgreSQL snapshot; it is
+not a Stripe comparison, queue reconciliation, or release gate. Disposable
+PostgreSQL fixture coverage runs with
+`RR_POSTGRES_TEST_BIN=/usr/lib/postgresql/18/bin node --test scripts/postgres-business-parity.test.mjs`;
+the parser and argument tests also run in the shared CI database contract.
+An operator still must review any nonzero bucket against private records and
+later perform bounded, account-bound Stripe test-mode reads before claiming
+business reconciliation.
+
+The September 20 offline run reused the verified private staging snapshot,
+restored all 171 physical tables into a network-isolated PostgreSQL 16.15 target
+with a distinct system ID, and produced the same count-only report twice. It
+scanned 67 carts, seven orders and Stripe payments, seven captures, two active
+tax-evidence rows, ten Stripe lifecycle events, and no refunds. All checked
+link/orphan/provider/event buckets were zero. Five Stripe payments lacked a
+matching tax-evidence row, which may reflect older payment history; both
+tax-evidence/payment pairs differed under the USD amount comparison. A second
+bounded, read-only aggregate found zero direct matches and zero major-unit
+times-100 matches for those two pairs. These results do not identify a cause,
+tax liability, or customer impact. The count-only report is private at
+`/tmp/rr-pg-business-parity-20260920/business-parity.json` (0600 in a 0700
+directory), SHA-256
+`04fd4b303095e52cb9e5d9f06dffa7a466283ff6198ea3151f0f381c8c4cb47a`;
+the unit-classification aggregate is in the same private directory, SHA-256
+`99830f8ff89f07d6311e6c92977d38f4a5fc0ff1c1adc6e6cef9d8b2db75c168`.
+The owned container, volume, and target directory were removed and independently
+found absent. A private record review and bounded, account-bound Stripe read
+are still needed; `businessReconciled` remains false.
+
 An offline measurement on September 20 reused the previously verified private
 staging snapshot and a fresh, isolated PostgreSQL 16.15 restore. The target had
 no network or published port, and its system ID differed from the source.
