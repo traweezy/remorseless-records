@@ -505,7 +505,7 @@ jobs:
         timeout-minutes: 10
         shell: bash
         run: |
-          node scripts/verify-runtime-image-artifacts.mjs "artifacts/${{ matrix.service }}.image.json"
+          node scripts/verify-runtime-image-artifacts.mjs --require-current "artifacts/${{ matrix.service }}.image.json"
           test "$(docker image inspect --format '{{.Id}}' "${IMAGE_REF}")" = "${{ steps.local_image.outputs.digest }}"
           docker push "${IMAGE_REF}"
 

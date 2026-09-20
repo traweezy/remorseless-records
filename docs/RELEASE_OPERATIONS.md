@@ -130,6 +130,11 @@ disables subsequent updates, and streams SHA-256
 hashes of the database and metadata before and after the vulnerability scan
 and CycloneDX generation. The database must be current, unchanged throughout
 the bounded scan interval, and younger than 48 hours at completion.
+Before the master-only push, the workflow rechecks the retained evidence
+against the runner clock: the scan must have completed no more than 30 minutes
+ago, completion cannot be in the future, and the database must still be
+unexpired and no more than 48 hours old. Historical artifact verification
+omits that current-time check so retained evidence remains reviewable.
 
 The schema 2 `<service>.image.json` record binds the image ID and revision to
 scanner identity, database hashes/timestamps, exact report/SBOM byte hashes,

@@ -26,6 +26,7 @@ import {
   runtimeEvidencePolicy as policy,
   runtimeFindingPolicy,
   summarizeRuntimeVulnerabilities,
+  validateCurrentRuntimeImageRecord,
   validatePublishedManifest,
   validateRuntimeImageRecord,
   validateRuntimeImageSbom,
@@ -199,6 +200,42 @@ test("verifies exact report, SBOM, scanner and DB bytes while retaining unfixed 
   assert.deepEqual(
     await verifyRuntimeImageArtifacts(await writeFixture(directory)),
     record
+  )
+})
+test("requires current scan and DB evidence only at the publication boundary", async (t) => {
+  const root = await privateRoot(t)
+  const directory = join(root, "evidence")
+  await createEvidenceDirectory(directory)
+  const path = await writeFixture(directory)
+  const completion = Date.parse(completedAt)
+  const current = {
+    requireCurrent: true,
+    now: () => completion + 30 * 60 * 1000,
+  }
+  assert.deepEqual(
+    await verifyRuntimeImageArtifacts(path, current),
+    fixture().record
+  )
+  for (const now of [completion - 1, completion + 30 * 60 * 1000 + 1]) {
+    await assert.rejects(
+      verifyRuntimeImageArtifacts(path, {
+        requireCurrent: true,
+        now: () => now,
+      })
+    )
+    assert.deepEqual(await verifyRuntimeImageArtifacts(path), fixture().record)
+  }
+  const expired = fixture().record
+  expired.scan.database.nextUpdate = new Date(completion + 1000).toISOString()
+  assert.throws(() =>
+    validateCurrentRuntimeImageRecord(expired, completion + 1000)
+  )
+  const aged = fixture().record
+  aged.scan.database.updatedAt = new Date(
+    completion - 48 * 60 * 60 * 1000 + 1000
+  ).toISOString()
+  assert.throws(() =>
+    validateCurrentRuntimeImageRecord(aged, completion + 2000)
   )
 })
 const recordMutations = [

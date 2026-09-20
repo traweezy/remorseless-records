@@ -20,6 +20,7 @@ const policy = runtimeEvidencePolicy
 const digestPattern = /^sha256:[0-9a-f]{64}$/u
 const hashPattern = /^[0-9a-f]{64}$/u
 const severities = ["UNKNOWN", "LOW", "MEDIUM", "HIGH", "CRITICAL"]
+export const runtimeScanMaxAgeMs = 30 * 60 * 1000
 export const runtimeFindingPolicy = Object.freeze({
   severities: ["HIGH", "CRITICAL"],
   ignoreUnfixed: true,
@@ -218,6 +219,25 @@ export const validateRuntimeImageRecord = (
   }
 }
 
+export const validateCurrentRuntimeImageRecord = (record, currentTime) => {
+  assert.ok(Number.isSafeInteger(currentTime) && currentTime >= 0)
+  const completed = timestamp(record.scan.completedAt)
+  const updated = timestamp(record.scan.database.updatedAt)
+  const next = timestamp(record.scan.database.nextUpdate)
+  assert.ok(
+    completed <= currentTime,
+    "Runtime scan completion is in the future."
+  )
+  assert.ok(
+    currentTime - completed <= runtimeScanMaxAgeMs,
+    "Runtime scan evidence is older than 30 minutes."
+  )
+  assert.ok(
+    currentTime - updated <= 48 * 60 * 60 * 1000 && currentTime < next,
+    "Runtime vulnerability database is stale or expired."
+  )
+}
+
 const labelsMatch = (labels, identity) => {
   assert.equal(labels?.["org.opencontainers.image.revision"], identity.revision)
   assert.equal(labels?.["org.opencontainers.image.source"], policy.repository)
@@ -409,7 +429,7 @@ export const validatePublishedDescriptor = (descriptor, source, record) => {
 
 export const verifyRuntimeImageArtifacts = async (
   recordPath,
-  { requireAccepted = true } = {}
+  { requireAccepted = true, requireCurrent = false, now = Date.now } = {}
 ) => {
   const record = decodeEvidence(await readEvidenceFile(resolve(recordPath)))
   validateRuntimeImageRecord(record, { requireAccepted })
@@ -477,6 +497,7 @@ export const verifyRuntimeImageArtifacts = async (
     )
   }
   await checkFailure()
+  if (requireCurrent) validateCurrentRuntimeImageRecord(record, now())
   return record
 }
 
@@ -484,13 +505,17 @@ if (
   process.argv[1] &&
   resolve(process.argv[1]) === fileURLToPath(import.meta.url)
 ) {
+  const requireCurrent = process.argv[2] === "--require-current"
   assert.equal(
     process.argv.length,
-    3,
-    "Usage: node scripts/verify-runtime-image-artifacts.mjs <record.json>"
+    requireCurrent ? 4 : 3,
+    "Usage: node scripts/verify-runtime-image-artifacts.mjs [--require-current] <record.json>"
   )
-  const record = await verifyRuntimeImageArtifacts(process.argv[2])
+  const record = await verifyRuntimeImageArtifacts(
+    process.argv[requireCurrent ? 3 : 2],
+    { requireCurrent }
+  )
   console.info(
-    `Runtime image evidence verified: ${record.service} ${record.digest}.`
+    `Runtime image evidence verified: ${record.service} ${record.digest}; DB sha256:${record.scan.database.before.data.sha256}; scan completed ${record.scan.completedAt}.`
   )
 }

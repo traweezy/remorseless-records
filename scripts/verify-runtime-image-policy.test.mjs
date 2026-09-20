@@ -136,6 +136,20 @@ test("rejects a publication path that skips smoke or exact-image push", () => {
   assert.throws(() => validateRuntimeWorkflowSource(skippedPush))
 })
 
+test("requires a current evidence check immediately before runtime publication", () => {
+  for (const replacement of [
+    'node scripts/verify-runtime-image-artifacts.mjs "artifacts/${{ matrix.service }}.image.json"',
+    'node scripts/verify-runtime-image-artifacts.mjs --require-current "artifacts/${{ matrix.service }}.image.json" || true',
+  ]) {
+    const changed = workflowSource.replace(
+      'node scripts/verify-runtime-image-artifacts.mjs --require-current "artifacts/${{ matrix.service }}.image.json"',
+      replacement
+    )
+    assert.notEqual(changed, workflowSource)
+    assert.throws(() => validateRuntimeWorkflowSource(changed))
+  }
+})
+
 test("rejects scan evidence redirected outside its private artifact directory", () => {
   const changed = workflowSource.replace(
     "--output artifacts",
