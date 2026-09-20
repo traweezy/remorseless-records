@@ -11,6 +11,90 @@ reviewed scope. Do not invent missing production, legal, tax, or provider facts.
 Use [PROJECT_MAP.md](PROJECT_MAP.md) for the indexed code/documentation entrypoints.
 Preserve unrelated `Default/` unread, untouched, and unstaged.
 
+### Accepted September 20 UTC Storefront CI isolation: `2cf8e449`
+
+Commit `2cf8e449f5e2c787b9ef43c3757ad3af667c3a03` removes live staging
+Medusa and public Meilisearch inputs from Storefront Build and Accessibility
+jobs. Root CI `35484464238`, Backend CI `35484464285`, Storefront CI
+`35484464223`, and Runtime Images `35484464217` all reached `SUCCESS` on that
+exact SHA. The two affected hosted jobs started the local Medusa read fixture
+before `next build`, passed their builds and accessibility check, and verified
+131 client assets contained no server-only secret or public search input.
+Independent Railway edge logs recorded zero public Meilisearch requests of any
+method during those builds, compared with five search POSTs in the preceding
+`902c004` CI build window. The prior 24-hour edge sample contained 26 Node
+search POSTs aligned with six old CI build windows and two curl probes matching
+the operator's exposure audit. No public edge request appeared after the last
+old CI window through the new CI, Railway build and deployed browser run. The
+public domain remains configured; future use and private-network callers are
+outside this bounded observation.
+
+Railway Backend candidate `4d3f3b95-2723-497d-9323-72b1df8e763e` was
+`SKIPPED` because no watched Backend input changed, retaining accepted Backend
+deployment `299e699d-8273-4117-aa61-92870cf364fc` at `902c004`. Railway
+Storefront deployment `85428acc-9457-410c-a9c6-68886a3e3fed` reached
+`SUCCESS` at `2cf8e449`, image
+`sha256:af1aa1985d5cbf4331732dc07b86d8d63722e093ef964849219af01864f8d0bd`.
+The changed fixture test under `storefront/**` matched its deployment watch
+path. Both services returned HTTP 200 and `ok` from `/live` and `/ready` at
+their retained/new SHAs. Backend reported 11 healthy readiness checks and an
+ordinary `02:58:00Z` scheduler heartbeat completed with Redis `ok`; Backend
+operations had zero reasons. Public Backend health and Storefront root/catalog
+returned HTTP 200 with the expected CSP, HSTS, `nosniff`, referrer, and
+Storefront report-only CSP headers.
+
+The deployed Desktop Chrome, Pixel 7 and iPhone 15 Pro matrix ran from exact
+root HEAD with pinned Playwright 1.62.1, passed 75 cases with eight expected
+skips in 1.6 minutes, and installed no packages. Bounded post-browser logs
+contained 140 Backend `info` rows and 352 Storefront rows (296 `info`, 56
+`error`). Fifty-five Storefront errors formed eleven previously classified
+destination-stream-closed groups with digest `2991309508`; the remaining
+`AppRender.fetch` root-span diagnostic also appeared on the prior `48b3376`
+deployment. Filtered HTTP 5xx counts were zero on both services. The later
+approved Redis capture below did not change application source; post-capture
+readiness, scheduler and operations remained healthy. Redis flow telemetry
+showed 14 one-packet `TCP_OVERWINDOW` drops in the following three minutes
+versus 16 in the preceding window, without evidence of causation.
+
+### Approved September 20 UTC staging Redis multipart-AOF drill
+
+The operator approved the guarded staging capture after the recovery release
+settled. The immediate read-only preflight bound Redis deployment
+`f75e3583-3d71-4787-9ada-12852e976fa0`, instance
+`a565fb05-17bb-4801-85e7-13e4f8e3b982`, and volume
+`1b69088f-0a38-4ecb-bddf-d43715b97d52`. Its source fingerprint was
+`d8cb5c8efe046fd37bb8e382bf2bcd0e1e25fccb81c19fea8279815161e63dff`,
+the active AOF set was 63,393,426 bytes, and the prior
+`auto-aof-rewrite-percentage` was 100. The capture completed in 11.7 seconds
+with three private files totaling 63,394,218 bytes, manifest SHA-256
+`a4e76e8e93e144466f309768357298d338a357018eb638612bed689221dcf188`,
+and `rewriteRestored: true`. An independent post-capture preflight confirmed
+the source rewrite percentage was back at 100. No raw AOF data was placed in
+the repository.
+
+The capture receipt SHA-256 was independently recorded outside the mutable
+bundle as
+`7f4f1d51b78bf81714e1123cc5feef7b3f9e9dee84f2bdfc0129f980ab75fbf7`.
+The checked-in pinned-checker wrapper SHA-256 was
+`0b251dce0e7a0db2ecafb64626d30763d5ea6bfb6ec8f7086978676ac52fcc98`.
+Offline verification returned `verified` with active-set SHA-256
+`a61d55b674d9dd45f2b011d5c17fcca63446aba94c50e85d9387137cf97238cf`.
+Receipt-bound isolated replay on reviewed local Redis 8.10.1 target image
+`sha256:99267d3e232c751add077e98c4fc1b9e508d4241740b52229e44986f7173f71b`
+passed startup and restart with 1,278 keys, three expiring keys and one
+populated database. Independent cleanup found zero owned containers and
+temporary directories. The replay had no network, workers or provider egress.
+
+This proves a source-bound local copy, offline checker acceptance, and a
+worker-free Redis load/restart of this captured set. It does not prove durable
+retention, an off-site backup, production RPO/RTO, or application recovery.
+BullMQ job/lock reconciliation against the live capture window and
+PostgreSQL/Stripe order/payment reconciliation remain open;
+`queueReconciled: false` and `businessReconciled: false` must not be promoted.
+See [infrastructure recovery](INFRASTRUCTURE_RECOVERY.md) for the procedure
+and trust boundaries. The accepted application pair is Backend `902c004` and
+Storefront `2cf8e449`, recorded below.
+
 ### Accepted September 20 UTC isolated recovery release: `902c004`
 
 Commit `902c0040b3b7c60b54f6ddd923fc92e3b2658dff` accepts the isolated
@@ -82,10 +166,11 @@ staging preflight at `02:14Z` on September 20 observed two active AOF files,
 63,083,202 bytes, rewrite percentage 100 and source fingerprint
 `d8cb5c8efe046fd37bb8e382bf2bcd0e1e25fccb81c19fea8279815161e63dff`.
 That fingerprint is a source-scope/configuration guard, not a frozen byte
-count; refresh it immediately before any approved capture. A live staging
-multipart-AOF capture, pinned offline verification and isolated replay,
-queue/lock and PostgreSQL/Stripe business reconciliation, durable backup
-retention/PITR, and production recovery timing remain open. See the
+count. At `902c004` acceptance, live staging multipart-AOF capture, pinned
+offline verification and isolated replay were still open; the later approved
+drill above completed those local copy/checker/replay gates. Queue/lock and
+PostgreSQL/Stripe business reconciliation, durable backup retention/PITR, and
+production recovery timing remain open. See the
 [isolated startup smoke guide](BACKEND_ISOLATED_STARTUP_SMOKE.md) and
 [infrastructure recovery runbook](INFRASTRUCTURE_RECOVERY.md) for the exact
 limits.
@@ -133,12 +218,12 @@ Next.js root-span diagnostic; this is not a zero-error claim. Independent
 exact-deployment filtered HTTP 5xx queries returned zero for both services
 after browser acceptance and again at `01:50:23Z`.
 
-This accepts the capture **tooling and staging application release**, not an
-actual live AOF capture. The capture mode temporarily changes the pinned live
-Redis instance's rewrite percentage and still needs a reviewed operational
-window. Offline AOF verification, isolated live-data replay, queue/lock and
-business reconciliation, durable backups/PITR, application startup against the
-restored PostgreSQL target, and production recovery timing remain open. See
+This accepted the capture **tooling and staging application release**, not an
+actual live AOF capture at that time. The later approved drill above completed
+the bounded capture, offline verification and isolated live-data replay.
+Queue/lock and business reconciliation, durable backups/PITR, application
+startup against the restored PostgreSQL target, and production recovery timing
+remain open. See
 [infrastructure recovery](INFRASTRUCTURE_RECOVERY.md) for the guarded command
 and limits.
 

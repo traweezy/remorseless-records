@@ -9,36 +9,43 @@ tracks what is still required before production traffic is approved.
 
 ## Active continuation — September 20 UTC onward
 
-The latest accepted staging release is
-`48b33765bb98637d61acc36d1addba708b0d7f84`. Its guarded Redis
-multipart-AOF preflight/capture implementation passed exact-SHA Root, Backend,
-Storefront, and Runtime Images CI (runs `35481443600`, `35481443610`,
-`35481443578`, `35481443603`). Railway Backend deployment
-`376092ee-7b0a-486c-820c-f8b4de6eec62` and Storefront deployment
-`eff51f25-082d-4969-8715-22578db2d6f0` reached `SUCCESS` on that SHA. Both
-health/readiness pairs returned HTTP 200 with exact revision identity;
-Backend's 11 readiness checks, scheduler, retention, operations, and an
-ordinary exact-SHA scheduler heartbeat were healthy. Storefront root/catalog
-returned 200 with the expected security headers. The deployed responsive
-browser matrix passed 75 cases with eight expected skips; bounded runtime
-review found only the previously classified closed-stream/root-span diagnostic
-families, and filtered exact-deployment HTTP 5xx queries found zero on both
-services through `2026-09-20T01:50:23Z`. The capture command has **not** been
-run against live Redis: its temporary rewrite-policy change still needs a
-reviewed operational window. Live AOF verification/replay and queue/business
-reconciliation, durable backup retention/PITR, restored-target application
-startup, and production recovery timing remain open. The
-[handoff](NEXT_SESSION_HANDOFF.md) records the exact acceptance evidence.
+The latest accepted staging pair is Backend
+`902c0040b3b7c60b54f6ddd923fc92e3b2658dff` and Storefront
+`2cf8e449f5e2c787b9ef43c3757ad3af667c3a03`. Both revisions passed all
+four exact-SHA GitHub workflows. The Storefront CI revision replaced live
+staging search and Medusa build inputs with local fixtures; its hosted builds,
+deployed browser matrix, readiness, scheduler, and bounded-log checks passed.
+Its Backend Railway candidate was correctly skipped, retaining the accepted
+902 Backend deployment. The Backend
+candidate image scan retained four CRITICAL and 52 HIGH findings without
+listed fixes; final image publication needs a named release-owner risk decision
+and exact-final-image scan. The [handoff](NEXT_SESSION_HANDOFF.md) has the
+release evidence.
 
-The next local candidate resolves compiled Backend runtime aliases, proves
-worker-free startup against a fresh isolated restore of staging PostgreSQL
-data, and adds receipt-bound Redis AOF verification and isolated startup/
-restart replay. Combined local gates, the Backend build, and synthetic
-real-container replay pass. These commits have not yet passed exact-SHA
-GitHub/Railway acceptance. The Backend candidate image has the same no-fix
-HIGH/CRITICAL advisory set as the prior image under the pinned scan; final
-image publication still needs a named risk decision and final-SHA scan.
-The live Redis capture and queue/business reconciliation remain open.
+After explicit approval on September 20, a guarded capture copied the pinned
+staging Redis 8.0.3 multipart AOF to a private local directory. Immediate
+preflight bound deployment `f75e3583-3d71-4787-9ada-12852e976fa0`, instance
+`a565fb05-17bb-4801-85e7-13e4f8e3b982`, volume
+`1b69088f-0a38-4ecb-bddf-d43715b97d52`, fingerprint
+`d8cb5c8efe046fd37bb8e382bf2bcd0e1e25fccb81c19fea8279815161e63dff`,
+and a 63,393,426-byte active set with rewrite percentage 100. The 11.7-second
+copy produced three files totaling 63,394,218 bytes; the temporary rewrite
+hold was restored and independently rechecked at 100. Offline verification
+accepted the copied active set, and a worker-free, no-network Redis 8.10.1
+target loaded and restarted with 1,278 keys, three expiries, and one populated
+database. The target and temporary copies were independently absent afterward.
+These are local recovery proofs, not a retained/off-site backup or a measured
+production RTO. BullMQ jobs/locks and PostgreSQL/Stripe business state still
+need reconciliation; neither `queueReconciled` nor `businessReconciled` is
+true. Scheduled/off-site PostgreSQL backup, PITR, media restore, and production
+recovery timing remain open. See [infrastructure recovery](INFRASTRUCTURE_RECOVERY.md)
+for the scoped evidence and limits.
+
+The earlier `48b3376` release accepted the guarded capture tooling and
+Storefront deployment; it did not perform the live capture. The isolated
+Backend startup smoke against a staging-data PostgreSQL restore was a local
+precursor-image test without workers or provider egress, not production
+restored-target application acceptance.
 
 The guarded PostgreSQL recovery tooling release at
 `e7a37c2180f890e0562495a5897b3cef7decc5c2` passed exact-SHA Root,
@@ -107,8 +114,9 @@ parity. Forty-five focused tests and 12 real PostgreSQL 16.15 roundtrip cases
 passed locally. See the [restore acceptance guide](POSTGRES_RESTORE_ACCEPTANCE.md).
 Those earlier local tests did not establish a live-data restore; the later
 staging-data drill above did.
-Actual Redis multipart-AOF replay and queue reconciliation also remain open;
-the earlier RDB load and this release's offline AOF verifier do not close them.
+The earlier RDB load and offline AOF verifier did not close live-data recovery.
+The later September 20 capture and isolated replay above close the bounded
+copy/checker/startup proof, while queue and business reconciliation remain open.
 
 The user resumed the September 8 paused work and requested larger cohesive
 releases, with local validation, one grouped staging push, and exact-revision
@@ -3124,6 +3132,12 @@ Both commands explicitly reported that no files or database records changed.
 - [ ] Configure off-site media backup and verify object checksums and restores.
 - [x] Document Redis recovery semantics and Meilisearch rebuild/snapshot
       recovery.
+- [x] Capture the pinned staging Redis multipart AOF under a bounded rewrite
+      hold, independently verify policy restoration, and prove offline checker
+      acceptance plus worker-free isolated startup/restart of the captured set.
+- [ ] Reconcile BullMQ jobs and locks against the live capture window and
+      reconcile order/payment state with PostgreSQL and Stripe before any
+      worker or traffic cutover.
 - [ ] Set and test a capacity-aware Redis memory ceiling and compatible
       persistence/eviction policy; staging currently reports `maxmemory=0` and
       `noeviction` with zero evictions and zero server latency events.

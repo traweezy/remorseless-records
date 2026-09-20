@@ -142,15 +142,15 @@ gain a receipt retroactively; the later isolated staging-data restore required
 a fresh source-bound archive and receipt. The legacy two-command path requires
 quiescent source writes; the accepted shared-snapshot path permits DML to
 continue while schema DDL is paused.
-Actual Redis multipart-AOF capture, verification, replay, and queue
-reconciliation are also pending. The accepted release supplies a guarded,
-read-only preflight and a separately controlled capture command; its live
-rewrite-policy change has not been run.
+At that point Redis multipart-AOF capture, verification, replay, and queue
+reconciliation were pending. The later approved September 20 drill completed
+the bounded staging capture, offline checker, and isolated startup/restart;
+queue and business reconciliation remain open.
 
 The subsequent September 20 UTC local staging-data PostgreSQL drill captured
 a source-scope-bound shared-snapshot archive and restored all 171 physical
 tables with matching row/schema counts to a distinct, isolated 16.15 target.
-Owned target cleanup passed. The live Redis multipart-AOF drill remains open;
+Owned target cleanup passed. The later local Redis AOF capture/replay passed;
 the PostgreSQL result does not establish PITR, off-site backup, application
 startup against the target, or production RTO.
 

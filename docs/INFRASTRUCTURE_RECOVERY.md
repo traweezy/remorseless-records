@@ -1,6 +1,6 @@
 # Infrastructure, data protection, and recovery
 
-Last reviewed: 2026-09-06
+Last reviewed: 2026-09-20 UTC
 
 This runbook defines the production approval packet and the recovery contract
 for PostgreSQL, media, Redis, and Meilisearch. It does not authorize creating a
@@ -848,13 +848,13 @@ then restarts and checks aggregate parity and a changed run ID. The exact
 owned container and private directories are removed before success output;
 `cleanup_unverified` is an incident requiring private local inspection.
 The report omits keys, values, paths and raw checker diagnostics and keeps
-`queueReconciled` and `businessReconciled` false. Source freshness, live
-staging replay, BullMQ state reconciliation and production recovery are still
+`queueReconciled` and `businessReconciled` false. The later staging-data replay
+is recorded below; BullMQ state reconciliation and production recovery remain
 open. The disposable CI fixture exercises receipt-bound replay on synthetic
 BASE/INCR data with its separately verified fixture checker because that job
 does not provision the named historical official image. It does not execute the
 digest-pinned wrapper or supply live recovery evidence. Run the pinned wrapper
-on a host where its reviewed official image is already present before a
+on a host where its reviewed official image is already present for any future
 staging-data replay.
 
 September 19 read-only staging preflight found Redis 8.0.3 still running from
@@ -870,11 +870,12 @@ Redis 8.0.3 lacks the [8.10 `BACKUP START`/`BACKUP SEAL`
 boundary](https://redis.io/docs/latest/commands/backup-start/). Its
 [multipart-AOF backup procedure](https://redis.io/docs/latest/operate/oss_and_stack/management/persistence/)
 requires a controlled temporary rewrite hold, checking that no rewrite is
-active, a bounded copy, and restoration of the prior setting. That live
-configuration change and source export were not performed here. Current
-staging AOF capture/replay, source/target identity binding, queue and business
-reconciliation, and timed operational recovery remain unproven. Do not count
-the synthetic fixture as a completed staging or production restore drill.
+active, a bounded copy, and restoration of the prior setting. At that
+September 19 observation, the live configuration change and source export had
+not been performed. The later September 20 drill below completed the
+source-bound local capture/checker/replay proof. Queue and business
+reconciliation, retained backup, and timed operational recovery remain open.
+Do not count the synthetic fixture as a staging or production restore drill.
 
 ### Controlled staging multipart-AOF capture
 
@@ -958,7 +959,7 @@ source files are never repaired or modified by the capture helper.
 If `redis.aof_capture.cleanup_unverified` appears, inspect the private output
 parent for an owned partial before retrying; do not treat it as a backup.
 
-Capture success is **not** offline verification or replay. The separate
+Capture success alone is **not** offline verification or replay. The separate
 `data:redis:aof:verify` gate still requires an independently reviewed SHA-256
 for a trusted Redis 8.10.1 checker; hashing an arbitrary runtime wrapper is not
 provenance. Apply the documented checker command to the returned
@@ -969,6 +970,47 @@ record actual startup/restart, key/expiry, module and BullMQ
 within the capture window, account for ongoing writes and expired keys, and
 reconcile carts/orders/payment state with PostgreSQL and Stripe before any
 worker or traffic cutover. A capture receipt alone closes none of those gates.
+
+### Approved staging multipart-AOF capture and isolated replay — September 20
+
+The operator approved this bounded capture after the application release
+settled. Immediate preflight pinned Redis 8.0.3 deployment
+`f75e3583-3d71-4787-9ada-12852e976fa0`, instance
+`a565fb05-17bb-4801-85e7-13e4f8e3b982`, volume
+`1b69088f-0a38-4ecb-bddf-d43715b97d52`, and source fingerprint
+`d8cb5c8efe046fd37bb8e382bf2bcd0e1e25fccb81c19fea8279815161e63dff`.
+Its active AOF set was 63,393,426 bytes with rewrite percentage 100. The
+guarded copy completed in 11.7 seconds: the private published bundle held
+three files totaling 63,394,218 bytes, with manifest SHA-256
+`a4e76e8e93e144466f309768357298d338a357018eb638612bed689221dcf188`.
+Normal AOF writes continued during the copy, so the initial and copied byte
+counts need not match. The capture reported `rewriteRestored: true`, and a
+separate read-only post-preflight confirmed the live rewrite percentage was
+back at 100. The temporary setting was not persisted with `CONFIG REWRITE`.
+
+The capture receipt SHA-256 was independently retained outside the mutable
+bundle as
+`7f4f1d51b78bf81714e1123cc5feef7b3f9e9dee84f2bdfc0129f980ab75fbf7`.
+The reviewed wrapper's SHA-256 was
+`0b251dce0e7a0db2ecafb64626d30763d5ea6bfb6ec8f7086978676ac52fcc98`.
+Pinned offline verification returned `verified`, with active-set SHA-256
+`a61d55b674d9dd45f2b011d5c17fcca63446aba94c50e85d9387137cf97238cf`.
+Receipt-bound worker-free replay used the reviewed local Redis 8.10.1 target
+image
+`sha256:99267d3e232c751add077e98c4fc1b9e508d4241740b52229e44986f7173f71b`.
+Startup and restart both passed; the isolated target reported 1,278 keys,
+three expiring keys and one populated database. Independent cleanup found
+zero owned containers and temporary directories. The target had no network,
+workers or provider egress, and no raw AOF content entered the repository.
+
+This proves bounded source capture, local checker acceptance and isolated
+Redis startup/restart of the captured set. It does not prove an off-site or
+retained backup, queue/lock correctness, business-state consistency,
+application startup with restored Redis, production RPO or RTO. Reconcile
+BullMQ `events-queue`/`medusa-workflows` jobs and locks against the capture
+window, then compare carts/orders/payments with PostgreSQL and Stripe before
+any worker or traffic cutover. The replay correctly retained
+`queueReconciled: false` and `businessReconciled: false`.
 
 ### Recovery policy
 
