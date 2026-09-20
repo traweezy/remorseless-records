@@ -11,6 +11,32 @@ reviewed scope. Do not invent missing production, legal, tax, or provider facts.
 Use [PROJECT_MAP.md](PROJECT_MAP.md) for the indexed code/documentation entrypoints.
 Preserve unrelated `Default/` unread, untouched, and unstaged.
 
+### Accepted September 20 UTC monitor and backup evidence: `5f4f4ee`
+
+Exact SHA `5f4f4eeda02abf113daea2185cdc8cd6845542a4` passed Root CI
+`35502438180`, Backend CI `35502438220`, Storefront CI `35502438182`, and
+Runtime Images `35502438185`. Railway Backend deployment
+`32fab22a-9b2e-43e1-b870-dcb5a3a28f75` and Storefront deployment
+`2e57d85f-9910-43c1-99e4-c36526e695eb` both reached `SUCCESS` at the
+exact SHA. Backend readiness passed 11 checks and operations was healthy with
+zero reasons; Storefront readiness passed two checks. The ordinary Backend
+scheduler heartbeat at `09:42:00Z` completed on the exact SHA with zero
+failures. Catalog, product and private-search probes passed, and bounded
+deployment error and HTTP 5xx filters were empty for both services.
+
+Commit `7f75505` closes the operations/scheduler monitor file-swap and
+unbounded-read race with a descriptor-bound reader, focused race tests and
+enforced coverage. Commit `5f4f4ee` records the scoped PostgreSQL/Redis
+checkpoints, three DAILY staging volume schedules, and their remaining
+restore limits. The first scheduled snapshot has not yet been verified.
+
+The next local batch contains `065cf8b`, a SHA-pinned offline Redis/PostgreSQL
+count comparison that explicitly leaves retry authorization false, and
+`adc0cb2`, which parallelizes independent CI jobs and tries two Playwright
+workers in the two longest Storefront browser suites. Local lint/coverage and
+isolated browser smokes passed. Exact next-push CI timing, retry counts, and
+Railway acceptance remain pending.
+
 ### Accepted September 20 UTC role/media release and volume cadence: `846832f`
 
 Exact SHA `846832f205a0e5b7a7e14dd7db9ca06b71b6cd9d` passed Root CI
@@ -40,11 +66,6 @@ backups remain inside the same Railway project and do not establish PITR,
 off-site retention, an isolated restore, or working support-image rollback.
 See [Infrastructure recovery](INFRASTRUCTURE_RECOVERY.md) for exact volume,
 backup and schedule IDs.
-
-The next local commit `7f75505` makes operations/scheduler monitor input
-reads descriptor-bound and size-limited, with race tests and enforced coverage.
-Full local lint/typecheck and the commit hook passed. At this handoff, its
-next-push CI and Railway acceptance have not yet been established.
 
 ### Accepted September 20 UTC private recovery batch: `7ed55bc`
 
