@@ -3133,7 +3133,10 @@ Both commands explicitly reported that no files or database records changed.
       application paths plus ordinary reconciliation and catalog operations.
 - [ ] Review and remove the PostgreSQL TCP proxy unless a reviewed, encrypted
       administrative path requires it.
-- [ ] Put MinIO Console behind private access/SSO or remove its public domain.
+- [x] Remove the approved public staging MinIO Console domain. The scoped
+      domain list is empty and the old URL returns 404; the Console service,
+      separate Bucket domain, and both application readiness checks remain
+      healthy. The exact Console hostname may not be recoverable.
 - [ ] Configure PostgreSQL backups/PITR and perform a timed restore drill.
 - [ ] Configure off-site media backup and verify object checksums and restores.
 - [x] Document Redis recovery semantics and Meilisearch rebuild/snapshot

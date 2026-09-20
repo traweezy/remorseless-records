@@ -16,9 +16,10 @@ and Meilisearch. PostgreSQL and Redis have no HTTP service domain. A subsequent
 September 6 check confirmed an active Redis public TCP proxy; its separately
 approved removal completed at `2026-09-07T01:23Z` with both apps healthy over
 private networking. See the Redis security follow-up below. PostgreSQL proxy
-state still requires an explicit network review. MinIO and its Console have
-Railway public domains. The operator approved removal of the Meilisearch
-staging domain on September 20. Scoped inspection confirmed domain
+state still requires an explicit network review. MinIO Bucket retains a
+Railway public domain; the Console domain was removed on September 20 after
+review. The operator also approved removal of the Meilisearch staging domain
+on September 20. Scoped inspection confirmed domain
 `619e417f-4046-43d9-931b-ce3d55258d31` on the expected project,
 environment and service immediately before deletion. Railway returned
 `deleted: true` for that domain, its scoped domain list became empty, and the
@@ -27,8 +28,21 @@ former public `/health` returned a Railway HTTP 404. Meilisearch deployment
 `/live`, `/ready`, and `/api/health` and Storefront `/`, `/ready`, and
 `/catalog` all returned HTTP 200. The old hostname still resolves to the
 Railway edge, so 404 and the empty scoped domain list are the removal evidence;
-the exact hostname is not guaranteed recoverable. Current support-service
-sources are:
+the exact hostname is not guaranteed recoverable.
+
+The separately approved Console removal targeted only domain
+`35a52594-ddc1-43e3-a230-b6f40c2ceb88` on staging service
+`f9aaabc0-2137-4959-9f00-1215b1b8fde0`. The scoped list matched
+`console-staging-4044.up.railway.app` before deletion and was empty afterward;
+Railway returned `deleted: true` and the old URL returned HTTP 404. The
+Console deployment remained `SUCCESS`, the separate Bucket domain remained
+active, and Backend and Storefront `/ready` returned HTTP 200. Railway's
+retained Console HTTP logs contained no requests in the preceding 30 days;
+the sole later request was our bounded HEAD probe. Restoring the exact
+hostname is not guaranteed. This does not change MinIO object access or close
+the off-site media backup requirement.
+
+Current support-service sources are:
 
 - PostgreSQL: `ghcr.io/railwayapp-templates/postgres-ssl:latest`;
 - Redis: `railwayapp/redis`;

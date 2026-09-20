@@ -11,6 +11,20 @@ reviewed scope. Do not invent missing production, legal, tax, or provider facts.
 Use [PROJECT_MAP.md](PROJECT_MAP.md) for the indexed code/documentation entrypoints.
 Preserve unrelated `Default/` unread, untouched, and unstaged.
 
+### Approved September 20 UTC public MinIO Console domain removal
+
+The operator authorized routine staging exposure reduction without another
+permission stop. A fresh scoped Railway list matched domain
+`35a52594-ddc1-43e3-a230-b6f40c2ceb88` and
+`console-staging-4044.up.railway.app` on the Console service before deletion.
+Railway returned `deleted: true`; the scoped Console domain list is empty and
+the former public URL returns HTTP 404. The Console deployment remains
+`SUCCESS`, the separate MinIO Bucket domain is still active, and Backend and
+Storefront `/ready` both returned HTTP 200. Console HTTP logs had no requests
+in the preceding 30 days; the later HEAD probe was ours. The exact old
+hostname may not be recoverable. PostgreSQL's public TCP proxy remains active
+pending role separation and administrative-access review.
+
 ### Approved September 20 UTC public Meilisearch domain removal
 
 The operator approved removal of staging domain
