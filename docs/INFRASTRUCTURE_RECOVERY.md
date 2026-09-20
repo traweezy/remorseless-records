@@ -1063,6 +1063,25 @@ ongoing writes, TTL expiry and the moving AOF increment prevent a single
 cross-system snapshot. Classifying failed jobs and comparing PostgreSQL and
 Stripe evidence remain separate acceptance steps.
 
+The first PostgreSQL business-evidence query contract lives in
+`scripts/lib/postgres-business-aggregate.mjs`. It has no live-source CLI and
+has not run against staging. It requests one read-only, repeatable-read
+PostgreSQL snapshot, fixes `statement_timeout` at five seconds and `lock_timeout`
+at one second, and returns only nine physical table row counts plus fixed
+active tax-evidence and Stripe-event status counts. Physical table counts
+include soft-deleted rows where those tables support soft deletion; they are
+not active business-entity counts. Tax/event status buckets exclude deleted
+rows. The parser rejects extra fields, non-count data, or output over 8 KiB
+and always leaves `businessReconciled: false`. The fixed tax collection-mode
+columns are from the later `Migration20260830150000` migration. The query
+and parser pass a disposable local PostgreSQL 18 fixture via
+`RR_POSTGRES_TEST_BIN=/usr/lib/postgresql/18/bin node --test scripts/postgres-business-aggregate.test.mjs`.
+Before live use, a runner must bind the existing seven-ID Railway PostgreSQL
+source guard and private transport, verify the current schema, and measure the
+full-table count cost. Comparing identified Medusa payments and tax evidence
+with bounded Stripe test-mode reads requires a separate privacy-preserving
+step; a PostgreSQL snapshot alone cannot establish cross-system parity.
+
 ### Recovery policy
 
 Redis contains rate limits, caches, BullMQ/workflow state, locks, event-bus
