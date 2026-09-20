@@ -11,6 +11,49 @@ reviewed scope. Do not invent missing production, legal, tax, or provider facts.
 Use [PROJECT_MAP.md](PROJECT_MAP.md) for the indexed code/documentation entrypoints.
 Preserve unrelated `Default/` unread, untouched, and unstaged.
 
+### September 20 UTC corrective staging batch in progress
+
+The four-commit diagnostic batch at exact SHA
+`3aaa2ba6af5abae5c46c2159007fe59028b31238` passed Root CI
+`35492861408`, Storefront CI `35492861480`, and Runtime Images
+`35492861391`. Backend CI `35492861401` failed in both unit and disposable
+integration on one stale Stripe lifecycle mock: it lacked newly required
+PaymentIntent `amount` and `currency`. The fixture is corrected in local
+commit `f57c90f`; 60 focused Backend tests and typecheck pass. Railway
+Backend `1201461f-90fb-4d73-981a-e28be79a4516` and Storefront
+`340b2987-0f6f-4536-8ef5-f73a0cea95f7` both show `SKIPPED` with
+`CI check suite failed`; neither built or served this SHA. The prior
+accepted `6b5a089` deployments remain active. Do not claim `3aaa2ba`
+accepted.
+
+Storefront's new responsive/launch and critical browser shards passed 81,
+20, and 48 cases respectively; its two Lighthouse shards each audited three
+routes three times. Both protected aggregate contexts passed. Push-to-final
+Browser completion improved 2 minutes 37 seconds and Lighthouse 1 minute
+52 seconds versus the prior accepted run. Runtime image candidates still had
+four CRITICAL and 52 HIGH findings each, zero fixable HIGH/CRITICAL under
+policy, and were not published. The named risk decision remains open.
+
+The next local recovery commits `6929d77` and `fe04998` add count-only
+money-provenance buckets to the isolated PostgreSQL business verifier and an
+opt-in queue-integrity probe to worker-free Redis AOF replay. The final
+PostgreSQL code was rerun against a second verified 171-table restore, with
+identical private report SHA-256
+`287a9fb10c195f621dab12ea03a18730a4d73190cb7e3b190b4eec3c839b9a64`.
+Both USD tax-evidence mismatches match the archived Medusa payment
+provider-data amount and currency, while neither matches scaled Medusa
+payment/capture/collection amounts; all five payments lacking tax evidence
+predate the first active tax-evidence row in that snapshot. This is not an
+independent Stripe read. The Redis probe found 1,245 isolated state members,
+zero membership/job-hash anomalies, and seven delayed members due after the
+capture receipt, private report SHA-256
+`3b3560dcf07e6aeb4356214f1bd7198682f27ff7bdda0b8199b0daa54a43c32a`.
+Both disposable targets were removed. These findings do not establish cause,
+impact, retry safety, or current provider state; both reconciliation flags
+remain false. The shared database release boundary, isolated PostgreSQL
+fixture, disposable Redis integration and full pre-commit gates pass locally.
+The corrected exact-SHA CI and deployment still need acceptance after push.
+
 ### Accepted September 20 UTC four-commit recovery release: `6b5a089`
 
 Exact staging SHA `6b5a089faa6ace796e4b986a90a1f8bcbb80e9fc` passed Root

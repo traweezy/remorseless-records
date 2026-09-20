@@ -1016,6 +1016,33 @@ affected, or whether any retry is safe. The count-only private report is
 `04ac6bc4aeaddd0cdea450a9f0555e9ee0f6888ea6d113d45bd69dfcc42945b2`.
 Both reconciliation flags remain false.
 
+For optional **offline queue membership and temporal triage**, append
+`--inspect-queue-integrity` to the same receipt-bound replay command. It may be
+combined with `--classify-failed-jobs`. The worker-free target checks the
+aggregate counts for eight fixed membership states in each of the four known
+BullMQ queues. Before any member range is read, it rechecks every cardinality
+and exact `MEMORY USAGE ... SAMPLES 0`, rejecting more than 2,000 members,
+512 KiB for one state, or 2 MiB across states. It then caps each member ID at
+256 bytes, all materialized IDs at 256 KiB, and the entire probe at 30 seconds.
+Only `TYPE` is read for each referenced job hash; job data, return values,
+error text, stack traces, and lock owners are never read. The fixed-count
+report identifies repeated IDs within a state, IDs in multiple states,
+missing or wrongly typed job hashes, and delayed and terminal score buckets.
+It does not list IDs or keys. A changed cardinality, unsupported reply, bound
+breach, or startup/restart report difference fails the replay with a redacted
+error.
+
+Temporal buckets compare BullMQ delayed scores (timestamp times 4,096) and
+completed/failed scores with the receipt's `capturedAt` timestamp. The receipt
+is written after capture and is **not** an atomic Redis snapshot timestamp;
+`delayedDueByReceipt` and `terminalAfterReceipt` are directional triage counts,
+not proof of missed execution or clock correctness. Prioritized,
+waiting-children, stalled, repeat, and event-stream semantics are not
+reconciled by this probe. A zero-anomaly report still does not compare the
+capture to live Redis, PostgreSQL, Stripe, or business outcomes. Both
+`queueReconciled` and `businessReconciled` remain false, and no retries or
+cutover are authorized by this diagnostic.
+
 September 19 read-only staging preflight found Redis 8.0.3 still running from
 deployment `f75e3583-3d71-4787-9ada-12852e976fa0`, without a recorded image
 digest. The current AOF directory is `/bitnami/redis/data/appendonlydir`:
@@ -1190,6 +1217,21 @@ any replay or cutover; this aggregate does not identify their jobs, causes or
 business impact. No workers ran on the target, and both reconciliation flags
 remain false.
 
+The opt-in queue-integrity replay of this same receipt-bound private copy
+completed on September 20 with no worker or network connection and verified
+cleanup. It inspected 1,245 members across the 32 fixed states: one event,
+1,243 scheduled-job and one cleaner member. It found zero duplicate IDs within
+a state, zero IDs in multiple states, zero missing or wrongly typed job hashes,
+zero invalid temporal scores, and zero terminal scores after the receipt time.
+All seven delayed members were scheduled after the receipt time. This is
+consistent with the isolated historical copy only; it does not explain the
+238 failed jobs or prove live delivery, retry safety, or business parity. The
+private fixed-count report is
+`/tmp/rr-queue-integrity-20260920/report.json` (0600 in a 0700 directory),
+SHA-256
+`3b3560dcf07e6aeb4356214f1bd7198682f27ff7bdda0b8199b0daa54a43c32a`.
+`queueReconciled` and `businessReconciled` remain false.
+
 For a later live comparison, `pnpm run data:redis:live-aggregate -- --help`
 describes the dedicated read-only command. Supply the seven Railway source IDs
 from a fresh AOF preflight and the expected run-ID SHA from the private capture
@@ -1298,7 +1340,8 @@ before one repeatable-read, read-only relationship query. It uses a five-second
 statement timeout, a one-second lock timeout, and materialized row caps (100
 payments, orders, captures, refunds and tax records; 500 collection/session,
 cart-collection and event records; 1,000 carts). Hitting any cap fails closed.
-Only fixed scanned and mismatch counts leave PostgreSQL. The checks cover
+Only fixed scanned, mismatch, and provenance counts leave PostgreSQL. The
+checks cover
 orphan and inconsistent cart/order/payment links, duplicate or malformed
 Stripe PaymentIntent references, tax-evidence payment/cart/order links
 (including the order–cart pair), currency and USD amount mismatches,
@@ -1321,6 +1364,18 @@ An operator still must review any nonzero bucket against private records and
 later perform bounded, account-bound Stripe test-mode reads before claiming
 business reconciliation.
 
+Report schema version 2 adds `moneyProvenance` fixed counts. For mismatched USD
+tax/payment pairs it compares the evidence amount with scaled Medusa capture,
+collection, authorized and collected amounts, and with a syntactically bounded
+amount retained in the Medusa payment's archived provider-data field. It also
+compares that field's currency, checks whether Medusa payment and captured
+amounts agree, and separates payments missing tax evidence by creation time
+before or at/after the earliest active tax-evidence row. If no active tax row
+exists, a separate count retains that uncertainty. These comparisons use
+preflighted columns and bounded materialized rows under the same read-only
+transaction. The archived provider-data field is **not** a fresh or
+independently authenticated Stripe response.
+
 The September 20 offline run reused the verified private staging snapshot,
 restored all 171 physical tables into a network-isolated PostgreSQL 16.15 target
 with a distinct system ID, and produced the same count-only report twice. It
@@ -1340,6 +1395,22 @@ the unit-classification aggregate is in the same private directory, SHA-256
 The owned container, volume, and target directory were removed and independently
 found absent. A private record review and bounded, account-bound Stripe read
 are still needed; `businessReconciled` remains false.
+
+A second verified offline restore ran schema-version-2 provenance twice with
+identical count-only output. Both mismatched USD pairs have matching archived
+payment provider-data amounts and currencies. Neither pair's tax amount matches
+the scaled Medusa capture, collection, authorized, or collected amount; both
+Medusa payment amounts equal their capture amounts. All five payments without
+tax evidence were created before the earliest active tax-evidence row in this
+snapshot. These timing and amount buckets narrow private review but cannot
+establish why values differ or what Stripe currently records. The private
+0600 report is
+`/tmp/rr-pg-business-parity-20260920/business-parity-provenance.json`, SHA-256
+`287a9fb10c195f621dab12ea03a18730a4d73190cb7e3b190b4eec3c839b9a64`.
+Its network-isolated target had a distinct PostgreSQL system ID, all 171
+tables restored, and its container, volume and directory were independently
+found absent after cleanup. No live PostgreSQL or Stripe read occurred;
+`businessReconciled` remains false.
 
 An offline measurement on September 20 reused the previously verified private
 staging snapshot and a fresh, isolated PostgreSQL 16.15 restore. The target had
