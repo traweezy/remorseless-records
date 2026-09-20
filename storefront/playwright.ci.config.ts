@@ -29,7 +29,7 @@ export default defineConfig({
   forbidOnly: true,
   retries: 1,
   retryStrategy: "isolated",
-  workers: 1,
+  workers: 2,
   reporter: "line",
   outputDir: "test-results/ci",
   use: {

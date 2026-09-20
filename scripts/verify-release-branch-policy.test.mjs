@@ -204,12 +204,23 @@ for (const application of ["backend", "storefront"]) {
   })
 }
 
-test("Backend build still requires successful disposable integration", () => {
+test("Backend build and integration run after the required static gates", () => {
   assert.throws(() =>
     validate(
       "backend",
       mutateJob(workflows.backend, "build", (job) =>
-        job.replace(", integration]", "]")
+        job.replace(
+          "    needs: [lint, typecheck, codeql, secrets]",
+          "    needs: [lint, typecheck, codeql, secrets, integration]"
+        )
+      )
+    )
+  )
+  assert.throws(() =>
+    validate(
+      "backend",
+      mutateJob(workflows.backend, "build", (job) =>
+        job.replace(", codeql,", ",")
       )
     )
   )

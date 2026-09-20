@@ -152,7 +152,7 @@ export const validateApplicationReleaseGraph = (source, application) => {
         }
       : {
           integration: ["lint", "typecheck", "secrets"],
-          build: [...staticGates, "integration"],
+          build: staticGates,
         }),
   }
   const jobs = applicationJobs(source)

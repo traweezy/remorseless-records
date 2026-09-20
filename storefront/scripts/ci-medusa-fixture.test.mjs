@@ -320,3 +320,19 @@ test("pins Storefront CI builds and Browser Smoke to local providers", () => {
   assert.match(lighthouseConfig, /resource-summary:total:count/u)
   assert.match(lighthouseConfig, /target: "filesystem"/u)
 })
+
+test("runs the two CI browser projects in bounded parallel workers", () => {
+  for (const path of [
+    "storefront/playwright.ci.config.ts",
+    "storefront/playwright.critical.config.ts",
+  ]) {
+    const config = fs.readFileSync(path, "utf8")
+    assert.deepEqual(
+      [...config.matchAll(/^  workers: (\d+),$/gmu)].map((match) => match[1]),
+      ["2"],
+      `${path} must use exactly two workers`
+    )
+    assert.match(config, /^  fullyParallel: false,$/mu)
+    assert.match(config, /^  retries: 1,$/mu)
+  }
+})

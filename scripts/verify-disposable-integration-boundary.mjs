@@ -34,6 +34,19 @@ export const validateFixtureScanEvidenceSource = (source) => {
       `Fixture scan evidence guard lost: ${marker}`
     )
 }
+export const validateBackendIntegrationReleaseWiring = (backendWorkflow) => {
+  const lines = significant(backendWorkflow).map((line) => line.trim())
+  for (const marker of [
+    "run: pnpm run qa:disposable-integration --no-build",
+    "needs: [lint, typecheck, codeql, secrets]",
+    'STRIPE_API_KEY: ""',
+    'STRIPE_LIFECYCLE_WEBHOOK_SECRET: ""',
+    'STRIPE_PAYMENT_METHOD_CONFIGURATION: ""',
+    'STRIPE_WEBHOOK_SECRET: ""',
+  ]) {
+    assert.ok(lines.includes(marker), `Backend CI gate lost: ${marker}`)
+  }
+}
 export const validateHardenedFixtureWiring = ({
   backendWorkflow,
   compose,
@@ -341,19 +354,7 @@ export const verifyDisposableIntegrationBoundary = async () => {
       `Integration proof lost: ${marker}`
     )
   }
-  for (const marker of [
-    "run: pnpm run qa:disposable-integration --no-build",
-    "needs: [lint, typecheck, codeql, secrets, integration]",
-    'STRIPE_API_KEY: ""',
-    'STRIPE_LIFECYCLE_WEBHOOK_SECRET: ""',
-    'STRIPE_PAYMENT_METHOD_CONFIGURATION: ""',
-    'STRIPE_WEBHOOK_SECRET: ""',
-  ]) {
-    assert.ok(
-      backendWorkflow.includes(marker),
-      `Backend CI gate lost: ${marker}`
-    )
-  }
+  validateBackendIntegrationReleaseWiring(backendWorkflow)
   for (const marker of [
     "127.0.0.1:${RR_INTEGRATION_POSTGRES_PORT:-55432}:5432",
     "127.0.0.1:${RR_INTEGRATION_REDIS_PORT:-56379}:6379",

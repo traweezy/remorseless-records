@@ -2,6 +2,7 @@ import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import test from "node:test"
 import {
+  validateBackendIntegrationReleaseWiring,
   validateFixtureScanEvidenceSource,
   validateHardenedFixtureWiring,
   verifyDisposableIntegrationBoundary,
@@ -34,6 +35,23 @@ test("accepts reviewed build, scan, immutable-start and isolated-fixture wiring"
 
 test("retains full service, recovery, audit, API and root-contract assertions", async () => {
   await verifyDisposableIntegrationBoundary()
+})
+
+test("requires independent Backend build and disposable integration gates", () => {
+  const source = sources().backendWorkflow
+  validateBackendIntegrationReleaseWiring(source)
+  for (const [from, to] of [
+    [
+      "needs: [lint, typecheck, codeql, secrets]",
+      "needs: [lint, typecheck, codeql, secrets, integration]",
+    ],
+    ["run: pnpm run qa:disposable-integration --no-build", "run: true"],
+  ]) {
+    assert.ok(source.includes(from))
+    assert.throws(() =>
+      validateBackendIntegrationReleaseWiring(source.replace(from, to))
+    )
+  }
 })
 
 test("requires frozen database bytes, semantic metadata, final freshness and bound records", () => {

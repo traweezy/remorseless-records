@@ -269,15 +269,33 @@ without reviewing and testing the resulting egress expansion.
 
 #### CI dependency graph and release latency
 
-Storefront unit coverage, build, browser, pa11y, and Lighthouse jobs run in
-parallel after **all** lint, typecheck/Trivy, CodeQL, and secret-scan jobs pass.
-Those checks still depend on the initial security/audit job. The build,
-browser, pa11y, and Lighthouse jobs each build their own isolated checkout;
-no job consumes another job's build output.
-Backend build runs alongside unit coverage after its static checks **and**
-disposable PostgreSQL/Redis integration pass. Keep every existing command,
-test scope, coverage threshold, browser engine, accessibility/performance
-budget, artifact, and cleanup step.
+Storefront unit coverage, browser, pa11y, and Lighthouse jobs run in parallel
+after lint, typecheck/Trivy, and secret-scan jobs pass. The independent build
+also requires CodeQL. Those checks depend on the initial security/audit job.
+The build, browser, pa11y, and Lighthouse jobs each build their own isolated
+checkout; no job consumes another job's build output.
+Backend build runs alongside unit coverage and disposable PostgreSQL/Redis
+integration after its static checks and CodeQL pass. The independent
+integration job still must pass for the Backend workflow and release to
+succeed. Keep every existing command, test scope, coverage threshold, browser
+engine, accessibility/performance budget, artifact, and cleanup step.
+
+On exact SHA `846832f`, Backend CI took 5m39s. Integration finished at 09:13:53
+UTC and its unrelated build then ran until 09:15:27. Replaying those job
+durations with the parallel graph projects Backend completion near 09:14:02,
+about 1m26s sooner. This does not shorten that release's overall wait because
+Storefront CI remained the longest workflow at 6m43s; fresh CI must measure the
+new graph.
+
+On exact SHA `5f4f4ee`, Storefront CI took 7m14s. Responsive/launch and critical
+cross-browser jobs were the final two jobs, ending one second apart. The
+responsive suite ran 83 cases in 1m55s and the critical suite ran 48 cases in
+2m07s, each with one Playwright worker. Both now use two workers on their
+existing runner; test cases, three device/browser projects, retries, isolated
+fixture, screenshot output, and release gates remain unchanged. Project overlap
+could save roughly 25–45 seconds if runner contention stays low. Accept this
+timing change only after exact-SHA CI passes with zero retry/flaky results and
+confirms the measured wall-clock gain.
 
 For staging pull requests, each optional Storefront runtime check still needs
 both `ENABLE_STOREFRONT_BUILD` and its own enable flag. Pushes and master pull
