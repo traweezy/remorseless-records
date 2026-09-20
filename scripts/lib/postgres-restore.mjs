@@ -239,9 +239,12 @@ export const buildRestoreInvariantsSql = (tables, snapshot) => {
     `'${name}'`,
     schemaCountSql[name],
   ])
+  // Each VALUES row has two expressions, so large schemas do not hit
+  // PostgreSQL's function-argument limit. The ordinal preserves the receipt's
+  // canonical table order independently of planner evaluation order.
   const rows = tables.map(
-    ({ schema, table }) =>
-      `pg_catalog.json_build_object('schema', '${schema}', 'table', '${table}', 'rows', (SELECT count(*) FROM "${schema}"."${table}"))`
+    ({ schema, table }, ordinal) =>
+      `(${ordinal}, pg_catalog.json_build_object('schema', '${schema}', 'table', '${table}', 'rows', (SELECT count(*) FROM "${schema}"."${table}")))`
   )
   return `BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY;
 ${snapshotClause(snapshot)}SET LOCAL search_path = pg_catalog;
@@ -250,7 +253,8 @@ SET LOCAL lock_timeout = '10s';
 SELECT pg_catalog.json_build_object(
   'serverMajor', pg_catalog.current_setting('server_version_num')::integer / 10000,
   'counts', pg_catalog.json_build_object(${counts.join(", ")}),
-  'tableRows', pg_catalog.json_build_array(${rows.join(", ")})
+  'tableRows', (SELECT pg_catalog.json_agg(row_data ORDER BY ordinal)
+    FROM (VALUES ${rows.join(",\n      ")}) AS ordered_rows(ordinal, row_data))
 );
 COMMIT;`
 }

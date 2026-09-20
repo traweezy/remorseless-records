@@ -1,5 +1,7 @@
 import assert from "node:assert/strict"
+import { execFile } from "node:child_process"
 import { createHash } from "node:crypto"
+import { existsSync } from "node:fs"
 import {
   mkdtemp,
   readFile,
@@ -8,9 +10,10 @@ import {
   symlink,
   writeFile,
 } from "node:fs/promises"
-import { tmpdir } from "node:os"
+import { tmpdir, userInfo } from "node:os"
 import { join } from "node:path"
 import test from "node:test"
+import { promisify } from "node:util"
 import {
   buildRestoreInvariantsSql,
   buildRestoreTableListSql,
@@ -25,6 +28,8 @@ import {
 } from "./lib/postgres-restore.mjs"
 
 const content = "trusted-fixture-archive"
+const execFileAsync = promisify(execFile)
+const pg16 = "/usr/lib/postgresql/16/bin"
 const manifest = {
   bytes: Buffer.byteLength(content),
   createdAt: "2026-09-06T00:00:00.000Z",
@@ -95,6 +100,8 @@ test("table list and generated read-only SQL reject unsafe identifiers", () => {
   const sql = buildRestoreInvariantsSql(tables)
   assert.match(sql, /BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY/u)
   assert.match(sql, /SELECT count\(\*\) FROM "app"\."artists"/u)
+  assert.match(sql, /json_agg\(row_data ORDER BY ordinal\)/u)
+  assert.doesNotMatch(sql, /json_build_array/u)
   const snapshot = "00000003-0000001B-1"
   for (const statement of [
     buildRestoreTableListSql(snapshot),
@@ -117,6 +124,104 @@ test("table list and generated read-only SQL reject unsafe identifiers", () => {
     [{ schema: "public", table: "Capital" }],
   ])
     assert.throws(() => buildRestoreInvariantsSql(bad))
+})
+
+test("ordered invariant SQL handles 171 physical tables on PostgreSQL 16", {
+  skip:
+    process.getuid?.() === 0 ||
+    !["initdb", "pg_ctl", "psql"].every((name) => existsSync(join(pg16, name))),
+  timeout: 60_000,
+}, async () => {
+  const directory = await mkdtemp(join(tmpdir(), "restore-many-tables-test-"))
+  const data = join(directory, "data")
+  const localEnvironment = {
+    HOME: directory,
+    PATH: `${pg16}:/usr/bin:/bin`,
+    LANG: "C",
+  }
+  const run = async (command, args, environment = localEnvironment) => {
+    const { stdout } = await execFileAsync(join(pg16, command), args, {
+      env: environment,
+      timeout: 30_000,
+      maxBuffer: 1024 * 1024,
+    })
+    return stdout.trim()
+  }
+  let started = false
+  try {
+    await run("initdb", [
+      "-D",
+      data,
+      "--auth-local=trust",
+      "--auth-host=reject",
+      "--locale=C",
+      "--encoding=UTF8",
+      "--no-instructions",
+    ])
+    await run("pg_ctl", [
+      "-D",
+      data,
+      "-l",
+      join(directory, "server.log"),
+      "-o",
+      `-k ${directory} -p 55439 -c listen_addresses=`,
+      "-w",
+      "start",
+    ])
+    started = true
+    const environment = {
+      ...localEnvironment,
+      PGHOST: directory,
+      PGPORT: "55439",
+      PGUSER: userInfo().username,
+      PGDATABASE: "postgres",
+    }
+    const query = (sql) =>
+      run(
+        "psql",
+        [
+          "--no-psqlrc",
+          "--quiet",
+          "--tuples-only",
+          "--no-align",
+          "--set=ON_ERROR_STOP=1",
+          `--command=${sql}`,
+        ],
+        environment
+      )
+    const tableNames = Array.from(
+      { length: 171 },
+      (_, index) => `items_${String(index).padStart(3, "0")}`
+    )
+    await query(`CREATE SCHEMA app; ${tableNames
+      .map((name) => `CREATE TABLE app.${name} (id integer PRIMARY KEY);`)
+      .join(" ")}
+      INSERT INTO app.items_000 VALUES (1);
+      INSERT INTO app.items_085 VALUES (1), (2);
+      INSERT INTO app.items_170 VALUES (1), (2), (3);`)
+    const tables = parseRestoreTableList(
+      await query(buildRestoreTableListSql())
+    )
+    assert.equal(tables.length, 171)
+    assert.deepEqual(
+      tables.map(({ table }) => table),
+      tableNames
+    )
+    const sql = buildRestoreInvariantsSql(tables)
+    assert.doesNotMatch(sql, /json_build_array/u)
+    const actual = parseRestoreInvariants(await query(sql))
+    assert.equal(actual.serverMajor, 16)
+    assert.equal(actual.counts.tables, 171)
+    assert.deepEqual(
+      actual.tableRows.map(({ rows }) => rows),
+      tableNames.map((_, index) =>
+        index === 0 ? 1 : index === 85 ? 2 : index === 170 ? 3 : 0
+      )
+    )
+  } finally {
+    if (started) await run("pg_ctl", ["-D", data, "-m", "immediate", "stop"])
+    await rm(directory, { force: true, recursive: true })
+  }
 })
 
 test("reads bounded canonical restore receipts", () =>
