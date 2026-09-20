@@ -3,6 +3,8 @@ import { readFileSync } from "node:fs"
 import test from "node:test"
 
 import {
+  validateNodeEngine,
+  validateNodeVersionPin,
   validateRuntimeDockerfileSource,
   validateRuntimeImagePolicyManifest,
   validateRuntimeWorkflowSource,
@@ -11,6 +13,31 @@ const workflowSource = readFileSync(
   new URL("../.github/workflows/runtime-images.yml", import.meta.url),
   "utf8"
 )
+
+test("requires all Railway and local Node pins to match the scanned image", () => {
+  for (const versionFile of [
+    "../.nvmrc",
+    "../backend/.nvmrc",
+    "../storefront/.nvmrc",
+  ]) {
+    const pin = readFileSync(new URL(versionFile, import.meta.url), "utf8")
+    assert.doesNotThrow(() => validateNodeVersionPin(pin))
+  }
+  assert.throws(() => validateNodeVersionPin("v26.5.0\n"))
+  assert.throws(() => validateNodeVersionPin("v26.9.0 \n"))
+  for (const manifestFile of [
+    "../package.json",
+    "../backend/package.json",
+    "../storefront/package.json",
+  ]) {
+    const manifest = JSON.parse(
+      readFileSync(new URL(manifestFile, import.meta.url), "utf8")
+    )
+    assert.doesNotThrow(() => validateNodeEngine(manifest))
+  }
+  assert.throws(() => validateNodeEngine({ engines: { node: ">=26 <27" } }))
+})
+
 test("rejects an incomplete policy manifest", () => {
   assert.throws(() => validateRuntimeImagePolicyManifest({ schemaVersion: 2 }))
 })

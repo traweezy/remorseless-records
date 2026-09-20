@@ -9,7 +9,7 @@ The monorepo-level setup, Railway workflow, and operational notes live in the
 
 ## Prerequisites
 
-- Node.js 26.5.0
+- Node.js 26.9.0
 - pnpm 11.17.0
 - A reachable Medusa backend and a Store API publishable key
 - A reachable Meilisearch instance and search-only key

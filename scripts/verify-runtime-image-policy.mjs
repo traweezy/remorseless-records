@@ -77,6 +77,31 @@ export const validateRuntimeImagePolicyManifest = (policy) => {
   assert.deepEqual(policy, expectedPolicy)
 }
 
+const reviewedNodeVersion =
+  /^node:(\d+\.\d+\.\d+)-bookworm-slim@sha256:[0-9a-f]{64}$/u.exec(
+    expectedPolicy.nodeImage
+  )?.[1]
+assert.ok(
+  reviewedNodeVersion,
+  "Reviewed runtime image must identify an exact Node version"
+)
+
+export const validateNodeVersionPin = (source) => {
+  assert.equal(
+    source,
+    `v${reviewedNodeVersion}\n`,
+    "Railway and local Node pins must match the scanned runtime image"
+  )
+}
+
+export const validateNodeEngine = (manifest) => {
+  assert.equal(
+    manifest.engines?.node,
+    reviewedNodeVersion,
+    "Workspace Node engines must match the scanned runtime image"
+  )
+}
+
 const assertExactActionCount = (source, action, count) => {
   const pattern = new RegExp(
     `uses:\\s+${action.repository.replace("/", "\\/")}@${action.commit}\\s+#\\s+${action.version.replace(".", "\\.")}`,
@@ -517,6 +542,19 @@ export const validateRuntimeWorkflowSource = (source) => {
 export const verifyRuntimeImagePolicy = () => {
   const policy = JSON.parse(readFileSync(policyPath, "utf8"))
   validateRuntimeImagePolicyManifest(policy)
+
+  for (const versionFile of [".nvmrc", "backend/.nvmrc", "storefront/.nvmrc"]) {
+    validateNodeVersionPin(readFileSync(join(root, versionFile), "utf8"))
+  }
+  for (const manifestFile of [
+    "package.json",
+    "backend/package.json",
+    "storefront/package.json",
+  ]) {
+    validateNodeEngine(
+      JSON.parse(readFileSync(join(root, manifestFile), "utf8"))
+    )
+  }
 
   for (const [serviceName, service] of Object.entries(policy.services)) {
     validateRuntimeDockerfileSource(
