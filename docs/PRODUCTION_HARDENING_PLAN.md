@@ -3140,7 +3140,11 @@ Both commands explicitly reported that no files or database records changed.
 - [x] Remove the approved staging Redis public TCP proxy and verify both private
       application paths plus ordinary reconciliation and catalog operations.
 - [ ] Review and remove the PostgreSQL TCP proxy unless a reviewed, encrypted
-      administrative path requires it.
+      administrative path requires it. The guarded private-source snapshot,
+      observability and live count-only paths now pass on staging through
+      strict-host-key SSH forwarding, but role separation, scheduled/off-site
+      backup and restore, client attribution and rollback remain unproven; the
+      proxy stays active until those gates are met.
 - [x] Remove the approved public staging MinIO Console domain. The scoped
       domain list is empty and the old URL returns 404; the Console service,
       separate Bucket domain, and both application readiness checks remain
@@ -3152,7 +3156,9 @@ Both commands explicitly reported that no files or database records changed.
       explicit transfer/read budgets, and synthetic corruption/cancellation
       coverage. It has not been run against an approved off-site target; the
       provider, credentials, retention/version-history policy, cost and actual
-      restore acceptance remain open.
+      restore acceptance remain open. A bounded September 20 current-state
+      inventory counted 1,168 objects and 436,743,909 bytes; bucket versioning
+      is unconfigured, so this does not establish recoverable object history.
 - [x] Document Redis recovery semantics and Meilisearch rebuild/snapshot
       recovery.
 - [x] Capture the pinned staging Redis multipart AOF under a bounded rewrite
@@ -3177,8 +3183,9 @@ Both commands explicitly reported that no files or database records changed.
       Quay release `RELEASE.2025-09-07T16-13-09Z` at digest
       `sha256:14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e`,
       while its configured Docker Hub `minio/minio:latest` source now denies
-      pulls. Its sole listed volume backup is from October 2025, no schedule
-      exists, and an off-site restore is unproven. Complete backup, isolated
+      pulls. A September 20 named snapshot now protects the exact staging
+      volume alongside the older October 2025 checkpoint, but no schedule or
+      off-site restore exists. Complete versioned off-site backup, isolated
       restore, and rollback checks before a same-digest Quay source cutover;
       the other support images lack equal live-digest proof.
 - [ ] Enable `pg_stat_statements`, slow-query logging, I/O timing, and relevant
@@ -3191,8 +3198,11 @@ Both commands explicitly reported that no files or database records changed.
       objects and rebuild affected ones before refreshing either database's
       collation metadata; matching versions alone cannot certify older indexes.
       A source-bound, count-only observability preflight now has disposable
-      PostgreSQL 16 acceptance and a successful scoped staging read at 07:05
-      UTC; it confirmed the settings without changing them.
+      PostgreSQL 16 acceptance and successful scoped staging reads at 07:05
+      UTC via the original source and 08:42 UTC via the private source; both
+      confirmed the settings without changing them. The latter verified the
+      exact deployment, READY volume, system identifier and endpoint
+      fingerprint before and after the fixed read.
 - [ ] Investigate the first post-deploy Backend operations 503 at exact staging
       SHA `9835767`: its database dependency exceeded the 1,000 ms health
       threshold once. The first `/ready` returned 200 in 2,128 ms; the first

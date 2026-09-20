@@ -262,6 +262,15 @@ tunnels were closed. The public PostgreSQL proxy remains active. See the
 [private tunnel receipt](/tmp/remorseless-resume-20260914.oonsnior/postgres-private-tunnel-locale.json).
 An actual export still needs a companion receipt binding the original source
 identity and Railway scope to the mapped endpoint, run and archive checksum.
+The guarded staging snapshot and its read-only observability/business probes
+now accept the exact `postgres.railway.internal:5432` private source through
+that strict-host-key, loopback-only TLS tunnel. In the matching Postgres
+`railway run` context they prefer `DATABASE_PRIVATE_URL` and require its host
+to match `RAILWAY_PRIVATE_DOMAIN`; a process-only `DATABASE_BACKUP_URL` may
+carry the same private source. Existing public-source receipts remain valid
+only with their original endpoint fingerprint. Local gates, a private-source
+staging capture, and both read-only probes now pass. They do not perform the
+role cutover, backup scheduling, client attribution, or proxy removal.
 
 ## PostgreSQL backup and restore
 
@@ -563,6 +572,24 @@ This closes the staging-data logical restore proof, not application startup
 against the target, scheduled/off-site backups, PITR, least-privilege roles,
 or production RTO.
 
+A new **private-source** capture completed at
+`2026-09-20T08:46:22.703Z` through the strict Railway SSH tunnel, using
+PostgreSQL 16.15 clients and the same guarded shared-snapshot workflow. Fresh
+Railway preflight matched the sole successful staging deployment, running
+instance and READY volume. Its private
+[source-scope receipt](/tmp/rr-pg-private-snapshot-20260920.BN8GGI/postgres-staging-snapshot-f623ffd4-fd06-4c2d-a5dc-9534b5440f3f/source-scope.receipt.json)
+binds system ID `7527124368992473123`, original private-endpoint fingerprint
+`154994f4c151df504008114feca2120c80dd94a6aa333e9d3b584146dff705f9`,
+exact Railway IDs and archive SHA-256
+`f328bc9b2fcff825bb6f37cf68b20818f125000776591314f38397bfc004ab0a`.
+The 1,852,120-byte archive, manifest, receipt and scope receipt are mode
+`0600` in a mode `0700` directory. Independent hashing matched the archive
+receipt, and PostgreSQL 16 `pg_restore --list` accepted the archive. The
+receipt covers 171 physical tables, 735 indexes, eight sequences and 385
+constraints. The capture made no source writes or settings changes. This
+verifies private-path capture, but the new archive has not been restored. Its
+local `/tmp` copy is not scheduled, off-site or durable backup retention.
+
 The guarded tooling subsequently passed exact-revision staging CI, both
 Railway deployments, deployed browsers and bounded runtime checks at
 `e7a37c2180f890e0562495a5897b3cef7decc5c2`; see the
@@ -596,20 +623,34 @@ open pending a measured slow-query threshold, extension/restart rollout and
 rollback plan, and database plus volume metric retention and alert routing.
 
 The reusable `pnpm run data:postgres:observability-preflight -- --help` CLI
-binds a later read to the exact private source-scope receipt: project,
+binds a later read to exact source-scope expectations: project,
 environment, service, deployment, instance, ready volume, PostgreSQL system
 identifier, and original endpoint fingerprint. It accepts only a scoped
-`DATABASE_BACKUP_URL` or matching Railway-run `DATABASE_URL`, checks the source
-before and after a fixed read-only SQL transaction, and enforces a 90-second
-overall deadline. Its report contains only fixed configuration facts and
-database counters; failure output is redacted. A disposable PostgreSQL 16
-fixture passed. The first scoped staging run completed at
+`DATABASE_BACKUP_URL` or matching Railway-run `DATABASE_PRIVATE_URL` (falling
+back to `DATABASE_URL`), checks the source before and after a fixed read-only
+SQL transaction, and enforces a 90-second overall deadline. Its report
+contains only fixed configuration facts and database counters; failure output
+is redacted. A disposable PostgreSQL 16 fixture passed. The first scoped
+staging run completed at
 `2026-09-20T07:05:56.811Z` in 4,773 ms with both source checks verified. It
 reported PostgreSQL major 16, no `pg_stat_statements` preload or extension,
 `log_min_duration_statement=-1`, both I/O timing flags off, `compute_query_id`
 set to `auto`, three connections, and zero recorded deadlocks or temporary
 files. No settings changed. Enabling query monitoring or certifying overhead
 still requires a separate rollout and measurement.
+
+A separate private-source diagnostic ran at `08:42:41Z` through the exact
+`postgres.railway.internal:5432` source and strict SSH tunnel. Fresh Railway
+scope checks matched the current successful deployment, running instance, and
+READY volume before the call. The guarded report completed in 5,023 ms with
+source identity verified before and after the query; private output and empty
+stderr were mode `0600` under a mode `0700` directory at
+`/tmp/rr-pg-private-preflight-20260920.mvc50a/`. It reported PostgreSQL major
+16, no `pg_stat_statements` extension or preload, both I/O timing flags off,
+`slowQueryThresholdMs=-1`, `computeQueryId=auto`, three connections, zero
+recorded deadlocks and zero temporary files. It changed no settings. This
+diagnostic confirms the new read-only private-source path, but is not a new
+private-source snapshot receipt or a restore drill.
 
 The accepted `9835767` Backend deployment had one post-deploy operations 503
 at `06:50:06Z`: its database dependency exceeded the 1,000 ms health threshold
@@ -652,16 +693,42 @@ which now denies both tag and digest pulls. The running deployment reports
 `RELEASE.2025-09-07T16-13-09Z` and image digest
 `sha256:14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e`;
 the official Quay release manifest has exactly that digest. The Bucket volume
-is READY with about 1,529 MB used of 50,000 MB, but its only listed backup is
-from October 29, 2025 and it has no backup schedule. A source switch to
+is READY with about 1,529 MB used of 50,000 MB. At this initial audit its only
+listed backup was from October 29, 2025, and it had no backup schedule. A source
+switch to
 `quay.io/minio/minio@sha256:14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e`
 would preserve image bytes, not guarantee volume or service recovery. Before
-that controlled cutover, create a fresh scoped volume snapshot, complete a
-versioned off-site object backup and isolated restore with checksums, verify
-the retained-deployment rollback path, and record the object inventory. After
-cutover, require the same volume identity, healthy Bucket/Backend/Storefront
+that controlled cutover, retain the fresh scoped volume snapshot below,
+complete a versioned off-site object backup and isolated restore with checksums,
+verify the retained-deployment rollback path, and record the object inventory.
+After cutover, require the same volume identity, healthy Bucket/Backend/Storefront
 probes, signed S3 read/write smoke on a disposable key, and unchanged object
 checksums. Do not rely on another Docker Hub pull for rollback.
+
+At 08:34 UTC on September 20, a fresh scoped preflight confirmed the staging
+Bucket volume instance `1dc3f38c-79f7-4327-b679-8d242f7362fd` was READY at
+`/data`, using 1,528.274944 of 50,000 MB; Bucket live and ready returned 200.
+One named manual checkpoint, `pre-quay-pin-20260920`, was created without
+changing the service source or volume mount. Its fresh backup-list record is
+`262d1ef2-93a1-4a38-8e17-17a9c62425f4`, created
+`2026-09-20T08:34:18.978Z`, with 1,529 MB referenced and initially 1 MB
+exclusive. The previous 2025 backup remained, and no schedule was added.
+Railway returned a workflow ID for the single create call, but the subsequent
+`workflowStatus` query returned `Not Authorized`; completion is supported by
+the new exact-volume backup record, not a workflow-status receipt. No retry
+was issued. Bucket live and ready still returned 200 after creation. This
+copy-on-write checkpoint is billable, stays in the same Railway project and
+environment, and is lost if the parent volume is wiped. It does not prove
+application consistency, versioned off-site recovery, or isolated restore.
+
+A bounded, read-only S3 inventory through the exact running Backend staging
+deployment returned 1,168 current objects and 436,743,909 current bytes
+(about 416.5 MiB) in two pages. `GetBucketVersioning` returned
+`Unconfigured`. The inventory completed within a 30-second SDK deadline and
+20-page cap without emitting keys or content. It counts the current bucket
+state only; it is not a transactional snapshot, object version history, or
+off-site backup. Establish an approved versioned destination, retention and
+restore procedure before any source-image switch.
 
 Configure credential-bearing `MC_HOST_<alias>` values only in the operator's
 secret environment. Then dry-run a current-state copy:
@@ -1414,6 +1481,19 @@ must retain guarded `pg_control_system()` access or use a reviewed equivalent
 identity check. Comparing identified Medusa payments and tax evidence with
 bounded Stripe test-mode reads requires a separate privacy-preserving step;
 `businessReconciled` remains false.
+
+A second live aggregate used the new **private-source** scope receipt's exact
+IDs, system ID and endpoint fingerprint at `08:47:55`–`08:48:00Z`. Both
+Railway and database identity checks passed before and after the fixed read.
+The 4,452 ms report again counted 68 carts, 49 collections, 44 sessions, seven
+payments/orders/captures/order-cart links/order transactions, zero refunds,
+two active succeeded tax quotes in collection mode, and ten active ignored
+Stripe lifecycle events; other fixed event buckets were zero. Its private
+[count-only report](/tmp/rr-pg-private-business-20260920.T6g0mR/aggregate.json)
+is mode `0600` under a mode `0700` directory, SHA-256
+`82a1776f8c32421aad37865a40668834bbae4853f09fa340808a255f689263ac`.
+This proves the read-only private-source aggregate path and is still not
+Stripe or business reconciliation.
 
 The next offline diagnostic is
 `pnpm run data:postgres:isolated-target -- business-parity --target-dir <restored-dir>`.

@@ -11,6 +11,30 @@ reviewed scope. Do not invent missing production, legal, tax, or provider facts.
 Use [PROJECT_MAP.md](PROJECT_MAP.md) for the indexed code/documentation entrypoints.
 Preserve unrelated `Default/` unread, untouched, and unstaged.
 
+### Accepted September 20 UTC pool and scanner batch: `059436d`
+
+Exact SHA `059436d83e8836c0a5786f5b595fd44c70231b5b` passed Root CI
+`35498965189`, Backend CI `35498965185`, Storefront CI `35498965194`, and
+Runtime Images `35498965192`. The Backend passed 2,224 unit tests at 91.92%
+line coverage, 44 disposable PostgreSQL/Redis integration cases and 41 payment
+contracts. The Storefront passed its unit, transactional, browser,
+accessibility, Lighthouse and build gates. Runtime candidates had zero
+fixable HIGH/CRITICAL findings under a fresh, byte-bound Trivy database;
+staging publication was skipped. The probe now aborts pending pool acquisition
+after five seconds without changing the 1,000 ms operations threshold, SQL
+timeout or shared application pool.
+
+Railway Backend deployment `70fa200b-e0cd-485c-9b53-05ce329902cc`
+reached `SUCCESS` on that SHA. Its live, ready, API health, operations,
+scheduler and retention checks returned 200/healthy; the ordinary 08:28 UTC
+scheduler heartbeat matched the exact SHA with zero failures. Bounded Backend
+logs had no error-level rows or HTTP 5xx. The new Storefront candidate was
+skipped; retained accepted deployment
+`a1884de5-09e0-4903-9220-7e7e3e7056d9` stayed healthy, including catalog,
+product and private search. Available first-readiness HTTP samples were under
+one second; the HTTP log surface does not expose cold pool-acquisition phases,
+so the next cold deployment still needs that measurement.
+
 ### Accepted September 20 UTC database timing batch: `33de0ec`
 
 Exact SHA `33de0ec55c4bd859e6c9781a8507a00c3b4cf8e5` passed Root CI
@@ -71,10 +95,26 @@ changing them. See [recovery evidence](INFRASTRUCTURE_RECOVERY.md).
 The September 20 support-image audit identified a separate MinIO recovery
 risk. Its running Bucket digest exactly matches an official Quay release, but
 the configured Docker Hub `minio/minio:latest` source no longer permits pulls.
-The only listed volume backup is from October 2025, with no schedule or
-off-site restore proof. Do not switch the source until fresh scoped and
-off-site backups, isolated restore, and prior-deployment rollback are proven;
+The initial audit found only an October 2025 volume backup; a single named
+September 20 snapshot now exists on the exact staging volume, with no schedule
+or off-site restore proof. Do not switch the source until versioned off-site
+backup, isolated restore, and prior-deployment rollback are proven;
 the exact digest and acceptance checks are in the recovery runbook.
+A bounded exact-instance S3 inventory counted 1,168 current objects and
+436,743,909 bytes; bucket versioning is unconfigured. The new private-source
+PostgreSQL observability diagnostic succeeded in 5,023 ms with exact identity
+checks and confirmed the same disabled monitoring settings. Its local receipt
+is `/tmp/rr-pg-private-preflight-20260920.mvc50a/preflight.json`; it is not a
+private-source snapshot or restore receipt.
+The follow-up guarded private-source PostgreSQL capture completed at 08:46 UTC
+with a 1,852,120-byte archive, hash-bound manifest, full 171-table restore
+receipt and exact Railway/source-scope receipt under
+`/tmp/rr-pg-private-snapshot-20260920.BN8GGI/`. PostgreSQL 16
+`pg_restore --list` and independent artifact binding checks passed. A separate
+08:48 UTC live business aggregate reused that private-source identity and
+returned only fixed counts with `businessReconciled: false`. This local capture
+has not been restored, scheduled, or moved off-site; the public Postgres proxy
+and superuser runtime role remain open work.
 
 ### Accepted September 20 UTC account-bound diagnostic batch: `9835767`
 
