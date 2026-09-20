@@ -91,6 +91,13 @@ retention, an off-site backup, production RPO/RTO, or application recovery.
 BullMQ job/lock reconciliation against the live capture window and
 PostgreSQL/Stripe order/payment reconciliation remain open;
 `queueReconciled: false` and `businessReconciled: false` must not be promoted.
+The later isolated aggregate pass on the same capture observed 1,277 keys
+after ordinary TTL expiry. Startup and restart counts agreed: the real Medusa
+event queue had one failed job; scheduled jobs had six delayed, 1,000 completed,
+237 failed and eight repeat entries; cleaner had one delayed and one repeat
+entry; none of the four queues had wait or active entries then. The large
+historical failed count needs classification, but the aggregate contains no
+job identities or causes. It is not live queue reconciliation.
 See [infrastructure recovery](INFRASTRUCTURE_RECOVERY.md) for the procedure
 and trust boundaries. The accepted application pair is Backend `902c004` and
 Storefront `2cf8e449`, recorded below.

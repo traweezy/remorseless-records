@@ -1017,10 +1017,41 @@ This proves bounded source capture, local checker acceptance and isolated
 Redis startup/restart of the captured set. It does not prove an off-site or
 retained backup, queue/lock correctness, business-state consistency,
 application startup with restored Redis, production RPO or RTO. Reconcile
-BullMQ `events-queue`/`medusa-workflows` jobs and locks against the capture
+BullMQ `RedisEventBusService:events-queue` and `bull:medusa-workflows` jobs
+and locks against the capture
 window, then compare carts/orders/payments with PostgreSQL and Stripe before
 any worker or traffic cutover. The replay correctly retained
 `queueReconciled: false` and `businessReconciled: false`.
+
+A subsequent receipt-bound replay of the same private capture added a bounded,
+read-only Redis aggregate at both startup and restart. By then one ephemeral
+key had expired, leaving 1,277 keys and two remaining expiries; the aggregate
+was identical across those two replay phases. The Medusa event queue
+(`RedisEventBusService:events-queue`) had five keys, one failed job and 10,030
+event entries. The workflow queue had three keys and 89 event entries. The
+scheduled-jobs queue had 1,258 keys, including six delayed, 1,000 completed,
+237 failed and eight repeat entries, plus 10,019 event entries. The cleaner
+queue had seven keys, one delayed and one repeat entry, plus 10,037 event
+entries. None of the four fixed queue prefixes had a populated wait or active
+state at observation time. Two health snapshots remained; the fixed lock,
+idempotency and rate-limit categories were empty. These are historical state
+counts on an isolated, aging copy, not a point-in-time live comparison. In
+particular, the 237 failed scheduled-job entries need classification before
+any replay or cutover; this aggregate does not identify their jobs, causes or
+business impact. No workers ran on the target, and both reconciliation flags
+remain false.
+
+For a later live comparison, add a dedicated read-only, source-bound collector
+that executes inside the pinned Redis container and emits only this fixed
+aggregate schema. The existing SSH capture transport can carry raw command
+replies; sending `SCAN` through it would expose private key names. A live
+collector must instead validate the seven Railway source IDs, volume mount,
+Redis run ID and AOF health before and after a bounded scan, cap keys/pages,
+bytes and time, and keep all discovered keys and errors inside the container.
+Even matching aggregates from a live scan and this capture would be diagnostic:
+ongoing writes, TTL expiry and the moving AOF increment prevent a single
+cross-system snapshot. Classifying failed jobs and comparing PostgreSQL and
+Stripe evidence remain separate acceptance steps.
 
 ### Recovery policy
 

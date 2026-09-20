@@ -37,7 +37,12 @@ database. The target and temporary copies were independently absent afterward.
 These are local recovery proofs, not a retained/off-site backup or a measured
 production RTO. BullMQ jobs/locks and PostgreSQL/Stripe business state still
 need reconciliation; neither `queueReconciled` nor `businessReconciled` is
-true. Scheduled/off-site PostgreSQL backup, PITR, media restore, and production
+true. A subsequent isolated, read-only aggregate saw one failed Medusa event
+job and 237 historical failed scheduled-job entries in the aging copy, with
+no waiting or active entries at that observation point. Classify the failed
+jobs and compare source-bound live aggregates before worker or traffic cutover;
+the captured counts alone cannot establish business impact. Scheduled/off-site
+PostgreSQL backup, PITR, media restore, and production
 recovery timing remain open. See [infrastructure recovery](INFRASTRUCTURE_RECOVERY.md)
 for the scoped evidence and limits.
 
