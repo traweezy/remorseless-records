@@ -3174,7 +3174,22 @@ Both commands explicitly reported that no files or database records changed.
 - [ ] Pin Redis, PostgreSQL, MinIO, and Meilisearch images by tested version and
       immutable digest; remove floating `latest` tags.
 - [ ] Enable `pg_stat_statements`, slow-query logging, I/O timing, and relevant
-      database/volume metrics with an overhead budget.
+      database/volume metrics with an overhead budget. A September 20 scoped,
+      read-only staging inventory found no `pg_stat_statements` preload or
+      extension, `log_min_duration_statement=-1`, and `track_io_timing=off`.
+      The application `railway` database's recorded and actual libc collation
+      versions both equal 2.41; the default `postgres` and `template1`
+      databases still record 2.36 against runtime 2.41. Inventory dependent
+      objects and rebuild affected ones before refreshing either database's
+      collation metadata; matching versions alone cannot certify older indexes.
+      A source-bound, count-only observability preflight now has disposable
+      PostgreSQL 16 acceptance but has not run against staging or changed any
+      setting.
+- [ ] Investigate the first post-deploy Backend operations 503 at exact staging
+      SHA `9835767`: its database dependency exceeded the 1,000 ms health
+      threshold once, while five post-warmup checks were healthy at 6–9 ms.
+      Preserve the single bounded HTTP 5xx in release evidence and determine
+      whether startup/query warmup or database load needs a code or rollout fix.
 - [x] Define availability, latency, recovery-time, and recovery-point goals
       before adding replicas, PgBouncer, overlap/draining, or paid monitoring.
 - [x] Gate Backend Railway releases on `/ready` rather than the less-complete
@@ -3229,7 +3244,13 @@ not permission to allocate 70% of the Railway plan maximum.
       pull requests and conversation resolution on `master`, and block
       force-push/delete on both long-lived branches.
 - [ ] Consolidate duplicate GitHub deployment environments and add environment
-      protection rules for production.
+      protection rules for production. A September 20 read-only GitHub API
+      inventory found eight environment records (`staging`, `production`,
+      `store / staging`, `store / production`, and Backend/Storefront-prefixed
+      copies of the latter two), with no protection or deployment-branch
+      rules. Production is not provisioned in Railway; select the canonical
+      deployment environment and named reviewers before changing rules or
+      deleting duplicate history.
 - [x] Enable Dependabot security updates or document an equivalent owned
       remediation SLA.
 - [x] Complete exact-SHA CI acceptance for the six remediated active CodeQL
@@ -3268,7 +3289,11 @@ not permission to allocate 70% of the Railway plan maximum.
       use the repository-pinned pnpm/Corepack toolchain without an unpinned
       package-manager install.
 - [ ] Remove the Railway CLI package patch when upstream uses a non-vulnerable
-      archive extractor and verifies immutable release digests itself.
+      archive extractor and verifies immutable release digests itself. On
+      September 20, npm metadata for the cooled `5.45.11` release and the
+      newly published `5.52.0` release still declared `tar: ^6.1.11`; the
+      newer wrapper has not satisfied the extractor condition, and `5.52.0`
+      also fails this repository's seven-day release-age gate.
 - [ ] Publish final runtime images, attach image-linked SBOM/provenance
       attestations, and deploy the verified immutable artifacts.
       Local and exact-SHA staging candidate acceptance completed on 2026-09-02:
@@ -3279,6 +3304,9 @@ not permission to allocate 70% of the Railway plan maximum.
       Publication and attestations correctly skipped on `staging`. Source-built
       Railway acceptance is complete; approved `master` publication, digest
       verification, Railway image-source cutover, and rollback proof remain.
+      A current-time check now rejects scan evidence older than 30 minutes or
+      an expired vulnerability database immediately before master publication;
+      it does not waive the unresolved image findings or authorize cutover.
       See `NEXT_SESSION_HANDOFF.md`.
 - [x] Move hardened-runner egress from audit mode to an explicit allowlist after
       observing required endpoints.

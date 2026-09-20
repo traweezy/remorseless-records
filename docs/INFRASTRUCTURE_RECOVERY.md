@@ -569,6 +569,44 @@ Railway deployments, deployed browsers and bounded runtime checks at
 [session handoff](NEXT_SESSION_HANDOFF.md). This release acceptance does not
 expand the recovery proof above.
 
+### Read-only staging observability baseline — September 20, 2026 UTC
+
+A scoped SSH connection to the current staging PostgreSQL service ran only
+`psql` metadata and statistics queries. PostgreSQL 16.11 reported empty
+`shared_preload_libraries`, no `pg_stat_statements` extension,
+`log_min_duration_statement=-1`, `track_io_timing=off`, and
+`track_wal_io_timing=off`. The `railway` application database was 44 MB at the
+sampling instant and had three connections, zero recorded deadlocks and zero
+temporary files. These cumulative counters and one instantaneous connection
+sample cannot establish a query-latency or monitoring-overhead budget.
+
+The application database's recorded and actual libc collation versions both
+equal 2.41. This establishes no current database-default version mismatch; it
+does not certify historical index rebuilds or other named collations. The
+default `postgres` and `template1` databases record 2.36 against runtime 2.41;
+connecting to `postgres` emits PostgreSQL's mismatch warning. Before
+refreshing those metadata values, inventory collation-dependent objects and
+rebuild affected objects, including indexes, as described in PostgreSQL's
+[ALTER DATABASE](https://www.postgresql.org/docs/16/sql-alterdatabase.html)
+guidance. A subsequent read-only count found zero non-system relations or
+indexes in either default database; this does not prove that every possible
+collation dependency is absent. No settings, extensions, indexes or collation
+metadata were changed during this audit. The production telemetry item remains
+open pending a measured slow-query threshold, extension/restart rollout and
+rollback plan, and database plus volume metric retention and alert routing.
+
+The reusable `pnpm run data:postgres:observability-preflight -- --help` CLI
+binds a later read to the exact private source-scope receipt: project,
+environment, service, deployment, instance, ready volume, PostgreSQL system
+identifier, and original endpoint fingerprint. It accepts only a scoped
+`DATABASE_BACKUP_URL` or matching Railway-run `DATABASE_URL`, checks the source
+before and after a fixed read-only SQL transaction, and enforces a 90-second
+overall deadline. Its report contains only fixed configuration facts and
+database counters; failure output is redacted. A disposable PostgreSQL 16
+fixture passed, but this new CLI has not yet run against staging. Enabling
+query monitoring, changing settings, or certifying overhead still requires a
+separate rollout and measurement.
+
 ## Media backup and restore
 
 MinIO's application bucket requires versioning and an off-site target in a

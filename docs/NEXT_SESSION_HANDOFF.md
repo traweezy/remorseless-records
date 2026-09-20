@@ -11,6 +11,44 @@ reviewed scope. Do not invent missing production, legal, tax, or provider facts.
 Use [PROJECT_MAP.md](PROJECT_MAP.md) for the indexed code/documentation entrypoints.
 Preserve unrelated `Default/` unread, untouched, and unstaged.
 
+### Accepted September 20 UTC account-bound diagnostic batch: `9835767`
+
+Exact staging SHA `98357677f3b422b843703391d66d73004def2e62` passed Root
+CI `35494711102`, Backend CI `35494711124`, Storefront CI `35494711100`,
+and Runtime Images `35494711103`. Backend passed 281 unit suites / 2,215
+tests and all 84 disposable integration tests, with 91.92% line coverage.
+Its two-worker coverage step took 90 seconds versus 184 seconds for the
+previous accepted serial run; the security-first job graph and test coverage
+thresholds remained in place. Storefront passed 81 responsive, 20 launch,
+48 critical cross-browser, accessibility, Lighthouse, unit and build checks.
+The exact candidate runtime images still each have four CRITICAL and 52 HIGH
+findings, zero fixable HIGH/CRITICAL under the current policy; publication
+was skipped. Railway source-build images are distinct from those scanned CI
+candidates.
+
+Railway Backend deployment `2ae5683a-52fe-40cb-81d7-6c626c7f9415` and
+Storefront deployment `88e6e062-3a0c-4ac5-aa7b-4d893a416ec8` reached
+`SUCCESS` at the exact SHA. Backend `/live`, `/ready`, and `/api/health`
+returned 200/ok with all 11 checks; its exact-SHA 06:50:06 UTC scheduler
+heartbeat had zero failures, and retention was healthy. Storefront `/ready`
+passed 2/2; home, catalog, product, and private search returned 200.
+Storefront bounded candidate logs had zero errors and HTTP 5xx.
+
+The first Backend operations probe after deployment returned one 503 with
+`dependency:database_latency_high` and a 1,241 ms HTTP duration. Five
+post-warmup probes returned 200/healthy with database durations of 6–9 ms;
+the final check had zero reasons. Bounded Backend candidate logs contained
+that one HTTP 5xx and zero error-level rows. Treat the cold operations 503 as
+an open latency follow-up; do not describe these candidate logs as 5xx-free.
+
+The new Stripe diagnostic binds a verified isolated PostgreSQL restore to
+an independently specified staging test-account ID, allows at most seven
+serial minimal PaymentIntent reads under a shared deadline, and emits only a
+private count-only report. Focused tests, a disposable PostgreSQL fixture,
+typecheck and independent boundary review passed. The expected `acct_` anchor
+is absent from scoped staging configuration. No provider request has run;
+`businessReconciled` remains false.
+
 ### Accepted September 20 UTC corrective staging batch: `8b633d3`
 
 Exact staging SHA `8b633d3b16d0aa0172e71eb9cfd00f9a2391332f` passed Root
@@ -75,15 +113,10 @@ remain false. The shared database release boundary, isolated PostgreSQL
 fixture, disposable Redis integration and full local and exact-SHA CI gates
 passed.
 
-The next local diagnostic adds a read-only Stripe test-mode comparison to a
-verified isolated PostgreSQL restore. It requires an independently pinned
-staging `acct_` account ID before any provider request, then compares at most
-seven serial minimal PaymentIntent reads with Medusa, archived provider-data,
-and tax evidence amounts. Focused tests, typecheck and independent security
-review passed; exact-SHA CI and a real provider comparison are still pending.
-The scoped staging Backend configuration has no expected account ID, so no
-Stripe request has been made. Keep `businessReconciled: false` and do not
-present the archived provider-data match as current Stripe evidence.
+The account-bound diagnostic now has exact-SHA CI acceptance as recorded above.
+It still lacks an independently pinned staging `acct_` ID and a real provider
+comparison. Do not present the archived provider-data match as current Stripe
+evidence.
 
 ### Accepted September 20 UTC four-commit recovery release: `6b5a089`
 
