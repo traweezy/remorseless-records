@@ -46,8 +46,10 @@ const help = `Usage: pnpm run data:postgres:live-business-aggregate -- \\
 
 Read-only staging PostgreSQL counts. Use the exact source IDs, system ID, and
 original endpoint fingerprint from the private source-scope snapshot receipt.
-Requires the matching DATABASE_BACKUP_URL in this process or DATABASE_URL in a
-matching Railway-run context and a pinned ssh.railway.com known-host key.
+Requires the matching DATABASE_BACKUP_URL in this process, or preferred
+DATABASE_PRIVATE_URL (fallback DATABASE_URL) in a matching Postgres Railway-run
+context, and a pinned ssh.railway.com known-host key. Private source URLs must
+use postgres.railway.internal:5432.
 Returns only fixed counts after source and database identity pass both before
 and after the bounded query. This is not Stripe or business reconciliation.
 `

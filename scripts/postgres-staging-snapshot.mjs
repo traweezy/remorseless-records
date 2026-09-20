@@ -33,6 +33,8 @@ import {
 
 const idPattern = /^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/u
 const shaPattern = /^[a-f0-9]{64}$/u
+const stagingPostgresPrivateHost = "postgres.railway.internal"
+const stagingPostgresPrivatePort = "5432"
 const snapshotFailurePhases = new Set([
   "arguments",
   "output_directory",
@@ -65,8 +67,9 @@ export const sourceScopeQuery = `query SourceScope($environmentId: String!, $ser
 const help = `Usage: postgres-staging-snapshot --project-id <uuid> --environment-id <uuid>
   --service-id <uuid> --deployment-id <uuid> --deployment-instance-id <uuid>
   --volume-instance-id <uuid> --volume-id <uuid> --output-dir <absolute-private-dir>
-Requires DATABASE_URL from a matching Railway-run context, or a separate
-process-only DATABASE_BACKUP_URL for the original Railway public proxy URL.
+Requires DATABASE_PRIVATE_URL (preferred) or DATABASE_URL from a matching
+Postgres Railway-run context, or a separate process-only DATABASE_BACKUP_URL.
+Private source URLs must use postgres.railway.internal:5432.
 Uses a strict, existing Railway SSH host key and a single exact running instance.
 Captures one snapshot-bound archive/receipt through a loopback-only TLS tunnel.
 The source remains read-only; pause schema DDL during capture.
@@ -99,7 +102,12 @@ export const parseSourceConnection = (raw, localPort) => {
     throw new Error("Invalid source connection.")
   }
   assert.ok(["postgres:", "postgresql:"].includes(source.protocol))
-  assert.match(source.hostname.toLowerCase(), /\.proxy\.rlwy\.net$/u)
+  const hostname = source.hostname.toLowerCase()
+  assert.ok(
+    /\.proxy\.rlwy\.net$/u.test(hostname) ||
+      (hostname === stagingPostgresPrivateHost &&
+        source.port === stagingPostgresPrivatePort)
+  )
   assert.ok(source.port && source.username && source.password)
   assert.ok(source.pathname.length > 1 && !source.hash)
   assert.deepEqual(
@@ -142,14 +150,41 @@ export const parseSourceConnection = (raw, localPort) => {
 
 export const selectSourceUrl = (environment, args) => {
   const hasBackup = Boolean(environment.DATABASE_BACKUP_URL)
-  const hasRailway = Boolean(environment.DATABASE_URL)
+  const railwaySourceUrl =
+    environment.DATABASE_PRIVATE_URL || environment.DATABASE_URL
+  const hasRailway = Boolean(railwaySourceUrl)
   assert.notEqual(hasBackup, hasRailway)
   if (hasRailway) {
     assert.equal(environment.RAILWAY_PROJECT_ID, args["--project-id"])
     assert.equal(environment.RAILWAY_ENVIRONMENT_ID, args["--environment-id"])
     assert.equal(environment.RAILWAY_SERVICE_ID, args["--service-id"])
+    parseSourceConnection(railwaySourceUrl, 5432)
+    const railwaySourceHost = new URL(railwaySourceUrl).hostname.toLowerCase()
+    if (
+      railwaySourceHost === stagingPostgresPrivateHost ||
+      environment.DATABASE_PRIVATE_URL
+    ) {
+      assert.ok(
+        railwaySourceHost === stagingPostgresPrivateHost &&
+          environment.RAILWAY_PRIVATE_DOMAIN === stagingPostgresPrivateHost,
+        "Railway private database source domain mismatch."
+      )
+    }
+    if (environment.DATABASE_PRIVATE_URL) {
+      if (environment.DATABASE_URL) {
+        parseSourceConnection(environment.DATABASE_URL, 5432)
+        const publicUrl = new URL(environment.DATABASE_URL)
+        const privateUrl = new URL(environment.DATABASE_PRIVATE_URL)
+        assert.ok(
+          privateUrl.username === publicUrl.username &&
+            privateUrl.password === publicUrl.password &&
+            privateUrl.pathname === publicUrl.pathname,
+          "Railway database source URLs disagree."
+        )
+      }
+    }
   }
-  return hasBackup ? environment.DATABASE_BACKUP_URL : environment.DATABASE_URL
+  return hasBackup ? environment.DATABASE_BACKUP_URL : railwaySourceUrl
 }
 
 export const normalizeRailwayScope = (raw, args) => {

@@ -38,6 +38,8 @@ const ids = {
 }
 const originalUrl =
   "postgresql://railway:fake-private-password@db.proxy.rlwy.net:51985/railway"
+const privateUrl =
+  "postgresql://railway:fake-private-password@postgres.railway.internal:5432/railway"
 const args = (output) => [
   "--project-id",
   ids.project,
@@ -303,6 +305,39 @@ test("binds a private published bundle to exact source and system identity", asy
   })
 })
 
+test("binds a Railway private source through the same TLS tunnel and receipt", async () => {
+  await fixture(async ({ output, environment }) => {
+    const source = createFake()
+    const result = await runStagingSnapshot(args(output), {
+      environment: {
+        ...environment,
+        DATABASE_BACKUP_URL: undefined,
+        DATABASE_URL: originalUrl,
+        DATABASE_PRIVATE_URL: privateUrl,
+        RAILWAY_PRIVATE_DOMAIN: "postgres.railway.internal",
+        RAILWAY_PROJECT_ID: ids.project,
+        RAILWAY_ENVIRONMENT_ID: ids.environment,
+        RAILWAY_SERVICE_ID: ids.service,
+      },
+      command: source.command,
+      tunnelFactory: source.tunnelFactory,
+      portAllocator: async () => 55321,
+    })
+    const receipt = JSON.parse(await readFile(result.sourceScopePath, "utf8"))
+    assert.equal(source.reads, 2)
+    assert.equal(source.closed, true)
+    assert.equal(receipt.sourceSystemId, systemId)
+    assert.equal(receipt.source.deploymentInstanceId, ids.replica)
+    assert.equal(receipt.tunnelTlsMode, "require")
+    assert.equal(
+      receipt.originalEndpointFingerprint,
+      sha("postgres.railway.internal:5432/railway")
+    )
+    assert.ok(!JSON.stringify(receipt).includes("postgres.railway.internal"))
+    assert.ok(!JSON.stringify(receipt).includes("fake-private-password"))
+  })
+})
+
 for (const [label, options] of [
   ["postflight volume drift", { drift: true }],
   ["tampered restore receipt", { tamper: true }],
@@ -353,6 +388,100 @@ test("rejects ambiguous or unguarded source variables and unverifiable TLS", asy
     )
     assert.throws(() =>
       parseSourceConnection(`${originalUrl}?sslmode=disable`, 55000)
+    )
+    const privateSource = parseSourceConnection(privateUrl, 55000)
+    assert.equal(
+      privateSource.originalFingerprint,
+      sha("postgres.railway.internal:5432/railway")
+    )
+    assert.equal(new URL(privateSource.mappedUrl).hostname, "127.0.0.1")
+    assert.equal(
+      new URL(privateSource.mappedUrl).searchParams.get("sslmode"),
+      "require"
+    )
+    for (const rejected of [
+      privateUrl.replace("postgres.railway.internal", "other.railway.internal"),
+      privateUrl.replace(":5432/", ":6543/"),
+      `${privateUrl}?sslmode=disable`,
+      `${privateUrl}?sslmode=verify-full`,
+    ])
+      assert.throws(() => parseSourceConnection(rejected, 55000))
+    const scoped = {
+      ...environment,
+      DATABASE_BACKUP_URL: undefined,
+      DATABASE_URL: originalUrl,
+      DATABASE_PRIVATE_URL: privateUrl,
+      RAILWAY_PRIVATE_DOMAIN: "postgres.railway.internal",
+      RAILWAY_PROJECT_ID: ids.project,
+      RAILWAY_ENVIRONMENT_ID: ids.environment,
+      RAILWAY_SERVICE_ID: ids.service,
+    }
+    assert.equal(selectSourceUrl(scoped, input), privateUrl)
+    const privateFallback = {
+      ...scoped,
+      DATABASE_PRIVATE_URL: undefined,
+      DATABASE_URL: privateUrl,
+    }
+    assert.equal(selectSourceUrl(privateFallback, input), privateUrl)
+    for (const privateDomain of [undefined, "other.railway.internal"])
+      assert.throws(() =>
+        selectSourceUrl(
+          { ...privateFallback, RAILWAY_PRIVATE_DOMAIN: privateDomain },
+          input
+        )
+      )
+    assert.equal(
+      selectSourceUrl(
+        { ...environment, DATABASE_BACKUP_URL: privateUrl },
+        input
+      ),
+      privateUrl
+    )
+    assert.throws(() =>
+      selectSourceUrl(
+        { ...scoped, RAILWAY_PRIVATE_DOMAIN: "other.railway.internal" },
+        input
+      )
+    )
+    assert.throws(() =>
+      selectSourceUrl(
+        { ...scoped, DATABASE_URL: originalUrl.replace("railway:", "other:") },
+        input
+      )
+    )
+    assert.throws(() =>
+      selectSourceUrl(
+        { ...scoped, DATABASE_URL: originalUrl.replace("/railway", "/other") },
+        input
+      )
+    )
+    const privateSecret = "private-password-never-log"
+    const publicSecret = "public-password-never-log"
+    assert.throws(
+      () =>
+        selectSourceUrl(
+          {
+            ...scoped,
+            DATABASE_PRIVATE_URL: privateUrl.replace(
+              "fake-private-password",
+              privateSecret
+            ),
+            DATABASE_URL: originalUrl.replace(
+              "fake-private-password",
+              publicSecret
+            ),
+          },
+          input
+        ),
+      (error) => {
+        assert.equal(error.message, "Railway database source URLs disagree.")
+        assert.ok(!error.stack.includes(privateSecret))
+        assert.ok(!error.stack.includes(publicSecret))
+        return true
+      }
+    )
+    assert.throws(() =>
+      selectSourceUrl({ ...scoped, DATABASE_BACKUP_URL: privateUrl }, input)
     )
     assert.equal(
       selectSourceUrl(

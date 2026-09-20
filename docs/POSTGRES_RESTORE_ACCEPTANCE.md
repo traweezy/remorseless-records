@@ -42,7 +42,7 @@ Postgres service variables injected by `railway run`; never put the database
 URL on a command line or in a shell history entry:
 
 ```bash
-railway run --project <project-id> --environment staging --service Postgres -- \
+railway run --no-local --project <project-id> --environment staging --service Postgres -- \
   pnpm run data:postgres:staging-snapshot -- \
     --project-id <project-id> --environment-id <environment-id> \
     --service-id <service-id> --deployment-id <deployment-id> \
@@ -51,11 +51,17 @@ railway run --project <project-id> --environment staging --service Postgres -- \
     --output-dir /absolute/private/staging-snapshot-directory
 ```
 
-The wrapper accepts only the Railway Postgres URL from the matching local
-`railway run` scope or one process-only `DATABASE_BACKUP_URL`. It verifies the
-existing SSH host key, Railway's sole running deployment and READY volume, and
-the remote project/environment/service/deployment/replica IDs. It maps the
-original proxy URL to a loopback-only TLS tunnel without logging credentials,
+The wrapper prefers `DATABASE_PRIVATE_URL` from the matching Postgres
+`railway run` scope, falls back to its `DATABASE_URL`, or accepts one
+process-only `DATABASE_BACKUP_URL`. A private source must be exactly
+`postgres.railway.internal:5432`; the Railway-run private domain must match,
+and public/private URLs present together must carry the same login and
+database. The original URL supplies credentials and identity, but the local
+client connects only through the loopback SSH tunnel, so local private-DNS
+resolution is unnecessary. The wrapper verifies the existing SSH host key,
+Railway's sole running deployment and READY volume, and the remote
+project/environment/service/deployment/replica IDs. It maps the original
+source URL to a loopback-only TLS tunnel without logging credentials,
 checks the source system identifier before and after capture, and repeats the
 Railway scope query before publication. Success emits four private files in
 one directory: archive, manifest, restore receipt, and
@@ -63,6 +69,9 @@ one directory: archive, manifest, restore receipt, and
 endpoint fingerprints, source system identifier, Railway IDs, source major,
 and artifact hashes. A failure publishes no accepted bundle. This is a
 read-only source capture, not a staging-data restore or retained backup.
+Use a new private-source scope receipt for later observability and business
+aggregate probes: its original endpoint fingerprint differs from a prior
+public-proxy receipt, and mismatches fail closed.
 
 1. Create the archive using the existing backup command, preserving its
    private `0600` archive and manifest. Reserve enough disk space for one

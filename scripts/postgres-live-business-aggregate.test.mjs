@@ -22,6 +22,8 @@ const ids = {
 }
 const sourceUrl =
   "postgresql://railway:secret-do-not-log@db.proxy.rlwy.net:51985/railway"
+const privateSourceUrl =
+  "postgresql://railway:secret-do-not-log@postgres.railway.internal:5432/railway"
 const systemId = "12345678901234567890"
 const endpointSha = createHash("sha256")
   .update("db.proxy.rlwy.net:51985/railway")
@@ -264,6 +266,41 @@ test("reports only bounded counts after both staging and database identity check
     assert.ok(!JSON.stringify(report).includes("secret-do-not-log"))
     assert.ok(!JSON.stringify(report).includes("private-token-do-not-log"))
     assert.ok(!JSON.stringify(report).includes("db.proxy.rlwy.net"))
+  })
+})
+
+test("accepts a private-source receipt through the guarded tunnel", async () => {
+  await withFixture(async (environment) => {
+    const source = fake()
+    const privateEnvironment = {
+      ...environment,
+      DATABASE_BACKUP_URL: privateSourceUrl,
+    }
+    await assert.rejects(
+      runLiveBusinessAggregate(args, {
+        environment: privateEnvironment,
+        command: source.command,
+        tunnelFactory: source.tunnelFactory,
+      })
+    )
+    assert.equal(source.reads, 0)
+    const privateArgs = [...args]
+    privateArgs[privateArgs.indexOf("--expected-endpoint-sha256") + 1] =
+      createHash("sha256")
+        .update("postgres.railway.internal:5432/railway")
+        .digest("hex")
+    const report = await runLiveBusinessAggregate(privateArgs, {
+      environment: privateEnvironment,
+      command: source.command,
+      tunnelFactory: source.tunnelFactory,
+      portAllocator: async () => 55321,
+    })
+    assert.equal(report.sourceIdentityVerified, true)
+    assert.equal(source.reads, 2)
+    assert.equal(source.systemReads, 2)
+    assert.equal(source.aggregateReads, 1)
+    assert.equal(source.closed, true)
+    assert.ok(!JSON.stringify(report).includes("postgres.railway.internal"))
   })
 })
 
