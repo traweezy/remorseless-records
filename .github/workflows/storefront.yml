@@ -277,8 +277,106 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-  e2e:
-    name: Browser Smoke (storefront, Playwright)
+  e2e-responsive:
+    name: Browser Smoke (responsive + launch)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    if: ${{ github.event_name != 'pull_request' || github.base_ref == 'master' || (vars.ENABLE_STOREFRONT_BUILD == 'true' && vars.ENABLE_STOREFRONT_E2E == 'true') }}
+    needs: [lint, typecheck, secrets]
+    env:
+      CI_MEDUSA_FIXTURE_URL: http://127.0.0.1:4010
+      CI_MEDUSA_PUBLISHABLE_KEY: pk_ci_storefront_fixture_20260831
+      MEDUSA_BACKEND_URL: http://127.0.0.1:4010
+      MEILISEARCH_HOST: http://127.0.0.1:7700
+      MEILISEARCH_SEARCH_KEY: ci-launch-search-key-20260831
+      NEXT_PUBLIC_MEDUSA_BACKEND_URL: http://127.0.0.1:4010
+      NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY: pk_ci_storefront_fixture_20260831
+      NEXT_PUBLIC_MEDUSA_URL: http://127.0.0.1:4010
+      NEXT_PUBLIC_BASE_URL: http://127.0.0.1:3000
+      NEXT_PUBLIC_SITE_URL: http://127.0.0.1:3000
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
+        with:
+          run_install: false
+
+      - name: Setup Node with pnpm cache
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 26
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Start deterministic Medusa fixture
+        shell: bash
+        run: |
+          fixture_log="${RUNNER_TEMP}/ci-medusa-fixture.log"
+          node storefront/scripts/ci-medusa-fixture.mjs > "$fixture_log" 2>&1 &
+          fixture_pid=$!
+          echo "CI_MEDUSA_FIXTURE_PID=${fixture_pid}" >> "$GITHUB_ENV"
+          for _ in {1..30}; do
+            if curl --fail --silent --show-error --max-time 2 \
+              "${CI_MEDUSA_FIXTURE_URL}/live" >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          tail -n 50 "$fixture_log"
+          exit 1
+
+      - name: Build storefront
+        run: pnpm --filter remorseless-records-storefront run build
+
+      - name: Install pinned Playwright browsers
+        run: pnpm --filter remorseless-records-storefront exec playwright install --with-deps chromium
+
+      - name: Verify concurrent request completion in the built runtime
+        run: pnpm --filter remorseless-records-storefront run test:runtime:observability
+
+      - name: Run responsive Chromium smoke tests
+        run: pnpm --filter remorseless-records-storefront run test:e2e --config=playwright.ci.config.ts
+
+      - name: Run Storefront launch acceptance matrix
+        env:
+          STOREFRONT_LAUNCH_SCREENSHOT_DIR: test-results/launch-screenshots
+        run: pnpm run qa:storefront:launch
+
+      - name: Upload Storefront launch acceptance evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: storefront-launch-acceptance
+          path: storefront/test-results/launch-screenshots
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload Playwright failure artifacts
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: playwright-responsive-failure-artifacts
+          path: storefront/test-results
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Stop deterministic Medusa fixture
+        if: ${{ always() }}
+        shell: bash
+        run: |
+          if [[ "${CI_MEDUSA_FIXTURE_PID:-}" =~ ^[0-9]+$ ]]; then
+            kill "${CI_MEDUSA_FIXTURE_PID}" 2>/dev/null || true
+            wait "${CI_MEDUSA_FIXTURE_PID}" 2>/dev/null || true
+          fi
+
+  e2e-critical:
+    name: Browser Smoke (critical cross-browser)
     runs-on: ubuntu-latest
     timeout-minutes: 60
     if: ${{ github.event_name != 'pull_request' || github.base_ref == 'master' || (vars.ENABLE_STOREFRONT_BUILD == 'true' && vars.ENABLE_STOREFRONT_E2E == 'true') }}
@@ -337,34 +435,14 @@ jobs:
       - name: Install pinned Playwright browsers
         run: pnpm --filter remorseless-records-storefront exec playwright install --with-deps chromium firefox webkit
 
-      - name: Verify concurrent request completion in the built runtime
-        run: pnpm --filter remorseless-records-storefront run test:runtime:observability
-
-      - name: Run responsive Chromium smoke tests
-        run: pnpm --filter remorseless-records-storefront run test:e2e --config=playwright.ci.config.ts
-
-      - name: Run Storefront launch acceptance matrix
-        env:
-          STOREFRONT_LAUNCH_SCREENSHOT_DIR: test-results/launch-screenshots
-        run: pnpm run qa:storefront:launch
-
       - name: Run critical flows in Chromium, Firefox, and WebKit
         run: pnpm --filter remorseless-records-storefront run test:e2e:critical
-
-      - name: Upload Storefront launch acceptance evidence
-        if: ${{ always() }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
-        with:
-          name: storefront-launch-acceptance
-          path: storefront/test-results/launch-screenshots
-          if-no-files-found: error
-          retention-days: 14
 
       - name: Upload Playwright failure artifacts
         if: ${{ failure() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
-          name: playwright-failure-artifacts
+          name: playwright-critical-failure-artifacts
           path: storefront/test-results
           if-no-files-found: warn
           retention-days: 14
@@ -377,6 +455,21 @@ jobs:
             kill "${CI_MEDUSA_FIXTURE_PID}" 2>/dev/null || true
             wait "${CI_MEDUSA_FIXTURE_PID}" 2>/dev/null || true
           fi
+
+  e2e:
+    name: Browser Smoke (storefront, Playwright)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: [e2e-responsive, e2e-critical]
+    if: ${{ always() && (github.event_name != 'pull_request' || github.base_ref == 'master' || (vars.ENABLE_STOREFRONT_BUILD == 'true' && vars.ENABLE_STOREFRONT_E2E == 'true')) }}
+    permissions:
+      contents: read
+    steps:
+      - name: Require both browser shards
+        env:
+          RESPONSIVE_RESULT: ${{ needs.e2e-responsive.result }}
+          CRITICAL_RESULT: ${{ needs.e2e-critical.result }}
+        run: test "$RESPONSIVE_RESULT" = success && test "$CRITICAL_RESULT" = success
 
   accessibility:
     name: Accessibility (pa11y)
@@ -543,8 +636,8 @@ jobs:
       #     name: storefront-build
       #     path: apps/remorseless-records-storefront/.next
 
-  lighthouse:
-    name: Lighthouse (local build unless URL provided)
+  lighthouse-content:
+    name: Lighthouse (content routes)
     runs-on: ubuntu-latest
     timeout-minutes: 40
     if: ${{ github.event_name != 'pull_request' || github.base_ref == 'master' || (vars.ENABLE_STOREFRONT_BUILD == 'true' && vars.ENABLE_STOREFRONT_LIGHTHOUSE == 'true') }}
@@ -622,6 +715,7 @@ jobs:
         env:
           QA_BASE_URL: ${{ github.event.inputs.base_url != '' && github.event.inputs.base_url || vars.QA_BASE_URL || 'http://127.0.0.1:3000' }}
           QA_PRODUCT_PATH: ${{ github.event.inputs.product_path != '' && github.event.inputs.product_path || vars.QA_PRODUCT_PATH || '/music-release/pathologist-pathological-decomposition' }}
+          QA_LIGHTHOUSE_SHARD: content
           LHCI_OUTPUT_DIR: artifacts/lighthouse
         run: pnpm run qa:lighthouse
 
@@ -629,7 +723,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
-          name: storefront-lighthouse-${{ github.run_id }}
+          name: storefront-lighthouse-content-${{ github.run_id }}
           path: |
             .lighthouseci
             artifacts/lighthouse
@@ -651,3 +745,128 @@ jobs:
             kill "${CI_MEDUSA_FIXTURE_PID}" 2>/dev/null || true
             wait "${CI_MEDUSA_FIXTURE_PID}" 2>/dev/null || true
           fi
+
+  lighthouse-commerce:
+    name: Lighthouse (commerce routes)
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    if: ${{ github.event_name != 'pull_request' || github.base_ref == 'master' || (vars.ENABLE_STOREFRONT_BUILD == 'true' && vars.ENABLE_STOREFRONT_LIGHTHOUSE == 'true') }}
+    needs: [lint, typecheck, secrets]
+    env:
+      CI_MEDUSA_FIXTURE_URL: http://127.0.0.1:4010
+      CI_MEDUSA_PUBLISHABLE_KEY: pk_ci_storefront_fixture_20260831
+      MEDUSA_BACKEND_URL: http://127.0.0.1:4010
+      MEILISEARCH_HOST: http://127.0.0.1:7700
+      MEILISEARCH_SEARCH_KEY: ci-launch-search-key-20260831
+      NEXT_PUBLIC_MEDUSA_BACKEND_URL: http://127.0.0.1:4010
+      NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY: pk_ci_storefront_fixture_20260831
+      NEXT_PUBLIC_MEDUSA_URL: http://127.0.0.1:4010
+      NEXT_PUBLIC_BASE_URL: http://127.0.0.1:3000
+      NEXT_PUBLIC_SITE_URL: http://127.0.0.1:3000
+      # The hosted runner benchmarks as a low-end desktop. Lighthouse's
+      # documented 2x calibration preserves the mid-tier-mobile target that
+      # the 4x local default models on a high-end development workstation.
+      QA_LIGHTHOUSE_CPU_SLOWDOWN: "2"
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
+        with:
+          run_install: false
+
+      - name: Setup Node with pnpm cache
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 26
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Start deterministic Medusa fixture
+        shell: bash
+        run: |
+          fixture_log="${RUNNER_TEMP}/ci-medusa-fixture-lighthouse.log"
+          node storefront/scripts/ci-medusa-fixture.mjs > "$fixture_log" 2>&1 &
+          fixture_pid=$!
+          echo "CI_MEDUSA_FIXTURE_PID=${fixture_pid}" >> "$GITHUB_ENV"
+          for _ in {1..30}; do
+            if curl --fail --silent --show-error --max-time 2 \
+              "${CI_MEDUSA_FIXTURE_URL}/live" >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          tail -n 50 "$fixture_log"
+          exit 1
+
+      - name: Build storefront
+        run: pnpm --filter remorseless-records-storefront run build
+
+      - name: Resolve Chrome for Lighthouse
+        run: |
+          chrome_path="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium)"
+          test -n "$chrome_path"
+          echo "CHROME_PATH=$chrome_path" >> "$GITHUB_ENV"
+
+      - name: Start storefront server
+        run: |
+          pnpm --filter remorseless-records-storefront run start --hostname 127.0.0.1 --port 3000 > /tmp/storefront-lighthouse.log 2>&1 &
+          echo $! > /tmp/storefront-lighthouse.pid
+
+      - name: Wait for storefront to be ready
+        run: pnpm dlx wait-on@7.2.0 http://127.0.0.1:3000 --timeout 120000
+
+      - name: Run Lighthouse CI (local or override URL)
+        env:
+          QA_BASE_URL: ${{ github.event.inputs.base_url != '' && github.event.inputs.base_url || vars.QA_BASE_URL || 'http://127.0.0.1:3000' }}
+          QA_PRODUCT_PATH: ${{ github.event.inputs.product_path != '' && github.event.inputs.product_path || vars.QA_PRODUCT_PATH || '/music-release/pathologist-pathological-decomposition' }}
+          QA_LIGHTHOUSE_SHARD: commerce
+          LHCI_OUTPUT_DIR: artifacts/lighthouse
+        run: pnpm run qa:lighthouse
+
+      - name: Retain private Lighthouse reports
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: storefront-lighthouse-commerce-${{ github.run_id }}
+          path: |
+            .lighthouseci
+            artifacts/lighthouse
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Stop storefront server
+        if: always()
+        run: |
+          if [ -f /tmp/storefront-lighthouse.pid ]; then
+            kill "$(cat /tmp/storefront-lighthouse.pid)" || true
+          fi
+
+      - name: Stop deterministic Medusa fixture
+        if: always()
+        shell: bash
+        run: |
+          if [[ "${CI_MEDUSA_FIXTURE_PID:-}" =~ ^[0-9]+$ ]]; then
+            kill "${CI_MEDUSA_FIXTURE_PID}" 2>/dev/null || true
+            wait "${CI_MEDUSA_FIXTURE_PID}" 2>/dev/null || true
+          fi
+
+  lighthouse:
+    name: Lighthouse (local build unless URL provided)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: [lighthouse-content, lighthouse-commerce]
+    if: ${{ always() && (github.event_name != 'pull_request' || github.base_ref == 'master' || (vars.ENABLE_STOREFRONT_BUILD == 'true' && vars.ENABLE_STOREFRONT_LIGHTHOUSE == 'true')) }}
+    permissions:
+      contents: read
+    steps:
+      - name: Require both Lighthouse shards
+        env:
+          CONTENT_RESULT: ${{ needs.lighthouse-content.result }}
+          COMMERCE_RESULT: ${{ needs.lighthouse-commerce.result }}
+        run: test "$CONTENT_RESULT" = success && test "$COMMERCE_RESULT" = success

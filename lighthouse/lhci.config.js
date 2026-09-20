@@ -7,9 +7,28 @@ const configuredPaths = process.env.QA_PATHS
       .map((entry) => entry.trim())
       .filter(Boolean)
   : []
+const shard = process.env.QA_LIGHTHOUSE_SHARD ?? ""
+if (!["", "content", "commerce"].includes(shard)) {
+  throw new Error("QA_LIGHTHOUSE_SHARD must be content or commerce")
+}
+if (shard && configuredPaths.length) {
+  throw new Error("QA_PATHS cannot override a fixed Lighthouse shard")
+}
+const defaultPaths = [
+  "/",
+  "/catalog",
+  productPath,
+  "/cart",
+  "/checkout",
+  "/privacy",
+]
 const paths = configuredPaths.length
   ? configuredPaths
-  : ["/", "/catalog", productPath, "/cart", "/checkout", "/privacy"]
+  : shard === "content"
+    ? defaultPaths.slice(0, 3)
+    : shard === "commerce"
+      ? defaultPaths.slice(3)
+      : defaultPaths
 const disableChromeSandbox = process.env.LHCI_CHROME_NO_SANDBOX === "1"
 const configuredCpuSlowdownMultiplier = Number(
   process.env.QA_LIGHTHOUSE_CPU_SLOWDOWN ?? "4"

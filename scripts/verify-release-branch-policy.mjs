@@ -20,12 +20,22 @@ const buildCondition =
   "${{ github.event_name != 'pull_request' || github.base_ref == 'master' || vars.ENABLE_STOREFRONT_BUILD == 'true' }}"
 const runtimeCondition = (flag) =>
   `\${{ github.event_name != 'pull_request' || github.base_ref == 'master' || (vars.ENABLE_STOREFRONT_BUILD == 'true' && vars.${flag} == 'true') }}`
+const aggregateCondition = (flag) =>
+  runtimeCondition(flag)
+    .replace("${{ ", "${{ always() && (")
+    .replace(" }}", ") }}")
 const runtimeConditions = {
   build: buildCondition,
-  e2e: runtimeCondition("ENABLE_STOREFRONT_E2E"),
+  "e2e-responsive": runtimeCondition("ENABLE_STOREFRONT_E2E"),
+  "e2e-critical": runtimeCondition("ENABLE_STOREFRONT_E2E"),
+  e2e: aggregateCondition("ENABLE_STOREFRONT_E2E"),
   accessibility: runtimeCondition("ENABLE_STOREFRONT_A11Y"),
-  lighthouse: runtimeCondition("ENABLE_STOREFRONT_LIGHTHOUSE"),
+  "lighthouse-content": runtimeCondition("ENABLE_STOREFRONT_LIGHTHOUSE"),
+  "lighthouse-commerce": runtimeCondition("ENABLE_STOREFRONT_LIGHTHOUSE"),
+  lighthouse: aggregateCondition("ENABLE_STOREFRONT_LIGHTHOUSE"),
 }
+const lighthouseContentShard = "          QA_LIGHTHOUSE_SHARD: content"
+const lighthouseCommerceShard = "          QA_LIGHTHOUSE_SHARD: commerce"
 const commonJobs = {
   "dependency-review": [],
   security: [],
@@ -132,9 +142,13 @@ export const validateApplicationReleaseGraph = (source, application) => {
     ...(storefront
       ? {
           build: staticGates,
-          e2e: runtimeStartGates,
+          "e2e-responsive": runtimeStartGates,
+          "e2e-critical": runtimeStartGates,
+          e2e: ["e2e-responsive", "e2e-critical"],
           accessibility: runtimeStartGates,
-          lighthouse: runtimeStartGates,
+          "lighthouse-content": runtimeStartGates,
+          "lighthouse-commerce": runtimeStartGates,
+          lighthouse: ["lighthouse-content", "lighthouse-commerce"],
         }
       : {
           integration: ["lint", "typecheck", "secrets"],
@@ -172,12 +186,16 @@ export const validateApplicationReleaseGraph = (source, application) => {
       `${application}.${name} must retain its release/toggle semantics`
     )
   }
-  const run = (name, command) =>
-    requireGateStep(
-      jobs.get(name),
-      `        run: ${command}`,
-      (name === "e2e" && command === "pnpm run qa:storefront:launch") ||
-        (name === "lighthouse" && command === "pnpm run qa:lighthouse")
+  const run = (name, command, allowEnv = false) =>
+    requireGateStep(jobs.get(name), `        run: ${command}`, allowEnv)
+  const stepFor = (name, command) =>
+    jobs
+      .get(name)
+      .steps.find((step) => step.includes(`        run: ${command}`))
+  const requireStepLine = (name, command, line) =>
+    assert.ok(
+      stepFor(name, command)?.includes(line),
+      `${name} must retain reviewed ${line.trim()}`
     )
   const filter = storefront ? "remorseless-records-storefront" : "backend"
   run("security", "pnpm run qa:dependency-supply-chain")
@@ -209,21 +227,94 @@ export const validateApplicationReleaseGraph = (source, application) => {
   run("build", `pnpm --filter ${filter} run build`)
   if (storefront) {
     run("unit", `pnpm --filter ${filter} run test:runtime:images`)
-    for (const name of ["e2e", "accessibility", "lighthouse"])
+    for (const name of [
+      "e2e-responsive",
+      "e2e-critical",
+      "accessibility",
+      "lighthouse-content",
+      "lighthouse-commerce",
+    ])
       run(name, `pnpm --filter ${filter} run build`)
     run(
-      "e2e",
+      "e2e-responsive",
+      `pnpm --filter ${filter} exec playwright install --with-deps chromium`
+    )
+    run(
+      "e2e-critical",
       `pnpm --filter ${filter} exec playwright install --with-deps chromium firefox webkit`
     )
-    run("e2e", `pnpm --filter ${filter} run test:runtime:observability`)
     run(
-      "e2e",
+      "e2e-responsive",
+      `pnpm --filter ${filter} run test:runtime:observability`
+    )
+    run(
+      "e2e-responsive",
       `pnpm --filter ${filter} run test:e2e --config=playwright.ci.config.ts`
     )
-    run("e2e", "pnpm run qa:storefront:launch")
-    run("e2e", `pnpm --filter ${filter} run test:e2e:critical`)
+    run("e2e-responsive", "pnpm run qa:storefront:launch", true)
+    run("e2e-critical", `pnpm --filter ${filter} run test:e2e:critical`)
     run("accessibility", "pnpm run qa:a11y")
-    run("lighthouse", "pnpm run qa:lighthouse")
+    for (const name of ["lighthouse-content", "lighthouse-commerce"])
+      run(name, "pnpm run qa:lighthouse", true)
+    requireStepLine(
+      "lighthouse-content",
+      "pnpm run qa:lighthouse",
+      lighthouseContentShard
+    )
+    requireStepLine(
+      "lighthouse-commerce",
+      "pnpm run qa:lighthouse",
+      lighthouseCommerceShard
+    )
+    assert.doesNotMatch(source, /^\s+QA_LIGHTHOUSE_RUNS:/mu)
+    assert.equal(
+      jobs.get("e2e").controls.get("name"),
+      "Browser Smoke (storefront, Playwright)"
+    )
+    assert.equal(
+      jobs.get("lighthouse").controls.get("name"),
+      "Lighthouse (local build unless URL provided)"
+    )
+    assert.deepEqual(
+      [
+        "e2e-responsive",
+        "e2e-critical",
+        "lighthouse-content",
+        "lighthouse-commerce",
+      ].map((name) => jobs.get(name).controls.get("name")),
+      [
+        "Browser Smoke (responsive + launch)",
+        "Browser Smoke (critical cross-browser)",
+        "Lighthouse (content routes)",
+        "Lighthouse (commerce routes)",
+      ]
+    )
+    const browserAggregate =
+      'test "$RESPONSIVE_RESULT" = success && test "$CRITICAL_RESULT" = success'
+    run("e2e", browserAggregate, true)
+    requireStepLine(
+      "e2e",
+      browserAggregate,
+      "          RESPONSIVE_RESULT: ${{ needs.e2e-responsive.result }}"
+    )
+    requireStepLine(
+      "e2e",
+      browserAggregate,
+      "          CRITICAL_RESULT: ${{ needs.e2e-critical.result }}"
+    )
+    const lighthouseAggregate =
+      'test "$CONTENT_RESULT" = success && test "$COMMERCE_RESULT" = success'
+    run("lighthouse", lighthouseAggregate, true)
+    requireStepLine(
+      "lighthouse",
+      lighthouseAggregate,
+      "          CONTENT_RESULT: ${{ needs.lighthouse-content.result }}"
+    )
+    requireStepLine(
+      "lighthouse",
+      lighthouseAggregate,
+      "          COMMERCE_RESULT: ${{ needs.lighthouse-commerce.result }}"
+    )
   } else {
     run("integration", "pnpm run qa:disposable-integration --no-build")
     run("build", "node scripts/verify-admin-bundle-budget.mjs")
@@ -231,7 +322,7 @@ export const validateApplicationReleaseGraph = (source, application) => {
   return {
     application,
     jobs: jobs.size,
-    parallelRuntimeGates: storefront ? 5 : 2,
+    parallelRuntimeGates: storefront ? 7 : 2,
   }
 }
 

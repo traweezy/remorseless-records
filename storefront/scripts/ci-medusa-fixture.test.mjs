@@ -215,7 +215,8 @@ test("pins Storefront CI builds and Browser Smoke to local providers", () => {
     /secrets\.NEXT_PUBLIC_MEILI_(?:HOST|SEARCH_KEY)/u
   )
   for (const jobName of ["accessibility", "build"]) {
-    const nextJobName = jobName === "accessibility" ? "build" : "lighthouse"
+    const nextJobName =
+      jobName === "accessibility" ? "build" : "lighthouse-content"
     const job =
       workflow.match(
         new RegExp(`^  ${jobName}:\\n[\\s\\S]*?(?=^  ${nextJobName}:)`, "mu")
@@ -251,18 +252,24 @@ test("pins Storefront CI builds and Browser Smoke to local providers", () => {
   assert.match(workflow, /CI_MEDUSA_FIXTURE_URL: http:\/\/127\.0\.0\.1:4010/u)
   assert.match(workflow, /Start deterministic Medusa fixture/u)
   assert.match(workflow, /Stop deterministic Medusa fixture/u)
-  assert.doesNotMatch(
-    workflow.match(/  e2e:[\s\S]*?\n  accessibility:/u)?.[0] ?? "",
-    /secrets\.MEDUSA_BACKEND_URL/u
-  )
-  for (const jobName of ["e2e", "lighthouse"]) {
-    const nextJob = jobName === "e2e" ? "accessibility" : undefined
-    const jobPattern = nextJob
-      ? new RegExp(`  ${jobName}:[\\s\\S]*?\\n  ${nextJob}:`, "u")
-      : new RegExp(`  ${jobName}:[\\s\\S]*$`, "u")
-    const job = workflow.match(jobPattern)?.[0] ?? ""
+  for (const [jobName, nextJob] of [
+    ["e2e-responsive", "e2e-critical"],
+    ["e2e-critical", "e2e"],
+    ["lighthouse-content", "lighthouse-commerce"],
+    ["lighthouse-commerce", "lighthouse"],
+  ]) {
+    const job =
+      workflow.match(
+        new RegExp(`^  ${jobName}:[\\s\\S]*?(?=^  ${nextJob}:)`, "mu")
+      )?.[0] ?? ""
+    assert.match(job, new RegExp(`^  ${jobName}:`, "mu"))
+    assert.doesNotMatch(job, /secrets\.MEDUSA_BACKEND_URL/u)
     assert.match(job, /MEILISEARCH_HOST: http:\/\/127\.0\.0\.1:7700/u)
     assert.match(job, /MEILISEARCH_SEARCH_KEY: ci-launch-search-key-20260831/u)
+    if (jobName.startsWith("lighthouse-")) {
+      assert.match(job, /Start deterministic Medusa fixture/u)
+      assert.match(job, /QA_LIGHTHOUSE_CPU_SLOWDOWN: "2"/u)
+    }
   }
   assert.match(ciConfig, /ciMedusaFixtureWebServer/u)
   assert.match(
@@ -303,14 +310,6 @@ test("pins Storefront CI builds and Browser Smoke to local providers", () => {
   ]) {
     assert.match(providerConfig, new RegExp(`${secretName}: ".{32,}"`, "u"))
   }
-  assert.match(
-    workflow.match(/  lighthouse:[\s\S]*$/u)?.[0] ?? "",
-    /Start deterministic Medusa fixture/u
-  )
-  assert.match(
-    workflow.match(/  lighthouse:[\s\S]*$/u)?.[0] ?? "",
-    /QA_LIGHTHOUSE_CPU_SLOWDOWN: "2"/u
-  )
   assert.match(lighthouseConfig, /numberOfRuns: configuredRuns/u)
   assert.match(
     lighthouseConfig,

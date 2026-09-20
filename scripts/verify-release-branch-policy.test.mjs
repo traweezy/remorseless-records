@@ -1,4 +1,5 @@
 import assert from "node:assert/strict"
+import { spawnSync } from "node:child_process"
 import { readFileSync } from "node:fs"
 import test from "node:test"
 
@@ -38,8 +39,8 @@ for (const application of ["backend", "storefront"]) {
   test(`${application} retains every required security gate and parallel runtime graph`, () => {
     assert.deepEqual(validate(application), {
       application,
-      jobs: application === "storefront" ? 11 : 9,
-      parallelRuntimeGates: application === "storefront" ? 5 : 2,
+      jobs: application === "storefront" ? 15 : 9,
+      parallelRuntimeGates: application === "storefront" ? 7 : 2,
     })
     validateReleaseBranches(workflows[application], application)
   })
@@ -73,7 +74,15 @@ for (const application of ["backend", "storefront"]) {
 
   const runtimeJobs =
     application === "storefront"
-      ? ["unit", "build", "e2e", "accessibility", "lighthouse"]
+      ? [
+          "unit",
+          "build",
+          "e2e-responsive",
+          "e2e-critical",
+          "accessibility",
+          "lighthouse-content",
+          "lighthouse-commerce",
+        ]
       : ["unit", "build"]
   for (const name of runtimeJobs) {
     test(`${application}.${name} rejects removed prerequisites, restored serial waits, and failure suppression`, () => {
@@ -199,24 +208,36 @@ test("Backend build still requires successful disposable integration", () => {
 
 test("Storefront requires every independent build and all browser/a11y/performance commands", () => {
   for (const [name, command] of [
-    ["e2e", "pnpm --filter remorseless-records-storefront run build"],
-    ["accessibility", "pnpm --filter remorseless-records-storefront run build"],
-    ["lighthouse", "pnpm --filter remorseless-records-storefront run build"],
     [
-      "e2e",
+      "e2e-responsive",
+      "pnpm --filter remorseless-records-storefront run build",
+    ],
+    ["e2e-critical", "pnpm --filter remorseless-records-storefront run build"],
+    ["accessibility", "pnpm --filter remorseless-records-storefront run build"],
+    [
+      "lighthouse-content",
+      "pnpm --filter remorseless-records-storefront run build",
+    ],
+    [
+      "lighthouse-commerce",
+      "pnpm --filter remorseless-records-storefront run build",
+    ],
+    [
+      "e2e-responsive",
       "pnpm --filter remorseless-records-storefront run test:runtime:observability",
     ],
     [
-      "e2e",
+      "e2e-responsive",
       "pnpm --filter remorseless-records-storefront run test:e2e --config=playwright.ci.config.ts",
     ],
-    ["e2e", "pnpm run qa:storefront:launch"],
+    ["e2e-responsive", "pnpm run qa:storefront:launch"],
     [
-      "e2e",
+      "e2e-critical",
       "pnpm --filter remorseless-records-storefront run test:e2e:critical",
     ],
     ["accessibility", "pnpm run qa:a11y"],
-    ["lighthouse", "pnpm run qa:lighthouse"],
+    ["lighthouse-content", "pnpm run qa:lighthouse"],
+    ["lighthouse-commerce", "pnpm run qa:lighthouse"],
   ]) {
     assert.throws(() =>
       validate(
@@ -229,12 +250,145 @@ test("Storefront requires every independent build and all browser/a11y/performan
   }
 })
 
+test("Storefront required check aggregates fail closed on either shard", () => {
+  for (const [name, first, second, command] of [
+    [
+      "e2e",
+      "e2e-responsive",
+      "e2e-critical",
+      'test "$RESPONSIVE_RESULT" = success && test "$CRITICAL_RESULT" = success',
+    ],
+    [
+      "lighthouse",
+      "lighthouse-content",
+      "lighthouse-commerce",
+      'test "$CONTENT_RESULT" = success && test "$COMMERCE_RESULT" = success',
+    ],
+  ]) {
+    for (const broken of [
+      (job) =>
+        job.replace(
+          `    needs: [${first}, ${second}]`,
+          `    needs: [${first}]`
+        ),
+      (job) => job.replace("always() && ", ""),
+      (job) => job.replace(`        run: ${command}`, "        run: true"),
+      (job) =>
+        job.replace(/^    name: .*$/mu, "    name: Bypassed aggregate check"),
+      (job) => job.replace(`needs.${second}.result`, `needs.${first}.result`),
+    ])
+      assert.throws(() =>
+        validate("storefront", mutateJob(workflows.storefront, name, broken))
+      )
+  }
+})
+
+test("Storefront shard names cannot duplicate protected check contexts", () => {
+  for (const [name, protectedName] of [
+    ["e2e-responsive", "Browser Smoke (storefront, Playwright)"],
+    ["lighthouse-content", "Lighthouse (local build unless URL provided)"],
+  ])
+    assert.throws(() =>
+      validate(
+        "storefront",
+        mutateJob(workflows.storefront, name, (job) =>
+          job.replace(/^    name: .*$/mu, `    name: ${protectedName}`)
+        )
+      )
+    )
+})
+
+test("Storefront keeps disjoint Lighthouse routes and three runs", () => {
+  for (const [name, replacement] of [
+    ["lighthouse-content", "          QA_LIGHTHOUSE_SHARD: commerce"],
+    ["lighthouse-commerce", "          QA_LIGHTHOUSE_SHARD: content"],
+  ])
+    assert.throws(() =>
+      validate(
+        "storefront",
+        mutateJob(workflows.storefront, name, (job) =>
+          job.replace(/^          QA_LIGHTHOUSE_SHARD: .*$/mu, replacement)
+        )
+      )
+    )
+  assert.throws(() =>
+    validate(
+      "storefront",
+      workflows.storefront.replace(
+        "          QA_LIGHTHOUSE_SHARD: commerce",
+        "          QA_LIGHTHOUSE_SHARD: commerce\n          QA_LIGHTHOUSE_RUNS: 1"
+      )
+    )
+  )
+})
+
+const lighthouseConfig = (overrides = {}) => {
+  const environment = {
+    ...process.env,
+    QA_BASE_URL: "http://127.0.0.1:3000",
+    QA_PRODUCT_PATH: "/music-release/a,b",
+  }
+  for (const name of ["QA_PATHS", "QA_LIGHTHOUSE_SHARD", "QA_LIGHTHOUSE_RUNS"])
+    delete environment[name]
+  Object.assign(environment, overrides)
+  const child = spawnSync(
+    process.execPath,
+    [
+      "-e",
+      "process.stdout.write(JSON.stringify(require('./lighthouse/lhci.config.js').ci))",
+    ],
+    {
+      cwd: new URL("../", import.meta.url),
+      env: environment,
+      encoding: "utf8",
+    }
+  )
+  return {
+    status: child.status,
+    stderr: child.stderr,
+    config: child.status === 0 ? JSON.parse(child.stdout) : undefined,
+  }
+}
+
+test("Lighthouse shards retain six unique routes, three runs and assertions", () => {
+  const baseline = lighthouseConfig()
+  const content = lighthouseConfig({ QA_LIGHTHOUSE_SHARD: "content" })
+  const commerce = lighthouseConfig({ QA_LIGHTHOUSE_SHARD: "commerce" })
+  for (const result of [baseline, content, commerce])
+    assert.equal(result.status, 0, result.stderr)
+  const urls = baseline.config.collect.url
+  assert.equal(urls.length, 6)
+  assert.deepEqual(content.config.collect.url, urls.slice(0, 3))
+  assert.deepEqual(commerce.config.collect.url, urls.slice(3))
+  assert.equal(new Set(urls).size, 6)
+  assert.ok(urls[2].endsWith("/music-release/a,b"))
+  for (const result of [content, commerce]) {
+    assert.equal(result.config.collect.numberOfRuns, 3)
+    assert.deepEqual(result.config.assert, baseline.config.assert)
+  }
+  assert.notEqual(
+    lighthouseConfig({ QA_LIGHTHOUSE_SHARD: "invalid" }).status,
+    0
+  )
+  assert.notEqual(
+    lighthouseConfig({
+      QA_LIGHTHOUSE_SHARD: "content",
+      QA_PATHS: "/cart",
+    }).status,
+    0
+  )
+})
+
 // Evaluate only the literal comparisons and OR-of-AND form used by these
 // checked-in GitHub conditions. No eval, arbitrary expressions, or providers.
 const evaluateCondition = (condition, context) => {
   assert.ok(condition.startsWith("${{ ") && condition.endsWith(" }}"))
-  return condition
-    .slice(4, -3)
+  const expression = condition.slice(4, -3)
+  return (
+    expression.startsWith("always() && (")
+      ? expression.slice("always() && (".length, -1)
+      : expression
+  )
     .split(" || ")
     .some((term) =>
       term
@@ -280,8 +434,12 @@ test("all event/base/toggle combinations preserve the former build-dependent PR 
           oldBuildRan
         )
         for (const [name, flag] of [
+          ["e2e-responsive", "E2E"],
+          ["e2e-critical", "E2E"],
           ["e2e", "E2E"],
           ["accessibility", "A11Y"],
+          ["lighthouse-content", "LIGHTHOUSE"],
+          ["lighthouse-commerce", "LIGHTHOUSE"],
           ["lighthouse", "LIGHTHOUSE"],
         ]) {
           const oldLeafEnabled =
@@ -300,8 +458,12 @@ test("all event/base/toggle combinations preserve the former build-dependent PR 
 
 test("Storefront rejects lost build opt-in, omitted master gates and broadened toggle conditions", () => {
   for (const [name, flag] of [
+    ["e2e-responsive", "E2E"],
+    ["e2e-critical", "E2E"],
     ["e2e", "E2E"],
     ["accessibility", "A11Y"],
+    ["lighthouse-content", "LIGHTHOUSE"],
+    ["lighthouse-commerce", "LIGHTHOUSE"],
     ["lighthouse", "LIGHTHOUSE"],
   ]) {
     for (const change of [

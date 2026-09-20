@@ -41,8 +41,23 @@ It does not authorize a production deployment by itself.
 The Backend unit job and the Storefront unit, browser, accessibility, and
 Lighthouse jobs start after security, lint, typecheck, and secret-scan gates.
 They overlap the independent CodeQL job to shorten the critical CI path.
-CodeQL and the production-build jobs still have to pass before exact-SHA
-acceptance; no failed or skipped required job may be treated as a release.
+The Storefront browser gate runs responsive/launch and three-browser critical
+suites on separate runners. Lighthouse audits the six existing routes in two
+isolated three-route runners, retaining three runs and the same assertions per
+route. The original Browser Smoke and Lighthouse check names are aggregate jobs
+that fail unless both respective shards succeed; keep those exact names in
+branch protection. Each Lighthouse shard retains its own private report
+artifact, named `storefront-lighthouse-content-<run-id>` or
+`storefront-lighthouse-commerce-<run-id>`. CodeQL and the production-build
+jobs still have to pass before exact-SHA acceptance; no failed or skipped
+required job may be treated as a release.
+
+The last unsplit successful run spent 451 seconds in Browser Smoke and 408
+seconds in Lighthouse. The first sharded run should target at most 330 and
+270 seconds, respectively, before the small aggregate jobs; record actual
+durations and report counts before claiming a gain. Extra isolated setup and
+builds are expected to add roughly four to five runner-minutes per workflow
+while reducing the critical path by about two minutes when both branches run.
 
 Browser navigation gates must wait for an explicit rendered contract after
 `domcontentloaded`. Do not use page-wide `networkidle` as a readiness signal:
