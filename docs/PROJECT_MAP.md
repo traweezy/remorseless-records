@@ -37,7 +37,7 @@ framework scaffolding rather than project-specific operational instructions.
 | Storefront interactions and state | `storefront/src/components/`, `storefront/src/features/`, `storefront/src/lib/cart/`, `store/`, `query/`, and `storefront/src/providers/` |
 | Storefront provider decoding, search, security | `storefront/src/lib/data/`, `medusa/`, `search/`, `security/`, `http/`; `storefront/src/config/`; `storefront/next.config.ts` |
 | Health, telemetry, request correlation | Both applications' `src/lib/health/` and `src/lib/observability/`; Backend `src/api/health/`; `scripts/observe-*-health.mjs`, `scripts/verify-railway-runtime-log.mjs` |
-| Data maintenance and recovery | `backend/src/scripts/`, `backend/src/cli/`, root `scripts/postgres-*.mjs`, `media-backup.mjs`, `redis-capacity-audit.mjs` |
+| Data maintenance and recovery | `backend/src/scripts/`, `backend/src/cli/`, root `scripts/postgres-*.mjs`, `media-backup.mjs`, `redis-capacity-audit.mjs`, `redis-aof-capture.mjs`, `redis-aof-recovery.mjs`, `redis-aof-isolated-replay.mjs`, `backend-isolated-startup-smoke.mjs` |
 | Unit, service, browser, accessibility, performance QA | Application test/config files; `scripts/*.test.mjs`; `storefront/e2e/`; `storefront/playwright*.ts`; `qa/`; `lighthouse/` |
 | Disposable service tests | `scripts/run-disposable-integration.mjs`, `scripts/scan-disposable-integration-images.mjs`, `docker/integration/` |
 | Runtime image candidates | `backend/Dockerfile.runtime`, `storefront/Dockerfile.runtime`, `scripts/*runtime-image*.mjs`, `scripts/security/runtime-image-policy.json` |
@@ -100,19 +100,18 @@ contracts before applying generic framework examples from those files.
 ## Verified continuation boundary
 
 Both Railway applications now run accepted revision
-`e7a37c2180f890e0562495a5897b3cef7decc5c2`. Root, Backend, Storefront,
-and Runtime Images CI passed on that exact SHA (runs `35479741881`,
-`35479741882`, `35479741926`, `35479741917`); Backend deployment
-`7c18c961-202f-4542-ad05-e9449c2a6005` and Storefront deployment
-`a8ed4c9f-dec7-41db-83e9-09d2c90fdfe3` reached `SUCCESS`. Both health
+`48b33765bb98637d61acc36d1addba708b0d7f84`. Root, Backend, Storefront,
+and Runtime Images CI passed on that exact SHA (runs `35481443600`,
+`35481443610`, `35481443578`, `35481443603`); Backend deployment
+`376092ee-7b0a-486c-820c-f8b4de6eec62` and Storefront deployment
+`eff51f25-082d-4969-8715-22578db2d6f0` reached `SUCCESS`. Both health
 pairs, Backend operations/scheduler/retention, an ordinary same-SHA scheduler
-heartbeat, and Storefront root/catalog passed. Deployed browsers passed 75
-cases with eight expected skips and 16/16 Firefox/WebKit. An exact public
-catalog request produced matching Backend/Storefront HTTP 200 completion logs;
-bounded provider HTTP queries found no 5xx through 01:18 UTC. The first
-browser attempt's nested Stripe dependency drift was corrected in the pinned
-exact-revision rerun; see the handoff. The prior accepted revision was
-`8dae008e424e7ad3795d401971846650def8bf77`. GitHub repository access
+heartbeat, and Storefront root/catalog passed. Deployed responsive browsers
+passed 75 cases with eight expected skips; Firefox/WebKit were not rerun for
+this release. Bounded exact-deployment HTTP 5xx queries found zero through
+`2026-09-20T01:50:23Z`; the handoff records the existing Storefront error
+families and exact image identities. The prior accepted revision was
+`e7a37c2180f890e0562495a5897b3cef7decc5c2`. GitHub repository access
 and pinned Railway CLI access were verified. Railway project `store` has one
 environment, `staging`, containing Backend, Storefront, Postgres, Redis, Bucket (MinIO),
 Console, and MeiliSearch. All seven active deployments report `SUCCESS`.
@@ -143,7 +142,11 @@ gain a receipt retroactively; the later isolated staging-data restore required
 a fresh source-bound archive and receipt. The legacy two-command path requires
 quiescent source writes; the accepted shared-snapshot path permits DML to
 continue while schema DDL is paused.
-Actual Redis multipart-AOF replay and queue reconciliation are also pending.
+Actual Redis multipart-AOF capture, verification, replay, and queue
+reconciliation are also pending. The accepted release supplies a guarded,
+read-only preflight and a separately controlled capture command; its live
+rewrite-policy change has not been run.
+
 The subsequent September 20 UTC local staging-data PostgreSQL drill captured
 a source-scope-bound shared-snapshot archive and restored all 171 physical
 tables with matching row/schema counts to a distinct, isolated 16.15 target.

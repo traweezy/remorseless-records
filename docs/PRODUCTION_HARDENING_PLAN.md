@@ -9,6 +9,37 @@ tracks what is still required before production traffic is approved.
 
 ## Active continuation — September 20 UTC onward
 
+The latest accepted staging release is
+`48b33765bb98637d61acc36d1addba708b0d7f84`. Its guarded Redis
+multipart-AOF preflight/capture implementation passed exact-SHA Root, Backend,
+Storefront, and Runtime Images CI (runs `35481443600`, `35481443610`,
+`35481443578`, `35481443603`). Railway Backend deployment
+`376092ee-7b0a-486c-820c-f8b4de6eec62` and Storefront deployment
+`eff51f25-082d-4969-8715-22578db2d6f0` reached `SUCCESS` on that SHA. Both
+health/readiness pairs returned HTTP 200 with exact revision identity;
+Backend's 11 readiness checks, scheduler, retention, operations, and an
+ordinary exact-SHA scheduler heartbeat were healthy. Storefront root/catalog
+returned 200 with the expected security headers. The deployed responsive
+browser matrix passed 75 cases with eight expected skips; bounded runtime
+review found only the previously classified closed-stream/root-span diagnostic
+families, and filtered exact-deployment HTTP 5xx queries found zero on both
+services through `2026-09-20T01:50:23Z`. The capture command has **not** been
+run against live Redis: its temporary rewrite-policy change still needs a
+reviewed operational window. Live AOF verification/replay and queue/business
+reconciliation, durable backup retention/PITR, restored-target application
+startup, and production recovery timing remain open. The
+[handoff](NEXT_SESSION_HANDOFF.md) records the exact acceptance evidence.
+
+The next local candidate resolves compiled Backend runtime aliases, proves
+worker-free startup against a fresh isolated restore of staging PostgreSQL
+data, and adds receipt-bound Redis AOF verification and isolated startup/
+restart replay. Combined local gates, the Backend build, and synthetic
+real-container replay pass. These commits have not yet passed exact-SHA
+GitHub/Railway acceptance. The Backend candidate image has the same no-fix
+HIGH/CRITICAL advisory set as the prior image under the pinned scan; final
+image publication still needs a named risk decision and final-SHA scan.
+The live Redis capture and queue/business reconciliation remain open.
+
 The guarded PostgreSQL recovery tooling release at
 `e7a37c2180f890e0562495a5897b3cef7decc5c2` passed exact-SHA Root,
 Backend, Storefront, and Runtime Images CI (runs `35479741881`,

@@ -11,6 +11,84 @@ reviewed scope. Do not invent missing production, legal, tax, or provider facts.
 Use [PROJECT_MAP.md](PROJECT_MAP.md) for the indexed code/documentation entrypoints.
 Preserve unrelated `Default/` unread, untouched, and unstaged.
 
+### Accepted September 20 UTC Redis capture tooling release: `48b3376`
+
+Commit `48b33765bb98637d61acc36d1addba708b0d7f84` adds a source-bound,
+read-only staging Redis multipart-AOF preflight and a separately guarded live
+capture command. Root CI `35481443600`, Backend CI `35481443610`, Storefront CI
+`35481443578`, and Runtime Images `35481443603` all passed on the exact SHA,
+including Storefront browser smoke and Lighthouse. Railway Backend deployment
+`376092ee-7b0a-486c-820c-f8b4de6eec62` and Storefront deployment
+`eff51f25-082d-4969-8715-22578db2d6f0` reached `SUCCESS` on that SHA. Their
+Railway image digests were respectively
+`sha256:6f3b2998d405bcb64312b9db094ab5e9ba9cc57add9d38dd4428f1c8c13938de`
+and
+`sha256:b7eceb32eab48abf89a1f86dd5f5c84146c1413b9f3e4c4665f44edb1e445de4`.
+
+At `2026-09-20T01:43:59Z`–`01:44:00Z`, both `/live` and `/ready` pairs returned
+HTTP 200, `ok`, and the exact SHA. Backend readiness reported all four
+dependencies and seven capabilities `ok`; Storefront reported Backend and
+Redis `ok`. Backend `/health/scheduler`, `/health/retention`, and
+`/health/operations` returned HTTP 200, healthy, and zero reasons. The ordinary
+scheduler heartbeat completed at `01:50:00.201Z` on the exact SHA with Redis
+`ok`; a post-heartbeat operations check at `01:50:23Z` remained healthy with
+incidents, retention, and scheduler all healthy. Backend `/api/health` and
+Storefront `/` and `/catalog` returned HTTP 200 at `01:49:32Z`; the Storefront
+documents retained CSP, CSP-Report-Only, HSTS, `nosniff`, and the strict-origin
+referrer policy.
+
+The deployed Desktop Chrome, Pixel 7, and iPhone 15 Pro Playwright matrix
+passed 75 cases with eight expected skips in 1.7 minutes. It ran from the
+root Storefront dependency graph with `@playwright/test` 1.62.1 and exact
+`48b3376` HEAD at command start, using
+`PLAYWRIGHT_BASE_URL=https://storefront-staging-41f0.up.railway.app storefront/node_modules/.bin/playwright test --config=storefront/playwright.ci.config.ts`.
+No package install or local application server was started. A later local
+Backend-only candidate did not change Storefront source or dependencies; it is
+not part of this accepted deployment. Firefox/WebKit were not rerun for this
+release.
+
+Bounded exact-deployment runtime captures through `01:46:05Z` contained 446
+Backend rows (all `info`) and 330 Storefront rows (294 `info`, 36 `error`). The
+Storefront error rows comprised seven previously classified five-line
+destination-stream-closed groups with digest `2991309508` and one existing
+Next.js root-span diagnostic; this is not a zero-error claim. Independent
+exact-deployment filtered HTTP 5xx queries returned zero for both services
+after browser acceptance and again at `01:50:23Z`.
+
+This accepts the capture **tooling and staging application release**, not an
+actual live AOF capture. The capture mode temporarily changes the pinned live
+Redis instance's rewrite percentage and still needs a reviewed operational
+window. Offline AOF verification, isolated live-data replay, queue/lock and
+business reconciliation, durable backups/PITR, application startup against the
+restored PostgreSQL target, and production recovery timing remain open. See
+[infrastructure recovery](INFRASTRUCTURE_RECOVERY.md) for the guarded command
+and limits.
+
+### Local recovery candidate after the accepted release
+
+Commits `b167500`, `2935aa7`, and `eb8bb04` are local candidates pending
+exact-SHA CI and Railway acceptance. The Backend build now resolves 186 static
+compiled `@/` aliases before runtime packaging. Its candidate image passed
+worker-free, no-egress `/live` and `/ready` checks against a fresh isolated
+restore of the staging PostgreSQL data; see
+[the startup smoke guide](BACKEND_ISOLATED_STARTUP_SMOKE.md). This proves
+compiled module loading and database/Redis readiness, not production provider
+configuration or background jobs. The pinned image scan had the same 4
+CRITICAL and 52 HIGH no-fix findings as the prior image, with zero fixed
+HIGH/CRITICAL; a named release-owner risk decision remains necessary before
+publishing a final runtime image.
+
+The Redis replay tool binds a private capture receipt to every AOF file, runs
+the pinned offline checker, and proves worker-free startup and restart in a
+network-free disposable Redis target. Synthetic real-container integration
+passed 2/2 after the combined cherry-pick; no live Redis capture or replay has
+occurred. A fresh read-only staging preflight on September 20 still found
+the exact Redis deployment/instance/volume, two active AOF files, no history
+files, 62,955,459 total bytes, prior rewrite percentage 100, and fingerprint
+`d8cb5c8efe046fd37bb8e382bf2bcd0e1e25fccb81c19fea8279815161e63dff`.
+The fingerprint is a source-scope/configuration guard, not a frozen byte count.
+Refresh it immediately before any approved capture.
+
 ### Accepted September 20 UTC guarded recovery release: `e7a37c2`
 
 Commit `e7a37c2180f890e0562495a5897b3cef7decc5c2` ships the guarded
