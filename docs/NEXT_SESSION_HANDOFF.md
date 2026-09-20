@@ -11,6 +11,46 @@ reviewed scope. Do not invent missing production, legal, tax, or provider facts.
 Use [PROJECT_MAP.md](PROJECT_MAP.md) for the indexed code/documentation entrypoints.
 Preserve unrelated `Default/` unread, untouched, and unstaged.
 
+### Accepted September 20 UTC queue and CI release: `689c52c`
+
+Exact SHA `689c52c8d84a77d1e144b03df6be2bb33d7711cb` passed Root CI
+`35503196906`, Backend CI `35503196961`, Storefront CI `35503196912`, and
+Runtime Images `35503196930`. Railway Backend deployment
+`4b2261b4-6eaf-4220-a6f9-20206ff08cee` and Storefront deployment
+`a588eb8c-a9d6-412a-8915-84bf51d1b243` both reached `SUCCESS` at the
+exact SHA. Backend readiness passed 11 checks and operations was healthy with
+11 dependencies and zero reasons; its ordinary `09:58:00Z` scheduler heartbeat
+completed on this SHA with zero failures. Storefront readiness passed two
+checks, and catalog, product and private-search probes passed. Both scoped
+deployment error and HTTP 5xx filters were empty.
+
+Commit `065cf8b` compares exact-source Redis replay, live aggregate and
+PostgreSQL aggregate offline. The 238 failed queue jobs agree across Redis
+reports, but business/provider identity is absent, so reconciliation and retry
+authorization remain false. Commit `adc0cb2` parallelizes independent Backend
+CI work and uses two workers in the two longest Storefront browser suites.
+Backend CI finished in 5m03, 1m20 faster than its prior run, with 1m07 of
+build/integration overlap. Storefront CI finished in 6m28, 46 seconds faster;
+its responsive/launch and critical browser suites passed 81+20 and 48 tests
+respectively, with no retry or flaky markers.
+
+After this release, the guarded private-source PostgreSQL archive was restored
+on an owned, no-network PostgreSQL 16.15 Docker target. Empty-target preflight,
+one-shot apply, 171 table and row-count comparisons, and separate post-restore
+verification passed. Source and target system identifiers differ. The target
+remains available locally for inspection; application/provider acceptance,
+off-site retention, PITR and recovery timing remain open. The first local
+target-create attempt had failed with a generic event and left no new owned
+resources; its exact cause remains unknown. A subsequent fresh attempt
+succeeded. See [PostgreSQL restore acceptance](POSTGRES_RESTORE_ACCEPTANCE.md).
+
+The Bucket DAILY schedule's first run appeared at `10:01:00Z` as backup
+`70a98541-890f-4c91-8f9f-d108b0da4205` on the exact READY volume and
+schedule ID; the earlier manual checkpoint remains listed. PostgreSQL and
+Redis first scheduled-run evidence is still pending at their later cron times.
+This same-project snapshot does not prove an isolated Bucket restore or
+off-site media retention.
+
 ### Accepted September 20 UTC monitor and backup evidence: `5f4f4ee`
 
 Exact SHA `5f4f4eeda02abf113daea2185cdc8cd6845542a4` passed Root CI
@@ -28,14 +68,12 @@ Commit `7f75505` closes the operations/scheduler monitor file-swap and
 unbounded-read race with a descriptor-bound reader, focused race tests and
 enforced coverage. Commit `5f4f4ee` records the scoped PostgreSQL/Redis
 checkpoints, three DAILY staging volume schedules, and their remaining
-restore limits. The first scheduled snapshot has not yet been verified.
+restore limits. No scheduled run had yet occurred at that release; Bucket's
+first run is recorded above.
 
-The next local batch contains `065cf8b`, a SHA-pinned offline Redis/PostgreSQL
-count comparison that explicitly leaves retry authorization false, and
-`adc0cb2`, which parallelizes independent CI jobs and tries two Playwright
-workers in the two longest Storefront browser suites. Local lint/coverage and
-isolated browser smokes passed. Exact next-push CI timing, retry counts, and
-Railway acceptance remain pending.
+The subsequent `689c52c` release above accepted the offline count comparison
+and measured the CI/browser changes. Its comparison explicitly leaves retry
+authorization false.
 
 ### Accepted September 20 UTC role/media release and volume cadence: `846832f`
 
@@ -61,7 +99,7 @@ were recorded: PostgreSQL `270b4c48-6790-4391-b082-0785c7866d22` and
 Redis `5db11746-9af1-4537-8b52-475d710b852c`. The earlier Bucket checkpoint
 remained listed. PostgreSQL, Redis and Bucket each now report exactly one
 DAILY schedule with six-day retention; post-change Backend and Storefront
-readiness stayed healthy. The first scheduled snapshot has not run. The
+readiness stayed healthy. No scheduled snapshot had yet run at that time. The
 backups remain inside the same Railway project and do not establish PITR,
 off-site retention, an isolated restore, or working support-image rollback.
 See [Infrastructure recovery](INFRASTRUCTURE_RECOVERY.md) for exact volume,

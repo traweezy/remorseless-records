@@ -707,8 +707,13 @@ exactly one `DAILY` schedule per volume, and post-change Backend/Storefront
 readiness and Backend operations remained healthy. Railway's scheduled backups
 are incremental copy-on-write and bill exclusive retained data at the volume
 rate; inspect actual usage and future scheduled records instead of treating
-the current zero-exclusive new checkpoints as a cost cap. The first scheduled
-run has not yet occurred. These same-project volume snapshots are neither
+the current zero-exclusive new checkpoints as a cost cap. Bucket's first
+scheduled run appeared at `2026-09-20T10:01:00.913Z` as backup
+`70a98541-890f-4c91-8f9f-d108b0da4205`, with its exact schedule ID
+`e17fec78-7494-43cc-b36f-8a35a64ccf2d`, 1,528 MB referenced and initially
+0 MB exclusive. The earlier named manual checkpoint remained listed on the
+same READY volume. PostgreSQL and Redis first scheduled runs await their later
+cron times. These same-project volume snapshots are neither
 PITR nor off-site copies, and no volume restore, Redis queue reconciliation,
 or media version-history restore was performed. The floating/unpullable support
 image sources still block a proven service restore and rollback.
