@@ -221,6 +221,18 @@ one-click duplicate of the present secret-bearing environment. Reconsider
 duplication only after a reviewed source-secret sealing and access plan proves
 that no original credential can cross the boundary.
 
+**Read-only readiness check (September 20, 2026):** the accessible Railway
+account shows the existing `store/staging` target and two unrelated projects,
+but no identifiable client-owned workspace or project. No client staging
+domain or client-specific provider credential entries were discoverable by
+name in the available Railway, GitHub, local-environment, or CLI metadata.
+The Stripe CLI default profile is not authenticated. These names-only checks
+do not establish that credentials cannot exist elsewhere; they establish that
+a client target and client credentials are not available to this workflow now.
+Client-keyed service provisioning must wait for those inputs through an
+approved secret channel. Never substitute owner credentials or deploy a client
+environment that could send to owner provider accounts.
+
 ### Ownership and isolation decision
 
 - [ ] Record who owns Railway billing, needs console/API access, operates the
@@ -330,12 +342,12 @@ that no original credential can cross the boundary.
 - [ ] Promote only an exact SHA already accepted by Root, Backend,
       Storefront, and Runtime Images CI on `staging`; keep the client services'
       GitHub autodeploy disabled until an independent release path is reviewed.
-      Verify that the selected client workspace's Railway GitHub App and a
-      connected member have contributor access to the approved private source
-      repository, and that its license permits this deployment. A manual
-      exact-SHA deploy must verify the connected repository and target
-      environment. Railway's Wait for CI checks workflow conclusions and can
-      let skipped/neutral workflows through, so confirm every required check
+      Verify that the selected client workspace can connect to the approved
+      **public** source repository and that its license and ownership permit
+      this client deployment. A manual exact-SHA deploy must verify the
+      connected repository and target environment. Railway's Wait for CI
+      checks workflow conclusions and can let skipped/neutral workflows
+      through, so confirm every required check
       independently. See [autodeploy behavior](https://docs.railway.com/deployments/github-autodeploys)
       and [exact-SHA deploy API](https://docs.railway.com/integrations/api/manage-services).
 - [ ] Keep Railway **Skipped Builds disabled** and perform a fresh client
