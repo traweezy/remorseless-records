@@ -58,7 +58,9 @@ const fixture = ({
     disputes: { retrieve: jest.fn() },
     paymentIntents: {
       retrieve: jest.fn(async () => ({
+        amount: 2_500,
         amount_received: 2_500,
+        currency: "usd",
         id: "pi_01PAYMENT",
         last_payment_error: null,
         latest_charge: null,
