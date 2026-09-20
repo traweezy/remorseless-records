@@ -42,6 +42,7 @@ import {
   parseRestoreInvariants,
   parseRestoreTableList,
   buildRestoreInvariantsSql,
+  openRegularFile,
   readBackupManifest,
   readRestoreReceipt,
   RESTORE_TABLE_LIST_SQL,
@@ -137,6 +138,40 @@ Apply is single-use: a failed or interrupted attempt requires inspection and cle
 
 const sha256 = (bytes) => createHash("sha256").update(bytes).digest("hex")
 
+export const readPrivateBoundedFile = async (path, limit, signal) => {
+  assert.ok(Number.isSafeInteger(limit) && limit > 0 && limit <= 256 * 1024)
+  const file = await openRegularFile(path)
+  try {
+    const before = await file.stat({ bigint: true })
+    assert.ok(before.size > 0n && before.size <= BigInt(limit))
+    const bytes = Buffer.alloc(Number(before.size) + 1)
+    let offset = 0
+    while (offset < bytes.length) {
+      signal?.throwIfAborted()
+      const { bytesRead } = await file.read(
+        bytes,
+        offset,
+        bytes.length - offset
+      )
+      if (bytesRead === 0) break
+      offset += bytesRead
+    }
+    const after = await file.stat({ bigint: true })
+    assert.equal(offset, Number(before.size))
+    assert.ok(
+      before.dev === after.dev &&
+        before.ino === after.ino &&
+        before.size === after.size &&
+        before.mtimeNs === after.mtimeNs &&
+        before.ctimeNs === after.ctimeNs
+    )
+    signal?.throwIfAborted()
+    return bytes.subarray(0, offset)
+  } finally {
+    await file.close()
+  }
+}
+
 export const verifySourceScope = async (paths) => {
   const values = Object.values(paths)
   assert.equal(values.length, 4)
@@ -150,11 +185,18 @@ export const verifySourceScope = async (paths) => {
     assert.equal(metadata.mode & 0o077, 0)
   }
   await canonicalPrivateDirectory(dirname(paths.sourceScopePath))
-  const scopeMetadata = await stat(paths.sourceScopePath)
-  assert.ok(scopeMetadata.size > 0 && scopeMetadata.size <= 16_384)
-  const archiveMetadata = await stat(paths.archivePath)
-  assert.ok(archiveMetadata.size > 0 && archiveMetadata.size <= maxArchiveBytes)
-  const scopeBytes = await readFile(paths.sourceScopePath)
+  const scopeBytes = await readPrivateBoundedFile(paths.sourceScopePath, 16_384)
+  const archive = await openRegularFile(paths.archivePath)
+  let archiveSize
+  try {
+    const archiveMetadata = await archive.stat()
+    assert.ok(
+      archiveMetadata.size > 0 && archiveMetadata.size <= maxArchiveBytes
+    )
+    archiveSize = archiveMetadata.size
+  } finally {
+    await archive.close()
+  }
   const scope = JSON.parse(scopeBytes.toString("utf8"))
   assert.deepEqual(Object.keys(scope).sort(), [
     "archiveSha256",
@@ -208,7 +250,7 @@ export const verifySourceScope = async (paths) => {
   const signal = AbortSignal.timeout(30_000)
   const manifest = await readBackupManifest(paths.manifestPath, signal)
   const receipt = await readRestoreReceipt(paths.receiptPath, signal)
-  assert.equal(archiveMetadata.size, manifest.bytes)
+  assert.equal(archiveSize, manifest.bytes)
   assert.equal(manifest.sha256, scope.archiveSha256)
   assert.equal(receipt.archiveSha256, scope.archiveSha256)
   assert.equal(manifest.sourceFingerprint, scope.mappedEndpointFingerprint)
@@ -476,12 +518,9 @@ const readState = async (root) => {
   await canonicalPrivateDirectory(dirname(root))
   assert.match(basename(root), /^pg16-target-[a-f0-9]{32}$/u)
   const path = join(root, "state.json")
-  const metadata = await lstat(path)
-  assert.ok(metadata.isFile() && !metadata.isSymbolicLink())
-  assert.equal(metadata.uid, process.getuid())
-  assert.equal(metadata.mode & 0o077, 0)
-  assert.ok(metadata.size > 0 && metadata.size <= 4096)
-  const state = JSON.parse(await readFile(path, "utf8"))
+  const state = JSON.parse(
+    (await readPrivateBoundedFile(path, 4096)).toString("utf8")
+  )
   assert.deepEqual(Object.keys(state).sort(), [
     "archivePath",
     "archiveSha256",
@@ -549,21 +588,36 @@ const readState = async (root) => {
   return state
 }
 
-const writeState = async (state) => {
-  const temporary = join(state.root, `.state-${randomUUID()}`)
-  const handle = await open(temporary, "wx", 0o600)
+export const writeState = async (state) => {
+  const directory = await openPrivateOutputDirectory(state.root)
+  const temporary = join(directory.descriptorPath, `.state-${randomUUID()}`)
+  let renamed = false
   try {
-    await handle.writeFile(`${JSON.stringify(state)}\n`)
-    await handle.sync()
-  } finally {
-    await handle.close()
-  }
-  await rename(temporary, join(state.root, "state.json"))
-  const directory = await open(state.root, "r")
-  try {
+    const handle = await open(
+      temporary,
+      constants.O_WRONLY |
+        constants.O_CREAT |
+        constants.O_EXCL |
+        constants.O_NOFOLLOW,
+      0o600
+    )
+    try {
+      await handle.writeFile(`${JSON.stringify(state)}\n`)
+      await handle.sync()
+    } finally {
+      await handle.close()
+    }
+    await directory.assertStable()
+    await rename(temporary, join(directory.descriptorPath, "state.json"))
+    renamed = true
     await directory.sync()
+    await directory.assertStable()
   } finally {
-    await directory.close()
+    try {
+      if (!renamed) await rm(temporary, { force: true })
+    } finally {
+      await directory.close()
+    }
   }
 }
 

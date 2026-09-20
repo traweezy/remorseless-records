@@ -59,6 +59,13 @@ const extractActionSteps = (source, repository, expectedCount) => {
   )
   return matches.map((match) => {
     const stepIndent = match.usesIndent - 2
+    const startIndex = lines.findLastIndex(
+      (line, index) =>
+        index < match.index &&
+        line.trim().startsWith("- ") &&
+        leadingWidth(line) === stepIndent
+    )
+    assert.ok(startIndex >= 0, `${repository} must be inside a step`)
     const endIndex = lines.findIndex(
       (line, index) =>
         index > match.index &&
@@ -67,10 +74,7 @@ const extractActionSteps = (source, repository, expectedCount) => {
     )
     return {
       ...match,
-      block: lines.slice(
-        match.index,
-        endIndex === -1 ? lines.length : endIndex
-      ),
+      block: lines.slice(startIndex, endIndex === -1 ? lines.length : endIndex),
     }
   })
 }
@@ -221,7 +225,21 @@ export const validateWorkflowRuntimeSecurity = (
     )
     shaiHuludSteps.forEach((shaiHulud) => {
       assertAction(shaiHulud, reviewedActions.shaiHuludDetector)
+      assert.deepEqual(
+        shaiHulud.block.map((line) => line.trim()).filter(Boolean),
+        [
+          "- name: Shai-Hulud 2.0 Detector",
+          `uses: ${reviewedActions.shaiHuludDetector.repository}@${reviewedActions.shaiHuludDetector.commit} # ${reviewedActions.shaiHuludDetector.version}`,
+          "with:",
+          "fail-on-critical: true",
+          "fail-on-high: true",
+          "scan-lockfiles: true",
+          "scan-node-modules: false",
+        ],
+        "Detector step must not add skip conditions or failure suppression"
+      )
       assert.equal(readStepScalar(shaiHulud.block, "fail-on-critical"), "true")
+      assert.equal(readStepScalar(shaiHulud.block, "fail-on-high"), "true")
       assert.equal(readStepScalar(shaiHulud.block, "scan-lockfiles"), "true")
       assert.equal(
         readStepScalar(shaiHulud.block, "scan-node-modules"),
@@ -239,16 +257,58 @@ export const validateWorkflowRuntimeSecurity = (
   assert.doesNotMatch(source, /gensecaihq\/Shai-Hulud-2\.0-Detector@/u)
 }
 
+export const validateTrivyFilesystemGate = (source, rootWorkflow = false) => {
+  const steps = extractActionSteps(
+    source,
+    "aquasecurity/trivy-action",
+    rootWorkflow ? 2 : 1
+  )
+  const scans = steps.filter((step) =>
+    step.block.some((line) => line.trim() === "- name: Trivy FS scan (repo)")
+  )
+  assert.equal(scans.length, 1, "Require one unskipped filesystem scan")
+  assert.deepEqual(
+    scans[0].block.map((line) => line.trim()).filter(Boolean),
+    [
+      "- name: Trivy FS scan (repo)",
+      "uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0",
+      ...(rootWorkflow
+        ? ["env:", "TRIVY_DB_REPOSITORY: ghcr.io/aquasecurity/trivy-db"]
+        : []),
+      "with:",
+      "scan-type: fs",
+      "ignore-unfixed: false",
+      "format: table",
+      "exit-code: 1",
+      "severity: CRITICAL,HIGH",
+      "skip-dirs: node_modules",
+    ],
+    "Filesystem HIGH/CRITICAL findings must fail even without a listed fix"
+  )
+}
+
 export const verifyCiRuntimeSecurityPolicy = () => {
   const manifest = JSON.parse(readFileSync(manifestPath, "utf8"))
   validateCiRuntimeManifest(manifest)
   for (const workflow of manifest.workflows) {
+    const source = readFileSync(join(root, workflow.path), "utf8")
     validateWorkflowRuntimeSecurity(
-      readFileSync(join(root, workflow.path), "utf8"),
+      source,
       workflow.allowedEndpoints,
       workflow.profile,
       workflow.securityJobCount
     )
+    if (
+      [
+        ".github/workflows/root.yml",
+        ".github/workflows/backend.yml",
+        ".github/workflows/storefront.yml",
+      ].includes(workflow.path)
+    )
+      validateTrivyFilesystemGate(
+        source,
+        workflow.path === ".github/workflows/root.yml"
+      )
   }
 
   const workflowDirectory = join(root, ".github", "workflows")

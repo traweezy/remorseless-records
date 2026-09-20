@@ -846,7 +846,6 @@ for (const fault of ["short write", "sync failure"]) {
     const fixture = await makeFixture(t)
     const handle = await open(fixture.envFile, "r+")
     const prototype = Object.getPrototypeOf(handle)
-    await handle.close()
     if (fault === "short write") {
       const write = prototype.write
       t.mock.method(prototype, "write", async function (content) {
@@ -860,10 +859,14 @@ for (const fault of ["short write", "sync failure"]) {
       service: item.service,
       id: ids[index],
     }))
-    await assert.rejects(exportImageIds(fixture.envFile, images), {
-      message: "Disposable image evidence rejected.",
-    })
-    assert.equal(await readFile(fixture.envFile, "utf8"), "EXISTING=kept\n")
+    try {
+      await assert.rejects(exportImageIds(fixture.envFile, images), {
+        message: "Disposable image evidence rejected.",
+      })
+      assert.equal(await handle.readFile("utf8"), "EXISTING=kept\n")
+    } finally {
+      await handle.close()
+    }
   })
 }
 test("rejects malformed execution dependencies without installing signal handlers", async () => {

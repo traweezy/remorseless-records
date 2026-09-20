@@ -31,7 +31,7 @@ jobs:
   dependency-review:
     if: ${{ contains(fromJson('["pull_request","merge_group"]'), github.event_name) }}
     runs-on: ubuntu-latest
-    name: Dependency Review (push/PR)
+    name: Backend Dependency Review (push/PR)
     timeout-minutes: 10
     permissions:
       contents: read
@@ -43,7 +43,7 @@ jobs:
           fail-on-severity: high
 
   security:
-    name: Security & Audit (Shai-Hulud, pnpm audit)
+    name: Backend Security & Audit (Shai-Hulud, pnpm audit)
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
@@ -69,6 +69,7 @@ jobs:
         uses: gensecaihq/Shai-Hulud-2.0-Detector@2755f94762bf5012bc7be82c93e172eabbcd0802 # v2.2.0
         with:
           fail-on-critical: true
+          fail-on-high: true
           scan-lockfiles: true
           scan-node-modules: false
 
@@ -97,7 +98,7 @@ jobs:
         run: pnpm run qa:react-router-security
 
   secrets:
-    name: Secret Scan (TruffleHog)
+    name: Backend Secret Scan (TruffleHog)
     runs-on: ubuntu-latest
     timeout-minutes: 20
     needs: security
@@ -146,7 +147,7 @@ jobs:
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           scan-type: fs
-          ignore-unfixed: true
+          ignore-unfixed: false
           format: table
           exit-code: 1
           severity: CRITICAL,HIGH
@@ -184,7 +185,7 @@ jobs:
         run: pnpm --filter backend run lint
 
   codeql:
-    name: CodeQL Analyze (JS/TS, security-extended)
+    name: Backend CodeQL Analyze (JS/TS, security-extended)
     runs-on: ubuntu-latest
     timeout-minutes: 60
     needs: security
@@ -214,6 +215,11 @@ jobs:
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@5595ccaf912efad79be6eef63a5619ff05969be3 # v4
+        with:
+          output: codeql-results
+
+      - name: Fail on CodeQL findings
+        run: node scripts/verify-codeql-sarif.mjs codeql-results
 
   unit:
     name: Unit Tests (backend)

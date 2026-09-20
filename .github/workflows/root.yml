@@ -47,6 +47,7 @@ jobs:
         uses: gensecaihq/Shai-Hulud-2.0-Detector@2755f94762bf5012bc7be82c93e172eabbcd0802 # v2.2.0
         with:
           fail-on-critical: true
+          fail-on-high: true
           scan-lockfiles: true
           scan-node-modules: false
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
@@ -62,7 +63,7 @@ jobs:
           TRIVY_DB_REPOSITORY: ghcr.io/aquasecurity/trivy-db
         with:
           scan-type: fs
-          ignore-unfixed: true
+          ignore-unfixed: false
           format: table
           exit-code: 1
           severity: CRITICAL,HIGH

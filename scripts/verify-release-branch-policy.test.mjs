@@ -45,6 +45,33 @@ for (const application of ["backend", "storefront"]) {
     validateReleaseBranches(workflows[application], application)
   })
 
+  test(`${application} rejects a changed verified-secret scanner pin`, () => {
+    const changed = workflows[application].replace(
+      "6f3c981e7b77f235fd2702dd74af25fc4b72bf11",
+      "a".repeat(40)
+    )
+    assert.notEqual(changed, workflows[application])
+    assert.throws(() => validate(application, changed))
+  })
+
+  test(`${application} fails closed when the CodeQL SARIF gate is removed or bypassed`, () => {
+    const source = workflows[application]
+    for (const [before, after] of [
+      ["          output: codeql-results", "          output: other-results"],
+      [
+        "        run: node scripts/verify-codeql-sarif.mjs codeql-results",
+        "        run: echo ignored",
+      ],
+      [
+        "      - name: Fail on CodeQL findings",
+        "      - name: Fail on CodeQL findings\n        continue-on-error: true",
+      ],
+    ]) {
+      assert.ok(source.includes(before))
+      assert.throws(() => validate(application, source.replace(before, after)))
+    }
+  })
+
   for (const gate of ["lint", "typecheck", "codeql", "secrets"]) {
     test(`${application} rejects a missing or bypassed ${gate} gate`, () => {
       assert.throws(() =>
@@ -439,11 +466,20 @@ const evaluateCondition = (condition, context) => {
     )
 }
 const jobCondition = (name) => {
-  const pattern = new RegExp(`^  ${name}:\\n[\\s\\S]*?^    if: (.+)$`, "mu")
-  return workflows.storefront.match(pattern)?.[1]
+  const lines = workflows.storefront.split(/\r?\n/u)
+  const start = lines.findIndex((line) => line === `  ${name}:`)
+  assert.ok(start >= 0)
+  const end = lines.findIndex(
+    (line, index) => index > start && /^  [a-z][a-z-]*:$/u.test(line)
+  )
+  return lines
+    .slice(start + 1, end < 0 ? undefined : end)
+    .find((line) => line.startsWith("    if: "))
+    ?.slice("    if: ".length)
 }
 
-test("all event/base/toggle combinations preserve the former build-dependent PR behavior", () => {
+test("Storefront build is always required while browser checks remain optional", () => {
+  assert.equal(jobCondition("build"), undefined)
   for (const event of [
     "push",
     "pull_request",
@@ -460,10 +496,6 @@ test("all event/base/toggle combinations preserve the former build-dependent PR 
         const alwaysEnabled = event !== "pull_request" || base === "master"
         const oldBuildRan =
           alwaysEnabled || context["vars.ENABLE_STOREFRONT_BUILD"] === "true"
-        assert.equal(
-          evaluateCondition(jobCondition("build"), context),
-          oldBuildRan
-        )
         for (const [name, flag] of [
           ["e2e-responsive", "E2E"],
           ["e2e-critical", "E2E"],

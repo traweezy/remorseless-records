@@ -1,16 +1,15 @@
 {
-  "schemaVersion": 1,
-  "nodeImage": "node:26.5.0-bookworm-slim@sha256:2d49d876e96237d76de412761cf05dbfe5aee325cc4406a4d41d5824c5bb8beb",
-  "debianSecurityPackage": {
-    "name": "libpcre2-8-0",
-    "version": "10.42-1+deb12u1",
-    "repository": "https://security.debian.org/debian-security/pool/updates/main/p/pcre2",
-    "advisories": ["CVE-2026-86145", "CVE-2026-89161"],
-    "sha256": {
-      "amd64": "81c5502941118a24d47af69a17b8b0b9548d75cc6d72b3eb3fe01047b46fa10e",
-      "arm64": "d178d33697eef877c2c27733141b7f8520fee66a329ae5809e8c8eae3709efa3"
-    }
+  "schemaVersion": 3,
+  "nodeImage": "node:26.9.0-bookworm-slim@sha256:582460f614631b59b824ac6020533b9bf339c7fdf3a6d7db31abb6b4065f0212",
+  "nodeBinarySha256": {
+    "amd64": "05757b064ad2a221b41874794da42361c9bab033c7c33c1f1b458c25a7de7e59",
+    "arm64": "53a18c9a23bac8635ea9eb9cdef98e4b7bb77e0420cc966fb371a566ce22c763"
   },
+  "libatomicSha256": {
+    "amd64": "107ab9f7661a1c47cddfb5cd1def99ec537a50a9a537fbe38cdde1b34b8ba280",
+    "arm64": "c90c21008853899dfa102eeaa43b703c2bf41553dd56b13aac6da2803d5884b7"
+  },
+  "runtimeBaseImage": "gcr.io/distroless/cc-debian13:nonroot@sha256:54df941ed0d06a1bd95ef5e0ce391fd8d9f94b64782dc9a60062727849ee3f97",
   "repository": "https://github.com/traweezy/remorseless-records",
   "trivy": {
     "repository": "aquasecurity/setup-trivy",

@@ -241,22 +241,21 @@ const hashChecker = async (path, signal) => {
     Buffer.byteLength(path) > MAX_CHECKER_PATH_BYTES
   )
     throw failure()
-  const details = await lstat(path, { bigint: true })
-  if (
-    !details.isFile() ||
-    details.isSymbolicLink() ||
-    (details.mode & 0o111n) === 0n ||
-    details.size <= 0n ||
-    details.size > 128n * 1024n * 1024n
-  )
-    throw failure()
   const handle = await open(
     path,
     constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK
   )
   try {
     const opened = await handle.stat({ bigint: true })
-    if (!opened.isFile() || !unchanged(details, opened)) throw failure()
+    const current = await lstat(path, { bigint: true })
+    if (
+      !opened.isFile() ||
+      (opened.mode & 0o111n) === 0n ||
+      opened.size <= 0n ||
+      opened.size > 128n * 1024n * 1024n ||
+      !unchanged(opened, current)
+    )
+      throw failure()
     const hash = createHash("sha256")
     const buffer = Buffer.alloc(BUFFER_BYTES)
     let bytes = 0

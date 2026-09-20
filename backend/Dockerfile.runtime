@@ -1,21 +1,21 @@
-ARG NODE_IMAGE=node:26.5.0-bookworm-slim@sha256:2d49d876e96237d76de412761cf05dbfe5aee325cc4406a4d41d5824c5bb8beb
+ARG NODE_IMAGE=node:26.9.0-bookworm-slim@sha256:582460f614631b59b824ac6020533b9bf339c7fdf3a6d7db31abb6b4065f0212
+ARG RUNTIME_BASE_IMAGE=gcr.io/distroless/cc-debian13:nonroot@sha256:54df941ed0d06a1bd95ef5e0ce391fd8d9f94b64782dc9a60062727849ee3f97
 
-FROM scratch AS runtime-security-packages
-# DLA-4772-1: hashes verified against Debian's signed bookworm-security index.
-ADD --checksum=sha256:81c5502941118a24d47af69a17b8b0b9548d75cc6d72b3eb3fe01047b46fa10e https://security.debian.org/debian-security/pool/updates/main/p/pcre2/libpcre2-8-0_10.42-1+deb12u1_amd64.deb /amd64.deb
-ADD --checksum=sha256:d178d33697eef877c2c27733141b7f8520fee66a329ae5809e8c8eae3709efa3 https://security.debian.org/debian-security/pool/updates/main/p/pcre2/libpcre2-8-0_10.42-1+deb12u1_arm64.deb /arm64.deb
-
-FROM ${NODE_IMAGE}
-
+FROM ${NODE_IMAGE} AS node-runtime
 ARG TARGETARCH
-RUN --mount=from=runtime-security-packages,target=/tmp/runtime-security,readonly \
-    case "$TARGETARCH" in amd64|arm64) ;; *) exit 1 ;; esac \
-    && test "$(dpkg --print-architecture)" = "$TARGETARCH" \
-    && test "$(dpkg-deb --field "/tmp/runtime-security/$TARGETARCH.deb" Package)" = libpcre2-8-0 \
-    && test "$(dpkg-deb --field "/tmp/runtime-security/$TARGETARCH.deb" Version)" = 10.42-1+deb12u1 \
-    && test "$(dpkg-deb --field "/tmp/runtime-security/$TARGETARCH.deb" Architecture)" = "$TARGETARCH" \
-    && dpkg --install "/tmp/runtime-security/$TARGETARCH.deb" \
-    && test "$(dpkg-query --show --showformat='${db:Status-Status} ${Architecture} ${Version}' libpcre2-8-0)" = "installed $TARGETARCH 10.42-1+deb12u1"
+RUN set -eu; \
+    test "$(node --version)" = v26.9.0; \
+    case "$TARGETARCH" in \
+      amd64) triplet=x86_64-linux-gnu; node_sha256=05757b064ad2a221b41874794da42361c9bab033c7c33c1f1b458c25a7de7e59; libatomic_sha256=107ab9f7661a1c47cddfb5cd1def99ec537a50a9a537fbe38cdde1b34b8ba280 ;; \
+      arm64) triplet=aarch64-linux-gnu; node_sha256=53a18c9a23bac8635ea9eb9cdef98e4b7bb77e0420cc966fb371a566ce22c763; libatomic_sha256=c90c21008853899dfa102eeaa43b703c2bf41553dd56b13aac6da2803d5884b7 ;; \
+      *) exit 1 ;; \
+    esac; \
+    printf '%s  %s\n' "$node_sha256" /usr/local/bin/node | sha256sum --check --status; \
+    cp -L "/usr/lib/$triplet/libatomic.so.1" /libatomic.so.1; \
+    test -s /libatomic.so.1; \
+    printf '%s  %s\n' "$libatomic_sha256" /libatomic.so.1 | sha256sum --check --status
+
+FROM ${RUNTIME_BASE_IMAGE}
 
 ARG REVISION
 LABEL org.opencontainers.image.description="Remorseless Records Medusa backend"
@@ -23,20 +23,26 @@ LABEL org.opencontainers.image.revision="${REVISION}"
 LABEL org.opencontainers.image.source="https://github.com/traweezy/remorseless-records"
 
 ENV COMMIT_SHA="${REVISION}" \
-    NODE_ENV=production
+    HOME=/home/node \
+    LD_LIBRARY_PATH=/usr/local/lib \
+    NODE_ENV=production \
+    PATH=/usr/local/bin:/usr/bin:/bin
+
+COPY --from=node-runtime /usr/local/bin/node /usr/local/bin/node
+COPY --from=node-runtime /libatomic.so.1 /usr/local/lib/libatomic.so.1
+COPY --from=node-runtime /etc/passwd /etc/passwd
+COPY --from=node-runtime /etc/group /etc/group
+COPY --from=node-runtime --chown=1000:1000 /home/node/ /home/node/
 
 WORKDIR /app
 
-RUN rm -rf /usr/local/lib/node_modules/npm \
-    /usr/local/bin/npm \
-    /usr/local/bin/npx
+COPY --chown=1000:1000 backend/.medusa/server/ ./
+COPY --chown=1000:1000 backend/scripts/runtime-release-prepare.mjs ./scripts/runtime-release-prepare.mjs
+COPY --chown=1000:1000 backend/scripts/lib/release-prepare.mjs ./scripts/lib/release-prepare.mjs
 
-COPY --chown=node:node backend/.medusa/server/ ./
-COPY --chown=node:node backend/scripts/runtime-release-prepare.mjs ./scripts/runtime-release-prepare.mjs
-COPY --chown=node:node backend/scripts/lib/release-prepare.mjs ./scripts/lib/release-prepare.mjs
-
-USER node
+USER 1000:1000
 
 EXPOSE 9000
 
-CMD ["node", "--require", "./observability-register.cjs", "./node_modules/@medusajs/cli/cli.js", "start", "--verbose"]
+ENTRYPOINT ["/usr/local/bin/node"]
+CMD ["--require", "./observability-register.cjs", "./node_modules/@medusajs/cli/cli.js", "start", "--verbose"]

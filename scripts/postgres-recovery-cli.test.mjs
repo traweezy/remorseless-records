@@ -4,6 +4,7 @@ import { createHash } from "node:crypto"
 import {
   access,
   mkdtemp,
+  open,
   readFile,
   readdir,
   rm,
@@ -46,7 +47,8 @@ const withFixture = async (run) => {
         sha256: createHash("sha256").update(fixtureContent).digest("hex"),
         sourceFingerprint: createPostgresClientEnvironment(sourceUrl, "fixture")
           .fingerprint,
-      })
+      }),
+      { mode: 0o600 }
     )
     const invariants = {
       serverMajor: 18,
@@ -376,12 +378,17 @@ test("receipt capture publishes private source invariants bound to the archive",
       const evidence = JSON.parse(result.stdout)
       assert.equal(evidence.status, "receipt_captured")
       assert.equal(evidence.tableCount, 1)
-      assert.equal((await stat(output)).mode & 0o777, 0o600)
-      const receipt = JSON.parse(await readFile(output, "utf8"))
-      assert.equal(receipt.archiveSha256, evidence.archiveSha256)
-      assert.deepEqual(receipt.invariants.tableRows, [
-        { schema: "public", table: "catalog", rows: 2 },
-      ])
+      const receiptFile = await open(output, "r")
+      try {
+        assert.equal((await receiptFile.stat()).mode & 0o777, 0o600)
+        const receipt = JSON.parse(await receiptFile.readFile("utf8"))
+        assert.equal(receipt.archiveSha256, evidence.archiveSha256)
+        assert.deepEqual(receipt.invariants.tableRows, [
+          { schema: "public", table: "catalog", rows: 2 },
+        ])
+      } finally {
+        await receiptFile.close()
+      }
       assert.deepEqual(
         (await calls()).map((call) => call.tool),
         ["psql", "psql"]

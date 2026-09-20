@@ -375,25 +375,29 @@ test("refuses an actual FIFO hook promptly without opening a blocking reader", a
   assert.ok((await fs.lstat(join(input.hooks, "pre-push"))).isFIFO())
 })
 
-test("refuses changed inode or a growing file during a bounded snapshot read", async (context) => {
-  for (const mode of ["replaced", "grown"]) {
+test("refuses changed, removed, or growing files during a bounded snapshot read", async (context) => {
+  for (const mode of ["replaced", "removed", "grown"]) {
     const input = await fixture(context)
     const target = join(input.root, "githooks", "pre-commit")
     const io = {
       ...fs,
       open: async (...args) => {
         if (args[0] === target) {
-          if (mode === "replaced") {
-            await fs.rename(target, `${target}.original`)
-            await fs.copyFile(`${target}.original`, target)
-          }
           const handle = await fs.open(...args)
-          if (mode === "grown") {
+          if (["grown", "replaced", "removed"].includes(mode)) {
             const originalStat = handle.stat.bind(handle)
             let calls = 0
             handle.stat = async () => {
               const metadata = await originalStat()
-              if (++calls === 1) await fs.appendFile(target, "x".repeat(20_000))
+              if (++calls === 1) {
+                if (mode === "grown")
+                  await fs.appendFile(target, "x".repeat(20_000))
+                else {
+                  await fs.rename(target, `${target}.original`)
+                  if (mode === "replaced")
+                    await fs.copyFile(`${target}.original`, target)
+                }
+              }
               return metadata
             }
           }

@@ -1,4 +1,12 @@
-import { readFileSync } from "node:fs"
+import { spawnSync } from "node:child_process"
+import {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs"
+import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import { describe, expect, it } from "vitest"
 
@@ -44,6 +52,34 @@ describe("pinned Stripe.js Trusted Types boundary", () => {
       expect(source).not.toContain(
         'script.src = "".concat(STRIPE_JS_URL).concat(queryString)'
       )
+    }
+  })
+
+  it("rejects spoofed Stripe hosts in the built-client verifier", () => {
+    const fixtureRoot = mkdtempSync(join(tmpdir(), "rr-stripe-loader-"))
+    const staticDirectory = join(fixtureRoot, ".next", "static")
+    mkdirSync(staticDirectory, { recursive: true })
+
+    try {
+      for (const [origin, expectedStatus] of [
+        ["https://js.stripe.com", 0],
+        ["https://js.stripe.com.attacker.test", 1],
+        ["https://js.stripe.com@attacker.test", 1],
+        ["https://attacker.test/js.stripe.com", 1],
+      ] as const) {
+        writeFileSync(
+          join(staticDirectory, "loader.js"),
+          `${JSON.stringify(origin)};advancedFraudSignals;remorseless-stripe-js;remorseless-json-ld`
+        )
+        const result = spawnSync(
+          process.execPath,
+          [join(process.cwd(), "scripts", "verify-client-bundle-secrets.mjs")],
+          { cwd: fixtureRoot, encoding: "utf8" }
+        )
+        expect(result.status, result.stderr).toBe(expectedStatus)
+      }
+    } finally {
+      rmSync(fixtureRoot, { recursive: true, force: true })
     }
   })
 })

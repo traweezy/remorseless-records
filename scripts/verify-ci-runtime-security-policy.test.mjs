@@ -4,6 +4,7 @@ import { describe, it } from "node:test"
 
 import {
   validateCiRuntimeManifest,
+  validateTrivyFilesystemGate,
   validateWorkflowRuntimeSecurity,
 } from "./verify-ci-runtime-security-policy.mjs"
 
@@ -38,6 +39,7 @@ const workflow = `jobs:
         uses: gensecaihq/Shai-Hulud-2.0-Detector@2755f94762bf5012bc7be82c93e172eabbcd0802 # v2.2.0
         with:
           fail-on-critical: true
+          fail-on-high: true
           scan-lockfiles: true
           scan-node-modules: false
       - run: pnpm run qa:ci-runtime-security
@@ -130,6 +132,31 @@ describe("CI runtime security policy", () => {
   })
 
   it("rejects missing scan controls and drifted self-verification", () => {
+    const detectorWith =
+      "        uses: gensecaihq/Shai-Hulud-2.0-Detector@2755f94762bf5012bc7be82c93e172eabbcd0802 # v2.2.0\n        with:"
+    for (const changed of [
+      workflow.replace("fail-on-high: true\n", ""),
+      workflow.replace("fail-on-high: true", "fail-on-high: false"),
+      workflow.replace(
+        detectorWith,
+        detectorWith.replace(
+          "\n        with:",
+          "\n        continue-on-error: true\n        with:"
+        )
+      ),
+      workflow.replace(
+        detectorWith,
+        detectorWith.replace(
+          "\n        with:",
+          "\n        if: false\n        with:"
+        )
+      ),
+      workflow.replace(
+        "fail-on-high: true\n",
+        'fail-on-high: true\n          "fail-on-high": false\n'
+      ),
+    ])
+      assert.throws(() => validateWorkflowRuntimeSecurity(changed, endpoints))
     assert.throws(() =>
       validateWorkflowRuntimeSecurity(
         workflow.replace("scan-lockfiles: true\n", ""),
@@ -158,5 +185,27 @@ describe("CI runtime security policy", () => {
     const missingSecurityJob = structuredClone(manifest)
     missingSecurityJob.workflows[3].securityJobCount = 1
     assert.throws(() => validateCiRuntimeManifest(missingSecurityJob))
+  })
+
+  it("fails filesystem scans on every HIGH/CRITICAL finding", () => {
+    for (const name of ["root", "backend", "storefront"]) {
+      const source = readFileSync(
+        new URL(`../.github/workflows/${name}.yml`, import.meta.url),
+        "utf8"
+      )
+      const isRoot = name === "root"
+      assert.doesNotThrow(() => validateTrivyFilesystemGate(source, isRoot))
+      for (const changed of [
+        source.replace("ignore-unfixed: false", "ignore-unfixed: true"),
+        source.replace("exit-code: 1", "exit-code: 0"),
+        source.replace(
+          "- name: Trivy FS scan (repo)",
+          "- name: Trivy FS scan (repo)\n        continue-on-error: true"
+        ),
+      ]) {
+        assert.notEqual(changed, source)
+        assert.throws(() => validateTrivyFilesystemGate(changed, isRoot))
+      }
+    }
   })
 })

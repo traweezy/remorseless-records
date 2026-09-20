@@ -22,7 +22,7 @@ export const buildRuntimeImageRecord = ({
     imageId,
     revision,
     platform: "linux/amd64",
-    baseImage: policy.nodeImage,
+    baseImage: policy.runtimeBaseImage,
     dockerfile: servicePolicy?.dockerfile,
     source: policy.repository,
     scan,

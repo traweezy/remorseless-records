@@ -22,11 +22,13 @@ const hashPattern = /^[0-9a-f]{64}$/u
 const severities = ["UNKNOWN", "LOW", "MEDIUM", "HIGH", "CRITICAL"]
 export const runtimeScanMaxAgeMs = 30 * 60 * 1000
 export const runtimeFindingPolicy = Object.freeze({
-  severities: ["HIGH", "CRITICAL"],
-  ignoreUnfixed: true,
+  severities: ["UNKNOWN", "HIGH", "CRITICAL"],
+  ignoreUnfixed: false,
   scanners: ["vuln"],
   vex: false,
 })
+export const runtimeScanAccepted = (counts) =>
+  runtimeFindingPolicy.severities.every((severity) => counts[severity] === 0)
 const object = (value) =>
   value !== null && typeof value === "object" && !Array.isArray(value)
 const scalar = (value) =>
@@ -123,7 +125,7 @@ export const validateRuntimeImageRecord = (
   assert.match(record.imageId, digestPattern)
   assert.match(record.revision, /^[0-9a-f]{40}$/u)
   assert.equal(record.platform, "linux/amd64")
-  assert.equal(record.baseImage, policy.nodeImage)
+  assert.equal(record.baseImage, policy.runtimeBaseImage)
   assert.equal(record.dockerfile, service.dockerfile)
   assert.equal(record.source, policy.repository)
   keys(record.scan, [
@@ -159,12 +161,12 @@ export const validateRuntimeImageRecord = (
       record.scan.fixedHighCritical <=
         record.scan.counts.HIGH + record.scan.counts.CRITICAL
   )
-  assert.equal(record.scan.accepted, record.scan.fixedHighCritical === 0)
+  assert.equal(record.scan.accepted, runtimeScanAccepted(record.scan.counts))
   if (requireAccepted)
     assert.equal(
       record.scan.accepted,
       true,
-      "Fixed HIGH/CRITICAL runtime vulnerabilities remain."
+      "UNKNOWN/HIGH/CRITICAL runtime vulnerabilities remain."
     )
   assert.ok(
     Array.isArray(record.scan.coverage) &&

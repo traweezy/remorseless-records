@@ -12,7 +12,29 @@ const workflowSource = readFileSync(
   "utf8"
 )
 test("rejects an incomplete policy manifest", () => {
-  assert.throws(() => validateRuntimeImagePolicyManifest({ schemaVersion: 1 }))
+  assert.throws(() => validateRuntimeImagePolicyManifest({ schemaVersion: 2 }))
+})
+
+test("rejects a changed reviewed Node executable hash", () => {
+  const policy = JSON.parse(
+    readFileSync(
+      new URL("./security/runtime-image-policy.json", import.meta.url),
+      "utf8"
+    )
+  )
+  policy.nodeBinarySha256.amd64 = "a".repeat(64)
+  assert.throws(() => validateRuntimeImagePolicyManifest(policy))
+})
+
+test("rejects a changed reviewed libatomic hash", () => {
+  const policy = JSON.parse(
+    readFileSync(
+      new URL("./security/runtime-image-policy.json", import.meta.url),
+      "utf8"
+    )
+  )
+  policy.libatomicSha256.arm64 = "a".repeat(64)
+  assert.throws(() => validateRuntimeImagePolicyManifest(policy))
 })
 
 for (const service of ["backend", "storefront"]) {
@@ -20,63 +42,62 @@ for (const service of ["backend", "storefront"]) {
     new URL(`../${service}/Dockerfile.runtime`, import.meta.url),
     "utf8"
   )
-  test(`accepts ${service} with only the verified Debian security package`, () => {
+  test(`accepts ${service} with the pinned distroless runtime`, () => {
     assert.doesNotThrow(() =>
       validateRuntimeDockerfileSource(service, dockerfile)
     )
   })
   const mutations = [
-    ["unverified archive", "ADD --checksum=sha256:", "ADD --checksum=sha512:"],
     [
-      "wrong amd64 hash",
-      "81c5502941118a24d47af69a17b8b0b9548d75cc6d72b3eb3fe01047b46fa10e",
+      "wrong Node source digest",
+      "582460f614631b59b824ac6020533b9bf339c7fdf3a6d7db31abb6b4065f0212",
       "a".repeat(64),
     ],
     [
-      "wrong arm64 hash",
-      "d178d33697eef877c2c27733141b7f8520fee66a329ae5809e8c8eae3709efa3",
+      "wrong distroless digest",
+      "54df941ed0d06a1bd95ef5e0ce391fd8d9f94b64782dc9a60062727849ee3f97",
       "b".repeat(64),
     ],
-    [
-      "unreviewed source",
-      "https://security.debian.org/",
-      "https://example.com/",
-    ],
-    [
-      "plaintext source",
-      "https://security.debian.org/",
-      "http://security.debian.org/",
-    ],
-    ["floating package", "10.42-1+deb12u1", "latest"],
-    ["unsupported architecture", "amd64|arm64)", "amd64|arm64|ppc64le)"],
+    ["floating runtime base", ":nonroot@sha256:", ":nonroot-latest@sha256:"],
+    ["unsupported architecture", "arm64) triplet=", "ppc64le) triplet="],
     ["architecture failure bypass", "*) exit 1 ;;", "*) exit 0 ;;"],
-    ["writable archive mount", ",readonly", ""],
+    ["wrong Node version", "v26.9.0;", "v26.5.0;"],
     [
-      "package identity bypass",
-      'Package)" = libpcre2-8-0',
-      'Package)" = anything',
+      "wrong Node executable hash",
+      "05757b064ad2a221b41874794da42361c9bab033c7c33c1f1b458c25a7de7e59",
+      "a".repeat(64),
     ],
     [
-      "package version bypass",
-      'Version)" = 10.42-1+deb12u1',
-      'Version)" = anything',
+      "wrong libatomic hash",
+      "107ab9f7661a1c47cddfb5cd1def99ec537a50a9a537fbe38cdde1b34b8ba280",
+      "a".repeat(64),
     ],
     [
-      "architecture identity bypass",
-      "dpkg --print-architecture",
-      "printf amd64",
+      "bypassed Node executable hash check",
+      "sha256sum --check --status;",
+      "sha256sum --check --status || true;",
     ],
     [
-      "archive architecture bypass",
-      'Architecture)" = "$TARGETARCH"',
-      'Architecture)" = amd64',
+      "bypassed libatomic hash check",
+      "sha256sum --check --status\n",
+      "sha256sum --check --status || true\n",
     ],
     [
-      "unsigned package forcing",
-      "dpkg --install",
-      "dpkg --force-all --install",
+      "unverified library path",
+      '"/usr/lib/$triplet/libatomic.so.1"',
+      '"/tmp/libatomic.so.1"',
     ],
-    ["installed status bypass", "${db:Status-Status}", "ignored"],
+    [
+      "copy npm into runtime",
+      "COPY --from=node-runtime /usr/local/bin/node /usr/local/bin/node",
+      "COPY --from=node-runtime /usr/local/bin/node /usr/local/bin/node\nCOPY --from=node-runtime /usr/local/bin/npm /usr/local/bin/npm",
+    ],
+    ["root runtime user", "USER 1000:1000", "USER root"],
+    [
+      "shell runtime entrypoint",
+      'ENTRYPOINT ["/usr/local/bin/node"]',
+      'ENTRYPOINT ["/bin/sh"]',
+    ],
     [
       "extra package installation",
       "ARG REVISION",
@@ -90,7 +111,7 @@ for (const service of ["backend", "storefront"]) {
     ["extra external stage", "ARG REVISION", "FROM node:latest\nARG REVISION"],
   ]
   for (const [label, from, to] of mutations) {
-    test(`rejects ${service} runtime package with ${label}`, () => {
+    test(`rejects ${service} runtime image with ${label}`, () => {
       const changed = dockerfile.replace(from, to)
       assert.notEqual(changed, dockerfile)
       assert.throws(() => validateRuntimeDockerfileSource(service, changed))
@@ -98,8 +119,28 @@ for (const service of ["backend", "storefront"]) {
   }
 }
 
-test("accepts split read-only validation and master-only publication", () => {
+test("accepts staging and master PR validation with master-only publication", () => {
   assert.doesNotThrow(() => validateRuntimeWorkflowSource(workflowSource))
+})
+
+test("requires staging and master pull requests to run image validation", () => {
+  for (const changed of [
+    workflowSource.replace(
+      "  pull_request:\n    branches: [staging, master]\n",
+      ""
+    ),
+    workflowSource.replace(
+      "  pull_request:\n    branches: [staging, master]",
+      "  pull_request:\n    branches: [staging]"
+    ),
+    workflowSource.replace(
+      "github.ref != 'refs/heads/master' ||",
+      "github.event_name != 'pull_request' && (github.ref != 'refs/heads/master' ||"
+    ),
+  ]) {
+    assert.notEqual(changed, workflowSource)
+    assert.throws(() => validateRuntimeWorkflowSource(changed))
+  }
 })
 
 test("rejects manual publication outside the exact master ref", () => {
@@ -134,6 +175,27 @@ test("rejects a publication path that skips smoke or exact-image push", () => {
   )
   assert.notEqual(skippedPush, workflowSource)
   assert.throws(() => validateRuntimeWorkflowSource(skippedPush))
+})
+
+test("rejects a downgraded or unhashed Node binary in either image job", () => {
+  for (const jobName of ["validate", "publish"]) {
+    for (const [from, to] of [
+      ["v26.9.0", "v26.5.0"],
+      ['c.createHash("sha256")', 'c.createHash("sha1")'],
+      [
+        "05757b064ad2a221b41874794da42361c9bab033c7c33c1f1b458c25a7de7e59",
+        "a".repeat(64),
+      ],
+      [
+        "107ab9f7661a1c47cddfb5cd1def99ec537a50a9a537fbe38cdde1b34b8ba280",
+        "a".repeat(64),
+      ],
+      ['a.equal(sha("/usr/local/lib/libatomic.so.1"),libs[process.arch]);', ""],
+    ]) {
+      const changed = mutateJob(jobName, (job) => job.replace(from, to))
+      assert.throws(() => validateRuntimeWorkflowSource(changed))
+    }
+  }
 })
 
 test("requires a current evidence check immediately before runtime publication", () => {

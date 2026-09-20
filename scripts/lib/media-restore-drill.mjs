@@ -76,30 +76,30 @@ export const readPrivateMediaManifest = async (
     !sha256Pattern.test(expectedSha256)
   )
     throw failure()
-  const parent = await lstat(dirname(path), { bigint: true })
-  const before = await lstat(path, { bigint: true })
-  if (
-    !parent.isDirectory() ||
-    parent.isSymbolicLink() ||
-    (parent.mode & 0o077n) !== 0n ||
-    (process.getuid && parent.uid !== BigInt(process.getuid())) ||
-    !before.isFile() ||
-    before.isSymbolicLink() ||
-    before.nlink !== 1n ||
-    before.size < 1n ||
-    before.size > BigInt(maxManifestBytes) ||
-    (before.mode & 0o077n) !== 0n ||
-    (process.getuid && before.uid !== BigInt(process.getuid())) ||
-    (await realpath(path)) !== path
-  )
-    throw failure()
   const handle = await open(
     path,
-    constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK
+    constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK,
+    0o600
   )
   try {
     const opened = await handle.stat({ bigint: true })
-    if (!sameFile(before, opened)) throw failure()
+    const parent = await lstat(dirname(path), { bigint: true })
+    const named = await lstat(path, { bigint: true })
+    if (
+      !parent.isDirectory() ||
+      parent.isSymbolicLink() ||
+      (parent.mode & 0o077n) !== 0n ||
+      (process.getuid && parent.uid !== BigInt(process.getuid())) ||
+      !opened.isFile() ||
+      opened.nlink !== 1n ||
+      opened.size < 1n ||
+      opened.size > BigInt(maxManifestBytes) ||
+      (opened.mode & 0o077n) !== 0n ||
+      (process.getuid && opened.uid !== BigInt(process.getuid())) ||
+      !sameFile(opened, named) ||
+      (await realpath(path)) !== path
+    )
+      throw failure()
     const bytes = Buffer.alloc(Number(opened.size) + 1)
     let position = 0
     while (position < bytes.length) {

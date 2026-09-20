@@ -51,20 +51,18 @@ export const isReviewedLegacyHook = (name, source, root) =>
 const readSnapshot = async (io, path) => {
   let handle
   try {
-    const initial = await io.lstat(path)
-    if (!initial.isFile() || initial.nlink !== 1 || initial.size > 16_384)
-      fail("Hook targets must be bounded regular files without hard links.")
     handle = await io.open(
       path,
       constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK
     )
     const metadata = await handle.stat()
+    const current = await io.lstat(path)
     if (
       !metadata.isFile() ||
       metadata.nlink !== 1 ||
       metadata.size > 16_384 ||
-      metadata.ino !== initial.ino ||
-      metadata.dev !== initial.dev
+      metadata.ino !== current.ino ||
+      metadata.dev !== current.dev
     )
       fail("Hook target changed or is not a bounded regular file.")
     const buffer = Buffer.alloc(16_385)
@@ -95,7 +93,10 @@ const readSnapshot = async (io, path) => {
       dev: metadata.dev,
     }
   } catch (error) {
-    if (error?.code === "ENOENT") return null
+    if (error?.code === "ENOENT") {
+      if (!handle) return null
+      fail("Hook target changed during snapshot read.")
+    }
     throw error
   } finally {
     await handle?.close()

@@ -100,7 +100,7 @@ test("accepts only an unambiguous BASE plus ordered INCR manifest", () => {
     manifest.replace("type i", "type h").replace("type b", "type h"),
     manifest + manifest.split("\n")[1] + "\n",
     manifest.replace("appendonly.aof.1.incr.aof", "other.aof.1.incr.aof"),
-    manifest.replace("\n", "\r\n"),
+    manifest.replaceAll("\n", "\r\n"),
     withHistory.replace("endoffset 18", "endoffset 11"),
     withHistory.replace("startoffset 12", "startoffset -1"),
     withHistory.replace("type h", "type i"),

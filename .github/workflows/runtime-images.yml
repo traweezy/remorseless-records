@@ -3,6 +3,8 @@ name: Runtime Images
 on:
   push:
     branches: [staging, master]
+  pull_request:
+    branches: [staging, master]
   workflow_dispatch:
     inputs:
       publish:
@@ -100,6 +102,7 @@ jobs:
         uses: gensecaihq/Shai-Hulud-2.0-Detector@2755f94762bf5012bc7be82c93e172eabbcd0802 # v2.2.0
         with:
           fail-on-critical: true
+          fail-on-high: true
           scan-lockfiles: true
           scan-node-modules: false
 
@@ -183,11 +186,11 @@ jobs:
       - name: Smoke exact runtime image
         shell: bash
         run: |
-          docker run --rm --entrypoint /bin/sh "${IMAGE_REF}" -c \
-            'test "$(id -u)" = 1000 && test "$(node --version)" = v26.5.0 && test -z "$(command -v npm)" && test -z "$(command -v npx)"'
+          docker run --rm --entrypoint /usr/local/bin/node "${IMAGE_REF}" -e \
+            'const a=require("node:assert/strict"),c=require("node:crypto"),f=require("node:fs");a.equal(process.getuid(),1000);a.equal(process.version,"v26.9.0");const hashes={x64:"05757b064ad2a221b41874794da42361c9bab033c7c33c1f1b458c25a7de7e59",arm64:"53a18c9a23bac8635ea9eb9cdef98e4b7bb77e0420cc966fb371a566ce22c763"},libs={x64:"107ab9f7661a1c47cddfb5cd1def99ec537a50a9a537fbe38cdde1b34b8ba280",arm64:"c90c21008853899dfa102eeaa43b703c2bf41553dd56b13aac6da2803d5884b7"},sha=(p)=>c.createHash("sha256").update(f.readFileSync(p)).digest("hex");a.equal(sha("/usr/local/bin/node"),hashes[process.arch]);a.equal(sha("/usr/local/lib/libatomic.so.1"),libs[process.arch]);for(const p of ["/bin/sh","/usr/local/bin/npm","/usr/local/bin/npx"])a.equal(f.existsSync(p),false)'
           if [ "${{ matrix.service }}" = "backend" ]; then
-            docker run --rm --entrypoint /bin/sh "${IMAGE_REF}" -c \
-              'test -f ./node_modules/@medusajs/cli/cli.js && test -f ./scripts/runtime-release-prepare.mjs'
+            docker run --rm --entrypoint /usr/local/bin/node "${IMAGE_REF}" -e \
+              'const a=require("node:assert/strict"),f=require("node:fs");for(const p of ["./node_modules/@medusajs/cli/cli.js","./scripts/runtime-release-prepare.mjs"])a.equal(f.existsSync(p),true)'
             exit 0
           fi
 
@@ -335,6 +338,7 @@ jobs:
         uses: gensecaihq/Shai-Hulud-2.0-Detector@2755f94762bf5012bc7be82c93e172eabbcd0802 # v2.2.0
         with:
           fail-on-critical: true
+          fail-on-high: true
           scan-lockfiles: true
           scan-node-modules: false
 
@@ -418,11 +422,11 @@ jobs:
       - name: Smoke exact runtime image
         shell: bash
         run: |
-          docker run --rm --entrypoint /bin/sh "${IMAGE_REF}" -c \
-            'test "$(id -u)" = 1000 && test "$(node --version)" = v26.5.0 && test -z "$(command -v npm)" && test -z "$(command -v npx)"'
+          docker run --rm --entrypoint /usr/local/bin/node "${IMAGE_REF}" -e \
+            'const a=require("node:assert/strict"),c=require("node:crypto"),f=require("node:fs");a.equal(process.getuid(),1000);a.equal(process.version,"v26.9.0");const hashes={x64:"05757b064ad2a221b41874794da42361c9bab033c7c33c1f1b458c25a7de7e59",arm64:"53a18c9a23bac8635ea9eb9cdef98e4b7bb77e0420cc966fb371a566ce22c763"},libs={x64:"107ab9f7661a1c47cddfb5cd1def99ec537a50a9a537fbe38cdde1b34b8ba280",arm64:"c90c21008853899dfa102eeaa43b703c2bf41553dd56b13aac6da2803d5884b7"},sha=(p)=>c.createHash("sha256").update(f.readFileSync(p)).digest("hex");a.equal(sha("/usr/local/bin/node"),hashes[process.arch]);a.equal(sha("/usr/local/lib/libatomic.so.1"),libs[process.arch]);for(const p of ["/bin/sh","/usr/local/bin/npm","/usr/local/bin/npx"])a.equal(f.existsSync(p),false)'
           if [ "${{ matrix.service }}" = "backend" ]; then
-            docker run --rm --entrypoint /bin/sh "${IMAGE_REF}" -c \
-              'test -f ./node_modules/@medusajs/cli/cli.js && test -f ./scripts/runtime-release-prepare.mjs'
+            docker run --rm --entrypoint /usr/local/bin/node "${IMAGE_REF}" -e \
+              'const a=require("node:assert/strict"),f=require("node:fs");for(const p of ["./node_modules/@medusajs/cli/cli.js","./scripts/runtime-release-prepare.mjs"])a.equal(f.existsSync(p),true)'
             exit 0
           fi
 

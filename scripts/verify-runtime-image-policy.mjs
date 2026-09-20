@@ -11,20 +11,19 @@ const policyPath = join(
   "runtime-image-policy.json"
 )
 const expectedPolicy = {
-  schemaVersion: 1,
+  schemaVersion: 3,
   nodeImage:
-    "node:26.5.0-bookworm-slim@sha256:2d49d876e96237d76de412761cf05dbfe5aee325cc4406a4d41d5824c5bb8beb",
-  debianSecurityPackage: {
-    name: "libpcre2-8-0",
-    version: "10.42-1+deb12u1",
-    repository:
-      "https://security.debian.org/debian-security/pool/updates/main/p/pcre2",
-    advisories: ["CVE-2026-86145", "CVE-2026-89161"],
-    sha256: {
-      amd64: "81c5502941118a24d47af69a17b8b0b9548d75cc6d72b3eb3fe01047b46fa10e",
-      arm64: "d178d33697eef877c2c27733141b7f8520fee66a329ae5809e8c8eae3709efa3",
-    },
+    "node:26.9.0-bookworm-slim@sha256:582460f614631b59b824ac6020533b9bf339c7fdf3a6d7db31abb6b4065f0212",
+  nodeBinarySha256: {
+    amd64: "05757b064ad2a221b41874794da42361c9bab033c7c33c1f1b458c25a7de7e59",
+    arm64: "53a18c9a23bac8635ea9eb9cdef98e4b7bb77e0420cc966fb371a566ce22c763",
   },
+  libatomicSha256: {
+    amd64: "107ab9f7661a1c47cddfb5cd1def99ec537a50a9a537fbe38cdde1b34b8ba280",
+    arm64: "c90c21008853899dfa102eeaa43b703c2bf41553dd56b13aac6da2803d5884b7",
+  },
+  runtimeBaseImage:
+    "gcr.io/distroless/cc-debian13:nonroot@sha256:54df941ed0d06a1bd95ef5e0ce391fd8d9f94b64782dc9a60062727849ee3f97",
   repository: "https://github.com/traweezy/remorseless-records",
   trivy: {
     repository: "aquasecurity/setup-trivy",
@@ -161,6 +160,9 @@ const requireExactStep = (job, expectedStep) => {
   return start
 }
 
+const runtimeIdentityAssertion = (policy) =>
+  `const a=require("node:assert/strict"),c=require("node:crypto"),f=require("node:fs");a.equal(process.getuid(),1000);a.equal(process.version,"v26.9.0");const hashes={x64:"${policy.nodeBinarySha256.amd64}",arm64:"${policy.nodeBinarySha256.arm64}"},libs={x64:"${policy.libatomicSha256.amd64}",arm64:"${policy.libatomicSha256.arm64}"},sha=(p)=>c.createHash("sha256").update(f.readFileSync(p)).digest("hex");a.equal(sha("/usr/local/bin/node"),hashes[process.arch]);a.equal(sha("/usr/local/lib/libatomic.so.1"),libs[process.arch]);for(const p of ["/bin/sh","/usr/local/bin/npm","/usr/local/bin/npx"])a.equal(f.existsSync(p),false)`
+
 const verifyStorefrontDecoderStep = (job, imageOutput) => {
   // Fail closed on duplicate/quoted job controls that could skip a protected
   // step while leaving its canonical text present elsewhere in the job.
@@ -205,47 +207,80 @@ export const validateRuntimeDockerfileSource = (serviceName, source) => {
   const policy = expectedPolicy
   const service = policy.services[serviceName]
   assert.ok(service, "Unknown runtime image service.")
-  const pkg = policy.debianSecurityPackage
-  const downloadStage = [
-    "FROM scratch AS runtime-security-packages",
-    "# DLA-4772-1: hashes verified against Debian's signed bookworm-security index.",
-    ...Object.entries(pkg.sha256).map(
-      ([arch, hash]) =>
-        `ADD --checksum=sha256:${hash} ${pkg.repository}/${pkg.name}_${pkg.version}_${arch}.deb /${arch}.deb`
-    ),
-  ].join("\n")
-  const installation = `ARG TARGETARCH
-RUN --mount=from=runtime-security-packages,target=/tmp/runtime-security,readonly \\
-    case "$TARGETARCH" in amd64|arm64) ;; *) exit 1 ;; esac \\
-    && test "$(dpkg --print-architecture)" = "$TARGETARCH" \\
-    && test "$(dpkg-deb --field "/tmp/runtime-security/$TARGETARCH.deb" Package)" = ${pkg.name} \\
-    && test "$(dpkg-deb --field "/tmp/runtime-security/$TARGETARCH.deb" Version)" = ${pkg.version} \\
-    && test "$(dpkg-deb --field "/tmp/runtime-security/$TARGETARCH.deb" Architecture)" = "$TARGETARCH" \\
-    && dpkg --install "/tmp/runtime-security/$TARGETARCH.deb" \\
-    && test "$(dpkg-query --show --showformat='\${db:Status-Status} \${Architecture} \${Version}' ${pkg.name})" = "installed $TARGETARCH ${pkg.version}"`
-  assert.equal(source.split(downloadStage).length, 2)
-  assert.equal(source.split(installation).length, 2)
-  assert.equal(source.match(/^FROM /gmu)?.length, 2)
-  assert.ok(
-    source.indexOf(downloadStage) < source.indexOf("FROM ${NODE_IMAGE}")
-  )
-  assert.ok(source.indexOf(installation) > source.indexOf("FROM ${NODE_IMAGE}"))
-  assert.ok(source.indexOf(installation) < source.indexOf("USER node"))
-  assert.match(source, new RegExp(`^ARG NODE_IMAGE=${policy.nodeImage}$`, "mu"))
-  assert.match(source, /^FROM \$\{NODE_IMAGE\}$/mu)
-  assert.match(source, /^ARG REVISION$/mu)
-  assert.match(source, /^USER node$/mu)
-  assert.match(source, new RegExp(`^WORKDIR ${service.workdir}$`, "mu"))
-  assert.match(source, new RegExp(`^EXPOSE ${service.port}$`, "mu"))
-  assert.match(source, /org\.opencontainers\.image\.revision="\$\{REVISION\}"/u)
-  assert.match(source, /ENV COMMIT_SHA="\$\{REVISION\}"/u)
-  assert.match(source, /RUN rm -rf \/usr\/local\/lib\/node_modules\/npm/u)
-  assert.match(source, /\/usr\/local\/bin\/npm/u)
-  assert.match(source, /\/usr\/local\/bin\/npx/u)
-  assert.doesNotMatch(
-    source.replace(downloadStage, "").replace(installation, ""),
-    /(?:\bADD\b|dpkg|TARGETARCH|runtime-security|apt-get|apk|curl|wget|npm\s+(?:ci|install)|pnpm\s+install|yarn\s+install)/u
-  )
+  const header = `ARG NODE_IMAGE=${policy.nodeImage}
+ARG RUNTIME_BASE_IMAGE=${policy.runtimeBaseImage}
+
+FROM \${NODE_IMAGE} AS node-runtime
+ARG TARGETARCH
+RUN set -eu; \\
+    test "$(node --version)" = v26.9.0; \\
+    case "$TARGETARCH" in \\
+      amd64) triplet=x86_64-linux-gnu; node_sha256=${policy.nodeBinarySha256.amd64}; libatomic_sha256=${policy.libatomicSha256.amd64} ;; \\
+      arm64) triplet=aarch64-linux-gnu; node_sha256=${policy.nodeBinarySha256.arm64}; libatomic_sha256=${policy.libatomicSha256.arm64} ;; \\
+      *) exit 1 ;; \\
+    esac; \\
+    printf '%s  %s\\n' "$node_sha256" /usr/local/bin/node | sha256sum --check --status; \\
+    cp -L "/usr/lib/$triplet/libatomic.so.1" /libatomic.so.1; \\
+    test -s /libatomic.so.1; \\
+    printf '%s  %s\\n' "$libatomic_sha256" /libatomic.so.1 | sha256sum --check --status
+
+FROM \${RUNTIME_BASE_IMAGE}
+
+ARG REVISION
+LABEL org.opencontainers.image.description="Remorseless Records ${serviceName === "backend" ? "Medusa backend" : "Next.js storefront"}"
+LABEL org.opencontainers.image.revision="\${REVISION}"
+LABEL org.opencontainers.image.source="${policy.repository}"
+
+`
+  const common = `COPY --from=node-runtime /usr/local/bin/node /usr/local/bin/node
+COPY --from=node-runtime /libatomic.so.1 /usr/local/lib/libatomic.so.1
+COPY --from=node-runtime /etc/passwd /etc/passwd
+COPY --from=node-runtime /etc/group /etc/group
+COPY --from=node-runtime --chown=1000:1000 /home/node/ /home/node/
+
+WORKDIR ${service.workdir}
+
+`
+  const body =
+    serviceName === "backend"
+      ? `ENV COMMIT_SHA="\${REVISION}" \\
+    HOME=/home/node \\
+    LD_LIBRARY_PATH=/usr/local/lib \\
+    NODE_ENV=production \\
+    PATH=/usr/local/bin:/usr/bin:/bin
+
+${common}COPY --chown=1000:1000 backend/.medusa/server/ ./
+COPY --chown=1000:1000 backend/scripts/runtime-release-prepare.mjs ./scripts/runtime-release-prepare.mjs
+COPY --chown=1000:1000 backend/scripts/lib/release-prepare.mjs ./scripts/lib/release-prepare.mjs
+
+USER 1000:1000
+
+EXPOSE 9000
+
+ENTRYPOINT ["/usr/local/bin/node"]
+CMD ["--require", "./observability-register.cjs", "./node_modules/@medusajs/cli/cli.js", "start", "--verbose"]
+`
+      : `ENV COMMIT_SHA="\${REVISION}" \\
+    HOME=/home/node \\
+    HOSTNAME=0.0.0.0 \\
+    LD_LIBRARY_PATH=/usr/local/lib \\
+    NEXT_TELEMETRY_DISABLED=1 \\
+    NODE_ENV=production \\
+    PATH=/usr/local/bin:/usr/bin:/bin \\
+    PORT=3000
+
+${common}COPY --chown=1000:1000 storefront/.next/standalone/ /app/
+COPY --chown=1000:1000 storefront/.next/static/ ./.next/static/
+COPY --chown=1000:1000 storefront/public/ ./public/
+
+USER 1000:1000
+
+EXPOSE 3000
+
+ENTRYPOINT ["/usr/local/bin/node"]
+CMD ["server.js"]
+`
+  assert.equal(source, header + body)
 }
 
 export const validateRuntimeWorkflowSource = (source) => {
@@ -257,6 +292,8 @@ export const validateRuntimeWorkflowSource = (source) => {
   verifyStorefrontDecoderStep(publishJob, "local_image")
 
   assert.match(source, /branches: \[staging, master\]/u)
+  assert.equal(source.match(/^  pull_request:$/gmu)?.length, 1)
+  assert.match(source, /^  pull_request:\n    branches: \[staging, master\]$/mu)
   assert.doesNotMatch(source, /PUBLISH_IMAGE/u)
   assert.match(
     validateJob,
@@ -417,10 +454,31 @@ export const validateRuntimeWorkflowSource = (source) => {
   )
   assert.equal(source.match(/- name: Smoke exact runtime image/gu)?.length, 2)
   assert.doesNotMatch(source, /- name: Smoke exact runtime image\n\s+if:/u)
-  assert.equal(source.match(/test -z "\$\(command -v npm\)"/gu)?.length, 2)
-  assert.equal(source.match(/test -z "\$\(command -v npx\)"/gu)?.length, 2)
+  assert.equal(
+    source.match(
+      /docker run --rm --entrypoint \/usr\/local\/bin\/node "\$\{IMAGE_REF\}" -e/gu
+    )?.length,
+    4
+  )
+  assert.equal(
+    source.match(/a\.equal\(process\.getuid\(\),1000\)/gu)?.length,
+    2
+  )
+  assert.equal(
+    sourceLines.filter(
+      (line) => line === `            '${runtimeIdentityAssertion(policy)}'`
+    ).length,
+    2,
+    "Both image jobs must run the exact reviewed Node version and binary hash assertion."
+  )
+  assert.equal(
+    source.match(
+      /"\.\/node_modules\/@medusajs\/cli\/cli\.js","\.\/scripts\/runtime-release-prepare\.mjs"/gu
+    )?.length,
+    2
+  )
   for (const job of [validateJob, publishJob]) {
-    const runtimeSmokeIndex = job.indexOf('test "$(id -u)" = 1000')
+    const runtimeSmokeIndex = job.indexOf("a.equal(process.getuid(),1000)")
     const serviceBranchIndex = job.indexOf(
       'if [ "${{ matrix.service }}" = "backend" ]'
     )
@@ -473,12 +531,12 @@ export const verifyRuntimeImagePolicy = () => {
   )
   assert.match(
     backendDockerfile,
-    /COPY --chown=node:node backend\/\.medusa\/server\/ \.\//u
+    /COPY --chown=1000:1000 backend\/\.medusa\/server\/ \.\//u
   )
   assert.match(backendDockerfile, /runtime-release-prepare\.mjs/u)
   assert.match(
     backendDockerfile,
-    /CMD \["node", "--require", "\.\/observability-register\.cjs", "\.\/node_modules\/@medusajs\/cli\/cli\.js", "start", "--verbose"\]/u
+    /CMD \["--require", "\.\/observability-register\.cjs", "\.\/node_modules\/@medusajs\/cli\/cli\.js", "start", "--verbose"\]/u
   )
 
   const storefrontDockerfile = readFileSync(
@@ -488,7 +546,7 @@ export const verifyRuntimeImagePolicy = () => {
   assert.match(storefrontDockerfile, /storefront\/\.next\/standalone\//u)
   assert.match(storefrontDockerfile, /storefront\/\.next\/static\//u)
   assert.match(storefrontDockerfile, /storefront\/public\//u)
-  assert.match(storefrontDockerfile, /CMD \["node", "server\.js"\]/u)
+  assert.match(storefrontDockerfile, /CMD \["server\.js"\]/u)
 
   const dockerignore = readFileSync(join(root, ".dockerignore"), "utf8")
   for (const boundary of [
@@ -548,7 +606,7 @@ export const verifyRuntimeImagePolicy = () => {
   )
 
   console.info(
-    "Runtime image policy verified: two digest-pinned nonroot images, isolated packaged Storefront decoder gates, clean scan/SBOM gates, and signed master artifacts."
+    "Runtime image policy verified: digest-pinned Node and distroless runtime images, isolated packaged Storefront decoder gates, clean scan/SBOM gates, and signed master artifacts."
   )
 }
 

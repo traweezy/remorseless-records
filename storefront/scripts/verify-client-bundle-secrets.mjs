@@ -25,7 +25,9 @@ const FORBIDDEN_PUBLIC_SEARCH_NAMES = [
   "NEXT_PUBLIC_MEILI_HOST",
   "NEXT_PUBLIC_MEILI_SEARCH_KEY",
 ]
-const STRIPE_SCRIPT_ORIGIN = "js.stripe.com"
+// Match the complete quoted origin in the emitted loader. A substring also
+// matches attacker-controlled hosts such as js.stripe.com.example.
+const STRIPE_SCRIPT_ORIGIN_LITERAL = /["']https:\/\/js\.stripe\.com["']/u
 const STRIPE_TRUSTED_TYPES_POLICY = "remorseless-stripe-js"
 const JSON_LD_TRUSTED_TYPES_POLICY = "remorseless-json-ld"
 
@@ -56,8 +58,8 @@ for (const file of files) {
     jsonLdPolicyFiles.push(path.relative(STATIC_DIRECTORY, file))
   }
   if (
-    content.includes(STRIPE_SCRIPT_ORIGIN) &&
-    content.includes("advancedFraudSignals")
+    content.includes("advancedFraudSignals") &&
+    STRIPE_SCRIPT_ORIGIN_LITERAL.test(content.toString("utf8"))
   ) {
     const relativeFile = path.relative(STATIC_DIRECTORY, file)
     stripeLoaderFiles.push(relativeFile)

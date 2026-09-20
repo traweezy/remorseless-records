@@ -1,6 +1,7 @@
 import assert from "node:assert/strict"
 import { spawn, spawnSync } from "node:child_process"
 import { createHash } from "node:crypto"
+import fs from "node:fs/promises"
 import {
   chmod,
   mkdtemp,
@@ -10,6 +11,7 @@ import {
   stat,
   writeFile,
 } from "node:fs/promises"
+import { syncBuiltinESMExports } from "node:module"
 import { tmpdir } from "node:os"
 import { dirname, join, resolve } from "node:path"
 import test from "node:test"
@@ -240,6 +242,36 @@ test("private manifest rejects tampered bytes and public file mode", () =>
     await assert.rejects(
       readPrivateMediaManifest(manifestPath, manifestSha256, signal)
     )
+  }))
+
+test("private manifest rejects path replacement after descriptor open", () =>
+  fixture(async ({ manifestPath, manifestSha256, root }) => {
+    const original = fs.lstat
+    let replaced = false
+    fs.lstat = async (path, ...args) => {
+      if (path === manifestPath && !replaced) {
+        replaced = true
+        await fs.rename(manifestPath, join(root, "original-manifest.json"))
+        await fs.writeFile(manifestPath, `${JSON.stringify(backup())}\n`, {
+          mode: 0o600,
+        })
+      }
+      return original(path, ...args)
+    }
+    syncBuiltinESMExports()
+    try {
+      await assert.rejects(
+        readPrivateMediaManifest(
+          manifestPath,
+          manifestSha256,
+          AbortSignal.timeout(1000)
+        )
+      )
+      assert.equal(replaced, true)
+    } finally {
+      fs.lstat = original
+      syncBuiltinESMExports()
+    }
   }))
 
 test("tampered manifest pin fails before contacting mc", () =>

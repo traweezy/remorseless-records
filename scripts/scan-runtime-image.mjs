@@ -26,6 +26,7 @@ import { buildRuntimeImageRecord } from "./write-runtime-image-record.mjs"
 import {
   runtimeEvidencePolicy as policy,
   runtimeFindingPolicy,
+  runtimeScanAccepted,
   summarizeRuntimeVulnerabilities,
   validateRuntimeDatabase,
   verifyRuntimeImageArtifacts,
@@ -69,7 +70,7 @@ const imageIdentity = (source, expected) => {
   assert.equal(image.id, expected.imageId)
   assert.equal(image.os, "linux")
   assert.equal(image.architecture, "amd64")
-  assert.equal(image.user, "node")
+  assert.equal(image.user, "1000:1000")
   assert.equal(image.revision, expected.revision)
   assert.equal(image.source, policy.repository)
   return image
@@ -302,7 +303,7 @@ export const scanRuntimeImage = async (
         completedAt,
         policy: runtimeFindingPolicy,
         ...summary,
-        accepted: summary.fixedHighCritical === 0,
+        accepted: runtimeScanAccepted(summary.counts),
       },
       reports: { vulnerabilities, sbom, databaseMetadata },
     })
@@ -375,7 +376,7 @@ if (
     const options = parseRuntimeScanArguments(process.argv.slice(2))
     if (options.help)
       console.log(
-        "Usage: node scripts/scan-runtime-image.mjs --service <backend|storefront> --revision <sha> --image-id <sha256:id> --output <new-private-directory>\nUses reviewed Trivy and a fresh private DB; no image pull or publication. Only local Unix Docker endpoints. Retains full findings; fixed HIGH/CRITICAL findings fail."
+        "Usage: node scripts/scan-runtime-image.mjs --service <backend|storefront> --revision <sha> --image-id <sha256:id> --output <new-private-directory>\nUses reviewed Trivy and a fresh private DB; no image pull or publication. Only local Unix Docker endpoints. Retains full findings; all UNKNOWN/HIGH/CRITICAL findings fail."
       )
     else console.log(JSON.stringify(await scanRuntimeImage(options)))
   } catch (error) {

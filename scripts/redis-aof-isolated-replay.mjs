@@ -178,49 +178,51 @@ const sameFile = (left, right) =>
   left.ctimeNs === right.ctimeNs
 
 const privateDirectory = async (path) => {
-  const before = await lstat(path, { bigint: true })
-  if (
-    !before.isDirectory() ||
-    before.isSymbolicLink() ||
-    (before.mode & 0o077n) !== 0n ||
-    (process.getuid && before.uid !== BigInt(process.getuid())) ||
-    (await realpath(path)) !== path
-  )
-    throw failure()
   const handle = await open(
     path,
     constants.O_RDONLY | constants.O_DIRECTORY | constants.O_NOFOLLOW
   )
-  const opened = await handle.stat({ bigint: true })
-  if (!sameFile(before, opened)) {
+  try {
+    const opened = await handle.stat({ bigint: true })
+    const current = await lstat(path, { bigint: true })
+    if (
+      !opened.isDirectory() ||
+      (opened.mode & 0o077n) !== 0n ||
+      (process.getuid && opened.uid !== BigInt(process.getuid())) ||
+      (await realpath(path)) !== path ||
+      !sameFile(opened, current)
+    )
+      throw failure()
+    return handle
+  } catch (error) {
     await handle.close()
-    throw failure()
+    throw error
   }
-  return handle
 }
 
 const privateFile = async (path, limit) => {
-  const before = await lstat(path, { bigint: true })
-  if (
-    !before.isFile() ||
-    before.isSymbolicLink() ||
-    before.nlink !== 1n ||
-    (before.mode & 0o077n) !== 0n ||
-    (process.getuid && before.uid !== BigInt(process.getuid())) ||
-    before.size < 0n ||
-    before.size > BigInt(limit)
-  )
-    throw failure()
   const handle = await open(
     path,
     constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK
   )
-  const opened = await handle.stat({ bigint: true })
-  if (!sameFile(before, opened)) {
+  try {
+    const opened = await handle.stat({ bigint: true })
+    const current = await lstat(path, { bigint: true })
+    if (
+      !opened.isFile() ||
+      opened.nlink !== 1n ||
+      (opened.mode & 0o077n) !== 0n ||
+      (process.getuid && opened.uid !== BigInt(process.getuid())) ||
+      opened.size < 0n ||
+      opened.size > BigInt(limit) ||
+      !sameFile(opened, current)
+    )
+      throw failure()
+    return { handle, size: Number(opened.size), opened }
+  } catch (error) {
     await handle.close()
-    throw failure()
+    throw error
   }
-  return { handle, size: Number(opened.size), opened }
 }
 
 const boundedRead = async (path, limit, signal) => {

@@ -11,37 +11,43 @@ const snapshotPattern = /^[A-Za-z0-9:_-]{1,128}$/u
 export const openPrivateOutputDirectory = async (path) => {
   assert.equal(resolve(path), path)
   const owner = process.getuid()
-  const ancestors = []
-  for (let current = path; ; current = dirname(current)) {
-    const metadata = await lstat(current)
-    assert.ok(metadata.isDirectory() && !metadata.isSymbolicLink())
-    assert.ok(metadata.uid === owner || metadata.uid === 0)
-    if (current === path) {
-      assert.equal(metadata.uid, owner)
-      assert.equal(metadata.mode & 0o077, 0)
-    } else {
-      const writable = metadata.mode & 0o022
-      assert.ok(
-        !writable || (metadata.uid === 0 && (metadata.mode & 0o1000) !== 0)
-      )
-    }
-    ancestors.push({
-      path: current,
-      dev: metadata.dev,
-      ino: metadata.ino,
-      uid: metadata.uid,
-      mode: metadata.mode & 0o7777,
-    })
-    if (current === dirname(current)) break
-  }
-  assert.equal(await realpath(path), path)
   const handle = await open(
     path,
-    constants.O_RDONLY | constants.O_DIRECTORY | constants.O_NOFOLLOW
+    constants.O_RDONLY | constants.O_DIRECTORY | constants.O_NOFOLLOW,
+    0o700
   )
   try {
+    const pinned = await handle.stat()
+    const ancestors = []
+    for (let current = path; ; current = dirname(current)) {
+      const metadata = await lstat(current)
+      assert.ok(metadata.isDirectory() && !metadata.isSymbolicLink())
+      assert.ok(metadata.uid === owner || metadata.uid === 0)
+      if (current === path) {
+        assert.equal(metadata.uid, owner)
+        assert.equal(metadata.mode & 0o077, 0)
+        assert.equal(metadata.dev, pinned.dev)
+        assert.equal(metadata.ino, pinned.ino)
+      } else {
+        const writable = metadata.mode & 0o022
+        assert.ok(
+          !writable || (metadata.uid === 0 && (metadata.mode & 0o1000) !== 0)
+        )
+      }
+      ancestors.push({
+        path: current,
+        dev: metadata.dev,
+        ino: metadata.ino,
+        uid: metadata.uid,
+        mode: metadata.mode & 0o7777,
+      })
+      if (current === dirname(current)) break
+    }
+    assert.equal(await realpath(path), path)
     const assertStable = async () => {
-      const pinned = await handle.stat()
+      const currentHandle = await handle.stat()
+      assert.equal(currentHandle.dev, pinned.dev)
+      assert.equal(currentHandle.ino, pinned.ino)
       assert.equal(pinned.dev, ancestors[0].dev)
       assert.equal(pinned.ino, ancestors[0].ino)
       for (const ancestor of ancestors) {
@@ -55,7 +61,12 @@ export const openPrivateOutputDirectory = async (path) => {
       assert.equal(await realpath(path), path)
     }
     await assertStable()
-    return { assertStable, close: () => handle.close() }
+    return {
+      assertStable,
+      descriptorPath: `/proc/self/fd/${handle.fd}`,
+      sync: () => handle.sync(),
+      close: () => handle.close(),
+    }
   } catch (error) {
     await handle.close()
     throw error

@@ -78,14 +78,7 @@ const fixture = () => {
             Identifier: { PURL: "pkg:deb/debian/example@1-1?arch=amd64" },
           },
         ],
-        Vulnerabilities: [
-          {
-            VulnerabilityID: "CVE-example",
-            PkgName: "example",
-            InstalledVersion: "1",
-            Severity: "HIGH",
-          },
-        ],
+        Vulnerabilities: [],
       },
       {
         Class: "lang-pkgs",
@@ -174,6 +167,15 @@ const fixture = () => {
   })
   return { record, report, sbom, dbSource }
 }
+const addFinding = (candidate, severity, fixedVersion) => {
+  candidate.report.Results[0].Vulnerabilities.push({
+    VulnerabilityID: "CVE-example",
+    PkgName: "example",
+    InstalledVersion: "1",
+    Severity: severity,
+    ...(fixedVersion ? { FixedVersion: fixedVersion } : {}),
+  })
+}
 const privateRoot = async (t) => {
   const directory = await fs.mkdtemp(join(tmpdir(), "rr-evidence-test-"))
   t.after(() => fs.rm(directory, { recursive: true, force: true }))
@@ -190,7 +192,7 @@ const writeFixture = async (directory, candidate = fixture()) => {
   return join(directory, "backend.image.json")
 }
 
-test("verifies exact report, SBOM, scanner and DB bytes while retaining unfixed findings", async (t) => {
+test("verifies exact clean report, SBOM, scanner and DB bytes", async (t) => {
   const { record, sbom } = fixture()
   validateRuntimeImageRecord(record)
   validateRuntimeImageSbom(sbom, record, [
@@ -356,6 +358,7 @@ const recordMutations = [
   [
     "fixed high",
     (r) => {
+      r.scan.counts.HIGH = 1
       r.scan.fixedHighCritical = 1
       r.scan.accepted = false
     },
@@ -363,6 +366,7 @@ const recordMutations = [
   [
     "forged acceptance",
     (r) => {
+      r.scan.counts.HIGH = 1
       r.scan.fixedHighCritical = 1
     },
   ],
@@ -437,6 +441,7 @@ for (const [name, mutate] of [
   [
     "unknown severity",
     (f) => {
+      addFinding(f, "HIGH")
       f.report.Results[0].Vulnerabilities[0].Severity = "other"
     },
   ],
@@ -630,7 +635,7 @@ const fakeSession = async (t, change = {}) => {
             : imageId,
         os: "linux",
         architecture: "amd64",
-        user: "node",
+        user: change.imageUser ?? "1000:1000",
         revision,
         source: policy.repository,
       })
@@ -696,7 +701,7 @@ test("collects one fresh immutable DB session and cleans its private cache", asy
   const setup = await fakeSession(t)
   const result = await scanRuntimeImage(setup.options, setup.dependencies)
   assert.equal(result.fixedHighCritical, 0)
-  assert.equal(result.counts.HIGH, 1)
+  assert.equal(result.counts.HIGH, 0)
   assert.equal(
     setup.calls.filter((call) => call.args.includes("--download-db-only"))
       .length,
@@ -713,6 +718,12 @@ test("collects one fresh immutable DB session and cleans its private cache", asy
     fixture().record
   )
   await assert.rejects(fs.lstat(setup.cache()), { code: "ENOENT" })
+})
+test("rejects a runtime image that changes its non-root identity", async (t) => {
+  const setup = await fakeSession(t, { imageUser: "node" })
+  await assert.rejects(scanRuntimeImage(setup.options, setup.dependencies), {
+    phase: "image_identity",
+  })
 })
 test("reports bounded expired DB details and still rejects the scan", async (t) => {
   const expired = {
@@ -764,21 +775,33 @@ for (const change of [
     )
     await assert.rejects(fs.lstat(setup.cache()), { code: "ENOENT" })
   })
-test("retains full rejected fixed-HIGH evidence without accepting it", async (t) => {
-  const setup = await fakeSession(t, {
-    candidate: (f) => {
-      f.report.Results[0].Vulnerabilities[0].FixedVersion = "2"
-    },
+for (const [severity, fixedVersion] of [
+  ["UNKNOWN", undefined],
+  ["HIGH", undefined],
+  ["HIGH", "2"],
+  ["CRITICAL", undefined],
+  ["CRITICAL", "2"],
+])
+  test(`retains rejected ${severity} evidence with fixed version ${fixedVersion ?? "absent"}`, async (t) => {
+    const setup = await fakeSession(t, {
+      candidate: (f) => addFinding(f, severity, fixedVersion),
+    })
+    await assert.rejects(scanRuntimeImage(setup.options, setup.dependencies))
+    const path = join(setup.options.output, "backend.image.json")
+    await assert.rejects(verifyRuntimeImageArtifacts(path))
+    const evidence = await verifyRuntimeImageArtifacts(path, {
+      requireAccepted: false,
+    })
+    assert.equal(evidence.scan.accepted, false)
+    assert.equal(evidence.scan.counts[severity], 1)
+    assert.equal(evidence.scan.fixedHighCritical, fixedVersion ? 1 : 0)
+    assert.equal(
+      decodeEvidence(
+        await readEvidenceFile(join(setup.options.output, "failure.json"))
+      ).event,
+      "runtime.image.failed"
+    )
   })
-  await assert.rejects(scanRuntimeImage(setup.options, setup.dependencies))
-  const path = join(setup.options.output, "backend.image.json")
-  await assert.rejects(verifyRuntimeImageArtifacts(path))
-  assert.equal(
-    (await verifyRuntimeImageArtifacts(path, { requireAccepted: false })).scan
-      .fixedHighCritical,
-    1
-  )
-})
 test("rejects pre-cancelled sessions, remote Docker endpoints, and bad CLI flags", async (t) => {
   const setup = await fakeSession(t)
   await assert.rejects(
@@ -898,9 +921,14 @@ test("detects same-size writes whose mtime was restored", async (t) => {
         const iterator = stream[Symbol.asyncIterator].bind(stream)
         stream[Symbol.asyncIterator] = async function* () {
           for await (const chunk of { [Symbol.asyncIterator]: iterator }) {
-            const info = await fs.stat(file)
-            await fs.writeFile(file, "replaced")
-            await fs.utimes(file, info.atime, info.mtime)
+            const replacement = await realOpen(file, "r+")
+            try {
+              const info = await replacement.stat()
+              await replacement.writeFile("replaced")
+              await replacement.utimes(info.atime, info.mtime)
+            } finally {
+              await replacement.close()
+            }
             yield chunk
           }
         }

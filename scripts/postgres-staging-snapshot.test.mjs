@@ -13,6 +13,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import test from "node:test"
 import { setTimeout as delay } from "node:timers/promises"
+import { verifySourceScope } from "./postgres-isolated-target.mjs"
 import {
   buildSshArguments,
   normalizeRailwayScope,
@@ -292,6 +293,13 @@ test("binds a private published bundle to exact source and system identity", asy
       scope.mappedEndpointFingerprint
     )
     assert.equal(scope.archiveSha256, sha(await readFile(result.archivePath)))
+    const verifiedScope = await verifySourceScope({
+      sourceScopePath: result.sourceScopePath,
+      archivePath: result.archivePath,
+      manifestPath: result.manifestPath,
+      receiptPath: result.receiptPath,
+    })
+    assert.equal(verifiedScope.scope.sourceSystemId, systemId)
     assert.equal(scope.manifestSha256, sha(await readFile(result.manifestPath)))
     assert.equal(
       scope.restoreReceiptSha256,
@@ -301,7 +309,10 @@ test("binds a private published bundle to exact source and system identity", asy
       !JSON.stringify({ result, scope }).includes("fake-private-password")
     )
     assert.ok(!JSON.stringify({ result, scope }).includes("fake-api-token"))
-    assert.ok(!JSON.stringify({ result, scope }).includes("db.proxy.rlwy.net"))
+    assert.doesNotMatch(
+      JSON.stringify({ result, scope }),
+      /db\.proxy\.rlwy\.net/u
+    )
   })
 })
 

@@ -2,12 +2,14 @@ import assert from "node:assert/strict"
 import { spawn } from "node:child_process"
 import { createHash, randomUUID } from "node:crypto"
 import {
+  chmod,
   mkdir,
   mkdtemp,
   lstat,
   readFile,
   readdir,
   rm,
+  symlink,
   writeFile,
 } from "node:fs/promises"
 import { createServer } from "node:net"
@@ -23,14 +25,47 @@ import {
   isolatedTargetFailureEvent,
   main,
   parseArguments,
+  readPrivateBoundedFile,
   runCreatePhase,
   runBounded,
   verifySourceScope,
+  writeState,
 } from "./postgres-isolated-target.mjs"
 
 const scripts = fileURLToPath(new URL("./", import.meta.url))
 const sourcePassword = "local_integration_only"
 const sha256 = (bytes) => createHash("sha256").update(bytes).digest("hex")
+
+test("private target reads are bounded and state replacement stays atomic", async (t) => {
+  const root = await mkdtemp(join(tmpdir(), "rr-target-file-test-"))
+  t.after(() => rm(root, { recursive: true, force: true }))
+  const source = join(root, "source.json")
+  await writeFile(source, "trusted", { flag: "wx", mode: 0o600 })
+  assert.equal((await readPrivateBoundedFile(source, 7)).toString(), "trusted")
+  await assert.rejects(readPrivateBoundedFile(source, 6))
+  const alias = join(root, "alias.json")
+  await symlink(source, alias)
+  await assert.rejects(readPrivateBoundedFile(alias, 7))
+  await chmod(source, 0o644)
+  await assert.rejects(readPrivateBoundedFile(source, 7))
+
+  const statePath = join(root, "state.json")
+  await writeState({ root, phase: "ready" })
+  assert.equal((await lstat(statePath)).mode & 0o777, 0o600)
+  assert.equal(JSON.parse(await readFile(statePath, "utf8")).phase, "ready")
+  const outside = join(root, "outside.json")
+  await writeFile(outside, "untouched", { mode: 0o600 })
+  await rm(statePath)
+  await symlink(outside, statePath)
+  await writeState({ root, phase: "restored" })
+  assert.equal(await readFile(outside, "utf8"), "untouched")
+  assert.equal((await lstat(statePath)).isSymbolicLink(), false)
+  assert.equal(JSON.parse(await readFile(statePath, "utf8")).phase, "restored")
+  assert.deepEqual(
+    (await readdir(root)).filter((entry) => entry.startsWith(".state-")),
+    []
+  )
+})
 const stripeFixtureSql = `
 CREATE TABLE public.cart (id text PRIMARY KEY, deleted_at timestamptz);
 CREATE TABLE public."order" (id text PRIMARY KEY, deleted_at timestamptz);

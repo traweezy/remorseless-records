@@ -1,30 +1,55 @@
 import assert from "node:assert/strict"
 import { constants, createWriteStream } from "node:fs"
-import { open, realpath } from "node:fs/promises"
+import { lstat, open, realpath } from "node:fs/promises"
 import { createHash } from "node:crypto"
-import { resolve } from "node:path"
+import { basename, dirname, join, resolve } from "node:path"
 import { Transform } from "node:stream"
 import { pipeline } from "node:stream/promises"
 
 import { parseBackupManifest } from "./postgres-logical-backup.mjs"
+import { openPrivateOutputDirectory } from "./postgres-snapshot.mjs"
 
-const openRegularFile = async (path) => {
+export const openRegularFile = async (path) => {
   assert.equal(resolve(path), path, "Recovery inputs must be absolute.")
-  assert.equal(await realpath(path), path, "Recovery inputs must be canonical.")
-  const file = await open(
-    path,
-    constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK
-  )
+  const parent = await openPrivateOutputDirectory(dirname(path))
+  let file
   try {
+    file = await open(
+      join(parent.descriptorPath, basename(path)),
+      constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK,
+      0o600
+    )
+    const opened = await file.stat()
+    const named = await lstat(path)
     assert.ok(
-      (await file.stat()).isFile(),
+      opened.isFile() &&
+        opened.nlink === 1 &&
+        opened.uid === process.getuid() &&
+        (opened.mode & 0o077) === 0 &&
+        named.isFile() &&
+        !named.isSymbolicLink() &&
+        named.dev === opened.dev &&
+        named.ino === opened.ino,
       "Recovery input must be a regular file."
     )
-    return file
+    assert.equal(
+      await realpath(path),
+      path,
+      "Recovery inputs must be canonical."
+    )
+    await parent.assertStable()
+  } catch (error) {
+    await file?.close()
+    await parent.close()
+    throw error
+  }
+  try {
+    await parent.close()
   } catch (error) {
     await file.close()
     throw error
   }
+  return file
 }
 
 export const readBackupManifest = async (path, signal) => {

@@ -288,7 +288,7 @@ test("reports only bounded facts after both staging and database identity checks
     assert.equal(report.pgStatStatementsPreloaded, false)
     assert.ok(!JSON.stringify(report).includes("secret-do-not-log"))
     assert.ok(!JSON.stringify(report).includes("private-token-do-not-log"))
-    assert.ok(!JSON.stringify(report).includes("db.proxy.rlwy.net"))
+    assert.doesNotMatch(JSON.stringify(report), /db\.proxy\.rlwy\.net/u)
   })
 })
 

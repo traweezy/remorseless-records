@@ -513,11 +513,16 @@ test("local orchestrator publishes only after complete capture and independent r
       manifest
     )
     assert.equal((await stat(result.archiveDirectory)).mode & 0o777, 0o700)
-    assert.equal((await stat(result.receipt)).mode & 0o777, 0o600)
-    const receipt = JSON.parse(await readFile(result.receipt, "utf8"))
-    assert.equal(receipt.manifestSha256, event.manifestSha256)
-    assert.equal(receipt.rewriteRestored, true)
-    assert.equal(receipt.queueReconciled, false)
+    const receiptFile = await open(result.receipt, "r")
+    try {
+      assert.equal((await receiptFile.stat()).mode & 0o777, 0o600)
+      const receipt = JSON.parse(await receiptFile.readFile("utf8"))
+      assert.equal(receipt.manifestSha256, event.manifestSha256)
+      assert.equal(receipt.rewriteRestored, true)
+      assert.equal(receipt.queueReconciled, false)
+    } finally {
+      await receiptFile.close()
+    }
   } finally {
     await rm(outputParent, { recursive: true, force: true })
   }

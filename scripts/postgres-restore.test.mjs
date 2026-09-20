@@ -2,6 +2,7 @@ import assert from "node:assert/strict"
 import { execFile } from "node:child_process"
 import { createHash } from "node:crypto"
 import { existsSync } from "node:fs"
+import fs from "node:fs/promises"
 import {
   mkdtemp,
   readFile,
@@ -10,6 +11,7 @@ import {
   symlink,
   writeFile,
 } from "node:fs/promises"
+import { syncBuiltinESMExports } from "node:module"
 import { tmpdir, userInfo } from "node:os"
 import { join } from "node:path"
 import test from "node:test"
@@ -282,7 +284,7 @@ test("bounds restore disk-copy budgets", () => {
 test("reads a bounded regular manifest and rejects oversized or symlink input", () =>
   withDirectory(async (directory) => {
     const path = join(directory, "manifest.json")
-    await writeFile(path, JSON.stringify(manifest))
+    await writeFile(path, JSON.stringify(manifest), { mode: 0o600 })
     assert.deepEqual(
       await readBackupManifest(path, AbortSignal.timeout(1000)),
       manifest
@@ -300,11 +302,35 @@ test("reads a bounded regular manifest and rejects oversized or symlink input", 
     await assert.rejects(readBackupManifest(path, AbortSignal.timeout(1000)))
   }))
 
+test("rejects a manifest path replaced after its file descriptor opens", () =>
+  withDirectory(async (directory) => {
+    const path = join(directory, "manifest.json")
+    await writeFile(path, JSON.stringify(manifest), { mode: 0o600 })
+    const original = fs.lstat
+    let replaced = false
+    fs.lstat = async (candidate, ...args) => {
+      if (candidate === path && !replaced) {
+        replaced = true
+        await fs.rename(path, join(directory, "original.json"))
+        await fs.writeFile(path, JSON.stringify(manifest), { mode: 0o600 })
+      }
+      return original(candidate, ...args)
+    }
+    syncBuiltinESMExports()
+    try {
+      await assert.rejects(readBackupManifest(path, AbortSignal.timeout(1000)))
+      assert.equal(replaced, true)
+    } finally {
+      fs.lstat = original
+      syncBuiltinESMExports()
+    }
+  }))
+
 test("snapshot remains private and unchanged when the source is replaced after verification", () =>
   withDirectory(async (directory) => {
     const source = join(directory, "archive.dump")
     const snapshot = join(directory, "snapshot.dump")
-    await writeFile(source, content)
+    await writeFile(source, content, { mode: 0o600 })
     await snapshotBackupArchive(
       source,
       snapshot,
@@ -327,7 +353,7 @@ test("snapshot remains private and unchanged when the source is replaced after v
 test("snapshot rejects corrupt, truncated, symlink, existing-target, and cancelled inputs", () =>
   withDirectory(async (directory) => {
     const source = join(directory, "archive.dump")
-    await writeFile(source, "x".repeat(manifest.bytes))
+    await writeFile(source, "x".repeat(manifest.bytes), { mode: 0o600 })
     await assert.rejects(
       snapshotBackupArchive(
         source,
