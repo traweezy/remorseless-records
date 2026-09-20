@@ -35,6 +35,7 @@ const eventBusRequire = createRequire(
   backendRequire.resolve("@medusajs/event-bus-redis/package.json")
 )
 const { Queue, Worker } = eventBusRequire("bullmq")
+const eventBusQueuePrefix = "RedisEventBusService"
 
 const pinnedImageId = async () => {
   const imageId = await runIntegrationCommand(
@@ -446,6 +447,12 @@ test("an isolated Redis 8.10.1 startup replays synthetic BullMQ states from mult
 }, async () => {
   assert.equal(fixtureEnvironment.INTEGRATION_TESTS_ENABLED, "1")
   assert.equal(typeof process.getuid, "function")
+  const eventBusSource = await readFile(
+    eventBusRequire.resolve("./dist/services/event-bus-redis.js"),
+    "utf8"
+  )
+  assert.ok(eventBusSource.includes("class RedisEventBusService extends"))
+  assert.ok(eventBusSource.includes("prefix: `${this.constructor.name}`"))
   const uid = process.getuid()
   const gid = process.getgid()
   const imageId = await pinnedImageId()
@@ -485,8 +492,13 @@ test("an isolated Redis 8.10.1 startup replays synthetic BullMQ states from mult
       maxRetriesPerRequest: null,
       retryStrategy: () => null,
     }
-    eventQueue = new Queue("events-queue", { connection })
+    eventQueue = new Queue("events-queue", {
+      connection,
+      prefix: eventBusQueuePrefix,
+    })
     workflowQueue = new Queue("medusa-workflows", { connection })
+    assert.equal(eventQueue.qualifiedName, "RedisEventBusService:events-queue")
+    assert.equal(workflowQueue.qualifiedName, "bull:medusa-workflows")
     worker = new Worker(
       "events-queue",
       async (job) => {
@@ -494,7 +506,7 @@ test("an isolated Redis 8.10.1 startup replays synthetic BullMQ states from mult
           throw new Error("Expected synthetic job failure")
         return "synthetic-complete"
       },
-      { connection, concurrency: 1 }
+      { connection, concurrency: 1, prefix: eventBusQueuePrefix }
     )
     const workerErrors = []
     worker.on("error", () => workerErrors.push("worker_error"))
@@ -590,6 +602,17 @@ test("an isolated Redis 8.10.1 startup replays synthetic BullMQ states from mult
     assert.equal(expected.events.counts.waiting, 1)
     assert.equal(expected.workflows.counts.waiting, 1)
     assert.equal(expected.workflows.counts.delayed, 1)
+    assert.equal(
+      await fixtureRedisCli(sourceId, [
+        "TYPE",
+        "RedisEventBusService:events-queue:completed",
+      ]),
+      "zset"
+    )
+    assert.equal(
+      await fixtureRedisCli(sourceId, ["TYPE", "bull:events-queue:completed"]),
+      "none"
+    )
     await eventQueue.close()
     eventQueue = undefined
     await workflowQueue.close()
@@ -656,6 +679,7 @@ test("an isolated Redis 8.10.1 startup replays synthetic BullMQ states from mult
     }
     restoredEventQueue = new Queue("events-queue", {
       connection: targetConnection,
+      prefix: eventBusQueuePrefix,
     })
     restoredWorkflowQueue = new Queue("medusa-workflows", {
       connection: targetConnection,
@@ -665,6 +689,13 @@ test("an isolated Redis 8.10.1 startup replays synthetic BullMQ states from mult
       workflows: await queueSnapshot(restoredWorkflowQueue, workflowIds),
     }
     assert.deepEqual(observed, expected)
+    assert.equal(
+      await fixtureRedisCli(targetId, [
+        "TYPE",
+        "RedisEventBusService:events-queue:completed",
+      ]),
+      "zset"
+    )
     assert.equal(
       await fixtureRedisCli(targetId, ["GET", "synthetic:post-rewrite"]),
       "present"
@@ -713,6 +744,7 @@ test("an isolated Redis 8.10.1 startup replays synthetic BullMQ states from mult
     )
     restoredEventQueue = new Queue("events-queue", {
       connection: targetConnection,
+      prefix: eventBusQueuePrefix,
     })
     restoredWorkflowQueue = new Queue("medusa-workflows", {
       connection: targetConnection,
