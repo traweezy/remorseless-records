@@ -121,6 +121,11 @@ provisioner changes. This is a
 documented residual security decision, not a claim that the network-to-file
 operation is absent.
 
+The later recovery-observability continuation tightens the local SARIF gate to
+reject all other CodeQL findings, including LOW, while retaining the same
+three source-bound reviewed exceptions. The exact-revision CI run is required
+before this stronger policy can be counted as deployed.
+
 ## Credential and exfiltration review
 
 The [Root secret-scan job 106061105021](https://github.com/traweezy/remorseless-records/actions/runs/35504105754/job/106061105021)

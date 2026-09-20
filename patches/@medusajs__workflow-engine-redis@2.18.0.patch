@@ -1,11 +1,52 @@
 diff --git a/dist/utils/workflow-orchestrator-storage.js b/dist/utils/workflow-orchestrator-storage.js
+index 699188c5743e178c0ca91a504e0e2a5fc6ab1e91..9b4e4060c984882753461fceb776d1b8c9feffce 100644
 --- a/dist/utils/workflow-orchestrator-storage.js
 +++ b/dist/utils/workflow-orchestrator-storage.js
-@@ -135,6 +135,6 @@ class RedisDistributedTransactionStorage {
+@@ -17,6 +17,7 @@ const core_1 = require("@medusajs/framework/mikro-orm/core");
+ const orchestration_1 = require("@medusajs/framework/orchestration");
+ const utils_1 = require("@medusajs/framework/utils");
+ const bullmq_1 = require("bullmq");
++const crypto_1 = require("node:crypto");
+ var JobType;
+ (function (JobType) {
+     JobType["SCHEDULE"] = "schedule";
+@@ -134,8 +135,19 @@ class RedisDistributedTransactionStorage {
+             }, mainWorkerOptions);
              this.jobWorker = new bullmq_1.Worker(this.jobQueueName, async (job) => {
                  this.logger_.debug(`executing scheduled job ${job.data.jobId} from queue ${this.jobQueueName} with the following options: ${JSON.stringify(job.data.schedulerOptions)}`);
 -                const scheduledFor = new Date(job.timestamp);
+-                return await this.executeScheduledJob(job.data.jobId, job.data.schedulerOptions, scheduledFor);
 +                const scheduledFor = new Date(job.opts.prevMillis ?? job.timestamp + job.delay);
-                 return await this.executeScheduledJob(job.data.jobId, job.data.schedulerOptions, scheduledFor);
++                const bullJobIdSha256 = typeof job.id === "string" && /^[A-Za-z0-9:_-]{1,128}$/u.test(job.id)
++                    ? (0, crypto_1.createHash)("sha256").update(job.id).digest("hex")
++                    : undefined;
++                try {
++                    return await this.executeScheduledJob(job.data.jobId, job.data.schedulerOptions, scheduledFor, bullJobIdSha256);
++                }
++                catch (error) {
++                    if (error instanceof bullmq_1.UnrecoverableError) {
++                        throw new bullmq_1.UnrecoverableError("Scheduled job failed");
++                    }
++                    throw new Error("Scheduled job failed");
++                }
              }, jobWorkerOptions);
              this.cleanerWorker_ = new bullmq_1.Worker(this.cleanerQueueName, async () => {
+                 await this.clearExpiredExecutions();
+@@ -261,7 +273,7 @@ class RedisDistributedTransactionStorage {
+             },
+         });
+     }
+-    async executeScheduledJob(jobId, schedulerOptions, scheduledFor) {
++    async executeScheduledJob(jobId, schedulerOptions, scheduledFor, bullJobIdSha256) {
+         try {
+             // TODO: In the case of concurrency being forbidden, we want to generate a predictable transaction ID and rely on the idempotency
+             // of the transaction to ensure that the transaction is only executed once.
+@@ -269,6 +281,7 @@ class RedisDistributedTransactionStorage {
+-                logOnError: true,
++                logOnError: false,
+                 input: {
+                     scheduledFor: scheduledFor.toISOString(),
++                    bullJobIdSha256,
+                 },
+             });
+         }

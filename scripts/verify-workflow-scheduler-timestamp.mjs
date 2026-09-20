@@ -33,6 +33,7 @@ const [
   bullmqPackage,
   eventBullmqPackage,
   jobSource,
+  repeatSource,
   finishedSource,
 ] = await Promise.all([
   readFile(storagePath, "utf8"),
@@ -41,6 +42,7 @@ const [
   readFile(workflowBullmqPath, "utf8"),
   readFile(eventBullmqPath, "utf8"),
   readFile(join(bullmqRoot, "dist/cjs/classes/job.js"), "utf8"),
+  readFile(join(bullmqRoot, "dist/cjs/classes/repeat.js"), "utf8"),
   readFile(join(bullmqRoot, "dist/cjs/scripts/moveToFinished-14.js"), "utf8"),
 ])
 const correctedTimestamp =
@@ -69,15 +71,37 @@ if (
     'const jobQueueName_ = jobQueueName ?? "medusa-workflows-jobs";'
   ) ||
   !source.includes('JobType["SCHEDULE"] = "schedule";') ||
+  !source.includes("key: `${JobType.SCHEDULE}_${jobId}`,") ||
   !/this\.jobQueue\?\.add\(JobType\.SCHEDULE,\s*\{\s*jobId,\s*schedulerOptions,\s*\}/u.test(
     source
   ) ||
   !source.includes(
-    "return await this.executeScheduledJob(job.data.jobId, job.data.schedulerOptions, scheduledFor);"
+    "return await this.executeScheduledJob(job.data.jobId, job.data.schedulerOptions, scheduledFor, bullJobIdSha256);"
   ) ||
+  !source.includes(
+    "await this.workflowOrchestratorService_.run(jobId, {\n                logOnError: false,"
+  ) ||
+  !source.includes("if (error instanceof bullmq_1.UnrecoverableError) {") ||
+  !source.includes(
+    'throw new bullmq_1.UnrecoverableError("Scheduled job failed");'
+  ) ||
+  !source.includes('throw new Error("Scheduled job failed");') ||
+  !source.includes(
+    'typeof job.id === "string" && /^[A-Za-z0-9:_-]{1,128}$/u.test(job.id)'
+  ) ||
+  !source.includes(
+    '(0, crypto_1.createHash)("sha256").update(job.id).digest("hex")'
+  ) ||
+  !source.includes("bullJobIdSha256,") ||
+  !jobLoader.includes("bullJobIdSha256: input?.bullJobIdSha256,") ||
+  !jobLoader.includes('this.logger.error("Scheduled job failed");') ||
+  jobLoader.includes("failed with error: ${error.message}") ||
+  source.includes("bullJobId: job.id") ||
+  !repeatSource.includes("return `repeat:${customKey}:${nextMillis}`;") ||
   !jobSource.includes(
     "job.attemptsMade = parseInt(json.attemptsMade || json.atm || '0');"
   ) ||
+  !jobSource.includes("this.failedReason = message;") ||
   !finishedSource.includes(
     'local attemptsMade = rcall("HINCRBY", jobIdKey, "atm", 1)'
   )

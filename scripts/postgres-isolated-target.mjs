@@ -58,6 +58,7 @@ const ownerLabel = "com.remorseless.recovery.target"
 const dataPath = "/var/lib/postgresql/data"
 const socketPath = "/run/postgresql"
 const psqlPath = "/usr/lib/postgresql/16/bin/psql"
+const pgIsReadyPath = "/usr/lib/postgresql/16/bin/pg_isready"
 const restorePath = fileURLToPath(
   new URL("./postgres-restore-drill.mjs", import.meta.url)
 )
@@ -81,18 +82,37 @@ const createSubphases = new Set([
   "volume_create",
   "cluster_init",
   "server_start",
+  "server_readiness",
   "target_verify",
   "cleanup",
 ])
+const readinessReasons = new Set([
+  "socket_never_seen",
+  "probe_rejected",
+  "boundary_rejected",
+])
+const containerStates = new Set(["running", "exited", "oom_killed", "unknown"])
 class CreateFailure extends Error {
-  constructor(subphase) {
+  constructor(subphase, readiness) {
     super("Isolated target creation failed.")
     this.subphase = subphase
+    this.readiness = readiness
   }
 }
-export const createPhaseFailure = (subphase) => {
+class ReadinessTimeout extends Error {
+  constructor(reason) {
+    super("Target readiness timed out.")
+    this.reason = reason
+  }
+}
+export const createPhaseFailure = (subphase, readiness) => {
   assert.ok(createSubphases.has(subphase))
-  return new CreateFailure(subphase)
+  if (readiness) {
+    assert.equal(subphase, "server_readiness")
+    assert.ok(readinessReasons.has(readiness.reason))
+    assert.ok(containerStates.has(readiness.containerState))
+  }
+  return new CreateFailure(subphase, readiness)
 }
 export const runCreatePhase = async (subphase, operation) => {
   try {
@@ -106,6 +126,15 @@ export const isolatedTargetFailureEvent = (error) => ({
   phase: "isolated_target",
   ...(error instanceof CreateFailure && createSubphases.has(error.subphase)
     ? { subphase: error.subphase }
+    : {}),
+  ...(error instanceof CreateFailure &&
+  error.subphase === "server_readiness" &&
+  readinessReasons.has(error.readiness?.reason) &&
+  containerStates.has(error.readiness?.containerState)
+    ? {
+        reason: error.readiness.reason,
+        containerState: error.readiness.containerState,
+      }
     : {}),
 })
 export const finishFailedCreate = async (failure, cleanup) => {
@@ -621,11 +650,46 @@ export const writeState = async (state) => {
   }
 }
 
-const dockerObject = async (kind, name) => {
-  const raw = await docker([kind, "inspect", name], { maxBytes: 131_072 })
+const dockerObject = async (kind, name, { timeoutMs = 15_000 } = {}) => {
+  const raw = await docker([kind, "inspect", name], {
+    maxBytes: 131_072,
+    timeoutMs,
+  })
   const parsed = JSON.parse(raw)
   assert.ok(Array.isArray(parsed) && parsed.length === 1)
   return parsed[0]
+}
+
+export const readinessPhaseFailure = async (
+  error,
+  state,
+  {
+    inspectContainer = (name) =>
+      dockerObject("container", name, { timeoutMs: 5000 }),
+    signal,
+  } = {}
+) => {
+  const reason =
+    error instanceof ReadinessTimeout ? error.reason : "boundary_rejected"
+  let containerState = "unknown"
+  if (state.containerId && !signal?.aborted) {
+    try {
+      const container = await inspectContainer(state.containerName)
+      assert.equal(container.Id, state.containerId)
+      assert.equal(container.Name, `/${state.containerName}`)
+      assert.equal(container.Image, imageId)
+      assert.equal(container.Config?.Labels?.[ownerLabel], state.owner)
+      assert.equal(container.HostConfig?.NetworkMode, "none")
+      assert.equal(container.Config?.User, imageUser)
+      if (container.State?.Running === true) containerState = "running"
+      else if (container.State?.Running === false)
+        containerState =
+          container.State.OOMKilled === true ? "oom_killed" : "exited"
+    } catch {
+      containerState = "unknown"
+    }
+  }
+  return createPhaseFailure("server_readiness", { reason, containerState })
 }
 
 const inspectResources = async (state, { requireRunning = true } = {}) => {
@@ -855,6 +919,78 @@ const selectedPort = async () => {
   return address.port
 }
 
+const ownedSocketAvailable = async (socketFile) => {
+  let socket
+  try {
+    socket = await lstat(socketFile)
+  } catch (error) {
+    if (error?.code === "ENOENT") return false
+    throw error
+  }
+  assert.ok(socket.isSocket())
+  assert.equal(socket.uid, 999)
+  assert.equal(socket.mode & 0o777, 0o777)
+  return true
+}
+
+export const waitForTargetReady = async (
+  socketDirectory,
+  {
+    socketAvailable = ownedSocketAvailable,
+    probe = runBounded,
+    pause = (milliseconds) =>
+      new Promise((done) => setTimeout(done, milliseconds)),
+    now = Date.now,
+    timeoutMs = 10_000,
+    signal,
+  } = {}
+) => {
+  assert.ok(Number.isInteger(timeoutMs) && timeoutMs > 0 && timeoutMs <= 10_000)
+  const deadline = now() + timeoutMs
+  const socketFile = join(socketDirectory, ".s.PGSQL.5432")
+  let socketSeen = false
+  while (true) {
+    signal?.throwIfAborted()
+    const remaining = deadline - now()
+    if (remaining <= 0)
+      throw new ReadinessTimeout(
+        socketSeen ? "probe_rejected" : "socket_never_seen"
+      )
+    if (await socketAvailable(socketFile)) {
+      socketSeen = true
+      try {
+        await probe(
+          pgIsReadyPath,
+          [
+            "--quiet",
+            "--host",
+            socketDirectory,
+            "--port",
+            "5432",
+            "--username",
+            "postgres",
+            "--dbname",
+            "postgres",
+            "--timeout",
+            "1",
+          ],
+          { timeoutMs: Math.min(1500, remaining), maxBytes: 0, signal }
+        )
+        signal?.throwIfAborted()
+        return
+      } catch {
+        signal?.throwIfAborted()
+      }
+    }
+    const delay = Math.min(100, deadline - now())
+    if (delay <= 0)
+      throw new ReadinessTimeout(
+        socketSeen ? "probe_rejected" : "socket_never_seen"
+      )
+    await pause(delay)
+  }
+}
+
 const create = async (baseDir, paths, signal) => {
   signal?.throwIfAborted()
   await runCreatePhase("base_directory", () =>
@@ -876,6 +1012,8 @@ const create = async (baseDir, paths, signal) => {
       ["--version"]
     )
     assert.match(restoreVersion, /^pg_restore \(PostgreSQL\) 16\.15(?:\s|$)/u)
+    const readinessVersion = await runBounded(pgIsReadyPath, ["--version"])
+    assert.match(readinessVersion, /^pg_isready \(PostgreSQL\) 16\.15(?:\s|$)/u)
   })
   await runCreatePhase("disk_capacity", async () => {
     const disk = await statfs(baseDir)
@@ -1017,15 +1155,17 @@ const create = async (baseDir, paths, signal) => {
     state.containerId = id
     subphase = "state_persist"
     await writeState(state)
+    subphase = "server_readiness"
+    await canonicalPrivateDirectory(state.root)
+    await inspectResources(state)
+    const socketDirectory = await lstat(join(root, "socket"))
+    assert.ok(
+      socketDirectory.isDirectory() && !socketDirectory.isSymbolicLink()
+    )
+    assert.equal(socketDirectory.uid, process.getuid())
+    assert.equal(socketDirectory.mode & 0o007, 0)
+    await waitForTargetReady(join(root, "socket"), { signal })
     subphase = "target_verify"
-    const deadline = Date.now() + 10_000
-    while (Date.now() < deadline) {
-      try {
-        if ((await stat(join(root, "socket", ".s.PGSQL.5432"))).isSocket())
-          break
-      } catch {}
-      await new Promise((resolveDelay) => setTimeout(resolveDelay, 100))
-    }
     const { facts } = await verifyTarget(state)
     signal?.throwIfAborted()
     state.targetSystemId = facts.systemId
@@ -1041,8 +1181,12 @@ const create = async (baseDir, paths, signal) => {
       targetSystemId: facts.systemId,
       sourceSystemId: scope.sourceSystemId,
     }
-  } catch {
-    await finishFailedCreate(createPhaseFailure(subphase), async () => {
+  } catch (error) {
+    const failure =
+      subphase === "server_readiness"
+        ? await readinessPhaseFailure(error, state, { signal })
+        : createPhaseFailure(subphase)
+    await finishFailedCreate(failure, async () => {
       await cleanupResources(state)
       await rm(root, { recursive: true })
     })

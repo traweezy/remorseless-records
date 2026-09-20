@@ -605,16 +605,25 @@ test("an isolated Redis 8.10.1 startup replays synthetic BullMQ states from mult
     )
     scheduledWorker.on("error", () => workerErrors.push("worker_error"))
     await scheduledWorker.waitUntilReady()
-    await scheduledQueue.add(
+    const scheduledFailedJob = await scheduledQueue.add(
       "schedule",
       {
         jobId: "job-sync-taxrate-io-quota",
         schedulerOptions: { cron: "*/5 * * * *" },
       },
       {
-        jobId: "scheduled-failed",
+        repeat: {
+          key: "schedule_job-sync-taxrate-io-quota",
+          every: 60_000,
+          immediately: true,
+          limit: 1,
+        },
         removeOnFail: { age: 604800, count: 5000 },
       }
+    )
+    assert.match(
+      scheduledFailedJob.id,
+      /^repeat:schedule_job-sync-taxrate-io-quota:[0-9]{13}$/u
     )
     await waitForFixture("scheduled BullMQ failure", async () => {
       const counts = await scheduledQueue.getJobCounts("failed")
@@ -683,7 +692,7 @@ test("an isolated Redis 8.10.1 startup replays synthetic BullMQ states from mult
     )
     const eventIds = ["event-complete", "event-failed", "event-waiting"]
     const workflowIds = ["workflow-waiting", "workflow-delayed"]
-    const scheduledIds = ["scheduled-failed"]
+    const scheduledIds = [scheduledFailedJob.id]
     const expected = {
       events: await queueSnapshot(eventQueue, eventIds),
       workflows: await queueSnapshot(workflowQueue, workflowIds),
@@ -839,14 +848,14 @@ test("an isolated Redis 8.10.1 startup replays synthetic BullMQ states from mult
       assert.equal(integrity.queueReconciled, false)
       assert.doesNotMatch(
         JSON.stringify(integrity),
-        /event-failed|scheduled-failed|workflow-delayed/u
+        /event-failed|repeat:schedule_job-sync-taxrate-io-quota:[0-9]{13}|workflow-delayed/u
       )
     } finally {
       integrityClient.destroy()
     }
     assert.doesNotMatch(
       JSON.stringify(failedJobs),
-      /event-failed|scheduled-failed|job-sync-taxrate-io-quota|synthetic-failure/u
+      /event-failed|repeat:schedule_job-sync-taxrate-io-quota:[0-9]{13}|job-sync-taxrate-io-quota|synthetic-failure/u
     )
     assert.equal(
       await fixtureRedisCli(targetId, [

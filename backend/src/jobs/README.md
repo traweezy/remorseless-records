@@ -16,6 +16,31 @@ root `qa:workflow-scheduler-timestamps` gate verifies that the installed root
 dependency retains this correction; the production Backend build applies
 the same pinned patch to its standalone dependency tree.
 
+The same pinned worker patch validates a bounded BullMQ scheduled-job ID and
+hashes it with SHA-256 before passing it into the Medusa workflow. Only the
+digest enters workflow input and the scheduled handler context. If the ID is
+absent or malformed, the job still runs under the existing retry behavior and
+logs `bull_job_identity_verified:false` with a null digest. The executable
+`qa:workflow-scheduler-timestamps` contract exercises both paths without a
+Redis connection. This evidence is forward-looking: historical failed jobs
+cannot be joined to a payment or cart from these new logs alone.
+
+Checkout and TaxRate.io quota scheduled runs emit a generated `run_id`, a UTC
+start/end window, optional BullMQ ID digest, and a fixed failure stage. A
+checkout completion reports `carts_examined` and `carts_completed` from its
+bounded reconciliation result; disabled runs and runs skipped by the lock
+report zero,
+while failures report null counts with `counts_available:false`. Tax quota
+reports `redis_snapshots_validated`,
+`quota_rows_returned`, and `quota_writes_confirmed`. Rows returned are the
+validated results of bounded list calls, not database rows scanned. Confirmed
+writes count verified create/update responses, including an equal-snapshot
+update, not semantic value changes. None of these tax quota counters describes
+payment or order impact. Logs contain neither raw BullMQ IDs nor cart,
+payment, or provider identifiers. On failure, the tax job emits null counts
+and `counts_available:false` because a partially completed run cannot supply
+a complete set of counters.
+
 | Job                                | Schedule (UTC)    | Default  | Purpose                                                                                                          |
 | ---------------------------------- | ----------------- | -------- | ---------------------------------------------------------------------------------------------------------------- |
 | `reconcile-checkout-payments`      | Every two minutes | Disabled | Complete an old incomplete cart with exactly one authorized/captured official Stripe session and no linked order |
@@ -23,6 +48,7 @@ the same pinned patch to its standalone dependency tree.
 | `reconcile-tax-evidence`           | Hourly at `:23`   | Enabled  | Recheck tax-bound Stripe payments, refund reversals, disputes, and failed Stripe Tax associations                |
 | `remove-expired-anonymous-carts`   | `04:17` daily     | Disabled | Soft-delete old incomplete carts with no customer or email                                                       |
 | `remove-abandoned-guest-checkouts` | `04:37` daily     | Disabled | Cancel only safe unused sessions, then soft-delete old guest checkouts containing PII                            |
+| `sync-taxrate-io-quota`             | Every five minutes | Enabled | Reconcile the bounded TaxRate.io quota snapshot between Redis and the tax-control module                         |
 
 Every job is bounded, rechecks mutable state, and emits only aggregate results.
 Payment reconciliation has explicit scan, attempt, and run-time caps; warns on

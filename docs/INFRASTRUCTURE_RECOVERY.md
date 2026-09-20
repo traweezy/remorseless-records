@@ -1188,6 +1188,16 @@ fixture exercises a failed scheduled job through BullMQ and checks its category
 and raw `atm` counter after isolated replay. Both gates must pass before using
 this reader on the private capture.
 
+The classifier now accepts scheduled failed-set members only in the tested
+`repeat:schedule_job-<bounded name>:<13-digit time>` form. It rejects other
+IDs before reading their hash fields; a future BullMQ format change requires a new
+installed-package and disposable-fixture review. The patched worker hashes a
+bounded raw ID before workflow execution, and checkout and TaxRate.io quota
+jobs log only that SHA-256 digest, a verified-identity flag, fixed outcome,
+time window, and aggregate counters. These logs can support private comparison
+for future runs, but they do not identify historical failed jobs, prove their
+business effects, or change either reconciliation flag.
+
 The first opt-in run on the verified private September 20 capture passed
 receipt/file checks and worker-free startup/restart, then cleaned up its
 owned container and temporary replay directory. It classified all 238

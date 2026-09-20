@@ -28,9 +28,11 @@ import {
   main,
   parseArguments,
   readPrivateBoundedFile,
+  readinessPhaseFailure,
   runCreatePhase,
   runBounded,
   verifySourceScope,
+  waitForTargetReady,
   writeState,
 } from "./postgres-isolated-target.mjs"
 
@@ -273,6 +275,188 @@ test("CLI failure event adds only the allowlisted create subphase", async () => 
   assert.equal(
     await runCli(["unsupported"]),
     '{"status":"failed","phase":"isolated_target"}\n'
+  )
+})
+
+test("owned PostgreSQL readiness waits for acceptance before full verification", async () => {
+  let clock = 0
+  let socketChecks = 0
+  let probes = 0
+  await waitForTargetReady("/tmp/owned-socket", {
+    now: () => clock,
+    timeoutMs: 500,
+    socketAvailable: async (path) => {
+      assert.equal(path, "/tmp/owned-socket/.s.PGSQL.5432")
+      socketChecks += 1
+      return socketChecks > 1
+    },
+    probe: async (command, args, options) => {
+      assert.equal(command, "/usr/lib/postgresql/16/bin/pg_isready")
+      assert.deepEqual(args, [
+        "--quiet",
+        "--host",
+        "/tmp/owned-socket",
+        "--port",
+        "5432",
+        "--username",
+        "postgres",
+        "--dbname",
+        "postgres",
+        "--timeout",
+        "1",
+      ])
+      assert.equal(options.maxBytes, 0)
+      assert.ok(options.timeoutMs <= 500 - clock)
+      probes += 1
+      if (probes === 1) throw new Error("Synthetic startup rejection.")
+    },
+    pause: async (milliseconds) => {
+      clock += milliseconds
+    },
+  })
+  assert.equal(socketChecks, 3)
+  assert.equal(probes, 2)
+  assert.equal(clock, 200)
+})
+
+test("owned PostgreSQL readiness has one total deadline and redacted phase", async () => {
+  let clock = 0
+  let probes = 0
+  await assert.rejects(
+    runCreatePhase("server_readiness", () =>
+      waitForTargetReady("/tmp/owned-socket", {
+        now: () => clock,
+        timeoutMs: 250,
+        socketAvailable: async () => true,
+        probe: async () => {
+          probes += 1
+          throw new Error("Synthetic private database error.")
+        },
+        pause: async (milliseconds) => {
+          clock += milliseconds
+        },
+      })
+    ),
+    (error) => {
+      assert.deepEqual(isolatedTargetFailureEvent(error), {
+        status: "failed",
+        phase: "isolated_target",
+        subphase: "server_readiness",
+      })
+      return true
+    }
+  )
+  assert.equal(clock, 250)
+  assert.equal(probes, 3)
+  await assert.rejects(
+    waitForTargetReady("/tmp/owned-socket", {
+      socketAvailable: async () => {
+        throw new Error("Unexpected socket ownership.")
+      },
+      now: () => 0,
+      timeoutMs: 100,
+    }),
+    /Unexpected socket ownership/u
+  )
+})
+
+test("readiness diagnosis only reports fixed timeout and owned container states", async () => {
+  const privateDetail = "private-password-and-target-path"
+  const state = {
+    containerId: "c".repeat(64),
+    containerName: `rr-pg16-target-${"a".repeat(32)}`,
+    owner: "a".repeat(32),
+  }
+  const inspected = (running, oomKilled = false) => ({
+    Id: state.containerId,
+    Name: `/${state.containerName}`,
+    Image:
+      "sha256:76db58e52e571729aa4ab51a5c597189e6f570086345c29b68b358067a6547e8",
+    Config: {
+      Labels: { "com.remorseless.recovery.target": state.owner },
+      User: "999:999",
+    },
+    HostConfig: { NetworkMode: "none" },
+    State: { Running: running, OOMKilled: oomKilled },
+  })
+  const timedOut = async (socketAvailable) => {
+    let clock = 0
+    try {
+      await waitForTargetReady("/tmp/owned-socket", {
+        now: () => clock,
+        timeoutMs: 250,
+        socketAvailable,
+        probe: async () => {
+          throw new Error(privateDetail)
+        },
+        pause: async (milliseconds) => {
+          clock += milliseconds
+        },
+      })
+      assert.fail("Expected bounded readiness timeout.")
+    } catch (error) {
+      assert.equal(clock, 250)
+      return error
+    }
+  }
+  const noSocket = await timedOut(async () => false)
+  const noSocketFailure = await readinessPhaseFailure(noSocket, state, {
+    inspectContainer: async () => inspected(false),
+  })
+  assert.deepEqual(isolatedTargetFailureEvent(noSocketFailure), {
+    status: "failed",
+    phase: "isolated_target",
+    subphase: "server_readiness",
+    reason: "socket_never_seen",
+    containerState: "exited",
+  })
+  const rejected = await timedOut(async () => true)
+  const rejectedFailure = await readinessPhaseFailure(rejected, state, {
+    inspectContainer: async () => inspected(true),
+  })
+  assert.deepEqual(isolatedTargetFailureEvent(rejectedFailure), {
+    status: "failed",
+    phase: "isolated_target",
+    subphase: "server_readiness",
+    reason: "probe_rejected",
+    containerState: "running",
+  })
+  const oomFailure = await readinessPhaseFailure(rejected, state, {
+    inspectContainer: async () => inspected(false, true),
+  })
+  assert.equal(
+    isolatedTargetFailureEvent(oomFailure).containerState,
+    "oom_killed"
+  )
+  const unownedFailure = await readinessPhaseFailure(rejected, state, {
+    inspectContainer: async () => ({
+      ...inspected(false),
+      Config: { Labels: {}, User: "999:999" },
+    }),
+  })
+  assert.equal(
+    isolatedTargetFailureEvent(unownedFailure).containerState,
+    "unknown"
+  )
+  const boundaryFailure = await readinessPhaseFailure(
+    new Error(privateDetail),
+    state,
+    { inspectContainer: async () => inspected(true) }
+  )
+  assert.equal(
+    isolatedTargetFailureEvent(boundaryFailure).reason,
+    "boundary_rejected"
+  )
+  assert.ok(
+    !JSON.stringify(isolatedTargetFailureEvent(boundaryFailure)).includes(
+      privateDetail
+    )
+  )
+  assert.throws(() =>
+    createPhaseFailure("server_readiness", {
+      reason: privateDetail,
+      containerState: "running",
+    })
   )
 })
 

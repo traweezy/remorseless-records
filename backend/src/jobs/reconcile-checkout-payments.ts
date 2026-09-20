@@ -24,8 +24,10 @@ import { recordCheckoutSchedulerHealth } from "../lib/health/scheduler"
 import { recordOperationResult } from "../lib/observability/operation-telemetry"
 import { getBackendRuntimeIdentity } from "../lib/observability/runtime-identity"
 import { CHECKOUT_RECONCILIATION_LOCK_TTL_SECONDS } from "../lib/workflow-worker-options"
+import { scheduledBullJobIdentity } from "../lib/observability/scheduled-job-identity"
 
 type ScheduledJobContext = {
+  bullJobIdSha256?: unknown
   scheduledFor?: Date
 }
 
@@ -84,18 +86,42 @@ export default async function reconcileCheckoutPaymentsJob(
   context: ScheduledJobContext = {}
 ) {
   const logger = container.resolve<Logger>("logger")
+  const runId = randomUUID()
+  const startedAt = new Date()
+  const timingStartedAt = performance.now()
+  const identity = scheduledBullJobIdentity(context.bullJobIdSha256)
   const reconciliationConfig = resolveCheckoutReconciliationConfig()
   if (!reconciliationConfig.enabled) {
-    recordOperationResult(
-      { domain: "scheduled_job", operation: "run" },
-      "ok",
-      0
-    )
+    const finishedAt = new Date()
+    const durationMs = roundMilliseconds(performance.now() - timingStartedAt)
+    try {
+      recordOperationResult(
+        { domain: "scheduled_job", operation: "run" },
+        "ok",
+        durationMs
+      )
+      logger.info(
+        JSON.stringify({
+          ...deploymentIdentity(),
+          ...identity,
+          event: "job.checkout_reconciliation.disabled",
+          message: "Checkout reconciliation is disabled",
+          run_id: runId,
+          started_at: startedAt.toISOString(),
+          finished_at: finishedAt.toISOString(),
+          duration_ms: durationMs,
+          failure_stage: null,
+          counts_available: true,
+          carts_examined: 0,
+          carts_completed: 0,
+        })
+      )
+    } catch {
+      // A disabled job must remain disabled if its observation sink fails.
+    }
     return
   }
 
-  const runId = randomUUID()
-  const startedAt = new Date()
   const scheduledFor =
     context.scheduledFor instanceof Date &&
     Number.isFinite(context.scheduledFor.getTime())
@@ -104,7 +130,6 @@ export default async function reconcileCheckoutPaymentsJob(
   const scheduleDelayMs = roundMilliseconds(
     startedAt.getTime() - scheduledFor.getTime()
   )
-  const timingStartedAt = performance.now()
   const eventLoopDelay = monitorEventLoopDelay({ resolution: 20 })
   eventLoopDelay.enable()
   const lockingService = container.resolve<ILockingModule>(Modules.LOCKING)
@@ -132,16 +157,22 @@ export default async function reconcileCheckoutPaymentsJob(
         eventLoopDelay.max / 1_000_000
       ),
       lock_wait_ms: roundMilliseconds(performance.now() - lockStartedAt),
+      ...identity,
       run_id: runId,
       schedule_delay_ms: scheduleDelayMs,
       scheduled_for: scheduledFor.toISOString(),
       started_at: startedAt.toISOString(),
+      finished_at: new Date().toISOString(),
     }
     if (isLockConflict(error)) {
       await writeJobLog(logger, "warn", {
         event: "job.checkout_reconciliation.skipped",
         message: "Checkout reconciliation skipped because a run holds the lock",
         reason: "lock_held",
+        failure_stage: null,
+        counts_available: true,
+        carts_examined: 0,
+        carts_completed: 0,
         ...timing,
       })
       return
@@ -150,6 +181,9 @@ export default async function reconcileCheckoutPaymentsJob(
       event: "job.checkout_reconciliation.failed",
       failure_stage: "lock_acquisition",
       message: "Checkout reconciliation failed",
+      counts_available: false,
+      carts_examined: null,
+      carts_completed: null,
       ...timing,
     })
     throw error
@@ -192,10 +226,12 @@ export default async function reconcileCheckoutPaymentsJob(
     event_loop_delay_max_ms: roundMilliseconds(eventLoopDelay.max / 1_000_000),
     lock_released: lockReleased,
     lock_wait_ms: lockWaitMs,
+    ...identity,
     run_id: runId,
     schedule_delay_ms: scheduleDelayMs,
     scheduled_for: scheduledFor.toISOString(),
     started_at: startedAt.toISOString(),
+    finished_at: new Date().toISOString(),
   }
 
   if (runError) {
@@ -203,6 +239,9 @@ export default async function reconcileCheckoutPaymentsJob(
       event: "job.checkout_reconciliation.failed",
       failure_stage: "reconciliation",
       message: "Checkout reconciliation failed",
+      counts_available: false,
+      carts_examined: null,
+      carts_completed: null,
       ...timing,
     })
     throw runError
@@ -212,6 +251,9 @@ export default async function reconcileCheckoutPaymentsJob(
       event: "job.checkout_reconciliation.failed",
       failure_stage: "result",
       message: "Checkout reconciliation failed",
+      counts_available: false,
+      carts_examined: null,
+      carts_completed: null,
       ...timing,
     })
     throw new Error("Checkout reconciliation returned no result")
@@ -234,6 +276,10 @@ export default async function reconcileCheckoutPaymentsJob(
     message: needsAttention
       ? "Checkout reconciliation needs attention"
       : "Checkout reconciliation completed",
+    failure_stage: null,
+    counts_available: true,
+    carts_examined: result.scanned,
+    carts_completed: result.completed,
     ...result,
     ...timing,
   })

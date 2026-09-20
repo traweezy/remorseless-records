@@ -74,11 +74,11 @@ batch target, and do not combine unrelated changes into one commit.
 The Backend unit job and the Storefront unit, browser, accessibility, and
 Lighthouse jobs start after security, lint, typecheck, and secret-scan gates.
 They overlap the independent CodeQL job to shorten the critical CI path.
-The CodeQL jobs reject every high/critical finding and every medium finding
-outside the three exact reviewed PostgreSQL recovery-client download
-fingerprints and pinned provisioner source hash. Those medium alerts remain
-visible in GitHub Code Scanning; a new medium finding must fail CI, and a
-provisioner change invalidates the reviewed exceptions until re-reviewed.
+The CodeQL jobs reject every new finding, including LOW, outside the three
+exact reviewed PostgreSQL recovery-client download fingerprints and pinned
+provisioner source hash. Those MEDIUM alerts remain visible in GitHub Code
+Scanning; a provisioner change invalidates the reviewed exceptions until
+re-reviewed.
 The Storefront browser gate runs responsive/launch and three-browser critical
 suites on separate runners. Lighthouse audits the six existing routes in two
 isolated three-route runners, retaining three runs and the same assertions per

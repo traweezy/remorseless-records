@@ -13,6 +13,8 @@ const targetRunner = fileURLToPath(
 )
 const redisImageId =
   "sha256:99267d3e232c751add077e98c4fc1b9e508d4241740b52229e44986f7173f71b"
+const backendUser = "1000:1000"
+const redisUser = "999:999"
 const smokeLabel = "com.remorseless.recovery.backend-smoke"
 const imagePattern = /^sha256:[a-f0-9]{64}$/u
 const revisionPattern = /^[a-f0-9]{40}$/u
@@ -185,7 +187,7 @@ export const containerPlans = ({
     "none",
     ...limits,
     "--user",
-    "999:999",
+    backendUser,
     "--entrypoint",
     "node",
     backendImageId,
@@ -203,7 +205,7 @@ export const containerPlans = ({
     `container:${names.anchor}`,
     ...limits,
     "--user",
-    "999:999",
+    redisUser,
     "--tmpfs",
     "/tmp:rw,nosuid,noexec,size=16m",
     "--entrypoint",
@@ -233,7 +235,7 @@ export const containerPlans = ({
     `container:${names.anchor}`,
     ...limits,
     "--user",
-    "999:999",
+    backendUser,
     "--tmpfs",
     "/tmp:rw,nosuid,noexec,size=64m",
     "--mount",
@@ -422,7 +424,7 @@ export const runSmoke = async (
         imageId: kind === "redis" ? redisImageId : backendImageId,
         networkMode:
           kind === "anchor" ? "none" : `container:${created.get(names.anchor)}`,
-        user: "999:999",
+        user: kind === "redis" ? redisUser : backendUser,
         mounts:
           kind === "backend"
             ? [

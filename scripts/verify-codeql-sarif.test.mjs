@@ -31,6 +31,7 @@ const sarif = (results) => ({
             rules: [
               { id: "high", properties: { "security-severity": "7.7" } },
               { id: "medium", properties: { "security-severity": "6.3" } },
+              { id: "low", properties: { "security-severity": "2.1" } },
               {
                 id: "js/http-to-file-access",
                 properties: { "security-severity": "6.3" },
@@ -82,10 +83,7 @@ test("counts findings across every SARIF run and file", async () => {
         { encoding: "utf8" }
       )
       assert.notEqual(result.status, 0)
-      assert.match(
-        result.stderr,
-        /CodeQL reported 2 unreviewed MEDIUM\/HIGH\/CRITICAL finding\(s\)/u
-      )
+      assert.match(result.stderr, /CodeQL reported 2 unreviewed finding\(s\)/u)
     }
   )
 })
@@ -139,7 +137,7 @@ test("accepts only the three reviewed PostgreSQL downloads", async () => {
     "78905d68e9c27ba6:1",
   ]
   const reviewed = knownFingerprints.map((fingerprint) => ({
-    ...finding("js/http-to-file-access", 2),
+    ...finding("js/http-to-file-access", 3),
     locations: [
       {
         physicalLocation: {
@@ -170,9 +168,10 @@ test("accepts only the three reviewed PostgreSQL downloads", async () => {
       ],
     },
     finding("medium", 1),
+    finding("low", 2),
   ]) {
     await withSarif(
-      { "new-medium.sarif": sarif([...reviewed, altered]) },
+      { "new-finding.sarif": sarif([...reviewed, altered]) },
       async (directory) => {
         const result = await inspectCodeqlSarif(directory)
         assert.equal(result.blocking, 1)

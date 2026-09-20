@@ -5,7 +5,7 @@ import { join } from "node:path"
 import { fileURLToPath } from "node:url"
 
 // These three PGDG downloads are bounded and independently pinned or signed.
-// Keep their MEDIUM alerts visible while rejecting any new MEDIUM finding.
+// Keep their MEDIUM alerts visible while rejecting every other finding.
 const reviewedPostgresDownloadFingerprints = new Set([
   "618dd3173c54437d:1", // Pinned signing key
   "af39c0f818a42e41:1", // InRelease verified by gpgv
@@ -81,7 +81,7 @@ export const inspectCodeqlSarif = async (directory) => {
         )
         findings += 1
         if (severity >= 7 || result.level === "error") blocking += 1
-        else if (severity >= 4) {
+        else {
           const fingerprint =
             result.partialFingerprints?.primaryLocationLineHash
           if (
@@ -110,9 +110,9 @@ if (invokedDirectly) {
   assert.equal(
     result.blocking,
     0,
-    `CodeQL reported ${result.blocking} unreviewed MEDIUM/HIGH/CRITICAL finding(s) in ${result.files} SARIF file(s)`
+    `CodeQL reported ${result.blocking} unreviewed finding(s) in ${result.files} SARIF file(s)`
   )
   process.stdout.write(
-    `CodeQL gate passed: ${result.files} SARIF file(s), ${result.findings} total finding(s), ${result.reviewedMedium} reviewed MEDIUM, 0 unreviewed MEDIUM/HIGH/CRITICAL\n`
+    `CodeQL gate passed: ${result.files} SARIF file(s), ${result.findings} total finding(s), ${result.reviewedMedium} reviewed MEDIUM, 0 unreviewed findings\n`
   )
 }
