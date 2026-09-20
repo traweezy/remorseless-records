@@ -45,6 +45,7 @@ const existingContracts = Object.freeze([
   "qa:runtime-images",
   "qa:admin-accessibility-boundary",
   "qa:railway-iac",
+  "qa:client-staging-preflight",
   "qa:browser-toolchain-security",
   "qa:medusa-build-toolchain",
   "qa:dashboard-product-import",
@@ -70,6 +71,8 @@ const postgresObservabilityCoverageCommand =
   "node --test --experimental-test-coverage --test-coverage-include=scripts/postgres-observability-preflight.mjs --test-coverage-include=scripts/lib/postgres-observability-preflight.mjs --test-coverage-lines=80 --test-coverage-branches=80 --test-coverage-functions=80 scripts/postgres-observability-preflight.test.mjs"
 const failedJobCoverageCommand =
   "node --test --experimental-test-coverage --test-coverage-include=scripts/lib/redis-failed-job-classifier.mjs --test-coverage-lines=80 --test-coverage-branches=80 --test-coverage-functions=80 scripts/redis-failed-job-classifier.test.mjs"
+const clientStagingPreflightCommand =
+  "node --test --experimental-test-coverage --test-coverage-include=scripts/lib/client-staging-preflight.mjs --test-coverage-lines=80 --test-coverage-branches=80 --test-coverage-functions=80 scripts/client-staging-preflight.test.mjs"
 const evidenceTriageCoverageCommand =
   "node --test --experimental-test-coverage --test-coverage-include=scripts/lib/redis-pg-evidence-triage.mjs --test-coverage-lines=80 --test-coverage-branches=80 --test-coverage-functions=80 scripts/redis-pg-evidence-triage.test.mjs"
 
@@ -238,6 +241,11 @@ export const validateCiSharedContracts = ({
     scripts["qa:redis-failed-job-classifier"],
     failedJobCoverageCommand,
     "Offline Redis failed-job coverage/test scope must remain enforced"
+  )
+  assert.equal(
+    scripts["qa:client-staging-preflight"],
+    clientStagingPreflightCommand,
+    "Client preflight metadata and redaction tests must be enforced"
   )
   assert.equal(
     scripts["qa:redis-pg-evidence-triage"],
