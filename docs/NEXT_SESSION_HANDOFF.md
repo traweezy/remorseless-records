@@ -11,6 +11,41 @@ reviewed scope. Do not invent missing production, legal, tax, or provider facts.
 Use [PROJECT_MAP.md](PROJECT_MAP.md) for the indexed code/documentation entrypoints.
 Preserve unrelated `Default/` unread, untouched, and unstaged.
 
+### Accepted September 20 UTC three-commit release: `877ea06`
+
+Exact staging SHA `877ea0646d53b280acdfedd2537db3f1ace3107a`
+passed Root CI `35490641633`, Backend CI `35490641639`, Storefront CI
+`35490641608`, and Runtime Images `35490641609`. The disposable
+PostgreSQL/Redis fixture passed with zero scanner findings on its exact images.
+Storefront Browser Smoke passed 81 responsive Chromium, 20 launch-matrix, and
+48 cross-browser critical tests; Lighthouse and coverage passed. Runtime
+candidate images still each have four CRITICAL and 52 HIGH findings, zero
+fixable HIGH/CRITICAL under the current policy. Publication skipped on
+`staging`; a named release-owner risk decision remains open.
+
+Railway Backend deployment `066c74f0-db66-4a07-9ad1-00358cf35243` and
+Storefront deployment `ef765874-376b-48d9-839e-9633fc012f52` reached
+`SUCCESS` on that SHA. Both `/live` and `/ready` returned exact-revision 200/ok;
+Backend passed all 11 readiness checks, operations and retention were healthy,
+and its 05:20:00 UTC scheduler heartbeat completed on the exact SHA with zero
+failures. Storefront home, catalog, product detail, and same-origin search
+passed. Bounded candidate error and HTTP 5xx filters were empty. No natural
+client disconnect occurred, so the live `request_cancelled` path remains
+unobserved despite local and CI tests.
+
+The next local batch is not yet deployed: `d8510bb` overlaps long CI jobs with
+CodeQL while retaining the mandatory build/CodeQL release gates; `dc58763`
+corrects offline scheduled-job categories and raw BullMQ `atm` buckets;
+`24a509d` adds a guarded off-site media restore drill. A receipt-bound
+worker-free rerun of the verified private AOF found 164 failed checkout-payment
+reconciliation entries, 73 failed quota-sync entries, zero unlisted scheduled
+categories, and raw `atm=1` on all 237 scheduled entries. Its count-only report
+is private under `/tmp`, SHA-256
+`04ac6bc4aeaddd0cdea450a9f0555e9ee0f6888ea6d113d45bd69dfcc42945b2`.
+The stored categories and counters do not establish cause, business impact,
+or retry safety; queue and business reconciliation remain false. The media
+drill has only synthetic acceptance, not a live off-site restore.
+
 ### Accepted September 20 UTC source-bound diagnostic release: `9020b77`
 
 Exact staging SHA `9020b7798ed4fd5e156f379e8e879b84d3178e71` passed
