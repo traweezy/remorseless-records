@@ -1,6 +1,6 @@
-import { lstat, readFile } from "node:fs/promises"
 import process from "node:process"
 
+import { readBoundedObservationFile } from "./lib/bounded-observation-file.mjs"
 import {
   evaluateSchedulerHealthResponse,
   renderSchedulerObservationMarkdown,
@@ -68,17 +68,6 @@ const parseArguments = (arguments_) => {
   return { bodyFile, forceAlert, format, httpStatus, now, sourceErrors }
 }
 
-const readBoundedFile = async (path) => {
-  const metadata = await lstat(path)
-  if (!metadata.isFile() || metadata.isSymbolicLink()) {
-    throw new Error("Scheduler health input must be a regular file")
-  }
-  if (metadata.size > MAX_INPUT_BYTES) {
-    throw new Error("Scheduler health input exceeded 64 KiB")
-  }
-  return readFile(path, "utf8")
-}
-
 const fatalReport = (format) => {
   const report = evaluateSchedulerHealthResponse({
     body: "",
@@ -93,7 +82,7 @@ const fatalReport = (format) => {
 const main = async () => {
   const options = parseArguments(process.argv.slice(2))
   const report = evaluateSchedulerHealthResponse({
-    body: await readBoundedFile(options.bodyFile),
+    body: await readBoundedObservationFile(options.bodyFile, MAX_INPUT_BYTES),
     forceAlert: options.forceAlert,
     httpStatus: options.httpStatus,
     now: options.now,

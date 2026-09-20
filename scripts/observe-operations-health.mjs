@@ -1,6 +1,6 @@
-import { lstat, readFile } from "node:fs/promises"
 import process from "node:process"
 
+import { readBoundedObservationFile } from "./lib/bounded-observation-file.mjs"
 import {
   evaluateOperationsHealthResponse,
   renderOperationsObservationMarkdown,
@@ -99,32 +99,33 @@ const parseArguments = (arguments_) => {
   }
 }
 
-const readBoundedFile = async (path) => {
-  const metadata = await lstat(path)
-  if (!metadata.isFile() || metadata.isSymbolicLink()) {
-    throw new Error("Operations health input must be a regular file")
-  }
-  if (metadata.size > MAX_INPUT_BYTES) {
-    throw new Error("Operations health input exceeded 128 KiB")
-  }
-  return readFile(path, "utf8")
-}
-
 const main = async () => {
   const options = parseArguments(process.argv.slice(2))
   const report = evaluateOperationsHealthResponse({
-    body: await readBoundedFile(options.bodyFile),
-    discographyBody: await readBoundedFile(options.discographyBodyFile),
+    body: await readBoundedObservationFile(options.bodyFile, MAX_INPUT_BYTES),
+    discographyBody: await readBoundedObservationFile(
+      options.discographyBodyFile,
+      MAX_INPUT_BYTES
+    ),
     discographyHttpStatus: options.discographyHttpStatus,
     forceAlert: options.forceAlert,
-    handlesBody: await readBoundedFile(options.handlesBodyFile),
+    handlesBody: await readBoundedObservationFile(
+      options.handlesBodyFile,
+      MAX_INPUT_BYTES
+    ),
     handlesHttpStatus: options.handlesHttpStatus,
     httpStatus: options.httpStatus,
     now: options.now,
-    productsBody: await readBoundedFile(options.productsBodyFile),
+    productsBody: await readBoundedObservationFile(
+      options.productsBodyFile,
+      MAX_INPUT_BYTES
+    ),
     productsHttpStatus: options.productsHttpStatus,
     readyHttpStatus: options.readyHttpStatus,
-    shelvesBody: await readBoundedFile(options.shelvesBodyFile),
+    shelvesBody: await readBoundedObservationFile(
+      options.shelvesBodyFile,
+      MAX_INPUT_BYTES
+    ),
     shelvesHttpStatus: options.shelvesHttpStatus,
     sourceErrors: options.sourceErrors,
   })

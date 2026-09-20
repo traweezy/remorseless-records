@@ -91,6 +91,30 @@ for (const name of names) {
   })
 }
 
+test("preserves bounded input-reader tests and coverage in both monitors", () => {
+  for (const name of [
+    "qa:operations-observation",
+    "qa:scheduler-observation",
+  ]) {
+    for (const [from, to] of [
+      ["scripts/bounded-observation-file.test.mjs ", ""],
+      ["--test-coverage-include=scripts/lib/bounded-observation-file.mjs ", ""],
+      ["--test-coverage-lines=80", "--test-coverage-lines=79"],
+      ["--test-coverage-branches=80", "--test-coverage-branches=79"],
+      ["--test-coverage-functions=80", "--test-coverage-functions=79"],
+    ]) {
+      assert.ok(manifest.scripts[name].includes(from))
+      assert.throws(() =>
+        validate(
+          mutateScripts((scripts) => {
+            scripts[name] = scripts[name].replace(from, to)
+          })
+        )
+      )
+    }
+  }
+})
+
 for (const suffix of [
   " && true",
   " || true",

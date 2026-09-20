@@ -14,6 +14,8 @@ const posthogCommand =
   "node --test --test-isolation=process --test-timeout=30000 scripts/posthog-runtime.test.mjs"
 const boundaryCommand =
   "node --test --experimental-test-coverage --test-coverage-include=scripts/verify-ci-shared-contracts.mjs --test-coverage-lines=80 --test-coverage-branches=80 --test-coverage-functions=80 scripts/verify-ci-shared-contracts.test.mjs && node scripts/verify-ci-shared-contracts.mjs"
+const observationCommand = (testFile) =>
+  `node --test --experimental-test-coverage --test-coverage-include=scripts/lib/bounded-observation-file.mjs --test-coverage-lines=80 --test-coverage-branches=80 --test-coverage-functions=80 scripts/bounded-observation-file.test.mjs ${testFile}`
 const sharedContracts = Object.freeze({
   "qa:service-container-resolution":
     "node scripts/verify-service-container-resolution.mjs",
@@ -30,8 +32,9 @@ const sharedContracts = Object.freeze({
     "node scripts/verify-workflow-scheduler-timestamp.mjs",
   "qa:disposable-integration-boundary":
     "node --test --experimental-test-coverage --test-coverage-include=scripts/run-disposable-integration.mjs --test-coverage-include=scripts/scan-disposable-integration-images.mjs --test-coverage-include=scripts/verify-disposable-integration-boundary.mjs --test-coverage-lines=80 --test-coverage-branches=80 --test-coverage-functions=80 scripts/run-disposable-integration.test.mjs scripts/scan-disposable-integration-images.test.mjs scripts/verify-disposable-integration-boundary.test.mjs && node scripts/verify-disposable-integration-boundary.mjs",
-  "qa:operations-observation":
-    "node --test scripts/observe-operations-health.test.mjs",
+  "qa:operations-observation": observationCommand(
+    "scripts/observe-operations-health.test.mjs"
+  ),
   "qa:observability-bootstrap":
     "node scripts/verify-observability-bootstrap.mjs",
 })
@@ -233,6 +236,11 @@ export const validateCiSharedContracts = ({
     scripts["qa:redis-failed-job-classifier"],
     failedJobCoverageCommand,
     "Offline Redis failed-job coverage/test scope must remain enforced"
+  )
+  assert.equal(
+    scripts["qa:scheduler-observation"],
+    observationCommand("scripts/observe-scheduler-health.test.mjs"),
+    "Scheduler observation input coverage/test scope must remain enforced"
   )
 
   const local = scriptChain(scripts["qa:lint"])

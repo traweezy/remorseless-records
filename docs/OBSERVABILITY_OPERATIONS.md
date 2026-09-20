@@ -45,6 +45,12 @@ text.
   statuses and aggregate counts. Each monitor opens or updates one GitHub issue
   on failure, closes it after recovery, and retains sanitized daily/manual/alert
   evidence for 30 days.
+- Monitor body files are opened once as regular files without following the
+  final symlink. The scheduler input is capped at 64 KiB; each operations input
+  is capped at 128 KiB. Reads stay on the opened descriptor and reject growth,
+  concurrent modification, or invalid UTF-8 with a fixed evaluation failure.
+  Operators should investigate such a failure as a monitor defect, not as an
+  application health result; no response-body bytes are reported.
 - Backend and Storefront request completion events are fixed-schema JSON with
   request, trace, span, service, environment, and commit identity. Paths,
   queries, IP addresses, user agents, headers, bodies, and raw errors are
