@@ -88,6 +88,8 @@ jobs:
         run: pnpm run qa:railway-iac
       - name: Verify client staging preflight boundary
         run: pnpm run qa:client-staging-preflight
+      - name: Verify dormant client staging boundary
+        run: pnpm run qa:client-staging-dormant-preflight
       - name: Verify private artifact boundaries
         run: pnpm run qa:secure-artifacts
       - name: Verify generated API contract
