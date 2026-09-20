@@ -216,10 +216,34 @@ const sanitizeDependencies = (value) => {
     ) {
       return null
     }
+    const hasPoolAcquire = Object.hasOwn(dependency, "pool_acquire_ms")
+    const hasQuery = Object.hasOwn(dependency, "query_ms")
+    if (
+      hasPoolAcquire !== hasQuery ||
+      ((hasPoolAcquire || hasQuery) &&
+        (dependency.name !== "database" || dependency.status !== "ok"))
+    ) {
+      return null
+    }
+    if (
+      hasPoolAcquire &&
+      ![dependency.pool_acquire_ms, dependency.query_ms].every(
+        (duration) =>
+          Number.isSafeInteger(duration) &&
+          duration >= 0 &&
+          duration <= dependency.duration_ms
+      )
+    ) {
+      return null
+    }
     dependencies.push({
       durationMs: dependency.duration_ms,
       name: dependency.name,
       status: dependency.status,
+      ...(hasPoolAcquire && {
+        poolAcquireMs: dependency.pool_acquire_ms,
+        queryMs: dependency.query_ms,
+      }),
     })
   }
   return dependencies
@@ -502,7 +526,7 @@ export const renderOperationsObservationMarkdown = (report) => {
     ...(endpoint?.dependencies.length
       ? endpoint.dependencies.map(
           (dependency) =>
-            `- \`${dependency.name}\`: \`${dependency.status}\` (${dependency.durationMs} ms)`
+            `- \`${dependency.name}\`: \`${dependency.status}\` (${dependency.durationMs} ms${dependency.name === "database" && dependency.poolAcquireMs !== undefined ? `; pool acquire ${dependency.poolAcquireMs} ms, query ${dependency.queryMs} ms` : ""})`
         )
       : ["- None reported"])
   )

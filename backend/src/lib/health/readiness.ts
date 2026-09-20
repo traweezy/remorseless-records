@@ -15,15 +15,45 @@ const STORAGE_TIMEOUT_MS = 5_000
 export type ReadinessCheck = {
   duration_ms: number
   name: string
+  pool_acquire_ms?: number
+  query_ms?: number
   status: "error" | "ok"
 }
 
+type DatabaseProbeTimings = {
+  pool_acquire_ms: number
+  query_ms: number
+}
+
 export type ReadinessProbe = {
-  check: () => Promise<void>
+  check: () => Promise<unknown>
   name: string
 }
 
 type ReadinessEnvironment = NodeJS.ProcessEnv
+
+const isDatabaseProbeTimings = (
+  value: unknown
+): value is DatabaseProbeTimings => {
+  if (
+    typeof value !== "object" ||
+    value === null ||
+    !("pool_acquire_ms" in value) ||
+    !("query_ms" in value)
+  ) {
+    return false
+  }
+  const poolAcquireMs = value.pool_acquire_ms
+  const queryMs = value.query_ms
+  return (
+    typeof poolAcquireMs === "number" &&
+    Number.isSafeInteger(poolAcquireMs) &&
+    poolAcquireMs >= 0 &&
+    typeof queryMs === "number" &&
+    Number.isSafeInteger(queryMs) &&
+    queryMs >= 0
+  )
+}
 
 const observationForProbe = (name: string): ObservedOperation | null => {
   switch (name) {
@@ -44,14 +74,18 @@ const runProbe = async (probe: ReadinessProbe): Promise<ReadinessCheck> => {
   const startedAt = performance.now()
   try {
     const observation = observationForProbe(probe.name)
-    if (observation) {
-      await observeOperation(observation, probe.check)
-    } else {
-      await probe.check()
-    }
+    const timings = observation
+      ? await observeOperation(observation, probe.check)
+      : await probe.check()
     return {
       duration_ms: Math.round(performance.now() - startedAt),
       name: probe.name,
+      ...(probe.name === "database" && isDatabaseProbeTimings(timings)
+        ? {
+            pool_acquire_ms: timings.pool_acquire_ms,
+            query_ms: timings.query_ms,
+          }
+        : {}),
       status: "ok",
     }
   } catch {
@@ -70,9 +104,22 @@ export const runReadinessChecks = async (
 const databaseProbe = (database: Knex): ReadinessProbe => ({
   name: "database",
   check: async () => {
-    await database
-      .raw("select 1 as ready")
-      .timeout(DEPENDENCY_TIMEOUT_MS, { cancel: true })
+    const acquisitionStartedAt = performance.now()
+    const connection: unknown = await database.client.acquireConnection()
+    const poolAcquireMs = Math.round(performance.now() - acquisitionStartedAt)
+    try {
+      const queryStartedAt = performance.now()
+      await database
+        .select(database.raw("1 as ready"))
+        .connection(connection)
+        .timeout(DEPENDENCY_TIMEOUT_MS, { cancel: true })
+      return {
+        pool_acquire_ms: poolAcquireMs,
+        query_ms: Math.round(performance.now() - queryStartedAt),
+      }
+    } finally {
+      await database.client.releaseConnection(connection)
+    }
   },
 })
 

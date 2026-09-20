@@ -117,6 +117,78 @@ describe("external operations observation", () => {
     )
   })
 
+  it("retains only bounded database pool and query timings", () => {
+    const response = payload({
+      dependencies: [
+        {
+          duration_ms: 10,
+          name: "database",
+          pool_acquire_ms: 3,
+          private_query: "select private_email from users",
+          query_ms: 7,
+          status: "ok",
+        },
+        { duration_ms: 20, name: "object_storage", status: "ok" },
+      ],
+    })
+    const report = evaluate({ body: JSON.stringify(response) })
+
+    assert.deepEqual(report.endpoint.dependencies[0], {
+      durationMs: 10,
+      name: "database",
+      poolAcquireMs: 3,
+      queryMs: 7,
+      status: "ok",
+    })
+    const retained = JSON.stringify(report)
+    const markdown = renderOperationsObservationMarkdown(report)
+    assert.doesNotMatch(retained, /private_email/u)
+    assert.doesNotMatch(markdown, /private_email/u)
+    assert.match(markdown, /pool acquire 3 ms, query 7 ms/u)
+  })
+
+  it("rejects malformed or misattributed database timings", () => {
+    const invalid = [
+      { pool_acquire_ms: 3 },
+      { pool_acquire_ms: -1, query_ms: 7 },
+      { pool_acquire_ms: 3, query_ms: Number.NaN },
+      { pool_acquire_ms: 3.5, query_ms: 7 },
+      { pool_acquire_ms: 3, query_ms: 11 },
+      { pool_acquire_ms: "3", query_ms: 7 },
+      { pool_acquire_ms: 3, query_ms: 7, status: "error" },
+    ]
+    for (const fields of invalid) {
+      const report = evaluate({
+        body: JSON.stringify(
+          payload({
+            dependencies: [
+              { duration_ms: 10, name: "database", status: "ok", ...fields },
+            ],
+          })
+        ),
+      })
+      assert.equal(report.endpoint, null)
+      assert.ok(report.reasons.includes("health_payload_invalid"))
+    }
+    const otherDependency = evaluate({
+      body: JSON.stringify(
+        payload({
+          dependencies: [
+            {
+              duration_ms: 10,
+              name: "redis",
+              pool_acquire_ms: 3,
+              query_ms: 7,
+              status: "ok",
+            },
+          ],
+        })
+      ),
+    })
+    assert.equal(otherDependency.endpoint, null)
+    assert.ok(otherDependency.reasons.includes("health_payload_invalid"))
+  })
+
   it("alerts on component reasons and independent readiness failure", () => {
     const report = evaluate({
       body: JSON.stringify(

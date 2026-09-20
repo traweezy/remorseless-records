@@ -26,6 +26,30 @@ const recordFrom = (value: unknown, label: string): Record<string, unknown> => {
   return value as Record<string, unknown>
 }
 
+const assertDatabaseReadinessTiming = (checks: unknown): void => {
+  if (!Array.isArray(checks)) {
+    throw new TypeError("Readiness checks must be an array.")
+  }
+  const database = checks
+    .map((check) => recordFrom(check, "Readiness check"))
+    .find((check) => check.name === "database")
+  expect(database?.status).toBe("ok")
+  const duration = database?.duration_ms
+  if (typeof duration !== "number") {
+    throw new TypeError("Database readiness duration must be numeric.")
+  }
+  expect(Number.isSafeInteger(duration)).toBe(true)
+  for (const field of ["pool_acquire_ms", "query_ms"] as const) {
+    const phase = database?.[field]
+    if (typeof phase !== "number") {
+      throw new TypeError("Database readiness phase must be numeric.")
+    }
+    expect(Number.isSafeInteger(phase)).toBe(true)
+    expect(phase).toBeGreaterThanOrEqual(0)
+    expect(phase).toBeLessThanOrEqual(duration)
+  }
+}
+
 medusaIntegrationTestRunner({
   cwd: process.cwd(),
   dbName: databaseName,
@@ -63,6 +87,21 @@ medusaIntegrationTestRunner({
             { name: "redis", status: "ok" },
           ])
         )
+        assertDatabaseReadinessTiming(readiness.checks)
+
+        for (let attempt = 0; attempt < 3; attempt += 1) {
+          const repeatedResponse = recordFrom(
+            await api.get("/ready"),
+            "Repeated readiness response"
+          )
+          expect(repeatedResponse.status).toBe(200)
+          const repeatedReadiness = recordFrom(
+            repeatedResponse.data,
+            "Repeated readiness body"
+          )
+          expect(repeatedReadiness.status).toBe("ok")
+          assertDatabaseReadinessTiming(repeatedReadiness.checks)
+        }
       })
 
       it("applies custom migrations and preserves the safe tax default", async () => {
