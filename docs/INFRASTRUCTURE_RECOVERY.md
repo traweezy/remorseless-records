@@ -900,19 +900,38 @@ and scheduled-job queues. Before either member-range read, it performs exact
 256 KiB or without a valid memory measurement. It caps each job ID at 256
 bytes and all IDs at 64 KiB, each reason at 4 KiB and all reasons at 1 MiB,
 and each startup/restart classification at 30 seconds. Oversized reasons are
-counted without reading their content. Only `name`, `failedReason`, and
-`attemptsMade` hash fields are requested for scheduled jobs; event jobs skip
-`name`. Job payloads, stack traces and results are never read.
-The output contains only fixed allowlisted scheduled-job name buckets,
-heuristic failure-reason buckets, attempt buckets, and totals. Names outside
-the six checked-in scheduled-job names remain `unlisted`; the event job name
-is never printed. Missing hashes and fields get explicit buckets. The
+counted without reading their content. BullMQ 5.13 stores the attempt count
+in `atm`; the reader never requests the legacy `attemptsMade` field. Event
+jobs skip `name` and `data`. For a scheduled job whose outer `name` is exactly
+`schedule`, the reader may fetch its `data` field after a length check of at
+most 1 KiB per job and 256 KiB total. It parses only the Medusa `jobId`
+category; extra scheduler data is ignored and never emitted. Other job
+payloads, stack traces and results are never read.
+The output contains only fixed allowlisted scheduled-job category buckets,
+heuristic failure-reason buckets, attempt buckets, and totals. Medusa 2.18
+registers an app task as `job-<config.name>` inside `data.jobId`; the outer
+BullMQ name is `schedule`. Exact matches to the six checked-in task names get
+their fixed buckets. Other IDs remain `unlisted`, and missing, oversized, or
+invalid scheduler data gets an explicit bucket. The event job name is never
+printed. Missing hashes and fields get explicit buckets. The
 classifier requires the startup and restart count reports to agree before
 success, and retains `queueReconciled: false` and
 `businessReconciled: false`. The reason buckets are lexical triage hints, not
 proof of cause, business impact, or retry safety. For this staging capture,
 compare its result with the independently recorded 237 scheduled failures and
-one event failure; do not treat the older AOF as a live snapshot.
+one event failure; do not treat the older AOF as a live snapshot. Do not infer
+retry safety from `atm` or categories. These are raw `atm` buckets; BullMQ may
+prefer a legacy `attemptsMade` field when both fields exist in a migrated job,
+so they are not authoritative SDK attempt counts for historical hashes. An
+unexpected prevalence of `unlisted`, invalid data, or missing `atm` calls for
+an installed-package contract review before using the classification for
+incident decisions.
+The root `qa:workflow-scheduler-timestamps` gate pins Medusa's registered
+`job-<config.name>` identifier, `schedule` queue envelope, queue name, and
+BullMQ's `atm` field in the installed packages. The disposable multipart-AOF
+fixture exercises a failed scheduled job through BullMQ and checks its category
+and raw `atm` counter after isolated replay. Both gates must pass before using
+this reader on the private capture.
 
 The first opt-in run on the verified private September 20 capture passed
 receipt/file checks and worker-free startup/restart, then cleaned up its
@@ -928,6 +947,20 @@ private report is
 `/tmp/rr-failed-jobs-20260920/classification.json` (0600 in a 0700
 directory), SHA-256
 `19e21adf217b8c992f1f7325d084c9dbd58dd0320668b8133b02c6080edffe23`.
+That report used the previous classifier schema; its name and attempt buckets
+remain historical evidence only. A second receipt-bound, worker-free replay
+with classifier schema 2 passed startup/restart and cleaned up its owned
+container and private directory. It matched the same 238 failed-set entries:
+164 scheduled entries in `reconcile-checkout-payments`, 73 in
+`sync-taxrate-io-quota`, zero unlisted or invalid scheduled categories, and
+one event entry. All 237 scheduled entries had raw `atm=1`; the event entry
+had `atm>1`. The 73 provider-related lexical hints and 164 other hints are
+unchanged. This identifies stored task categories and counter buckets only;
+it does not prove why they failed, whether payments or quota sync were
+affected, or whether any retry is safe. The count-only private report is
+`/tmp/rr-failed-jobs-20260920/classification-v3.ziC0Sz.json` (0600 in a
+0700 directory), SHA-256
+`04ac6bc4aeaddd0cdea450a9f0555e9ee0f6888ea6d113d45bd69dfcc42945b2`.
 Both reconciliation flags remain false.
 
 September 19 read-only staging preflight found Redis 8.0.3 still running from

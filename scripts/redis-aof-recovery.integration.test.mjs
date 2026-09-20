@@ -37,6 +37,11 @@ const eventBusRequire = createRequire(
   backendRequire.resolve("@medusajs/event-bus-redis/package.json")
 )
 const { Queue, Worker } = eventBusRequire("bullmq")
+const workflowRequire = createRequire(
+  backendRequire.resolve("@medusajs/workflow-engine-redis/package.json")
+)
+const { Queue: ScheduledQueue, Worker: ScheduledWorker } =
+  workflowRequire("bullmq")
 const { createClient } = backendRequire("redis")
 const eventBusQueuePrefix = "RedisEventBusService"
 
@@ -512,11 +517,15 @@ test("an isolated Redis 8.10.1 startup replays synthetic BullMQ states from mult
   ]
   const ownedContainers = []
   let worker
+  let scheduledWorker
   let eventQueue
   let workflowQueue
+  let scheduledQueue
   let restoredEventQueue
   let restoredWorkflowQueue
+  let restoredScheduledQueue
   let testFailure
+  let scheduledEnvelopeObserved = false
   try {
     const sourceId = await isolatedServer({
       data: sourceData,
@@ -537,8 +546,12 @@ test("an isolated Redis 8.10.1 startup replays synthetic BullMQ states from mult
       prefix: eventBusQueuePrefix,
     })
     workflowQueue = new Queue("medusa-workflows", { connection })
+    scheduledQueue = new ScheduledQueue("medusa-workflows-jobs", {
+      connection,
+    })
     assert.equal(eventQueue.qualifiedName, "RedisEventBusService:events-queue")
     assert.equal(workflowQueue.qualifiedName, "bull:medusa-workflows")
+    assert.equal(scheduledQueue.qualifiedName, "bull:medusa-workflows-jobs")
     worker = new Worker(
       "events-queue",
       async (job) => {
@@ -574,6 +587,38 @@ test("an isolated Redis 8.10.1 startup replays synthetic BullMQ states from mult
     assert.deepEqual(workerErrors, [])
     await worker.close()
     worker = undefined
+
+    scheduledWorker = new ScheduledWorker(
+      "medusa-workflows-jobs",
+      async (job) => {
+        scheduledEnvelopeObserved =
+          job.name === "schedule" &&
+          job.data.jobId === "job-sync-taxrate-io-quota"
+        throw new Error("Expected synthetic scheduled job failure")
+      },
+      { connection, concurrency: 1 }
+    )
+    scheduledWorker.on("error", () => workerErrors.push("worker_error"))
+    await scheduledWorker.waitUntilReady()
+    await scheduledQueue.add(
+      "schedule",
+      {
+        jobId: "job-sync-taxrate-io-quota",
+        schedulerOptions: { cron: "*/5 * * * *" },
+      },
+      {
+        jobId: "scheduled-failed",
+        removeOnFail: { age: 604800, count: 5000 },
+      }
+    )
+    await waitForFixture("scheduled BullMQ failure", async () => {
+      const counts = await scheduledQueue.getJobCounts("failed")
+      return counts.failed === 1
+    })
+    assert.equal(scheduledEnvelopeObserved, true)
+    assert.deepEqual(workerErrors, [])
+    await scheduledWorker.close()
+    scheduledWorker = undefined
 
     await fixtureRedisCli(sourceId, ["BGREWRITEAOF"])
     await waitForFixture("AOF rewrite", async () => {
@@ -633,21 +678,25 @@ test("an isolated Redis 8.10.1 startup replays synthetic BullMQ states from mult
     )
     const eventIds = ["event-complete", "event-failed", "event-waiting"]
     const workflowIds = ["workflow-waiting", "workflow-delayed"]
+    const scheduledIds = ["scheduled-failed"]
     const expected = {
       events: await queueSnapshot(eventQueue, eventIds),
       workflows: await queueSnapshot(workflowQueue, workflowIds),
+      scheduled: await queueSnapshot(scheduledQueue, scheduledIds),
     }
     assert.equal(expected.events.counts.completed, 1)
     assert.equal(expected.events.counts.failed, 1)
     assert.equal(expected.events.counts.waiting, 1)
     assert.equal(expected.workflows.counts.waiting, 1)
     assert.equal(expected.workflows.counts.delayed, 1)
+    assert.equal(expected.scheduled.counts.failed, 1)
     const sourceAggregate = await aggregateForSocket(connection.path)
     assert.equal(sourceAggregate.queues.eventBus.states.completed, 1)
     assert.equal(sourceAggregate.queues.eventBus.states.failed, 1)
     assert.equal(sourceAggregate.queues.eventBus.states.wait, 1)
     assert.equal(sourceAggregate.queues.workflows.states.wait, 1)
     assert.equal(sourceAggregate.queues.workflows.states.delayed, 1)
+    assert.equal(sourceAggregate.queues.scheduledJobs.states.failed, 1)
     assert.doesNotMatch(JSON.stringify(sourceAggregate), /event-complete/u)
     assert.equal(
       await fixtureRedisCli(sourceId, [
@@ -664,6 +713,8 @@ test("an isolated Redis 8.10.1 startup replays synthetic BullMQ states from mult
     eventQueue = undefined
     await workflowQueue.close()
     workflowQueue = undefined
+    await scheduledQueue.close()
+    scheduledQueue = undefined
     await runIntegrationCommand("docker", ["stop", "--time", "5", sourceId], {
       capture: true,
       timeoutMs: 15_000,
@@ -731,9 +782,13 @@ test("an isolated Redis 8.10.1 startup replays synthetic BullMQ states from mult
     restoredWorkflowQueue = new Queue("medusa-workflows", {
       connection: targetConnection,
     })
+    restoredScheduledQueue = new ScheduledQueue("medusa-workflows-jobs", {
+      connection: targetConnection,
+    })
     const observed = {
       events: await queueSnapshot(restoredEventQueue, eventIds),
       workflows: await queueSnapshot(restoredWorkflowQueue, workflowIds),
+      scheduled: await queueSnapshot(restoredScheduledQueue, scheduledIds),
     }
     assert.deepEqual(observed, expected)
     assert.deepEqual(
@@ -742,15 +797,22 @@ test("an isolated Redis 8.10.1 startup replays synthetic BullMQ states from mult
     )
     const failedJobs = await failedJobsForSocket(targetConnection.path, {
       eventBus: 1,
-      scheduledJobs: 0,
+      scheduledJobs: 1,
     })
-    assert.equal(failedJobs.totalFailed, 1)
+    assert.equal(failedJobs.schemaVersion, 2)
+    assert.equal(failedJobs.totalFailed, 2)
     assert.equal(failedJobs.queues.eventBus.names.unlisted, 1)
     assert.equal(failedJobs.queues.eventBus.reasons.other, 1)
+    assert.equal(failedJobs.queues.eventBus.attempts.one, 1)
+    assert.equal(
+      failedJobs.queues.scheduledJobs.names["sync-taxrate-io-quota"],
+      1
+    )
+    assert.equal(failedJobs.queues.scheduledJobs.attempts.one, 1)
     assert.equal(failedJobs.queueReconciled, false)
     assert.doesNotMatch(
       JSON.stringify(failedJobs),
-      /event-failed|synthetic-failure/u
+      /event-failed|scheduled-failed|job-sync-taxrate-io-quota|synthetic-failure/u
     )
     assert.equal(
       await fixtureRedisCli(targetId, [
@@ -783,6 +845,8 @@ test("an isolated Redis 8.10.1 startup replays synthetic BullMQ states from mult
     restoredEventQueue = undefined
     await restoredWorkflowQueue.close()
     restoredWorkflowQueue = undefined
+    await restoredScheduledQueue.close()
+    restoredScheduledQueue = undefined
     await runIntegrationCommand("docker", ["stop", "--time", "5", targetId], {
       capture: true,
       timeoutMs: 15_000,
@@ -812,10 +876,14 @@ test("an isolated Redis 8.10.1 startup replays synthetic BullMQ states from mult
     restoredWorkflowQueue = new Queue("medusa-workflows", {
       connection: targetConnection,
     })
+    restoredScheduledQueue = new ScheduledQueue("medusa-workflows-jobs", {
+      connection: targetConnection,
+    })
     assert.deepEqual(
       {
         events: await queueSnapshot(restoredEventQueue, eventIds),
         workflows: await queueSnapshot(restoredWorkflowQueue, workflowIds),
+        scheduled: await queueSnapshot(restoredScheduledQueue, scheduledIds),
       },
       expected
     )
@@ -838,10 +906,13 @@ test("an isolated Redis 8.10.1 startup replays synthetic BullMQ states from mult
   } finally {
     const clientCleanup = await Promise.allSettled([
       worker?.close(),
+      scheduledWorker?.close(),
       eventQueue?.close(),
       workflowQueue?.close(),
+      scheduledQueue?.close(),
       restoredEventQueue?.close(),
       restoredWorkflowQueue?.close(),
+      restoredScheduledQueue?.close(),
     ])
     const cleanup = await Promise.allSettled(
       ownedContainers.map((id) =>

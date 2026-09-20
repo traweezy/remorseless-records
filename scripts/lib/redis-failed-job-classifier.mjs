@@ -5,7 +5,7 @@ const queueDefinitions = Object.freeze([
   ["eventBus", "RedisEventBusService:events-queue"],
   ["scheduledJobs", "bull:medusa-workflows-jobs"],
 ])
-const scheduledNames = Object.freeze([
+export const scheduledNames = Object.freeze([
   "reconcile-checkout-payments",
   "reconcile-stripe-lifecycle-events",
   "reconcile-tax-evidence",
@@ -36,12 +36,37 @@ const nameBuckets = Object.freeze([
   "missingHash",
   "missingName",
   "oversizedName",
+  "missingData",
+  "oversizedData",
+  "invalidData",
   "unlisted",
 ])
 const blank = (names) => Object.fromEntries(names.map((name) => [name, 0]))
 const boundedCount = (value, maximum) =>
   Number.isSafeInteger(value) && value >= 0 && value <= maximum
 const maxFailedSetMemoryBytes = 256 * 1024
+const maxScheduledDataBytes = 1_024
+const maxTotalScheduledDataBytes = 256 * 1024
+
+const scheduledCategory = (rawData) => {
+  try {
+    const data = JSON.parse(rawData)
+    if (
+      data === null ||
+      typeof data !== "object" ||
+      Array.isArray(data) ||
+      typeof data.jobId !== "string" ||
+      data.jobId.length === 0 ||
+      Buffer.byteLength(data.jobId) > 128
+    )
+      return "invalidData"
+    return (
+      scheduledNames.find((name) => data.jobId === `job-${name}`) ?? "unlisted"
+    )
+  } catch {
+    return "invalidData"
+  }
+}
 
 // These are lexical hints for triage, not a diagnosis of the failed job.
 const reasonBucket = (reason) => {
@@ -115,6 +140,7 @@ const classifyInner = async ({
   }
   let totalIdBytes = 0
   let totalReasonBytes = 0
+  let totalScheduledDataBytes = 0
   const queues = {}
   const inventories = []
   // Sample every nested value before any range reply can materialize IDs.
@@ -170,8 +196,8 @@ const classifyInner = async ({
       if (type !== "hash") throw unavailable()
       const measuredFields =
         queueName === "scheduledJobs"
-          ? ["name", "failedReason", "attemptsMade"]
-          : ["failedReason", "attemptsMade"]
+          ? ["name", "failedReason", "atm"]
+          : ["failedReason", "atm"]
       const fieldLengths = await run(() =>
         Promise.all(
           measuredFields.map((field) => client.hStrLen(hashKey, field))
@@ -188,11 +214,11 @@ const classifyInner = async ({
       )
       const nameLength = lengths.name
       const reasonLength = lengths.failedReason
-      const attemptsLength = lengths.attemptsMade
+      const attemptsLength = lengths.atm
       const fields = [
         ...(queueName === "scheduledJobs" && nameLength <= 128 ? ["name"] : []),
         ...(reasonLength <= 4_096 ? ["failedReason"] : []),
-        ...(attemptsLength <= 10 ? ["attemptsMade"] : []),
+        ...(attemptsLength <= 10 ? ["atm"] : []),
       ]
       const values = fields.length
         ? await run(() => client.hmGet(hashKey, fields))
@@ -211,9 +237,28 @@ const classifyInner = async ({
         Buffer.byteLength(name) !== nameLength
       )
         throw unavailable()
-      else if (queueName === "scheduledJobs" && scheduledNames.includes(name))
-        names[name]++
-      else names.unlisted++
+      else if (name === "schedule") {
+        const dataLength = await run(() => client.hStrLen(hashKey, "data"))
+        if (!boundedCount(dataLength, Number.MAX_SAFE_INTEGER))
+          throw unavailable()
+        if (dataLength === 0) names.missingData++
+        else if (dataLength > maxScheduledDataBytes) names.oversizedData++
+        else {
+          totalScheduledDataBytes += dataLength
+          if (totalScheduledDataBytes > maxTotalScheduledDataBytes)
+            throw unavailable()
+          const dataValues = await run(() => client.hmGet(hashKey, ["data"]))
+          if (!Array.isArray(dataValues) || dataValues.length !== 1)
+            throw unavailable()
+          const rawData = dataValues[0]
+          if (
+            typeof rawData !== "string" ||
+            Buffer.byteLength(rawData) !== dataLength
+          )
+            throw unavailable()
+          names[scheduledCategory(rawData)]++
+        }
+      } else names.unlisted++
       const reason = fieldValues.failedReason
       if (reasonLength > 4_096) reasons.oversizedReason++
       else if (reason === null || reason === "") reasons.missingReason++
@@ -227,7 +272,7 @@ const classifyInner = async ({
         if (totalReasonBytes > 1024 * 1024) throw unavailable()
         reasons[reasonBucket(reason)]++
       }
-      const attempt = fieldValues.attemptsMade
+      const attempt = fieldValues.atm
       if (
         attemptsLength > 10 ||
         attempt === null ||
@@ -248,7 +293,7 @@ const classifyInner = async ({
     queues[queueName] = { failedCount: count, names, reasons, attempts }
   }
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     source: "isolated_capture_only",
     heuristicReasonClasses: true,
     totalFailed: expectedFailed.eventBus + expectedFailed.scheduledJobs,

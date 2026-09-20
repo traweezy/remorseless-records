@@ -1,9 +1,31 @@
 import assert from "node:assert/strict"
+import { readFileSync, readdirSync } from "node:fs"
 import test from "node:test"
-import { classifyIsolatedFailedJobs } from "./lib/redis-failed-job-classifier.mjs"
+import {
+  classifyIsolatedFailedJobs,
+  scheduledNames,
+} from "./lib/redis-failed-job-classifier.mjs"
 
 const eventPrefix = "RedisEventBusService:events-queue"
 const scheduledPrefix = "bull:medusa-workflows-jobs"
+const jobsDirectory = new URL("../backend/src/jobs/", import.meta.url)
+
+test("scheduled category allowlist matches every checked-in app job", () => {
+  const names = readdirSync(jobsDirectory)
+    .filter((entry) => entry.endsWith(".ts") && !entry.endsWith(".test.ts"))
+    .map((entry) => {
+      const source = readFileSync(new URL(entry, jobsDirectory), "utf8")
+      const match = /\bexport const config\s*=\s*\{\s*name:\s*"([^"]+)"/u.exec(
+        source
+      )
+      assert.ok(match, `Missing fixed scheduler config in ${entry}`)
+      return match[1]
+    })
+    .sort()
+  assert.equal(new Set(names).size, names.length)
+  assert.deepEqual(names, [...scheduledNames].sort())
+})
+
 const fixture = ({ event = [], scheduled = [] } = {}) => {
   const sets = new Map([
     [`${eventPrefix}:failed`, event.map(({ id }) => id)],
@@ -17,6 +39,7 @@ const fixture = ({ event = [], scheduled = [] } = {}) => {
   )
   const readFields = []
   const readOperations = []
+  const valueReads = []
   const setReads = []
   const client = {
     zCard: async (key) => {
@@ -43,37 +66,42 @@ const fixture = ({ event = [], scheduled = [] } = {}) => {
     hmGet: async (key, fields) => {
       readFields.push(...fields)
       readOperations.push(...fields.map((field) => [key, field]))
+      valueReads.push(...fields.map((field) => [key, field]))
       return fields.map((field) => hashes.get(key)[field] ?? null)
     },
   }
-  return { client, readFields, readOperations, setReads }
+  return { client, readFields, readOperations, valueReads, setReads }
 }
 
 test("classifies all 238 captured failures with fixed count-only buckets", async () => {
   const scheduled = Array.from({ length: 237 }, (_, index) => ({
     id: `private-scheduled-${index}`,
     fields: {
-      name:
-        index < 230
-          ? "reconcile-checkout-payments"
-          : "reconcile-stripe-lifecycle-events",
+      name: "schedule",
+      data: JSON.stringify({
+        jobId:
+          index < 230
+            ? "job-reconcile-checkout-payments"
+            : "job-reconcile-stripe-lifecycle-events",
+        schedulerOptions: { cron: "*/5 * * * *" },
+      }),
       failedReason:
         index < 230
           ? "Missing lock for job private-customer-order"
           : "Stripe provider unavailable for private customer",
-      attemptsMade: index < 230 ? "1" : "2",
-      data: "private customer payload",
+      atm: index < 230 ? "1" : "2",
+      attemptsMade: "private legacy value must not be read",
       stacktrace: "private stack trace",
     },
   }))
-  const { client, readFields, readOperations, setReads } = fixture({
+  const { client, readFields, readOperations, valueReads, setReads } = fixture({
     event: [
       {
         id: "private-event-1",
         fields: {
           name: "private.event",
           failedReason: "job stalled more than allowable limit private payload",
-          attemptsMade: "0",
+          atm: "0",
           data: "private event payload",
         },
       },
@@ -84,6 +112,7 @@ test("classifies all 238 captured failures with fixed count-only buckets", async
     client,
     expectedFailed: { eventBus: 1, scheduledJobs: 237 },
   })
+  assert.equal(result.schemaVersion, 2)
   assert.equal(result.totalFailed, 238)
   assert.equal(result.queues.eventBus.reasons.stalled, 1)
   assert.equal(result.queues.eventBus.names.unlisted, 1)
@@ -97,7 +126,8 @@ test("classifies all 238 captured failures with fixed count-only buckets", async
   assert.equal(result.queueReconciled, false)
   assert.equal(result.businessReconciled, false)
   assert.deepEqual([...new Set(readFields)].sort(), [
-    "attemptsMade",
+    "atm",
+    "data",
     "failedReason",
     "name",
   ])
@@ -107,6 +137,15 @@ test("classifies all 238 captured failures with fixed count-only buckets", async
     ),
     false
   )
+  assert.equal(
+    valueReads.some(
+      ([key, field]) =>
+        key.startsWith(`${eventPrefix}:`) &&
+        (field === "name" || field === "data")
+    ),
+    false
+  )
+  assert.equal(readFields.includes("attemptsMade"), false)
   assert.deepEqual(
     setReads
       .filter(([operation]) => operation === "memoryUsage")
@@ -158,7 +197,7 @@ test("counts missing and oversized metadata without retrieving oversized values"
         fields: {
           name: "n".repeat(129),
           failedReason: oversized,
-          attemptsMade: "not-a-count",
+          atm: "not-a-count",
         },
       },
       {
@@ -181,12 +220,123 @@ test("counts missing and oversized metadata without retrieving oversized values"
   assert.doesNotMatch(JSON.stringify(result), /private/u)
 })
 
+test("classifies only installed Medusa schedule IDs from bounded data", async () => {
+  const scheduled = [
+    {
+      id: "known",
+      fields: {
+        name: "schedule",
+        data: JSON.stringify({
+          jobId: "job-sync-taxrate-io-quota",
+          schedulerOptions: { cron: "*/5 * * * *" },
+        }),
+        atm: "2",
+      },
+    },
+    {
+      id: "unknown",
+      fields: {
+        name: "schedule",
+        data: JSON.stringify({ jobId: "private-unknown-task" }),
+        atm: "1",
+      },
+    },
+    { id: "missing", fields: { name: "schedule", atm: "1" } },
+    {
+      id: "oversized",
+      fields: { name: "schedule", data: "private".repeat(150), atm: "1" },
+    },
+    {
+      id: "invalid-json",
+      fields: { name: "schedule", data: "{private", atm: "1" },
+    },
+    {
+      id: "invalid-id",
+      fields: { name: "schedule", data: '{"jobId":42}', atm: "1" },
+    },
+    {
+      id: "not-schedule",
+      fields: {
+        name: "private-other-kind",
+        data: JSON.stringify({ jobId: "job-sync-taxrate-io-quota" }),
+        atm: "1",
+      },
+    },
+  ]
+  const { client, valueReads } = fixture({ scheduled })
+  const result = await classifyIsolatedFailedJobs({
+    client,
+    expectedFailed: { eventBus: 0, scheduledJobs: scheduled.length },
+  })
+  const { names, attempts } = result.queues.scheduledJobs
+  assert.equal(names["sync-taxrate-io-quota"], 1)
+  assert.equal(names.unlisted, 2)
+  assert.equal(names.missingData, 1)
+  assert.equal(names.oversizedData, 1)
+  assert.equal(names.invalidData, 2)
+  assert.equal(attempts.one, 6)
+  assert.equal(attempts.multiple, 1)
+  assert.equal(
+    valueReads.some(
+      ([key, field]) =>
+        field === "data" &&
+        (key.endsWith(":oversized") || key.endsWith(":not-schedule"))
+    ),
+    false
+  )
+  assert.doesNotMatch(JSON.stringify(result), /private|unknown-task/u)
+})
+
+test("fails closed on data-length drift and aggregate data cap", async () => {
+  const one = fixture({
+    scheduled: [
+      {
+        id: "one",
+        fields: {
+          name: "schedule",
+          data: '{"jobId":"job-sync-taxrate-io-quota"}',
+          atm: "1",
+        },
+      },
+    ],
+  }).client
+  const originalHStrLen = one.hStrLen
+  one.hStrLen = async (key, field) =>
+    field === "data" ? 1 : originalHStrLen(key, field)
+  await assert.rejects(
+    classifyIsolatedFailedJobs({
+      client: one,
+      expectedFailed: { eventBus: 0, scheduledJobs: 1 },
+    }),
+    { message: "Redis failed-job classification unavailable." }
+  )
+
+  const many = Array.from({ length: 300 }, (_, index) => ({
+    id: `job-${index}`,
+    fields: {
+      name: "schedule",
+      data: JSON.stringify({
+        jobId: "job-sync-taxrate-io-quota",
+        padding: "private".repeat(130),
+      }),
+      atm: "1",
+    },
+  }))
+  await assert.rejects(
+    classifyIsolatedFailedJobs({
+      client: fixture({ scheduled: many }).client,
+      expectedFailed: { eventBus: 0, scheduledJobs: many.length },
+    }),
+    { message: "Redis failed-job classification unavailable." }
+  )
+})
+
 test("fails closed on count drift, duplicate or malformed IDs, wrong type, and deadline", async () => {
   const base = fixture({
     event: [
       {
         id: "event-a",
-        fields: { name: "x", failedReason: "x", attemptsMade: "1" },
+        fields: { name: "x", failedReason: "x", atm: "1" },
       },
     ],
   }).client
