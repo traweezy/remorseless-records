@@ -10,15 +10,18 @@ tracks what is still required before production traffic is approved.
 ## Active continuation — September 20 UTC onward
 
 The latest accepted staging pair is Backend and Storefront at
-`9020b7798ed4fd5e156f379e8e879b84d3178e71`. All four exact-SHA GitHub
-workflows and both Railway deployments passed; both services report that
-revision and healthy readiness, the Backend scheduler has a fresh successful
-heartbeat, and Storefront home, catalog and same-origin search passed. The
-scanned disposable Redis fixture and fake-RESP integration gate passed before
-the live count-only collector ran. Runtime candidate image scans retained
-four CRITICAL and 52 HIGH findings each without listed fixes; final image
-publication needs a named release-owner risk decision and exact-final-image
-scan. The [handoff](NEXT_SESSION_HANDOFF.md) has the release evidence.
+`3b85c8e371148996d50e9f3f8549520a4141719e`. All four exact-SHA GitHub
+workflows and both Railway deployments passed. Both live processes run Node
+26.9.0; Backend readiness passed 11/11 checks, Storefront readiness passed
+2/2, and deployment-scoped HTTP 5xx counts were zero. The corrected runtime
+candidate scans reject every UNKNOWN, HIGH, and CRITICAL finding; the candidates
+were not published on `staging`. Three reviewed MEDIUM CodeQL findings remain
+visible under exact-fingerprint exceptions. The
+[security incident report](SECURITY_INCIDENT_REPORT_2026-09-20.md) records the
+scanner history, credential-audit limits, and residual decisions. The scanned
+disposable Redis fixture and fake-RESP integration gate passed before the live
+count-only collector ran. Final image publication still needs exact-final-image
+verification and the separate `master` release review.
 
 After explicit approval on September 20, a guarded capture copied the pinned
 staging Redis 8.0.3 multipart AOF to a private local directory. Immediate
@@ -193,6 +196,184 @@ the previous browser sandbox limitation is resolved with sandboxed Brave.
 Old passing scans are not evidence against new advisories. Production does not
 exist; live Redis migration, recovery infrastructure, role/network cutovers,
 provider evidence and legal/business requirements remain open as recorded.
+
+## Planned initiative — client-isolated staging clone
+
+**Outcome:** run the same approved application revision and seven-service
+topology for the client, with client-owned provider accounts and domains,
+independently generated internal credentials, and isolated data. “Clone” means
+configuration and behavior parity, not a copy of our customers, orders, media,
+secrets, or historical deployments. This planning update provisions no
+services or credentials and sends no client traffic.
+
+Railway's [Duplicate Environment](https://docs.railway.com/environments)
+copies ordinary variables as well as services and configuration; sealed
+variables are excluded. A read-only variable-metadata inventory found **zero
+sealed variables across the current seven staging services**. A direct
+duplicate would therefore copy our Stripe, Resend, TaxRate.io, database,
+storage, and application secrets into the new environment before replacement.
+Use a new **Empty Environment** with a sanitized configuration manifest, or a
+sanitized private template in a separate project, as the default. Review the
+provenance and preview of every ordinary template variable and reference
+before sharing or deploying it; a template derived from the live project is
+not sanitized by default. Do not run a
+one-click duplicate of the present secret-bearing environment. Reconsider
+duplication only after a reviewed source-secret sealing and access plan proves
+that no original credential can cross the boundary.
+
+### Ownership and isolation decision
+
+- [ ] Record who owns Railway billing, needs console/API access, operates the
+      client environment, and may view its variables, logs, data, and backups.
+      Prefer a **client-owned workspace and project** when the client needs
+      access or separate billing. A persistent `client-staging` environment in
+      the current project is acceptable only for internally operated testing
+      after auditing every project/workspace member. Railway isolates private
+      networks, variables, deployments, databases, volumes, and buckets by
+      environment, but project membership is shared and Environment RBAC is an
+      Enterprise feature. A separate project in the same workspace may still
+      expose it to workspace members. See Railway's
+      [isolation guide](https://docs.railway.com/guides/isolate-staging-production),
+      [project roles](https://docs.railway.com/projects/project-members), and
+      [Environment RBAC](https://docs.railway.com/enterprise/environment-rbac).
+- [ ] Agree on region, client domain/DNS ownership, test-data rights, log and
+      backup retention, support ownership, and a monthly cost ceiling before
+      provisioning. Estimate seven running services, separate storage and
+      backups, builds, and network usage against current staging usage; set a
+      soft usage alert. A hard limit on a shared Railway workspace can stop
+      unrelated workloads. See [Railway cost control](https://docs.railway.com/pricing/cost-control).
+
+### Reproducible topology without copied secrets
+
+- [ ] Capture a **names-and-settings-only** baseline for Backend, Storefront,
+      Postgres, Redis, Bucket/MinIO, Console, and MeiliSearch: source commit,
+      images/versions, region/replicas, volume mounts and backup schedules,
+      private/public domains and TCP proxies, build/start/predeploy commands,
+      healthchecks, watch paths, deployment triggers, and variable names and
+      references. Never export variable values to a repo, plan artifact, CI
+      log, shell history, or client-accessible workspace.
+- [ ] Provision new Postgres, Redis, MinIO, and MeiliSearch instances and their
+      volumes before the applications. Recreate private-network
+      references to the **client** instances, including the Storefront Redis
+      URL. Keep support-service public endpoints disabled unless a documented
+      use requires one. Railway
+      [environment sync](https://docs.railway.com/guides/isolate-staging-production)
+      copies configuration, not stored data; its
+      [volume backups](https://docs.railway.com/volumes/backups) are not a
+      cross-environment data-cloning mechanism. Verify the new stores are
+      distinct and seed only approved client data or synthetic fixtures.
+- [ ] Extend `.railway/railway.ts`, `scripts/railway-config.mjs`, and
+      `qa:railway-iac` with an explicit, tested allowlist of project and
+      environment IDs before managing the client target. Their current guard
+      accepts only `store/staging`, and the stable partial owns only Backend
+      and Storefront; the five support services are dashboard-managed. Review
+      the complete client plan for unexpected deletes, source changes, and
+      owner-environment references before any apply.
+
+### Client identity and provider setup
+
+- [ ] Replace **every** copied or owner-specific value, not just third-party
+      API keys. Generate unique Postgres, Redis, MinIO, MeiliSearch, Console,
+      JWT, cookie, BFF, receipt, and webhook credentials; provision them via a
+      secret manager or Railway stdin/sealed variables. Use a MeiliSearch
+      search-only key in Storefront, a scoped MinIO application key, and a new
+      Medusa publishable key attached to the client's sales channel. Pair that
+      key in Backend `MEDUSA_PUBLISHABLE_KEY` and Storefront
+      `NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY`, then rebuild Storefront. Verify
+      Postgres/Redis URLs and the MeiliSearch and MinIO consumer keys point to
+      their matching client support services, never the owner services. Audit
+      shared variables, OTLP exporter endpoints/headers, GitHub secrets, and
+      `*_PREVIOUS` rotation slots as well as current values. See Railway's
+      [variable guidance](https://docs.railway.com/variables)
+      and [CLI stdin support](https://docs.railway.com/cli/variable). Stdin
+      keeps a value out of the command line; sealing is a separate action and
+      sealed values cannot later be read or duplicated.
+- [ ] Use the client's **Stripe sandbox**, never live keys, in staging. Pair
+      its server key with the matching `NEXT_PUBLIC_STRIPE_PK`; remove or
+      replace legacy `NEXT_PUBLIC_STRIPE_KEY`. Create the client's payment
+      method configuration and two separate test-mode webhook endpoints on the
+      new Backend domain, each with its own signing secret and reviewed event
+      set. Register the new Storefront domain for wallet methods. Validate
+      Stripe Tax sandbox settings, shipping tax code, and collection policy
+      independently. See Stripe's [key](https://docs.stripe.com/keys),
+      [webhook](https://docs.stripe.com/api/webhook_endpoints), and
+      [wallet-domain](https://docs.stripe.com/payments/payment-methods/pmd-registration)
+      guidance.
+- [ ] Provision the client's Resend team, verified staging sending domain,
+      and domain-scoped sending key. Set `RESEND_FROM` to a **monitored client
+      mailbox**: contact and privacy submissions currently route there. Send
+      only to a controlled test recipient until delivery, DNS authentication,
+      and owner approvals pass. Replace the TaxRate.io account/key and verify
+      quota, monitored ZIP, collection mode, and tax-control readiness before
+      metered lookups; leave collection disabled if the provider is not ready.
+      See Resend's [scoped-key](https://resend.com/changelog/new-api-key-permissions)
+      guidance and [tax operations](TAX_CONTROL_OPERATIONS.md).
+- [ ] Rebind Backend/Storefront domains, Backend
+      `RAILWAY_PUBLIC_DOMAIN_VALUE`, `STORE_CORS`, `AUTH_CORS`,
+      `ADMIN_CORS`, `NEXT_PUBLIC_BASE_URL`, Medusa URLs, media/search endpoints,
+      Bandcamp identifiers, Stripe destinations, and any opaque external URL
+      such as `TEMPLATE_REPORTER_URL`. Verify client-owned custom-domain DNS
+      and TLS before opening traffic; remove original-stage URLs and provider
+      account identifiers from effective variables and rendered client assets.
+      See Railway's [domain setup](https://docs.railway.com/networking/domains/working-with-domains).
+
+### Controlled deployment and acceptance
+
+- [ ] Keep GitHub autodeploy, schedulers, payment reconciliation, retention
+      jobs, outbound email, and provider writes disabled until the new account
+      identities and data boundaries are checked. Add a fail-closed startup or
+      deployment guard where existing flags cannot suppress a provider write.
+      The current scheduled GitHub operations/scheduler monitors point only at
+      our staging domain and use our catalog key; give the client separate
+      targets, credentials, egress allowlists, and alert ownership before
+      enabling equivalent monitoring.
+- [ ] Promote only an exact SHA already accepted by Root, Backend,
+      Storefront, and Runtime Images CI on `staging`; keep the client services'
+      GitHub autodeploy disabled until an independent release path is reviewed.
+      Verify that the selected client workspace's Railway GitHub App and a
+      connected member have contributor access to the approved private source
+      repository, and that its license permits this deployment. A manual
+      exact-SHA deploy must verify the connected repository and target
+      environment. Railway's Wait for CI checks workflow conclusions and can
+      let skipped/neutral workflows through, so confirm every required check
+      independently. See [autodeploy behavior](https://docs.railway.com/deployments/github-autodeploys)
+      and [exact-SHA deploy API](https://docs.railway.com/integrations/api/manage-services).
+- [ ] Keep Railway **Skipped Builds disabled** and perform a fresh client
+      Storefront build. Next.js `NEXT_PUBLIC_*` values are baked into bundles;
+      Railway's image reuse ignores environment-variable differences and could
+      retain our publishable Stripe key or URLs. Run the production client-
+      bundle secret scanner and add a client-target configuration contract that
+      rejects live Stripe key prefixes, our public domains, and our provider
+      account identifiers. Inspect public account/URL identity and verify the
+      live process version and exact commit. See
+      [Skipped Builds](https://docs.railway.com/builds/skipped-builds).
+- [ ] Run migrations against only the new Postgres, create client sales-channel
+      and test catalog fixtures, build MeiliSearch indexes, and upload only
+      approved client media. Create new Admin identities and invitations in
+      the isolated database if the client needs Admin access; do not import
+      owner Admin users. Prove independent backup and restore behavior
+      before relying on this environment for client acceptance. No owner order,
+      customer, failed-job, email, or media state may be copied implicitly.
+- [ ] Require both deployments at the approved SHA, `/live` and dependency-
+      aware `/ready`, client domain/CORS/cookie checks, catalog/search/media,
+      sandbox checkout/refund and signed webhook replay, controlled email and
+      tax probes, keyboard/browser acceptance, and bounded error/HTTP 5xx and
+      outbound-network review. Verify provider account IDs or other safe
+      fingerprints without logging keys; prove the client deployment uses no
+      owner provider account, cross-environment private endpoint, or old
+      public URL.
+- [ ] Establish a **client-key-only rollback baseline** before enabling
+      traffic. Railway rollback restores both an old image and its custom
+      variables; rolling back to a first deployment with our keys would
+      reintroduce them. If any wrong-key deployment occurs, stop outbound
+      actions, rotate the affected key, and rebuild from a verified client-
+      only configuration. See [deployment rollback behavior](https://docs.railway.com/deployments/deployment-actions).
+
+Completion requires the reviewed access/billing decision, a secret-free parity
+manifest, all seven isolated services, client-only account identities, green
+exact-SHA CI and deployed acceptance, tested rollback and backup, a cost
+baseline, and named client/operator sign-off. Keep the original `staging`
+environment independent throughout this initiative.
 
 ## Historical handoff — September 6, 2026
 
@@ -387,8 +568,9 @@ restore drills. Exact-SHA CI acceptance remains to be recorded in the handoff.
 
 ## Operating contract
 
-- `staging` is the default integration branch and the only branch connected to
-  automatic Railway staging deploys. Normal work is pushed to `staging`.
+- `staging` is the protected default integration branch and the only branch
+  connected to automatic Railway staging deploys. Normal work merges through
+  a protected `staging` pull request.
 - `master` is the production-candidate branch and advances only through a
   reviewed pull request from an exact, accepted `staging` commit.
 - Production deploys are manual from an approved exact `master` SHA. A merge to
@@ -396,16 +578,18 @@ restore drills. Exact-SHA CI acceptance remains to be recorded in the handoff.
 - Until launch is explicitly approved, any separately approved production
   validation deployment must be stopped after validation and verified to have
   zero running instances so it does not continue accruing compute cost.
-- Use Node 26.x, pnpm 11.17.0, and the single root lockfile.
+- Use pinned Node 26.9.0, pnpm 11.17.0, and the single root lockfile.
 - Deliver cohesive, reviewable Conventional Commits. Prefer larger hardening
   slices when the bundled controls share one security or release boundary.
 - Before each push, pass the focused tests plus repository lint, strict
   typecheck, relevant coverage, security checks, and production builds.
-- Batch compatible families as explicitly requested on September 6. Review
-  each family's risks independently, complete its focused checks and docs,
-  then run the combined full local gates before pushing. Do not push
-  documentation-only checkpoints between families.
-- Push the completed batch as cohesive atomic commits, then watch all
+- Batch compatible families as explicitly requested on September 6 and
+  reaffirmed on September 20. Review each family's risks independently,
+  complete its focused checks and docs, then run the combined full local
+  gates before one topic-branch push. Do not push each logical commit or
+  routine documentation-only acceptance checkpoint separately.
+- Push the completed batch as cohesive atomic commits, merge the protected
+  pull request, then watch all
   GitHub Actions jobs and affected Railway staging deployments to `SUCCESS`
   and run the batch's health, route, API, log, and browser acceptance before
   accepting the next batch. Batching does not waive compatibility reviews.
