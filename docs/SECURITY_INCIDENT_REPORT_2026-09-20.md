@@ -37,6 +37,9 @@ hardened runner lacked `gcr.io:443` for the new pinned distroless base; those
 jobs produced no CI vulnerability counts. The corrective batch changes those
 test assertions and adds only the observed registry endpoint to the reviewed
 egress policy. A new exact-revision run must pass before lifting this hold.
+Railway staging records show both services skipped `8c907d7` because its CI
+suite failed and skipped `e385225` because no watched application files
+changed; neither revision became an online service deployment.
 
 - Runtime-image scan and artifact verification now reject every UNKNOWN,
   HIGH, and CRITICAL finding regardless of fix availability. The filesystem

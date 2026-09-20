@@ -112,8 +112,16 @@ describe("CI runtime security policy", () => {
     const runtimePolicy = manifest.workflows.find(
       ({ path }) => path === ".github/workflows/runtime-images.yml"
     )
-    assert.ok(runtimePolicy.allowedEndpoints.includes("get.trivy.dev:443"))
-    assert.ok(runtimePolicy.allowedEndpoints.includes("gcr.io:443"))
+    assert.ok(
+      runtimePolicy.allowedEndpoints.some(
+        (endpoint) => endpoint === "get.trivy.dev:443"
+      )
+    )
+    assert.ok(
+      runtimePolicy.allowedEndpoints.some(
+        (endpoint) => endpoint === "gcr.io:443"
+      )
+    )
     for (const changed of [
       runtimeWorkflow.replace("            get.trivy.dev:443\n", ""),
       runtimeWorkflow.replace("get.trivy.dev:443", "*.trivy.dev:443"),
