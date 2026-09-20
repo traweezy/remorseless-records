@@ -380,6 +380,18 @@ for (const axis of ["lines", "branches", "functions"]) {
         )
       )
   })
+  test(`rejects relaxed or removed PostgreSQL observability ${axis} coverage`, () => {
+    for (const replacement of [`--test-coverage-${axis}=79`, ""])
+      assert.throws(() =>
+        validate(
+          mutateScripts((scripts) => {
+            scripts["qa:postgres-observability-preflight"] = scripts[
+              "qa:postgres-observability-preflight"
+            ].replace(`--test-coverage-${axis}=80`, replacement)
+          })
+        )
+      )
+  })
   test(`rejects relaxed or removed Redis failed-job ${axis} coverage`, () => {
     for (const replacement of [`--test-coverage-${axis}=79`, ""])
       assert.throws(() =>
