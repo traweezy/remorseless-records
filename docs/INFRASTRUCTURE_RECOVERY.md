@@ -16,9 +16,19 @@ and Meilisearch. PostgreSQL and Redis have no HTTP service domain. A subsequent
 September 6 check confirmed an active Redis public TCP proxy; its separately
 approved removal completed at `2026-09-07T01:23Z` with both apps healthy over
 private networking. See the Redis security follow-up below. PostgreSQL proxy
-state still requires an explicit
-network review. MinIO, its Console, and
-Meilisearch have Railway public domains. Current support-service sources are:
+state still requires an explicit network review. MinIO and its Console have
+Railway public domains. The operator approved removal of the Meilisearch
+staging domain on September 20. Scoped inspection confirmed domain
+`619e417f-4046-43d9-931b-ce3d55258d31` on the expected project,
+environment and service immediately before deletion. Railway returned
+`deleted: true` for that domain, its scoped domain list became empty, and the
+former public `/health` returned a Railway HTTP 404. Meilisearch deployment
+`95d54007-763d-4588-a67c-fabd6480b910` stayed successful; Backend
+`/live`, `/ready`, and `/api/health` and Storefront `/`, `/ready`, and
+`/catalog` all returned HTTP 200. The old hostname still resolves to the
+Railway edge, so 404 and the empty scoped domain list are the removal evidence;
+the exact hostname is not guaranteed recoverable. Current support-service
+sources are:
 
 - PostgreSQL: `ghcr.io/railwayapp-templates/postgres-ssl:latest`;
 - Redis: `railwayapp/redis`;

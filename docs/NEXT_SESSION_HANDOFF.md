@@ -11,6 +11,19 @@ reviewed scope. Do not invent missing production, legal, tax, or provider facts.
 Use [PROJECT_MAP.md](PROJECT_MAP.md) for the indexed code/documentation entrypoints.
 Preserve unrelated `Default/` unread, untouched, and unstaged.
 
+### Approved September 20 UTC public Meilisearch domain removal
+
+The operator approved removal of staging domain
+`619e417f-4046-43d9-931b-ce3d55258d31` after the `2cf8e449` CI isolation
+proof below. A fresh scoped Railway list matched the exact domain and
+`meilisearch-staging-d201.up.railway.app` before deletion. The approved delete
+returned `deleted: true`; the scoped service domain list is now empty.
+The old public `/health` returns a Railway 404, while Meilisearch remains
+deployed successfully. Backend `/live`, `/ready`, `/api/health` and Storefront
+`/`, `/ready`, `/catalog` all returned HTTP 200 afterward. Railway still
+resolves the old hostname at its edge; restoration of that exact hostname is
+not guaranteed. Browser-direct search is outside the app architecture.
+
 ### Accepted September 20 UTC Storefront CI isolation: `2cf8e449`
 
 Commit `2cf8e449f5e2c787b9ef43c3757ad3af667c3a03` removes live staging
@@ -26,8 +39,9 @@ method during those builds, compared with five search POSTs in the preceding
 search POSTs aligned with six old CI build windows and two curl probes matching
 the operator's exposure audit. No public edge request appeared after the last
 old CI window through the new CI, Railway build and deployed browser run. The
-public domain remains configured; future use and private-network callers are
-outside this bounded observation.
+public domain remained configured at that observation point; the subsequently
+approved removal is recorded above. Future use and private-network callers
+were outside that bounded observation.
 
 Railway Backend candidate `4d3f3b95-2723-497d-9323-72b1df8e763e` was
 `SKIPPED` because no watched Backend input changed, retaining accepted Backend

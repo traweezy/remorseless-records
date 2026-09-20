@@ -3026,11 +3026,12 @@ transactional coverage gates remain the accepted local evidence.
 - [x] Cap search offset and total work.
 - [x] Rename Meilisearch host/search-key inputs to server-only variables and
       remove them from browser configuration and client bundles.
-- [ ] Remove any public Meilisearch domain if exact service inspection finds
-      one; browser-direct search is not part of the accepted architecture.
-      The 2026-08-31 Railway inspection found the active
-      `meilisearch-staging-d201.up.railway.app` service domain, so removal is an
-      explicit staging environment change rather than an unverified code item.
+- [x] Remove the public staging Meilisearch domain. After explicit approval,
+      exact scoped inspection matched domain
+      `619e417f-4046-43d9-931b-ce3d55258d31`; Railway confirmed deletion,
+      the service domain list became empty, and the old hostname returned 404.
+      Backend and Storefront health and catalog checks remained HTTP 200.
+      Browser-direct search is not part of the accepted architecture.
 - [x] Replace the all-product handles scan with bounded keyset pagination,
       published-status filtering, and publishable-key sales-channel filtering.
 - [x] Verify every public helper applies published-status and publishable-key
@@ -3197,7 +3198,7 @@ remain open rather than being closed on documentation alone.
 
 The same runbook defines launch objectives, capacity-budgeted Redis memory with
 `noeviction` plus AOF-every-second durability, authoritative-source recovery,
-Meilisearch snapshot/dump/rebuild semantics, current staging public exposure,
+Meilisearch snapshot/dump/rebuild semantics, remaining staging public exposure,
 floating support images, and the exact production cost/domain approval packet.
 Its 70% ratio is a starting policy envelope against an approved service limit,
 not permission to allocate 70% of the Railway plan maximum.
@@ -4322,10 +4323,10 @@ Privacy-request persistence intentionally remains policy-gated: the current
 route delivers the request to the monitored privacy mailbox with a generated
 request ID but does not create another long-lived PII copy. Add a protected
 audit store only after counsel/client approves its fields, access rules,
-retention, deletion, and breach-response policy. Exact Railway inspection also
-found the public staging Meilisearch service domain; removing it changes
-staging service state and remains the explicit environment action recorded in
-the application-security checklist.
+retention, deletion, and breach-response policy. Exact Railway inspection found
+the public staging Meilisearch service domain. Its approved removal completed
+with an empty scoped domain list and a Railway 404 at the former hostname, as
+recorded in the application-security checklist.
 
 ## TanStack Query patch compatibility
 

@@ -156,7 +156,9 @@ startup against the target, or production RTO.
 
 Production remains absent. Redis's configured/running image mismatch and
 documented live-version risk remain open. PostgreSQL retains a public TCP
-proxy; MinIO, Console, and MeiliSearch retain public domains. Actual Redis RDB
+proxy; MinIO and Console retain public domains. The approved September 20
+MeiliSearch staging-domain removal left its scoped domain list empty and the
+old public hostname returning Railway 404. Actual Redis RDB
 export/isolated loading and the staging-data PostgreSQL logical restore now
 pass; AOF/queue, role cutover,
 support-image migration, network changes, backup schedules,
