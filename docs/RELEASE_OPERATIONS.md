@@ -46,6 +46,19 @@ It does not authorize a production deployment by itself.
 7. Wait for both Railway staging services to deploy that exact SHA, then run
    health, readiness, route/API, log, and applicable browser acceptance.
 
+Railway watch paths are evaluated for the pushed commit. A grouped push can
+contain application changes yet end with an unwatched documentation-only
+commit; Railway may then record `SKIPPED` for both services even though their
+last successful deployments lack the earlier changes. Compare each active
+deployment SHA with the accepted staging SHA. If either service was skipped,
+wait for all four exact-SHA workflows to pass, then use
+[Railway's `serviceInstanceDeployV2` API](https://docs.railway.com/integrations/api/manage-services)
+with that explicit `commitSha` for the skipped
+service. `railway redeploy` reuses the older deployment commit. Treat the
+manual API call as separately gated by the verified workflows and repeat the
+same live acceptance checks. Do not start another feature batch while the
+accepted security SHA is absent from either service.
+
 Treat the **push**, rather than each commit, as the expensive release unit.
 The batch should close multiple concrete items from the hardening plan, not
 just record evidence or adjust one small helper. Build and test the whole batch

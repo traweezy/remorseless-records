@@ -21,7 +21,11 @@ For later feature work, keep logical Conventional Commits reviewable but group
 several completed hardening outcomes into one staging push. Do not repeat the
 recent cadence of tiny or documentation-only pushes. Run the combined local
 gates, exact-head CI, and staging acceptance once for each substantive batch;
-see [Release and Branch Operations](RELEASE_OPERATIONS.md).
+see [Release and Branch Operations](RELEASE_OPERATIONS.md). Check both active
+Railway deployment SHAs after the merge: the documentation-only last commit of
+the security batch caused Railway to skip earlier watched dependency changes.
+When this happens, use Railway's exact-commit deploy API only after all four
+workflows pass; a plain `railway redeploy` reuses the older source.
 
 ## Resumed work — September 14 onward
 
@@ -3710,7 +3714,7 @@ and the separate news rich-HTML/dormant speculation-rule sinks were not changed.
 When explicitly resumed:
 
 1. Read current instructions and preserve the paused work. Use pinned Node
-   26.5.0 and pnpm 11.17.0 with `pnpm_config_pm_on_fail=error` and
+   26.9.0 and pnpm 11.17.0 with `pnpm_config_pm_on_fail=error` and
    `pnpm_config_verify_deps_before_run=error`; never invoke installed/global
    Lefthook. Do not rely on the workstation's newer default tool versions.
 2. Resolve the JSON-LD design using actual enforced-browser evidence, including

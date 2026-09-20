@@ -89,6 +89,18 @@ deployment.
   Strict frozen installation, production builds, coverage, and
   production-artifact security regressions passed locally and in CI.
 
+Railway subsequently accepted exact-commit Backend and Storefront deployments
+for `3003b777` after all four workflows passed. Both services reported that
+revision and healthy readiness, but read-only process checks found Node
+`v26.5.0` in the live Railpack images: the root `.nvmrc` still pinned the
+older runtime even though the separately scanned candidate images use
+`v26.9.0`. The Node security remediation therefore requires a second
+exact-commit application rollout. The follow-up aligns root and service-local
+Node pins with the scanned image and makes their parity a quality gate;
+acceptance requires live process-version, readiness, and route checks after
+the follow-up deployment. The prior `3003b777` rollout is not evidence that
+the patched Node runtime reached Railway.
+
 GitHub branch protection now requires pull requests, strict status checks,
 admin enforcement, and resolved conversations. Staging requires 23 checks;
 master requires the same 23 plus Browser Smoke, accessibility, and Lighthouse
@@ -133,8 +145,9 @@ observed in the network review. Backend/Storefront HTTP and deployment records
 were reviewed for 09:45–10:30 UTC on September 20; no auth/admin request or
 unexpected deployment was observed in that narrower incident window.
 
-The authenticated Railway CLI workspace audit was paged across the full
-2026-08-31 through 2026-09-20 window: 275 events, consisting of 148
+The initial authenticated Railway CLI workspace audit was paged across the full
+2026-08-31 through 2026-09-20 window before the later read-only SSH runtime
+checks: 275 events, consisting of 148
 GitHub-source `staging` deployments for Backend/Storefront, 122 successful
 SSH authentications, and five backups. The SSH entries use one Railway user
 matching the current CLI login and one key fingerprint. Four source-IP groups
@@ -162,6 +175,17 @@ inspected. Stripe's historical API request logs are a Dashboard/Workbench
 surface, not a CLI history endpoint.
 Read-only or failed credential use would not appear in these event lists, so
 the result cannot establish that either key was never used or copied.
+
+The staging Backend also has a Resend API key and a TaxRate.io lookup key.
+A read-only request to [Resend's request-log API](https://resend.com/docs/api-reference/logs/list-logs)
+using the deployed key returned HTTP 403; the response does not establish
+whether the key is restricted or why access was denied. No historical
+TaxRate.io request-log API was found in its published documentation. The
+MinIO, MeiliSearch, PostgreSQL, and Redis credentials belong to services
+inside the Railway project; no independent audit sink for their credential
+use is configured. Their available service and network logs were covered by
+the Railway review above, but provider/account-level usage history remains
+unavailable through these credentials.
 
 Read-only Railway trigger inspection found exactly one GitHub trigger for
 each staging service, both on `staging` with `checkSuites: true` and

@@ -41,7 +41,7 @@ Brutal maximalist commerce experience for extreme music: MedusaJS v2 backend, Ne
 
 - **Backend**: Medusa core services, the official Stripe payment provider and webhook, Resend-powered notifications, retention/reconciliation jobs, and Meilisearch sync helpers.
 - **Storefront**: Next 16 App Router with React Compiler enabled, semantic same-origin cart/checkout APIs, Stripe Payment Element, Meilisearch-powered search, variant selectors, and optimistic cart updates.
-- **Package management**: `pnpm` 11.17.0. Node 26.5.0 is enforced through `.nvmrc`.
+- **Package management**: `pnpm` 11.17.0. Node 26.9.0 is enforced through `.nvmrc`.
 
 Operational health, privacy-bounded telemetry, SLOs, alert ownership, and safe
 first response are defined in
@@ -1070,7 +1070,7 @@ committed conversion.
 
 | Tool        | Version / Notes                                              |
 | ----------- | ------------------------------------------------------------ |
-| Node.js     | 26.5.0 (via `.nvmrc`)                                        |
+| Node.js     | 26.9.0 (via `.nvmrc`)                                        |
 | pnpm        | 11.17.0                                                      |
 | PostgreSQL  | 14+ (Railway provisioned or local)                           |
 | Redis       | optional-local; Medusa will fall back to in-memory if absent |
@@ -1679,7 +1679,7 @@ flowchart LR
 
 | Symptom                                        | Resolution                                                                                                                                                                              |
 | ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `pnpm run typecheck` fails with engine warning | Ensure `nvm use` applied (Node 26). The repository and staging builds use Node 26.5.0.                                                                                                  |
+| `pnpm run typecheck` fails with engine warning | Ensure `nvm use` applied (Node 26). The repository and staging builds use Node 26.9.0.                                                                                                  |
 | Storefront shows empty cart despite items      | Check `rr_cart_v1` for the storefront domain, the cart-signing secret/previous secret, and the same-origin `/api/cart` response.                                                        |
 | Payment form does not load                     | Verify test/live key mode matches, the `pmc_...` is active, Stripe origins and custom font loading are allowed, and `/api/checkout/payment-session` returns one official session.       |
 | Payment form reloads after changing windows    | Confirm the checkout refetch has the same revision/provider/status and that its in-memory projection retained the prepared client secret; persisted query storage must remain disabled. |

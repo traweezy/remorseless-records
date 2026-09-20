@@ -343,16 +343,16 @@ artifact consumed by `next start` in source-based Railway deployments. Only
 Storefront runtime Docker build so `server.js` exists without introducing the
 unsupported `next start` plus standalone pairing.
 
-The final image must run as UID 1000 on Node 26.5.0, expose its expected
+The final image must run as UID 1000 on Node 26.9.0, expose its expected
 health port, contain no npm/npx executable, and carry the source/revision OCI
 labels. Backend must contain Medusa CLI, the observability preload, and
 `scripts/runtime-release-prepare.mjs`. Storefront must contain `server.js`,
 `.next/static`, and `public`.
 
-Scan each exact image with Trivy 0.70.0, the reviewed GHCR database,
-vulnerability scanning only, `ignore-unfixed`, `CRITICAL,HIGH`, and exit code
-1. Then generate CycloneDX output and validate it against the exact image
-record with:
+Scan each exact image with Trivy 0.70.0 and the reviewed GHCR database.
+The image gate rejects every UNKNOWN, HIGH, and CRITICAL vulnerability,
+including findings without a listed fix. Generate CycloneDX output and
+validate it against the exact image record with:
 
 ```bash
 node scripts/write-runtime-image-record.mjs \
