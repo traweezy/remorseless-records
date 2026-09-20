@@ -34,40 +34,20 @@
   "auditIgnores": [
     {
       "id": "GHSA-337j-9hxr-rhxg",
-      "affectedPackages": [
-        "@remix-run/router@1.23.3",
-        "react-router-dom@6.30.4"
-      ],
-      "reason": "Medusa 2.18 requires React Router 6.30.4; the upstream security behavior is backported to the supported artifacts and exercised by the production-artifact regression verifier.",
+      "affectedPackages": ["react-router@6.30.6"],
+      "reason": "Medusa 2.18 uses React Router 6; the upstream constructor hardening is backported to the locked 6.30.6 artifacts and checked by the production-artifact regression verifier.",
       "evidence": [
-        "patches/@remix-run__router@1.23.3.patch",
-        "patches/react-router-dom@6.30.4.patch",
-        "scripts/verify-react-router-security.mjs"
-      ]
-    },
-    {
-      "id": "GHSA-jjmj-jmhj-qwj2",
-      "affectedPackages": [
-        "@remix-run/router@1.23.3",
-        "react-router-dom@6.30.4"
-      ],
-      "reason": "Medusa 2.18 requires React Router 6.30.4; the upstream security behavior is backported to the supported artifacts and exercised by the production-artifact regression verifier.",
-      "evidence": [
-        "patches/@remix-run__router@1.23.3.patch",
-        "patches/react-router-dom@6.30.4.patch",
+        "patches/react-router-dom@6.30.6.patch",
         "scripts/verify-react-router-security.mjs"
       ]
     },
     {
       "id": "GHSA-wrjc-x8rr-h8h6",
-      "affectedPackages": [
-        "@remix-run/router@1.23.3",
-        "react-router-dom@6.30.4"
-      ],
-      "reason": "Medusa 2.18 requires React Router 6.30.4; the upstream security behavior is backported to the supported artifacts and exercised by the production-artifact regression verifier.",
+      "affectedPackages": ["react-router@6.30.6"],
+      "reason": "Medusa 2.18 uses React Router 6; the upstream backslash navigation hardening is backported to the locked 6.30.6 artifacts and checked by the production-artifact regression verifier.",
       "evidence": [
-        "patches/@remix-run__router@1.23.3.patch",
-        "patches/react-router-dom@6.30.4.patch",
+        "patches/@remix-run__router@1.23.4.patch",
+        "patches/react-router-dom@6.30.6.patch",
         "scripts/verify-react-router-security.mjs"
       ]
     }

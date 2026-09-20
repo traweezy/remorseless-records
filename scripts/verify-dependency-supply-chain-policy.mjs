@@ -10,11 +10,7 @@ const policyPath = join(
   "security",
   "dependency-supply-chain-policy.json"
 )
-const expectedAuditIgnores = [
-  "GHSA-337j-9hxr-rhxg",
-  "GHSA-jjmj-jmhj-qwj2",
-  "GHSA-wrjc-x8rr-h8h6",
-]
+const expectedAuditIgnores = ["GHSA-337j-9hxr-rhxg", "GHSA-wrjc-x8rr-h8h6"]
 const expectedStorefrontAuditIgnores = []
 
 const parseYamlScalar = (source) => {

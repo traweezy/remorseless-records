@@ -62,7 +62,7 @@ overrides:
   "@aws-sdk/client-s3": ^3.1121.0
   "@aws-sdk/core": ^3.977.9
   "@isaacs/brace-expansion": ^5.0.1
-  "@remix-run/router": 1.23.3
+  "@remix-run/router": 1.23.4
   "@swc/core": 1.15.47
   "ajv@>=7.0.0 <8.18.0": ^8.20.0
   axios: ^1.18.0
@@ -100,8 +100,8 @@ overrides:
   postcss: ^8.5.26
   protobufjs: ^7.6.5
   qs: 6.16.0
-  react-router: 6.30.4
-  react-router-dom: 6.30.4
+  react-router: 6.30.6
+  react-router-dom: 6.30.6
   rollup: ^4.60.4
   semver: ^7.5.2
   sharp: 0.35.4

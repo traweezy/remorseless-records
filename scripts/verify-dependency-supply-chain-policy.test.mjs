@@ -207,13 +207,9 @@ describe("dependency supply-chain policy", () => {
         },
       ],
       auditIgnores: [
-        ...[
-          "GHSA-337j-9hxr-rhxg",
-          "GHSA-jjmj-jmhj-qwj2",
-          "GHSA-wrjc-x8rr-h8h6",
-        ].map((id) => ({
+        ...["GHSA-337j-9hxr-rhxg", "GHSA-wrjc-x8rr-h8h6"].map((id) => ({
           id,
-          affectedPackages: ["react-router-dom@6.30.4"],
+          affectedPackages: ["react-router@6.30.6"],
           reason:
             "A sufficiently detailed reason that explains the exact patched advisory and the behavioral evidence retained for it.",
           evidence: ["scripts/verify-react-router-security.mjs"],

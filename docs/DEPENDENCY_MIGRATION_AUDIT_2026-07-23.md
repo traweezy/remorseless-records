@@ -1,5 +1,16 @@
 # Dependency Migration Audit — 2026-07-23
 
+## Current security correction — September 20, 2026
+
+The historical 6.30.4/1.23.3 and three-audit-ignore descriptions below record
+the earlier migration. The security revision updates the Backend dashboard to
+React Router DOM 6.30.6 and `@remix-run/router` 1.23.4 for
+[GHSA-jjmj-jmhj-qwj2](https://github.com/advisories/GHSA-jjmj-jmhj-qwj2).
+Root and nested workspace overrides agree, the single root lockfile was
+regenerated with pinned pnpm 11, and the GHSA-jjmj audit ignore was removed.
+The two remaining v6 advisories retain narrow, production-artifact-tested
+backports. Exact-revision CI and Dependabot alert closure are pending.
+
 ## Follow-up security correction — September 14, 2026
 
 The first candidate was pushed as `2a76107`; both runtime-image CI validations

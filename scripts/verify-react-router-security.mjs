@@ -27,8 +27,8 @@ const storefrontRequire = createRequire(
 const reactRouterDomPackage = reactRouterDomRequire("./package.json")
 const remixRouterPackage = remixRouterRequire("./package.json")
 
-assert.equal(reactRouterDomPackage.version, "6.30.4")
-assert.equal(remixRouterPackage.version, "1.23.3")
+assert.equal(reactRouterDomPackage.version, "6.30.6")
+assert.equal(remixRouterPackage.version, "1.23.4")
 
 const remixRouter = remixRouterRequire("@remix-run/router")
 const mixedSeparatorPaths = ["//safe", "\\\\safe", "/\\safe", "\\/safe"]
@@ -169,6 +169,40 @@ try {
 
   assert.equal(window.location.origin, "https://localhost")
   assert.equal(window.location.pathname, "/safe")
+
+  const NavigationProbe = () => {
+    const navigate = reactRouterDom.useNavigate()
+    const handleNavigate = () => navigate("/safe/foo//bar:baz")
+    return React.createElement(
+      "button",
+      { type: "button", onClick: handleNavigate },
+      "navigate"
+    )
+  }
+
+  ReactDOM.flushSync(() => {
+    reactRoot.render(
+      React.createElement(
+        reactRouterDom.BrowserRouter,
+        { window },
+        React.createElement(NavigationProbe)
+      )
+    )
+  })
+
+  const button = document.querySelector("button")
+  assert.ok(button)
+  button.dispatchEvent(
+    new window.MouseEvent("click", {
+      bubbles: true,
+      button: 0,
+      cancelable: true,
+    })
+  )
+  await delay(0)
+
+  assert.equal(window.location.origin, "https://localhost")
+  assert.equal(window.location.pathname, "/safe/foo/bar:baz")
   reactRoot.unmount()
 } finally {
   jsdom.window.close()
@@ -187,5 +221,5 @@ try {
 }
 
 console.log(
-  "React Router 6.30.4 security backports verified in production artifacts."
+  "React Router 6.30.6 upstream fix and security backports verified in production artifacts."
 )
