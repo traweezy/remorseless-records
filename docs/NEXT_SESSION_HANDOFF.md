@@ -11,6 +11,70 @@ reviewed scope. Do not invent missing production, legal, tax, or provider facts.
 Use [PROJECT_MAP.md](PROJECT_MAP.md) for the indexed code/documentation entrypoints.
 Preserve unrelated `Default/` unread, untouched, and unstaged.
 
+### Accepted September 20 UTC four-commit recovery release: `6b5a089`
+
+Exact staging SHA `6b5a089faa6ace796e4b986a90a1f8bcbb80e9fc` passed Root
+CI `35491610338`, Backend CI `35491610355`, Storefront CI `35491610352`,
+and Runtime Images `35491610347`. Root's new media-restore boundary suite
+passed 219 tests. Backend's disposable integration job `106027660104` passed
+the exact scanned Redis/Perl and PostgreSQL fixtures with zero scanner
+findings, including synthetic scheduled-failure BullMQ replay and fake-RESP
+coverage. Storefront passed 81 responsive, 20 launch-matrix and 48 critical
+cross-browser cases, plus Lighthouse, accessibility, build and CodeQL gates.
+The browser job overlapped CodeQL by 1 minute 32 seconds and completed about
+1 minute 45 seconds sooner after the push than the previous accepted run.
+Runtime candidate images each still showed four CRITICAL and 52 HIGH
+findings, zero fixable HIGH/CRITICAL under the current policy; publication
+skipped on staging and the named release-owner risk decision remains open.
+
+Railway Backend deployment `94a4e091-8831-40be-a31c-1b526c0269c6` and
+Storefront deployment `c8d6e028-a6ea-4c5f-8e73-15b6ea43be3c` both reached
+`SUCCESS` at that exact SHA. Both `/live` and `/ready` returned 200/ok;
+Backend passed all 11 checks, operations and retention were healthy, and its
+05:40:03 UTC scheduler heartbeat had zero failures or incident. Storefront
+home, catalog, product and private-backed search passed. Bounded candidate
+error and HTTP 5xx filters were empty. Railway source-build images are
+distinct from the scanned CI runtime candidates.
+
+The release includes the guarded off-site media restore drill with synthetic
+acceptance, corrected offline scheduled-job categories and raw BullMQ `atm`
+buckets, and CI overlap while retaining mandatory build and CodeQL gates.
+A receipt-bound, worker-free rerun of the verified private AOF found 164
+failed checkout-payment reconciliation entries, 73 failed quota-sync
+entries, zero unlisted scheduled categories, and raw `atm=1` on all 237
+scheduled entries. Its count-only report remains private under `/tmp`,
+SHA-256
+`04ac6bc4aeaddd0cdea450a9f0555e9ee0f6888ea6d113d45bd69dfcc42945b2`.
+These buckets do not establish cause, business impact or retry safety;
+`queueReconciled` and `businessReconciled` remain false. The media drill has
+only synthetic acceptance, not a live off-site restore.
+
+### September 20 UTC offline PostgreSQL business-parity diagnostic
+
+Commit `682304a` adds a receipt-bound `business-parity` mode, which ran twice
+against an isolated PostgreSQL 16.15 restore of the verified private staging
+snapshot. The network-isolated target had a different system ID. All 171
+physical tables restored; its owned container, volume and directory were
+removed afterward.
+The two runs yielded the same count-only report, SHA-256
+`04fd4b303095e52cb9e5d9f06dffa7a466283ff6198ea3151f0f381c8c4cb47a`,
+held at `/tmp/rr-pg-business-parity-20260920/business-parity.json` (0600 in
+a 0700 directory). It scanned 67 carts, seven orders, seven recognized Stripe
+payments and captures, two active tax-evidence rows, ten lifecycle events,
+and no refunds. All checked link, orphan, provider, event, capture and refund
+mismatch buckets were zero.
+
+Five Stripe payments lacked matching tax-evidence rows; both
+tax-evidence/payment pairs differed under the USD amount comparison. A
+separate bounded count-only probe found neither direct nor
+major-unit-times-100 matches for those two pairs (SHA-256
+`99830f8ff89f07d6311e6c92977d38f4a5fc0ff1c1adc6e6cef9d8b2db75c168`).
+This does not establish cause, tax liability or customer impact. Private
+record review and bounded, account-bound Stripe test-mode comparison remain
+open; `businessReconciled` stays false. See
+[infrastructure recovery](INFRASTRUCTURE_RECOVERY.md) for command guards and
+limits.
+
 ### Accepted September 20 UTC three-commit release: `877ea06`
 
 Exact staging SHA `877ea0646d53b280acdfedd2537db3f1ace3107a`
@@ -32,19 +96,6 @@ failures. Storefront home, catalog, product detail, and same-origin search
 passed. Bounded candidate error and HTTP 5xx filters were empty. No natural
 client disconnect occurred, so the live `request_cancelled` path remains
 unobserved despite local and CI tests.
-
-The next local batch is not yet deployed: `d8510bb` overlaps long CI jobs with
-CodeQL while retaining the mandatory build/CodeQL release gates; `dc58763`
-corrects offline scheduled-job categories and raw BullMQ `atm` buckets;
-`24a509d` adds a guarded off-site media restore drill. A receipt-bound
-worker-free rerun of the verified private AOF found 164 failed checkout-payment
-reconciliation entries, 73 failed quota-sync entries, zero unlisted scheduled
-categories, and raw `atm=1` on all 237 scheduled entries. Its count-only report
-is private under `/tmp`, SHA-256
-`04ac6bc4aeaddd0cdea450a9f0555e9ee0f6888ea6d113d45bd69dfcc42945b2`.
-The stored categories and counters do not establish cause, business impact,
-or retry safety; queue and business reconciliation remain false. The media
-drill has only synthetic acceptance, not a live off-site restore.
 
 ### Accepted September 20 UTC source-bound diagnostic release: `9020b77`
 
