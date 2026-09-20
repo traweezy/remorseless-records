@@ -133,6 +133,11 @@ export type StripeEvidenceIntent = {
   status: PaymentIntentStatus
 }
 
+export type StripeEvidenceIntentSummary = Pick<
+  StripeEvidenceIntent,
+  "amountMinor" | "currencyCode" | "id" | "livemode"
+>
+
 export type StripeEvidenceRefund = {
   amount: number
   currencyCode: string
@@ -167,6 +172,9 @@ export type StripeEvidenceReader = {
     objectId: string
   }) => Promise<StripeLifecycleObjectSnapshot>
   readIntent: (paymentIntentId: string) => Promise<StripeEvidenceIntent>
+  readIntentSummary: (
+    paymentIntentId: string
+  ) => Promise<StripeEvidenceIntentSummary>
 }
 
 export class StripeEvidenceClientError extends Error {
@@ -428,6 +436,26 @@ const intentFrom = (
   }
 }
 
+const intentSummaryFrom = (
+  value: unknown,
+  expectedId: string
+): StripeEvidenceIntentSummary => {
+  const intent = asRecord(value)
+  if (
+    intent?.object !== "payment_intent" ||
+    intent.id !== expectedId ||
+    typeof intent.livemode !== "boolean"
+  ) {
+    return fail("invalid_response")
+  }
+  return {
+    amountMinor: positiveInteger(intent.amount),
+    currencyCode: currencyFrom(intent.currency),
+    id: expectedId,
+    livemode: intent.livemode,
+  }
+}
+
 const associationAttemptFrom = (
   value: unknown
 ): StripeEvidenceAssociationAttempt => {
@@ -626,6 +654,10 @@ export const createStripeEvidenceReader = ({
   const deadlineAt = Date.now() + timeoutFrom(timeoutMs)
   const retryInput = onRetry ? { onRetry } : {}
   const intents = new Map<string, Promise<StripeEvidenceIntent>>()
+  const intentSummaries = new Map<
+    string,
+    Promise<StripeEvidenceIntentSummary>
+  >()
   const readIntent = (
     paymentIntentId: string
   ): Promise<StripeEvidenceIntent> => {
@@ -652,6 +684,27 @@ export const createStripeEvidenceReader = ({
   }
 
   return {
+    readIntentSummary: (paymentIntentId) => {
+      if (!boundedId(paymentIntentId, /^pi_[A-Za-z0-9]+$/)) {
+        return Promise.reject(new StripeEvidenceClientError("invalid_request"))
+      }
+      const existing = intentSummaries.get(paymentIntentId)
+      if (existing) return existing
+      // Diagnostic reads have an eight-request ceiling including account
+      // identity, so this path deliberately makes one SDK GET with no retry.
+      const request = Promise.resolve()
+        .then(() =>
+          client.paymentIntents.retrieve(
+            paymentIntentId,
+            {},
+            requestOptions(deadlineAt)
+          )
+        )
+        .then((value) => intentSummaryFrom(value, paymentIntentId))
+        .catch(failFrom)
+      intentSummaries.set(paymentIntentId, request)
+      return request
+    },
     readEvidence: async ({ paymentIntentId, provider }) => {
       if (
         !boundedId(paymentIntentId, /^pi_[A-Za-z0-9]+$/) ||

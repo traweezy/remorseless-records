@@ -99,6 +99,38 @@ const readerWith = (
   })
 
 describe("Stripe evidence safe-read client", () => {
+  it("reads a minimal PaymentIntent summary once without charge expansion", async () => {
+    const intentRetrieve = jest.fn().mockResolvedValue({
+      object: "payment_intent",
+      id: "pi_test",
+      amount: 1080,
+      currency: "usd",
+      livemode: false,
+    })
+    const reader = readerWith(clientWith({ intentRetrieve }))
+    await expect(reader.readIntentSummary("pi_test")).resolves.toEqual({
+      amountMinor: 1080,
+      currencyCode: "usd",
+      id: "pi_test",
+      livemode: false,
+    })
+    expect(intentRetrieve).toHaveBeenCalledWith(
+      "pi_test",
+      {},
+      expect.objectContaining({
+        maxNetworkRetries: 0,
+        timeout: expect.any(Number),
+      })
+    )
+    const rejected = jest.fn().mockRejectedValue({ statusCode: 503 })
+    await expect(
+      readerWith(clientWith({ intentRetrieve: rejected })).readIntentSummary(
+        "pi_test"
+      )
+    ).rejects.toEqual(new StripeEvidenceClientError("provider_unavailable"))
+    expect(rejected).toHaveBeenCalledTimes(1)
+  })
+
   it("returns a validated evidence snapshot with bounded request options", async () => {
     const client = clientWith()
 

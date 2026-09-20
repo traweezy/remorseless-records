@@ -3160,7 +3160,10 @@ Both commands explicitly reported that no files or database records changed.
       acceptance plus worker-free isolated startup/restart of the captured set.
 - [ ] Reconcile BullMQ jobs and locks against the live capture window and
       reconcile order/payment state with PostgreSQL and Stripe before any
-      worker or traffic cutover.
+      worker or traffic cutover. A guarded, read-only test-mode Stripe
+      comparison now exists for a verified isolated PostgreSQL restore, but
+      the staging account ID has not been independently pinned and no
+      provider read or full business reconciliation has occurred.
 - [ ] Set and test a capacity-aware Redis memory ceiling and compatible
       persistence/eviction policy; staging currently reports `maxmemory=0` and
       `noeviction` with zero evictions and zero server latency events.

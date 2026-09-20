@@ -4,6 +4,7 @@ import { createHash, randomUUID } from "node:crypto"
 import {
   mkdir,
   mkdtemp,
+  lstat,
   readFile,
   readdir,
   rm,
@@ -26,6 +27,31 @@ import {
 const scripts = fileURLToPath(new URL("./", import.meta.url))
 const sourcePassword = "local_integration_only"
 const sha256 = (bytes) => createHash("sha256").update(bytes).digest("hex")
+const stripeFixtureSql = `
+CREATE TABLE public.cart (id text PRIMARY KEY, deleted_at timestamptz);
+CREATE TABLE public."order" (id text PRIMARY KEY, deleted_at timestamptz);
+CREATE TABLE public.payment_collection (id text PRIMARY KEY, amount numeric, authorized_amount numeric, captured_amount numeric, currency_code text, deleted_at timestamptz);
+CREATE TABLE public.payment_session (id text PRIMARY KEY, payment_collection_id text, deleted_at timestamptz);
+CREATE TABLE public.payment (id text PRIMARY KEY, amount numeric, currency_code text, provider_id text, data jsonb, payment_collection_id text, payment_session_id text, created_at timestamptz, deleted_at timestamptz);
+CREATE TABLE public.capture (id text PRIMARY KEY, amount numeric, payment_id text, deleted_at timestamptz);
+CREATE TABLE public.refund (id text PRIMARY KEY, amount numeric, payment_id text, deleted_at timestamptz);
+CREATE TABLE public.order_cart (id text PRIMARY KEY, order_id text, cart_id text, deleted_at timestamptz);
+CREATE TABLE public.order_payment_collection (id text PRIMARY KEY, order_id text, payment_collection_id text, deleted_at timestamptz);
+CREATE TABLE public.cart_payment_collection (id text PRIMARY KEY, cart_id text, payment_collection_id text, deleted_at timestamptz);
+CREATE TABLE public.tax_quote_evidences (id text PRIMARY KEY, cart_id text, order_id text, payment_intent_id text, amount_minor integer, currency_code text, status text, created_at timestamptz, deleted_at timestamptz);
+CREATE TABLE public.stripe_lifecycle_events (id text PRIMARY KEY, payment_intent_id text, status text, livemode boolean, deleted_at timestamptz);
+INSERT INTO public.cart VALUES ('cart_private_canary', NULL);
+INSERT INTO public."order" VALUES ('order_private_canary', NULL);
+INSERT INTO public.payment_collection VALUES ('paycol_private_canary', 25.00, 25.00, 25.00, 'usd', NULL);
+INSERT INTO public.payment_session VALUES ('payses_private_canary', 'paycol_private_canary', NULL);
+INSERT INTO public.payment VALUES ('pay_private_canary', 25.00, 'usd', 'pp_stripe_stripe', '{"id":"pi_privatecanary","amount":2500,"currency":"usd"}', 'paycol_private_canary', 'payses_private_canary', now(), NULL);
+INSERT INTO public.capture VALUES ('cap_private_canary', 25.00, 'pay_private_canary', NULL);
+INSERT INTO public.order_cart VALUES ('ordercart_private_canary', 'order_private_canary', 'cart_private_canary', NULL);
+INSERT INTO public.order_payment_collection VALUES ('ordpay_private_canary', 'order_private_canary', 'paycol_private_canary', NULL);
+INSERT INTO public.cart_payment_collection VALUES ('capaycol_private_canary', 'cart_private_canary', 'paycol_private_canary', NULL);
+INSERT INTO public.tax_quote_evidences VALUES ('tax_private_canary', 'cart_private_canary', 'order_private_canary', 'pi_privatecanary', 2500, 'usd', 'succeeded', now(), NULL);
+INSERT INTO public.stripe_lifecycle_events VALUES ('evt_private_canary', 'pi_privatecanary', 'processed', false, NULL);
+`
 
 const freePort = async () => {
   const server = createServer()
@@ -59,6 +85,25 @@ test("isolated target arguments reject missing, extra and implicit apply flags",
     parseArguments(["cleanup", "--target-dir", "/tmp/x", "--force", "1"])
   )
   assert.throws(() => parseArguments(["create", "--base-dir", "/tmp/x"]))
+  assert.deepEqual(
+    parseArguments([
+      "stripe-parity",
+      "--target-dir",
+      "/tmp/x",
+      "--output",
+      "/tmp/private/report.json",
+    ]),
+    {
+      mode: "stripe-parity",
+      options: {
+        "--target-dir": "/tmp/x",
+        "--output": "/tmp/private/report.json",
+      },
+    }
+  )
+  assert.throws(() =>
+    parseArguments(["stripe-parity", "--target-dir", "/tmp/x"])
+  )
 })
 
 test("bounded command hides child stderr and fails on deadline", async () => {
@@ -159,6 +204,7 @@ test("pinned isolated target restores only a hash-bound synthetic source", {
     await sourceQuery(
       "CREATE SCHEMA app; CREATE TABLE app.items (id integer PRIMARY KEY, name text NOT NULL); INSERT INTO app.items VALUES (1, 'synthetic')"
     )
+    await sourceQuery(stripeFixtureSql)
     const sourceSystemId = await sourceQuery(
       "SELECT system_identifier FROM pg_catalog.pg_control_system()"
     )
@@ -186,8 +232,8 @@ test("pinned isolated target restores only a hash-bound synthetic source", {
     const scope = {
       schemaVersion: 1,
       source: {
-        projectId: uuid(),
-        environmentId: uuid(),
+        projectId: "1f39263a-25e4-4d69-abc2-f0287b331d1e",
+        environmentId: "799a2f98-f819-495d-b8b6-12e71af86568",
         serviceId: uuid(),
         serviceInstanceId: uuid(),
         deploymentId: uuid(),
@@ -373,6 +419,74 @@ test("pinned isolated target restores only a hash-bound synthetic source", {
       (await main(["verify", "--target-dir", target])).status,
       "isolated_restored_target_verified"
     )
+    const stripeEnvironment = {
+      STRIPE_API_KEY: "sk_test_synthetic_canary",
+      RR_STRIPE_EXPECTED_ACCOUNT_ID: "acct_syntheticcanary",
+      RAILWAY_PROJECT_ID: "1f39263a-25e4-4d69-abc2-f0287b331d1e",
+      RAILWAY_ENVIRONMENT_ID: "799a2f98-f819-495d-b8b6-12e71af86568",
+      RAILWAY_SERVICE_ID: "99d4fd5e-955b-416a-9078-0266bcf949d2",
+      RAILWAY_SERVICE_NAME: "Backend",
+    }
+    const previousEnvironment = Object.fromEntries(
+      Object.keys(stripeEnvironment).map((key) => [key, process.env[key]])
+    )
+    const stripeOutput = join(fixture, "stripe-parity.json")
+    try {
+      Object.assign(process.env, stripeEnvironment)
+      const stripeResult = await main(
+        ["stripe-parity", "--target-dir", target, "--output", stripeOutput],
+        {
+          runStripeRead: async (records) => {
+            assert.equal(records.length, 1)
+            return {
+              schemaVersion: 1,
+              source: "provided_private_descriptor_and_stripe_test_mode",
+              readOnly: true,
+              accountVerified: true,
+              testModeVerified: true,
+              businessReconciled: false,
+              scanned: {
+                paymentIntents: 1,
+                taxEvidencePairs: 1,
+                missingTaxEvidence: 0,
+                archivedProviderAmounts: 1,
+                archivedProviderCurrencies: 1,
+              },
+              mismatches: {
+                medusaAmount: 0,
+                medusaCurrency: 0,
+                providerAmount: 0,
+                providerCurrency: 0,
+                taxAmount: 0,
+                taxCurrency: 0,
+              },
+            }
+          },
+        }
+      )
+      assert.equal(stripeResult.status, "stripe_parity_reported")
+      assert.equal(stripeResult.businessReconciled, false)
+      const report = JSON.parse(await readFile(stripeOutput, "utf8"))
+      assert.equal(report.scanned.paymentIntents, 1)
+      assert.equal(
+        report.source,
+        "verified_isolated_postgres_restore_and_stripe_test_mode"
+      )
+      assert.equal(
+        report.sourceScopeSha256,
+        sha256(await readFile(sourceScopePath))
+      )
+      assert.equal((await lstat(stripeOutput)).mode & 0o077, 0)
+      const raw = JSON.stringify(report)
+      assert.ok(!raw.includes("pi_privatecanary"))
+      assert.ok(!raw.includes("acct_syntheticcanary"))
+      assert.ok(!raw.includes("sk_test_synthetic_canary"))
+    } finally {
+      for (const [key, value] of Object.entries(previousEnvironment)) {
+        if (value === undefined) delete process.env[key]
+        else process.env[key] = value
+      }
+    }
     await targetQuery("DELETE FROM app.items")
     await assert.rejects(main(["verify", "--target-dir", target]))
     await targetQuery("INSERT INTO app.items VALUES (1, 'synthetic')")

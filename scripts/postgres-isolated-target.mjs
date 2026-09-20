@@ -26,6 +26,14 @@ import {
   parseBusinessParitySchema,
 } from "./lib/postgres-business-parity.mjs"
 import {
+  parsePostgresStripeDescriptor,
+  postgresStripeDescriptorSql,
+} from "./lib/postgres-stripe-parity.mjs"
+import {
+  parseStripeBusinessParityReport,
+  runStripeBusinessParity,
+} from "./lib/stripe-business-parity-runner.mjs"
+import {
   createPostgresClientEnvironment,
   hashFileSha256,
 } from "./lib/postgres-logical-backup.mjs"
@@ -64,15 +72,17 @@ const containerIdPattern = /^[a-f0-9]{64}$/u
 const sha256Pattern = /^[a-f0-9]{64}$/u
 const uuidPattern =
   /^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/u
-const help = `Usage: postgres-isolated-target <create|verify|preflight|apply|business-parity|cleanup> [options]
+const help = `Usage: postgres-isolated-target <create|verify|preflight|apply|business-parity|stripe-parity|cleanup> [options]
 create --base-dir <absolute-private-dir> --source-scope <path> --archive <path> --manifest <path> --receipt <path>
 verify --target-dir <created-dir>
 preflight --target-dir <created-dir>
 apply --target-dir <created-dir> --confirm <fingerprint>
 business-parity --target-dir <restored-dir>
+stripe-parity --target-dir <restored-dir> --output <private-new-file>
 cleanup --target-dir <created-dir>
 Uses only the pinned local Docker default-context image, a private Unix socket,
-and an in-process loopback relay. No provider connection or credentials are used.
+and an in-process loopback relay. Only stripe-parity makes bounded, read-only
+Stripe test-mode requests from the host, with a pinned expected account ID.
 Apply is single-use: a failed or interrupted attempt requires inspection and cleanup.
 `
 
@@ -627,7 +637,7 @@ const targetEnvironment = (state, password) => ({
 const targetUrl = (state, password) =>
   `postgresql://postgres:${encodeURIComponent(password)}@127.0.0.1:${state.port}/postgres?sslmode=disable`
 
-const query = (state, password, sql, timeoutMs = 10_000) =>
+const query = (state, password, sql, timeoutMs = 10_000, maxBytes = 65_536) =>
   runBounded(
     psqlPath,
     [
@@ -639,7 +649,7 @@ const query = (state, password, sql, timeoutMs = 10_000) =>
       "--set=ON_ERROR_STOP=1",
       `--command=${sql}`,
     ],
-    { environment: targetEnvironment(state, password), timeoutMs }
+    { environment: targetEnvironment(state, password), timeoutMs, maxBytes }
   )
 
 const targetFactsSql = `SELECT pg_catalog.json_build_object(
@@ -1093,6 +1103,7 @@ export const parseArguments = (args) => {
       "preflight",
       "apply",
       "business-parity",
+      "stripe-parity",
       "cleanup",
     ].includes(mode)
   )
@@ -1108,6 +1119,7 @@ export const parseArguments = (args) => {
     preflight: ["--target-dir"],
     apply: ["--target-dir", "--confirm"],
     "business-parity": ["--target-dir"],
+    "stripe-parity": ["--target-dir", "--output"],
     cleanup: ["--target-dir"],
   }[mode]
   assert.equal(tail.length, allowed.length * 2)
@@ -1125,7 +1137,7 @@ export const parseArguments = (args) => {
 
 export const main = async (
   args = process.argv.slice(2),
-  { signal, runRestoreCommand } = {}
+  { signal, runRestoreCommand, runStripeRead = runStripeBusinessParity } = {}
 ) => {
   signal?.throwIfAborted()
   const { mode, options } = parseArguments(args)
@@ -1189,6 +1201,121 @@ export const main = async (
         return report
       } finally {
         await closeRelay()
+      }
+    }
+    if (mode === "stripe-parity") {
+      assert.equal(state.phase, "restored")
+      const outputPath = options["--output"]
+      assert.equal(resolve(outputPath), outputPath)
+      await canonicalPrivateDirectory(dirname(outputPath))
+      const expectedAccountId = process.env.RR_STRIPE_EXPECTED_ACCOUNT_ID
+      const apiKey = process.env.STRIPE_API_KEY
+      assert.ok(/^acct_[A-Za-z0-9]{1,251}$/.test(expectedAccountId ?? ""))
+      assert.ok(/^(?:sk|rk)_test_[A-Za-z0-9_]+$/.test(apiKey ?? ""))
+      assert.equal(
+        process.env.RAILWAY_PROJECT_ID,
+        "1f39263a-25e4-4d69-abc2-f0287b331d1e"
+      )
+      assert.equal(
+        process.env.RAILWAY_ENVIRONMENT_ID,
+        "799a2f98-f819-495d-b8b6-12e71af86568"
+      )
+      assert.equal(
+        process.env.RAILWAY_SERVICE_ID,
+        "99d4fd5e-955b-416a-9078-0266bcf949d2"
+      )
+      assert.equal(process.env.RAILWAY_SERVICE_NAME, "Backend")
+      const receipt = await assertSourceScope(state)
+      const scopeBytes = await readFile(state.sourceScopePath)
+      assert.equal(sha256(scopeBytes), state.sourceScopeSha256)
+      const scope = JSON.parse(scopeBytes.toString("utf8"))
+      assert.equal(scope.source.projectId, process.env.RAILWAY_PROJECT_ID)
+      assert.equal(
+        scope.source.environmentId,
+        process.env.RAILWAY_ENVIRONMENT_ID
+      )
+      const { facts, password } = await verifyTarget(state, {
+        expectEmpty: false,
+        receipt,
+      })
+      const closeRelay = await openRelay(state)
+      let providerReport
+      try {
+        parseBusinessParitySchema(
+          await query(state, password, businessParitySchemaSql, 10_000)
+        )
+        const internalReport = parseBusinessParityOutput(
+          await query(state, password, businessParitySql, 10_000)
+        )
+        assert.equal(
+          internalReport.scanned.payments,
+          internalReport.scanned.stripePayments
+        )
+        for (const [key, count] of Object.entries(internalReport.mismatches))
+          if (
+            key !== "stripePaymentTaxEvidenceMissing" &&
+            key !== "taxAmountUsd"
+          )
+            assert.equal(count, 0)
+        const records = parsePostgresStripeDescriptor(
+          await query(
+            state,
+            password,
+            postgresStripeDescriptorSql,
+            10_000,
+            8192
+          ),
+          {
+            payments: internalReport.scanned.stripePayments,
+            taxEvidence: internalReport.scanned.taxEvidence,
+          }
+        )
+        signal?.throwIfAborted()
+        providerReport = parseStripeBusinessParityReport(
+          JSON.stringify(
+            await runStripeRead(records, {
+              apiKey,
+              expectedAccountId,
+              signal,
+            })
+          ),
+          {
+            payments: records.length,
+            taxEvidence: internalReport.scanned.taxEvidence,
+          }
+        )
+        signal?.throwIfAborted()
+        assert.equal(
+          JSON.parse(await query(state, password, targetFactsSql)).systemId,
+          facts.systemId
+        )
+        await assertSourceScope(state)
+      } finally {
+        await closeRelay()
+      }
+      const report = {
+        ...providerReport,
+        source: "verified_isolated_postgres_restore_and_stripe_test_mode",
+        sourceScopeSha256: state.sourceScopeSha256,
+      }
+      const output = await open(outputPath, "wx", 0o600)
+      let accepted = false
+      try {
+        await output.writeFile(`${JSON.stringify(report)}\n`)
+        await output.sync()
+        accepted = true
+      } finally {
+        await output.close()
+        if (!accepted) await rm(outputPath, { force: true })
+      }
+      const outputMetadata = await lstat(outputPath)
+      assert.ok(outputMetadata.isFile() && !outputMetadata.isSymbolicLink())
+      assert.equal(outputMetadata.mode & 0o077, 0)
+      return {
+        status: "stripe_parity_reported",
+        output: outputPath,
+        accountVerified: true,
+        businessReconciled: false,
       }
     }
     return restore(state, options, mode === "apply", signal, runRestoreCommand)

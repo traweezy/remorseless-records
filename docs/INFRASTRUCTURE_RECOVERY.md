@@ -1412,6 +1412,25 @@ tables restored, and its container, volume and directory were independently
 found absent after cleanup. No live PostgreSQL or Stripe read occurred;
 `businessReconciled` remains false.
 
+The optional `stripe-parity` mode extends this isolated-target workflow with
+an account-bound, read-only Stripe **test-mode** comparison. It rechecks the
+source receipt and archive, restored table inventory, distinct PostgreSQL
+system ID, and exact staging Backend Railway project, environment, and
+service before reading a bounded private descriptor from the restored
+database. It fails closed unless `STRIPE_API_KEY` is a test key and
+`RR_STRIPE_EXPECTED_ACCOUNT_ID` is an independently verified `acct_` ID.
+After one account-identity GET, it makes at most seven serial PaymentIntent
+GETs without expanding charge data or retrying. A shared 30-second provider
+deadline, fixed input/output byte caps, and a 0600 count-only report limit
+exposure. The comparison checks current provider amount/currency against
+Medusa payment, archived provider-data, and linked tax evidence; it uses the
+checkout's major-to-minor rounding rule. It cannot determine historical
+cause, tax liability, retry safety, or full business reconciliation, so its
+report always retains `businessReconciled: false`. The staging configuration
+does not contain an independent expected account ID; no Stripe request has
+been made with this mode yet. Run it only after supplying that account anchor
+and completing local and CI validation of the new path.
+
 An offline measurement on September 20 reused the previously verified private
 staging snapshot and a fresh, isolated PostgreSQL 16.15 restore. The target had
 no network or published port, and its system ID differed from the source.
