@@ -204,6 +204,8 @@ test("reports the disposable fixture as degraded rather than accepting disabled 
   assert.equal(report.memory.serviceLimitBytes, 268_435_456)
   assert.ok(Number.isSafeInteger(report.memory.usedBytes))
   assert.ok(report.memory.usedBytes > 0)
+  assert.ok(report.memory.peakUsedBytes >= report.memory.usedBytes)
+  assert.equal(report.memory.policyMaxmemoryBytes, 187_904_819)
   assert.ok(Number.isSafeInteger(report.stats.keyCount))
   assert.ok(report.stats.expiringKeyCount <= report.stats.keyCount)
 })

@@ -29,6 +29,7 @@ const fixture = ({
       maxmemory: config.maxmemory,
       maxmemory_policy: config["maxmemory-policy"],
       used_memory: "1048576",
+      used_memory_peak: "2097152",
       mem_not_counted_for_evict: "0",
       used_memory_rss: "2097152",
       mem_fragmentation_ratio: "2.00",
@@ -100,6 +101,9 @@ test("returns immutable credential-free evidence for the bounded standalone poli
   assert.equal(result.status, "healthy")
   assert.deepEqual(result.reasons, [])
   assert.equal(result.memory.serviceLimitBytes, serviceLimit)
+  assert.equal(result.memory.policyMaxmemoryBytes, 93_952_409)
+  assert.equal(result.memory.peakUsedBytes, 2_097_152)
+  assert.equal(result.memory.lastForkCowBytes, 0)
   assert.equal(result.memory.countedBytes, 1048576)
   assert.equal(result.persistence.rdbSaveRuleCount, 3)
   assert.deepEqual(result.stats, {
@@ -210,6 +214,7 @@ test("uses an exact inclusive 70 percent maxmemory budget", () => {
     fixture({ settings: { maxmemory: String(allowed) }, memoryLimitBytes })
   )
   assert.equal(healthy.status, "healthy")
+  assert.equal(healthy.memory.policyMaxmemoryBytes, allowed)
   assert.equal(
     evaluateRedisCapacity(
       fixture({
@@ -226,9 +231,50 @@ test("uses an exact inclusive 70 percent maxmemory budget", () => {
   )
 })
 
+test("flags a historical usage peak above the service budget without proposing a setting", () => {
+  const result = evaluateRedisCapacity(
+    fixture({
+      sections: { memory: { used_memory_peak: String(90 * 1_024 ** 2) } },
+    })
+  )
+  assert.deepEqual(result.reasons, ["historical_peak_over_capacity_budget"])
+  assert.equal(result.memory.peakUsedBytes, 90 * 1_024 ** 2)
+  assert.equal(result.memory.policyMaxmemoryBytes, 93_952_409)
+  assert.doesNotMatch(
+    JSON.stringify(result),
+    /recommended|maxmemoryCandidate/iu
+  )
+})
+
+test("flags a past fork COW stress scenario at the exact 90 percent threshold", () => {
+  const lastForkCowBytes = Math.ceil(serviceLimit * 0.9) - 2_097_152
+  const result = evaluateRedisCapacity(
+    fixture({
+      sections: {
+        persistence: { rdb_last_cow_size: String(lastForkCowBytes) },
+      },
+    })
+  )
+  assert.deepEqual(result.reasons, ["historical_fork_cow_headroom_low"])
+  assert.equal(result.memory.lastForkCowBytes, lastForkCowBytes)
+  assert.equal(result.persistence.rdbLastCowBytes, lastForkCowBytes)
+  const below = evaluateRedisCapacity(
+    fixture({
+      sections: {
+        persistence: { aof_last_cow_size: String(lastForkCowBytes - 1) },
+      },
+    })
+  )
+  assert.equal(below.status, "healthy")
+})
+
 test("separates counted maxmemory use from RSS service headroom", () => {
   const sections = {
-    memory: { used_memory: defaults.maxmemory, mem_not_counted_for_evict: "1" },
+    memory: {
+      used_memory: defaults.maxmemory,
+      used_memory_peak: defaults.maxmemory,
+      mem_not_counted_for_evict: "1",
+    },
   }
   assert.equal(evaluateRedisCapacity(fixture({ sections })).status, "healthy")
   sections.memory.mem_not_counted_for_evict = "0"
@@ -466,12 +512,14 @@ test("rejects malformed, missing, duplicate, control-bearing, and oversized INFO
   for (const [section, field] of [
     ["server", "uptime_in_seconds"],
     ["memory", "used_memory"],
+    ["memory", "used_memory_peak"],
     ["persistence", "aof_last_write_status"],
     ["persistence", "aof_pending_bio_fsync"],
     ["stats", "evicted_keys"],
     ["replication", "role"],
   ])
     malformed(fixture({ sections: { [section]: { [field]: undefined } } }))
+  malformed(fixture({ sections: { memory: { used_memory_peak: "1048575" } } }))
   const input = fixture()
   input.info.stats += "evicted_keys:0\r\n"
   malformed(input)

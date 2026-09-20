@@ -43,6 +43,7 @@ const healthyObservation = () => ({
       maxmemory: "67108864",
       maxmemory_policy: "noeviction",
       used_memory: "1048576",
+      used_memory_peak: "2097152",
       mem_not_counted_for_evict: "0",
       used_memory_rss: "2097152",
       mem_fragmentation_ratio: "2.00",
@@ -259,6 +260,7 @@ test("audit help works without credentials and describes read-only limits", asyn
   assert.match(result.stdout, /REDIS_AUDIT_TIMEOUT_MS/u)
   assert.match(result.stdout, /read.only/iu)
   assert.match(result.stdout, /certificate verification/u)
+  assert.match(result.stdout, /not a proposed\nmaxmemory setting/u)
 })
 
 test("CLI rejects unknown, duplicate, positional, and mixed-help arguments", async () => {
@@ -306,6 +308,9 @@ test("healthy CLI accepts a package separator and observes exact read-only comma
       assert.equal(report.event, "redis.capacity_audit.completed")
       assert.equal(report.status, "healthy")
       assert.deepEqual(report.reasons, [])
+      assert.equal(report.memory.policyMaxmemoryBytes, 93_952_409)
+      assert.equal(report.memory.peakUsedBytes, 2_097_152)
+      assert.equal(report.memory.lastForkCowBytes, 0)
       assert.match(report.endpointFingerprint, /^[0-9a-f]{64}$/u)
       assert.ok(Number.isSafeInteger(report.durationMs))
       assert.deepEqual(commands, [

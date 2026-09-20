@@ -1514,6 +1514,21 @@ is an additional repository headroom warning, not a guarantee below that
 threshold. Fragmentation, fork duration and prior copy-on-write sizes remain
 observations for capacity review, not a replacement for a load test.
 
+The report also prints the exact, floor-rounded 70% policy upper bound and
+Redis's `used_memory_peak` since the current process started. A peak above that
+bound adds `historical_peak_over_capacity_budget`; it includes memory that may
+not count toward eviction and is a conservative review flag, not a chosen
+`maxmemory` value. The larger of the last RDB/AOF copy-on-write observations
+appears as `lastForkCowBytes`. If current RSS plus that historical COW amount
+would reach 90% of the declared service limit, the audit adds
+`historical_fork_cow_headroom_low` (unless current RSS has already triggered
+`rss_headroom_low`). The two measurements are from different times. A zero COW
+value may mean that no relevant fork has completed; a nonzero value cannot
+bound a future write-heavy fork. Neither a passing peak check nor this scenario
+establishes safe capacity. Redis documents the [INFO memory and COW
+fields](https://redis.io/docs/latest/commands/info/) and the potential
+[fork memory growth under writes](https://redis.io/docs/latest/management/optimization/latency/).
+
 The audit degrades unbounded/over-budget memory, reached maxmemory, unsafe
 eviction, non-standalone/non-primary targets, loading, persistence failures,
 disabled AOF or RDB schedules, and a mismatch from the reviewed `everysec`
@@ -1561,9 +1576,11 @@ Redis URL contains a query string and was rejected before connecting; it was
 not normalized to bypass policy. Storefront's existing query-free private
 reference supplied the safe alternative, with credentials retained in-process.
 Before remediation, inspect the current volume, backup schedule and immutable
-image, size the ceiling using a reviewed load/fork budget, and approve exact
-configuration and rollback changes. This observation does not close the live
-capacity/persistence rollout or timed recovery requirement.
+image, measure a representative peak and write-heavy fork/COW under a reviewed
+load budget, size the ceiling from those measurements, and approve exact
+configuration and rollback changes. The historical 7.8 MB used and 18.9 MB
+RSS samples are too small to select a numeric ceiling. This observation does
+not close the live capacity/persistence rollout or timed recovery requirement.
 
 Follow-up read-only metadata inspection found Redis 8.0.3 running from
 deployment `f75e3583-3d71-4787-9ada-12852e976fa0` (created July 15, 2025).

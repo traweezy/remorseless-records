@@ -176,6 +176,8 @@ export const evaluateRedisCapacity = ({ config, info, memoryLimitBytes }) => {
     throw new Error("Redis audit observations are inconsistent")
 
   const usedBytes = count("memory", "used_memory")
+  const peakUsedBytes = count("memory", "used_memory_peak")
+  if (peakUsedBytes < usedBytes) throw malformed()
   const excludedBytes = count("memory", "mem_not_counted_for_evict")
   if (excludedBytes > usedBytes) throw malformed()
   const rssBytes = count("memory", "used_memory_rss")
@@ -214,19 +216,36 @@ export const evaluateRedisCapacity = ({ config, info, memoryLimitBytes }) => {
   const evictedKeys = count("stats", "evicted_keys")
   const rejectedConnections = count("stats", "rejected_connections")
   const keys = keyspaceCounts(sections.get("keyspace"))
+  const rdbLastCowBytes = count("persistence", "rdb_last_cow_size")
+  const aofLastCowBytes = count("persistence", "aof_last_cow_size")
+  const lastForkCowBytes = Math.max(rdbLastCowBytes, aofLastCowBytes)
+  const policyMaxmemoryBytes = Number((BigInt(memoryLimitBytes) * 7n) / 10n)
   // Cross-multiply with BigInt so the exact 70% boundary cannot round up.
   const overCapacityBudget =
     BigInt(maxmemoryBytes) * 10n > BigInt(memoryLimitBytes) * 7n
+  // Historical peak includes memory Redis may exclude from eviction accounting.
+  // It is a conservative review signal, not an automatically safe setting.
+  const historicalPeakOverBudget = peakUsedBytes > policyMaxmemoryBytes
   // 90% RSS is a repository review threshold, not a Redis safety guarantee.
   const rssHeadroomLow = BigInt(rssBytes) * 10n >= BigInt(memoryLimitBytes) * 9n
+  // Last fork COW and current RSS are from different times; their sum is a
+  // stress scenario only, never a measurement of simultaneous allocation.
+  const forkCowScenarioHeadroomLow =
+    (BigInt(rssBytes) + BigInt(lastForkCowBytes)) * 10n >=
+    BigInt(memoryLimitBytes) * 9n
   const reasons = [
     [mode !== "standalone", "redis_mode_not_standalone"],
     [role !== "master", "redis_role_not_primary"],
     [maxmemoryBytes === 0, "maxmemory_unbounded"],
     [overCapacityBudget, "maxmemory_exceeds_capacity_budget"],
+    [historicalPeakOverBudget, "historical_peak_over_capacity_budget"],
     [evictionPolicy !== "noeviction", "eviction_policy_unsafe"],
     [maxmemoryBytes > 0 && countedBytes >= maxmemoryBytes, "maxmemory_reached"],
     [rssHeadroomLow, "rss_headroom_low"],
+    [
+      !rssHeadroomLow && forkCowScenarioHeadroomLow,
+      "historical_fork_cow_headroom_low",
+    ],
     [!aofEnabled, "aof_disabled"],
     [appendFsync !== "everysec", "aof_fsync_policy_mismatch"],
     [fsyncSuppressedDuringRewrite, "aof_fsync_suppressed_during_rewrite"],
@@ -247,12 +266,15 @@ export const evaluateRedisCapacity = ({ config, info, memoryLimitBytes }) => {
     reasons: Object.freeze(reasons),
     memory: Object.freeze({
       serviceLimitBytes: memoryLimitBytes,
+      policyMaxmemoryBytes,
       maxmemoryBytes,
       usedBytes,
+      peakUsedBytes,
       countedBytes,
       excludedBytes,
       rssBytes,
       rssHeadroomBytes: Math.max(memoryLimitBytes - rssBytes, 0),
+      lastForkCowBytes,
       fragmentationRatio: Number(fragmentation),
     }),
     persistence: Object.freeze({
@@ -278,8 +300,8 @@ export const evaluateRedisCapacity = ({ config, info, memoryLimitBytes }) => {
       aofPendingBioFsync: aofEnabled
         ? count("persistence", "aof_pending_bio_fsync")
         : null,
-      rdbLastCowBytes: count("persistence", "rdb_last_cow_size"),
-      aofLastCowBytes: count("persistence", "aof_last_cow_size"),
+      rdbLastCowBytes,
+      aofLastCowBytes,
     }),
     stats: Object.freeze({
       evictedKeys,

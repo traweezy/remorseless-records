@@ -24,6 +24,8 @@ External transport requires rediss:// with certificate verification. Private
 Railway or loopback redis:// is permitted. No URL queries or fragments.
 Reports only bounded numeric/enum observations and a credential-free endpoint
 fingerprint. Exit 0: policy healthy; 2: policy degraded; 1: audit unavailable.
+Peak usage and last fork COW are conservative review signals, not a proposed
+maxmemory setting or proof of safe capacity.
 
 A healthy observation is not persistent-volume, restore, queue-reconciliation,
 RPO/RTO, load-test or production-launch acceptance. No settings are applied.
