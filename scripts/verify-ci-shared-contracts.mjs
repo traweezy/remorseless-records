@@ -29,7 +29,7 @@ const sharedContracts = Object.freeze({
   "qa:dashboard-product-create":
     "node scripts/verify-dashboard-product-create-boundary.mjs",
   "qa:workflow-scheduler-timestamps":
-    "node scripts/verify-workflow-scheduler-timestamp.mjs",
+    "node --test scripts/verify-workflow-scheduler-timestamp.test.mjs && node scripts/verify-workflow-scheduler-timestamp.mjs",
   "qa:disposable-integration-boundary":
     "node --test --experimental-test-coverage --test-coverage-include=scripts/run-disposable-integration.mjs --test-coverage-include=scripts/scan-disposable-integration-images.mjs --test-coverage-include=scripts/verify-disposable-integration-boundary.mjs --test-coverage-lines=80 --test-coverage-branches=80 --test-coverage-functions=80 scripts/run-disposable-integration.test.mjs scripts/scan-disposable-integration-images.test.mjs scripts/verify-disposable-integration-boundary.test.mjs && node scripts/verify-disposable-integration-boundary.mjs",
   "qa:operations-observation": observationCommand(

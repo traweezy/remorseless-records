@@ -187,10 +187,10 @@ production recovery time.
 
 A failed `create` emits the existing fixed `failed`/`isolated_target` event
 with an allowlisted `subphase` such as `source_bundle`, `volume_create`,
-`cluster_init`, `server_start`, or `target_verify`. It never emits the raw
-exception, source data, credentials, paths, or hashes. `cleanup` means automatic
-cleanup itself failed; inspect only the newly owned target resources before
-attempting any removal. No subphase on other runner failures preserves the
+`cluster_init`, `server_start`, `server_readiness`, or `target_verify`. It never
+emits the raw exception, source data, credentials, paths, or hashes. `cleanup`
+indicates automatic cleanup failed. Inspect only the newly owned target
+resources before attempting any removal. Other runner failures preserve the
 existing generic event. Do not retry a failed create without resolving its
 reported subphase and checking for owned resources.
 

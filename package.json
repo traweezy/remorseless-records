@@ -47,7 +47,7 @@
     "qa:dashboard-product-create": "node scripts/verify-dashboard-product-create-boundary.mjs",
     "qa:dashboard-product-deletion": "node scripts/verify-dashboard-product-deletion-boundary.mjs",
     "qa:framework-response-headers": "node scripts/verify-framework-response-headers.mjs",
-    "qa:workflow-scheduler-timestamps": "node scripts/verify-workflow-scheduler-timestamp.mjs",
+    "qa:workflow-scheduler-timestamps": "node --test scripts/verify-workflow-scheduler-timestamp.test.mjs && node scripts/verify-workflow-scheduler-timestamp.mjs",
     "qa:checkout-recovery": "node scripts/verify-checkout-recovery-boundary.mjs",
     "qa:commerce-reliability": "node scripts/verify-commerce-reliability-matrix.mjs",
     "qa:tax-golden-matrix": "node scripts/verify-tax-golden-matrix.mjs",
