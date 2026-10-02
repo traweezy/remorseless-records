@@ -309,9 +309,9 @@ test("binds a private published bundle to exact source and system identity", asy
       !JSON.stringify({ result, scope }).includes("fake-private-password")
     )
     assert.ok(!JSON.stringify({ result, scope }).includes("fake-api-token"))
-    assert.doesNotMatch(
-      JSON.stringify({ result, scope }),
-      /db\.proxy\.rlwy\.net/u
+    assert.equal(
+      JSON.stringify({ result, scope }).includes("db.proxy.rlwy.net"),
+      false
     )
   })
 })
