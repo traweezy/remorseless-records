@@ -12,6 +12,24 @@ const policyPath = join(
 )
 const expectedAuditIgnores = ["GHSA-337j-9hxr-rhxg", "GHSA-wrjc-x8rr-h8h6"]
 const expectedStorefrontAuditIgnores = []
+const approvedNextCoolingSelectors = [
+  "next@16.3.8",
+  "@next/env@16.3.8",
+  "@next/swc-darwin-x64@16.3.8",
+  "@next/swc-darwin-arm64@16.3.8",
+  "@next/swc-linux-x64-gnu@16.3.8",
+  "@next/swc-linux-x64-musl@16.3.8",
+  "@next/swc-win32-x64-msvc@16.3.8",
+  "@next/swc-linux-arm64-gnu@16.3.8",
+  "@next/swc-linux-arm64-musl@16.3.8",
+  "@next/swc-win32-arm64-msvc@16.3.8",
+]
+const approvedCoolingSelectors = [
+  "@railway/cli@5.45.0",
+  "multer@2.4.0",
+  "morgan@1.12.1",
+  ...approvedNextCoolingSelectors,
+]
 
 const parseYamlScalar = (source) => {
   const value = source.trim()
@@ -84,7 +102,10 @@ export const validatePolicyManifest = (policy) => {
   assert.ok(policy && typeof policy === "object" && !Array.isArray(policy))
   assert.equal(policy.coolingWindowMinutes, 10_080)
   assert.ok(Array.isArray(policy.coolingWindowExceptions))
-  assert.ok(policy.coolingWindowExceptions.length <= 3)
+  assert.equal(
+    policy.coolingWindowExceptions.length,
+    approvedCoolingSelectors.length
+  )
   assertEvidencePaths(policy.coolingWindowExceptions)
 
   const selectors = policy.coolingWindowExceptions.map((entry) => {
@@ -97,6 +118,11 @@ export const validatePolicyManifest = (policy) => {
     return entry.selector
   })
   assert.equal(new Set(selectors).size, selectors.length)
+  assert.deepEqual(
+    [...selectors].sort(),
+    [...approvedCoolingSelectors].sort(),
+    "Cooling exceptions must identify only the explicitly approved exact releases"
+  )
 
   assert.ok(Array.isArray(policy.auditIgnores))
   assertEvidencePaths(policy.auditIgnores)
@@ -245,7 +271,11 @@ export const verifyDependencySupplyChainPolicy = () => {
     "utf8"
   )
   validateWorkspacePolicy(rootWorkspace, selectors, "root workspace")
-  const applicationCoolingExceptions = ["multer@2.4.0", "morgan@1.12.1"]
+  const applicationCoolingExceptions = [
+    "multer@2.4.0",
+    "morgan@1.12.1",
+    ...approvedNextCoolingSelectors,
+  ]
   validateWorkspacePolicy(
     backendWorkspace,
     applicationCoolingExceptions,
@@ -272,6 +302,14 @@ export const verifyDependencySupplyChainPolicy = () => {
   const packageJson = JSON.parse(
     readFileSync(join(root, "package.json"), "utf8")
   )
+  const storefrontPackage = JSON.parse(
+    readFileSync(join(root, "storefront", "package.json"), "utf8")
+  )
+  assert.equal(
+    storefrontPackage.dependencies?.next,
+    "16.3.8",
+    "The approved Next security exception must remain an exact application pin"
+  )
   validateLefthookRemoval(packageJson)
   assert.equal(packageJson.devDependencies?.["@railway/cli"], "5.45.0")
   assert.match(
@@ -280,7 +318,11 @@ export const verifyDependencySupplyChainPolicy = () => {
   )
   assert.equal(
     packageJson.scripts?.["qa:dependency-supply-chain"],
-    "node --test scripts/verify-dependency-supply-chain-policy.test.mjs scripts/js-yaml-security.test.mjs && node scripts/verify-dependency-supply-chain-policy.mjs"
+    "node --test scripts/verify-dependency-supply-chain-policy.test.mjs scripts/js-yaml-security.test.mjs && pnpm run qa:network-dependency-security && node scripts/verify-dependency-supply-chain-policy.mjs"
+  )
+  assert.equal(
+    packageJson.scripts?.["qa:network-dependency-security"],
+    "node --test scripts/network-dependency-security.test.mjs scripts/glob-dependency-security.test.mjs scripts/transport-dependency-security.test.mjs scripts/ftp-dependency-security.test.mjs"
   )
   assert.equal(packageJson.scripts?.["qa:qs-security"], undefined)
   assert.doesNotMatch(packageJson.scripts?.["qa:lint"] ?? "", /qs-security/u)
@@ -290,6 +332,51 @@ export const verifyDependencySupplyChainPolicy = () => {
     ["Backend workspace", backendWorkspace],
     ["Storefront workspace", storefrontWorkspace],
   ]) {
+    assert.match(
+      workspace,
+      /^  "next@16\.3\.8":$/mu,
+      `${label} must preserve the Next release's React type boundary`
+    )
+    assert.match(
+      workspace,
+      /^  axios: 1\.20\.0$/mu,
+      `${label} must pin the hardened Axios adapters`
+    )
+    assert.match(
+      workspace,
+      /^  "@grpc\/grpc-js@<1\.14\.5": 1\.14\.5$/mu,
+      `${label} must pin the fixed gRPC transport`
+    )
+    assert.match(
+      workspace,
+      /^  "get-uri>basic-ftp": 6\.2\.1$/mu,
+      `${label} must pin the bounded FTP listing parser`
+    )
+    assert.match(
+      workspace,
+      /^  "minimatch@<10\.0\.0>brace-expansion": 2\.1\.7$/mu,
+      `${label} must bound legacy brace expansion`
+    )
+    assert.match(
+      workspace,
+      /^  "minimatch@>=10\.0\.0>brace-expansion": 5\.0\.12$/mu,
+      `${label} must bound modern brace expansion`
+    )
+    assert.match(
+      workspace,
+      /^  fast-uri: 3\.1\.8$/mu,
+      `${label} must pin the fixed URI parser`
+    )
+    assert.match(
+      workspace,
+      /^  "ip-address@>=10\.0\.0 <10\.7\.2": 10\.7\.2$/mu,
+      `${label} must pin the fixed address parser`
+    )
+    assert.match(
+      workspace,
+      /^  "undici@>=7\.0\.0 <7\.30\.0": 7\.30\.0$/mu,
+      `${label} must pin the fixed Undici 7.x client`
+    )
     assert.match(workspace, /^  qs: 6\.16\.0$/mu, `${label} must pin qs 6.16.0`)
     assert.match(
       workspace,

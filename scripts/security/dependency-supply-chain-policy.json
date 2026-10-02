@@ -29,6 +29,106 @@
         "docs/DEPENDENCY_MIGRATION_AUDIT_2026-07-23.md",
         "backend/src/lib/pinned-http-parser-security.test.ts"
       ]
+    },
+    {
+      "selector": "next@16.3.8",
+      "publishedAt": "2026-09-30T16:07:21.198Z",
+      "reason": "User approved on October 2, 2026 the exact Next.js 16.3.8 security release and its matching runtime/compiler artifacts to fix the remote-image DNS rebinding SSRF and preceding critical next/og issue; retain strict seven-day cooling for all other releases.",
+      "evidence": [
+        "docs/DEPENDENCY_MIGRATION_AUDIT_2026-07-23.md",
+        "storefront/package.json",
+        "storefront/scripts/image-optimizer.runtime.test.mjs"
+      ]
+    },
+    {
+      "selector": "@next/env@16.3.8",
+      "publishedAt": "2026-09-30T15:56:43.745Z",
+      "reason": "User approved on October 2, 2026 the exact Next.js 16.3.8 security release and its matching runtime/compiler artifacts to fix the remote-image DNS rebinding SSRF and preceding critical next/og issue; retain strict seven-day cooling for all other releases.",
+      "evidence": [
+        "docs/DEPENDENCY_MIGRATION_AUDIT_2026-07-23.md",
+        "storefront/package.json",
+        "storefront/scripts/image-optimizer.runtime.test.mjs"
+      ]
+    },
+    {
+      "selector": "@next/swc-darwin-x64@16.3.8",
+      "publishedAt": "2026-09-30T15:57:12.290Z",
+      "reason": "User approved on October 2, 2026 the exact Next.js 16.3.8 security release and its matching runtime/compiler artifacts to fix the remote-image DNS rebinding SSRF and preceding critical next/og issue; retain strict seven-day cooling for all other releases.",
+      "evidence": [
+        "docs/DEPENDENCY_MIGRATION_AUDIT_2026-07-23.md",
+        "storefront/package.json",
+        "storefront/scripts/image-optimizer.runtime.test.mjs"
+      ]
+    },
+    {
+      "selector": "@next/swc-darwin-arm64@16.3.8",
+      "publishedAt": "2026-09-30T15:56:35.278Z",
+      "reason": "User approved on October 2, 2026 the exact Next.js 16.3.8 security release and its matching runtime/compiler artifacts to fix the remote-image DNS rebinding SSRF and preceding critical next/og issue; retain strict seven-day cooling for all other releases.",
+      "evidence": [
+        "docs/DEPENDENCY_MIGRATION_AUDIT_2026-07-23.md",
+        "storefront/package.json",
+        "storefront/scripts/image-optimizer.runtime.test.mjs"
+      ]
+    },
+    {
+      "selector": "@next/swc-linux-x64-gnu@16.3.8",
+      "publishedAt": "2026-09-30T15:57:37.276Z",
+      "reason": "User approved on October 2, 2026 the exact Next.js 16.3.8 security release and its matching runtime/compiler artifacts to fix the remote-image DNS rebinding SSRF and preceding critical next/og issue; retain strict seven-day cooling for all other releases.",
+      "evidence": [
+        "docs/DEPENDENCY_MIGRATION_AUDIT_2026-07-23.md",
+        "storefront/package.json",
+        "storefront/scripts/image-optimizer.runtime.test.mjs"
+      ]
+    },
+    {
+      "selector": "@next/swc-linux-x64-musl@16.3.8",
+      "publishedAt": "2026-09-30T15:57:19.346Z",
+      "reason": "User approved on October 2, 2026 the exact Next.js 16.3.8 security release and its matching runtime/compiler artifacts to fix the remote-image DNS rebinding SSRF and preceding critical next/og issue; retain strict seven-day cooling for all other releases.",
+      "evidence": [
+        "docs/DEPENDENCY_MIGRATION_AUDIT_2026-07-23.md",
+        "storefront/package.json",
+        "storefront/scripts/image-optimizer.runtime.test.mjs"
+      ]
+    },
+    {
+      "selector": "@next/swc-win32-x64-msvc@16.3.8",
+      "publishedAt": "2026-09-30T15:58:21.647Z",
+      "reason": "User approved on October 2, 2026 the exact Next.js 16.3.8 security release and its matching runtime/compiler artifacts to fix the remote-image DNS rebinding SSRF and preceding critical next/og issue; retain strict seven-day cooling for all other releases.",
+      "evidence": [
+        "docs/DEPENDENCY_MIGRATION_AUDIT_2026-07-23.md",
+        "storefront/package.json",
+        "storefront/scripts/image-optimizer.runtime.test.mjs"
+      ]
+    },
+    {
+      "selector": "@next/swc-linux-arm64-gnu@16.3.8",
+      "publishedAt": "2026-09-30T15:57:23.310Z",
+      "reason": "User approved on October 2, 2026 the exact Next.js 16.3.8 security release and its matching runtime/compiler artifacts to fix the remote-image DNS rebinding SSRF and preceding critical next/og issue; retain strict seven-day cooling for all other releases.",
+      "evidence": [
+        "docs/DEPENDENCY_MIGRATION_AUDIT_2026-07-23.md",
+        "storefront/package.json",
+        "storefront/scripts/image-optimizer.runtime.test.mjs"
+      ]
+    },
+    {
+      "selector": "@next/swc-linux-arm64-musl@16.3.8",
+      "publishedAt": "2026-09-30T15:56:41.148Z",
+      "reason": "User approved on October 2, 2026 the exact Next.js 16.3.8 security release and its matching runtime/compiler artifacts to fix the remote-image DNS rebinding SSRF and preceding critical next/og issue; retain strict seven-day cooling for all other releases.",
+      "evidence": [
+        "docs/DEPENDENCY_MIGRATION_AUDIT_2026-07-23.md",
+        "storefront/package.json",
+        "storefront/scripts/image-optimizer.runtime.test.mjs"
+      ]
+    },
+    {
+      "selector": "@next/swc-win32-arm64-msvc@16.3.8",
+      "publishedAt": "2026-09-30T15:59:57.117Z",
+      "reason": "User approved on October 2, 2026 the exact Next.js 16.3.8 security release and its matching runtime/compiler artifacts to fix the remote-image DNS rebinding SSRF and preceding critical next/og issue; retain strict seven-day cooling for all other releases.",
+      "evidence": [
+        "docs/DEPENDENCY_MIGRATION_AUDIT_2026-07-23.md",
+        "storefront/package.json",
+        "storefront/scripts/image-optimizer.runtime.test.mjs"
+      ]
     }
   ],
   "auditIgnores": [

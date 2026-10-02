@@ -1,4 +1,5 @@
 import assert from "node:assert/strict"
+import { readFileSync } from "node:fs"
 import { describe, it } from "node:test"
 
 import {
@@ -30,6 +31,28 @@ auditConfig:
 `
 
 describe("dependency supply-chain policy", () => {
+  it("restricts the approved Next security exception to the exact complete release family", () => {
+    const policy = JSON.parse(
+      readFileSync(
+        new URL(
+          "./security/dependency-supply-chain-policy.json",
+          import.meta.url
+        ),
+        "utf8"
+      )
+    )
+    assert.doesNotThrow(() => validatePolicyManifest(policy))
+    for (const selector of ["next@*", "next@16.3.9", "unreviewed@1.0.0"]) {
+      const changed = structuredClone(policy)
+      changed.coolingWindowExceptions.find(
+        (entry) => entry.selector === "next@16.3.8"
+      ).selector = selector
+      assert.throws(() => validatePolicyManifest(changed))
+    }
+    const missingCompiler = structuredClone(policy)
+    missingCompiler.coolingWindowExceptions.pop()
+    assert.throws(() => validatePolicyManifest(missingCompiler))
+  })
   it("reads top-level scalars and nested lists without widening YAML scope", () => {
     assert.equal(
       readTopLevelScalar(hardenedWorkspace, "minimumReleaseAge"),
@@ -195,30 +218,18 @@ describe("dependency supply-chain policy", () => {
   })
 
   it("rejects non-exact or incomplete exception manifests", () => {
-    const policy = {
-      coolingWindowMinutes: 10_080,
-      coolingWindowExceptions: [
-        {
-          selector: "secure-cli@^1.2.3",
-          publishedAt: "2026-08-27T01:09:44.541Z",
-          reason:
-            "A sufficiently detailed reason that explains the exact security exception and its operational impact.",
-          evidence: ["package.json"],
-        },
-      ],
-      auditIgnores: [
-        ...["GHSA-337j-9hxr-rhxg", "GHSA-wrjc-x8rr-h8h6"].map((id) => ({
-          id,
-          affectedPackages: ["react-router@6.30.6"],
-          reason:
-            "A sufficiently detailed reason that explains the exact patched advisory and the behavioral evidence retained for it.",
-          evidence: ["scripts/verify-react-router-security.mjs"],
-        })),
-      ],
-    }
-
+    const policy = JSON.parse(
+      readFileSync(
+        new URL(
+          "./security/dependency-supply-chain-policy.json",
+          import.meta.url
+        ),
+        "utf8"
+      )
+    )
+    policy.coolingWindowExceptions[0].selector = "@railway/cli@^5.45.0"
     assert.throws(() => validatePolicyManifest(policy))
-    policy.coolingWindowExceptions[0].selector = "secure-cli@1.2.3"
+    policy.coolingWindowExceptions[0].selector = "@railway/cli@5.45.0"
     policy.auditIgnores[0].evidence = []
     assert.throws(() => validatePolicyManifest(policy))
   })

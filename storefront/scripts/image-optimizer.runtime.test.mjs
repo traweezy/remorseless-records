@@ -1,12 +1,18 @@
 import assert from "node:assert/strict"
+import { EventEmitter } from "node:events"
 import { createRequire } from "node:module"
+import { Readable } from "node:stream"
 import test from "node:test"
 
 const require = createRequire(import.meta.url)
 const requireNext = createRequire(require.resolve("next/package.json"))
 const sharp = requireNext("sharp")
+const dns = require("node:dns/promises")
+const http = require("node:http")
+const https = require("node:https")
 const {
   ImageError,
+  fetchExternalImage,
   getImageEtag,
   imageOptimizer,
 } = require("next/dist/server/image-optimizer.js")
@@ -136,4 +142,83 @@ test("classifies a truncated PNG as fallback, not successful optimization", asyn
   assert.equal(result.etag, getImageEtag(source))
   assert.equal(result.upstreamEtag, getImageEtag(source))
   assert.equal(result.maxAge, 60)
+})
+
+test("pins remote image transport to validated DNS and rechecks before reuse", async (t) => {
+  // No fixture host or external network is needed, including in the final
+  // network-disabled runtime image. Any unguarded transport fails the test.
+  t.mock.method(globalThis, "fetch", () => assert.fail("Unexpected fetch"))
+  t.mock.method(https, "request", () => assert.fail("Unexpected HTTPS request"))
+  const addresses = [
+    { address: "93.184.216.34", family: 4 },
+    { address: "2606:4700:4700::1111", family: 6 },
+  ]
+  const lookup = t.mock.method(dns, "lookup", async () => addresses)
+  const body = Buffer.from("synthetic image response")
+  let pinnedLookup
+  const request = t.mock.method(http, "request", (url, options, respond) => {
+    assert.equal(url.hostname, "images.invalid")
+    assert.equal(typeof options.lookup, "function")
+    pinnedLookup = options.lookup
+    const outgoing = new EventEmitter()
+    outgoing.end = () => {
+      const response = Readable.from([body])
+      response.statusCode = 200
+      response.headers = { "content-type": "image/png" }
+      queueMicrotask(() => respond(response))
+    }
+    return outgoing
+  })
+
+  const url = "http://images.invalid/synthetic.png"
+  const result = await fetchExternalImage(url, false, 1024)
+  assert.deepEqual(result.buffer, body)
+  assert.equal(request.mock.callCount(), 1)
+  assert.equal(lookup.mock.callCount(), 1)
+  assert.equal(lookup.mock.calls[0].arguments[0], "images.invalid")
+  assert.equal(lookup.mock.calls[0].arguments[1].all, true)
+
+  lookup.mock.mockImplementation(async () => [
+    { address: "127.0.0.1", family: 4 },
+  ])
+  const socketAddresses = await new Promise((resolve, reject) => {
+    pinnedLookup("images.invalid", { all: true }, (error, resolved) => {
+      if (error) reject(error)
+      else resolve(resolved)
+    })
+  })
+  assert.deepEqual(socketAddresses, addresses)
+  assert.equal(lookup.mock.callCount(), 1)
+
+  await assert.rejects(fetchExternalImage(url, false, 1024), (error) => {
+    assert.ok(error instanceof ImageError)
+    assert.equal(error.statusCode, 400)
+    return true
+  })
+  assert.equal(lookup.mock.callCount(), 2)
+  assert.equal(request.mock.callCount(), 1)
+})
+
+test("rejects remote images with any private DNS answer before transport", async (t) => {
+  t.mock.method(globalThis, "fetch", () => assert.fail("Unexpected fetch"))
+  const request = t.mock.method(http, "request", () =>
+    assert.fail("Unexpected HTTP request")
+  )
+  const secureRequest = t.mock.method(https, "request", () =>
+    assert.fail("Unexpected HTTPS request")
+  )
+  t.mock.method(dns, "lookup", async () => [
+    { address: "93.184.216.34", family: 4 },
+    { address: "::1", family: 6 },
+  ])
+  await assert.rejects(
+    fetchExternalImage("https://images.invalid/synthetic.png", false, 1024),
+    (error) => {
+      assert.ok(error instanceof ImageError)
+      assert.equal(error.statusCode, 400)
+      return true
+    }
+  )
+  assert.equal(request.mock.callCount(), 0)
+  assert.equal(secureRequest.mock.callCount(), 0)
 })

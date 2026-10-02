@@ -254,9 +254,16 @@ lockfile revalidation. Reviewed exceptions live only in
 `scripts/security/dependency-supply-chain-policy.json` and must use exact
 selectors with regular, non-symlink evidence files. Do not add a broad package
 range or copy an exception into a nested workspace to make an install pass.
-Choose the newest mature release instead. The only current cooling exception
-is the exact locally hardened Railway CLI release; the only audit ignores are
-the three behaviorally verified React Router 6 backports required by Medusa.
+Choose the newest mature release instead unless the user approves a specific
+security exception. The thirteen current exact cooling exceptions are the
+locally hardened Railway CLI 5.45.0, Multer 2.4.0, Morgan 1.12.1, and the ten
+Next.js 16.3.8 runtime/compiler artifacts explicitly approved on October 2:
+`next`, `@next/env`, and eight platform SWC packages. The Next release ordinarily
+finishes cooling on October 7 at 16:07:21.198 UTC; its DNS rebinding correction
+is needed by the configured remote-image optimizer. The policy binds the exact
+selectors, publication times, reasons, and evidence and rejects broader or
+incomplete cohorts. The only audit ignores remain the two behaviorally verified
+React Router 6 backports required by Medusa.
 
 The CI runtime-security gate covers every workflow that invokes Harden-Runner.
 It binds all six workflows to the reviewed v2.21.0 commit, requires block mode
@@ -266,6 +273,15 @@ Storefront, and Runtime Images also require the reviewed Shai-Hulud v2.2.0 Node
 24 action and its fail-closed lockfile controls. Root Trivy scans use only
 `ghcr.io/aquasecurity/trivy-db`; do not re-enable the default registry mirror
 without reviewing and testing the resulting egress expansion.
+
+Root, Backend, and Storefront TruffleHog gates pin both the action commit and
+the scanner image/version/digest independently; pinning only the action does
+not pin its container. The runtime-security policy tests reject floating
+scanner versions, incomplete history, and altered scan/exclusion arguments.
+Keep full Git history available: the action scans changed commits on pushes
+and pull requests, and complete history on scheduled/manual runs. Verify
+complete history separately after credential revocation. A scanner error with
+zero findings is a failure, not evidence of a clean scan.
 
 #### CI dependency graph and release latency
 

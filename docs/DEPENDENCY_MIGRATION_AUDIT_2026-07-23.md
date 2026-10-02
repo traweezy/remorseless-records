@@ -1,5 +1,107 @@
 # Dependency Migration Audit — 2026-07-23
 
+## Dependency security correction — October 2, 2026
+
+Root, Backend, and Storefront now agree on exact mature security releases:
+
+| Dependency | Previous lock | Selected release | npm publication (UTC) | License |
+| --- | --- | --- | --- | --- |
+| Undici | 7.29.0 | 7.30.0 | 2026-09-25T07:15:17.199Z | MIT |
+| fast-uri | 3.1.6 | 3.1.8 | 2026-09-15T07:36:25.444Z | BSD-3-Clause |
+| ip-address | 10.4.0 | 10.7.2 | 2026-09-15T17:41:37.267Z | MIT |
+| Axios | 1.18.1 | 1.20.0 | 2026-08-26T08:20:14.517Z | MIT |
+| brace-expansion (legacy) | 2.1.4 | 2.1.7 | 2026-09-14T22:02:58.810Z | MIT |
+| brace-expansion (modern) | 5.0.9 | 5.0.12 | 2026-09-14T21:59:00.288Z | MIT |
+| @grpc/grpc-js | 1.14.4 | 1.14.5 | 2026-09-17T19:47:01.706Z | Apache-2.0 |
+| basic-ftp | 5.3.1 | 6.2.1 | 2026-08-27T19:42:01.078Z | MIT |
+
+These releases satisfy strict seven-day cooling on October 2 after 07:15 UTC.
+They require no cooling exception, audit ignore, or local package patch.
+Undici remains on jsdom's supported 7.x line and fast-uri
+on Ajv's 3.x line. The Node engine requirements and licenses remain compatible.
+ip-address 10.7.3 is held until its October 8 cooling deadline; it was published
+October 1 and adds an early length guard to `Address4.fromArpa()`, which the
+project does not call directly.
+
+The [Undici 7.29.1 security fixes](https://github.com/nodejs/undici/releases/tag/v7.29.1)
+cover the ten open Undici alerts. The selected
+[7.30.0 release](https://github.com/nodejs/undici/releases/tag/v7.30.0) also
+includes decompression backpressure and HTTP/2 WebSocket cleanup. fast-uri
+[3.1.7](https://github.com/fastify/fast-uri/releases/tag/v3.1.7) fixes malformed
+authority brackets and port injection, while
+[3.1.8](https://github.com/fastify/fast-uri/security/advisories/GHSA-hrr3-gc8f-f4qj)
+also fixes percent-encoded hostname case normalization. ip-address
+[10.5.1](https://github.com/beaugunderson/ip-address/security/advisories/GHSA-2vr4-cq9g-pvrc)
+classifies NAT64 local-use addresses as private; the selected mature
+[10.7.2](https://github.com/beaugunderson/ip-address/compare/v10.4.0...v10.7.2)
+also includes cross-family subnet rejection and bounded malformed-input parsing.
+
+[Axios 1.20.0](https://github.com/axios/axios/releases/tag/v1.20.0) hardens
+inherited options, redirect limits, malformed data URI parsing, and HTTP/2
+transport behavior. Existing explicit options and supported method aliases
+remain compatible. [gRPC 1.14.5](https://github.com/grpc/grpc-node/releases/tag/%40grpc/grpc-js%401.14.5)
+fixes unauthorized certificate exposure through `getAuthContext`, redacts
+thrown server errors, and fixes channel cleanup. Both brace-expansion lines
+now bound nesting and rewrites while preserving ordinary glob results.
+
+basic-ftp 6.2.1 is deliberately scoped to the two `get-uri` consumer edges.
+Its published `Client` declaration is unchanged from 5.3.1; actual CommonJS
+get-uri 6 and ESM get-uri 8 calls retain their required APIs. The v6 default
+rejects a PASV server directing transfers to a separate host. That security
+tightening is retained. Real local FTP fixtures exercise both consumers'
+MDTM and listing fallback, transfer contents, and cache validation. The hostile
+listing case completes in about 30 ms after the old parser exceeded its
+five-second child deadline; a separate-host PASV response is rejected before
+creating a transfer socket.
+
+### Explicit Next.js security cooling exception
+
+The user approved exactly Next.js 16.3.8, its matching `@next/env`, and all eight
+platform SWC artifacts on October 2. The Storefront pins `next` to 16.3.8 and
+all three workspace package extensions retain the existing React type boundary.
+Each of the ten selectors and its actual npm publication timestamp is recorded
+in `scripts/security/dependency-supply-chain-policy.json` and explicitly listed
+in the workspace cooling exclusions. The policy rejects wildcards, alternate
+versions, unreviewed packages, and incomplete compiler cohorts.
+
+Next.js 16.3.8 was published on September 30 at 16:07:21.198 UTC, so its ordinary
+cooling deadline is October 7 at the same time. The latest mature release,
+16.3.6, fixes the critical `next/og` issue but omits the newer high-severity
+remote-image DNS rebinding correction needed by the Storefront's configured
+optimizer. The [16.3.8 security release](https://github.com/vercel/next.js/releases/tag/v16.3.8)
+includes that correction. Matching compiler/runtime packages are required by
+the exact Next release, with unchanged compatible engines and MIT licensing.
+The installed image and upgrade documentation was reviewed. Webpack production
+builds, image allowlists, local-IP rejection, React 18/19 isolation, and native
+Medusa authentication remain unchanged.
+
+`qa:network-dependency-security` follows the installed Medusa migration tooling
+to Ajv/fast-uri, browser proxy tooling to socks/ip-address, and Storefront jsdom
+to Undici. Seven regressions failed against the original installed versions
+and pass with the selected releases. They exercise malformed authority and port
+rejection, hostname normalization with case-sensitive path/userinfo controls,
+ordinary Ajv references, NAT64 and subnet classification, bounded malformed
+addresses, retained TLS validation callbacks, bounded real gzip responses, and
+WebSocket protocol rejection without a process crash. Potentially terminating
+cases run in child processes with a five-second deadline and 64 MiB heap cap.
+Additional installed-consumer tests exercise both brace-expansion lines,
+Axios redirect limits and inherited-method rejection, and gRPC error redaction
+over a real local RPC connection. The supply-chain gate requires all dependency
+regressions in the existing three CI jobs.
+
+Pinned Node 26.9.0 / pnpm 11.17.0 frozen installation, peer validation, all
+32 supply-chain/parser regressions, focused Biome checks, and the browser
+toolchain boundary pass locally. The final full registry audit has zero
+unignored findings; only the two existing behaviorally patched React Router
+records remain. The fuller registry audit identified 22 unignored advisory
+records; the earlier twelve-alert GitHub snapshot was incomplete. The single lockfile
+changes only the reviewed package versions, integrity hashes, Next's required
+matching artifacts, and consumer edges. All seven installed Next image runtime
+checks also pass, including real AVIF/WebP conversion, SVG rejection, DNS pinning
+across rebinding, and mixed public/private DNS rejection before transport.
+These focused results do not establish full CI or deployed acceptance; no
+scanner was weakened.
+
 ## Current security correction — September 20, 2026
 
 The historical 6.30.4/1.23.3 and three-audit-ignore descriptions below record
