@@ -15,8 +15,8 @@ RUN apk --no-cache \
     --repository https://dl-cdn.alpinelinux.org/alpine/v3.23/main \
     --timeout 30 \
     add \
-    libcrypto3=3.5.8-r0 \
-    libssl3=3.5.8-r0 \
+    libcrypto3=3.5.9-r0 \
+    libssl3=3.5.9-r0 \
     setpriv=2.41.6-r1 \
     /tmp/libbz2.apk \
     /tmp/perl.apk \

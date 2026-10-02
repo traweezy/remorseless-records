@@ -208,8 +208,20 @@ for (const key of ["postgresDockerfile", "redisDockerfile"])
     }
   })
 
+test("rejects rollback to the unavailable vulnerable OpenSSL fixture pins", () => {
+  for (const key of ["postgresDockerfile", "redisDockerfile"]) {
+    for (const name of ["libcrypto3", "libssl3"]) {
+      assert.throws(() =>
+        validateHardenedFixtureWiring(
+          mutate(key, `${name}=3.5.9-r0`, `${name}=3.5.8-r0`)
+        )
+      )
+    }
+  }
+})
+
 test("rejects Redis security package pin removal and trust bypass", () => {
-  for (const packagePin of ["libssl3=3.5.8-r0", "perl-5.42.2-r0.apk"])
+  for (const packagePin of ["libssl3=3.5.9-r0", "perl-5.42.2-r0.apk"])
     assert.throws(() =>
       validateHardenedFixtureWiring(
         mutate("redisDockerfile", packagePin, "removed_security_pin")
@@ -246,8 +258,8 @@ test("rejects Redis security package pin removal and trust bypass", () => {
 
 test("rejects PostgreSQL package, source, toolchain or module-integrity pin removal", () => {
   for (const pin of [
-    "libcrypto3=3.5.8-r0",
-    "libssl3=3.5.8-r0",
+    "libcrypto3=3.5.9-r0",
+    "libssl3=3.5.9-r0",
     "libuuid=2.42.3-r1",
     "libcurl=8.22.0-r0",
     "go1.27.1.linux-amd64.tar.gz",

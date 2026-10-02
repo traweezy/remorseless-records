@@ -50,7 +50,7 @@ RUN apk --no-cache \
     --repositories-file /dev/null \
     --repository https://dl-cdn.alpinelinux.org/alpine/v3.24/main \
     --timeout 30 \
-    add libcrypto3=3.5.8-r0 libssl3=3.5.8-r0 libuuid=2.42.3-r1 libcurl=8.22.0-r0 \
+    add libcrypto3=3.5.9-r0 libssl3=3.5.9-r0 libuuid=2.42.3-r1 libcurl=8.22.0-r0 \
     && apk list --installed --manifest
 COPY --from=gosu-build --chmod=755 /out/gosu /usr/local/bin/gosu
 COPY --from=gosu-build /out/licenses/gosu /usr/local/share/licenses/gosu

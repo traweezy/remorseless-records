@@ -153,6 +153,17 @@ The build context excludes repository code, `.env`, credentials and app data.
 Package repository signature verification remains enabled. Missing exact
 package versions fail the build instead of floating to a replacement.
 
+Both Alpine fixtures pin `libcrypto3` and `libssl3` to `3.5.9-r0`, published
+on September 30, 2026 in the official v3.23 and v3.24 main repositories. This
+includes the [September 29 OpenSSL security fixes](https://openssl-library.org/news/secadv/20260929.txt)
+and replaces the unavailable
+`3.5.8-r0` index entries that stopped the October 2 uncached CI build before
+scanning or tests. The immutable server bases, Go/gosu provenance, other APK
+pins and signature checks remain unchanged. Validate recipe changes with a
+fresh `docker compose --env-file /dev/null --file compose.integration.yml
+build --no-cache` before the image scan and integration suite; cached layers
+do not prove that current signed indexes can satisfy exact APK pins.
+
 Backend CI builds these same recipes rather than starting a second set of
 unpatched GitHub service images. It then runs
 `scripts/scan-disposable-integration-images.mjs` against resolved local image

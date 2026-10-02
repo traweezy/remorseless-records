@@ -84,8 +84,8 @@ export const validateHardenedFixtureWiring = ({
     )
   }
   for (const packagePin of [
-    "libcrypto3=3.5.8-r0",
-    "libssl3=3.5.8-r0",
+    "libcrypto3=3.5.9-r0",
+    "libssl3=3.5.9-r0",
     "setpriv=2.41.6-r1",
   ])
     assert.ok(
@@ -137,7 +137,7 @@ export const validateHardenedFixtureWiring = ({
     "&& echo 'a5ea1f3ca7128f3e5bd53f2601ac6fd70f2cd6c68bf7627aa09655ce9bcc1758  go.sum' | sha256sum -c - \\",
     "&& /opt/go/bin/go mod verify \\",
     "&& /opt/go/bin/go build -trimpath -buildvcs=false -o /out/gosu . \\",
-    "add libcrypto3=3.5.8-r0 libssl3=3.5.8-r0 libuuid=2.42.3-r1 libcurl=8.22.0-r0 \\",
+    "add libcrypto3=3.5.9-r0 libssl3=3.5.9-r0 libuuid=2.42.3-r1 libcurl=8.22.0-r0 \\",
     "COPY --from=gosu-build --chmod=755 /out/gosu /usr/local/bin/gosu",
     "COPY --from=gosu-build /out/licenses/gosu /usr/local/share/licenses/gosu",
   ])
