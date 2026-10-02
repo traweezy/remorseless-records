@@ -30,9 +30,17 @@ assert.deepEqual(
   railpackConfig,
   {
     $schema: "https://schema.railpack.com",
-    deploy: { aptPackages: ["...", "libpcre2-8-0=10.46-1~deb13u2"] },
+    deploy: {
+      aptPackages: [
+        "...",
+        "libpcre2-8-0=10.46-1~deb13u2",
+        "libssl3t64=3.5.7-1~deb13u3",
+        "openssl=3.5.7-1~deb13u3",
+        "openssl-provider-legacy=3.5.7-1~deb13u3",
+      ],
+    },
   },
-  "Railpack must retain generated runtime packages and pin the Debian 13 PCRE2 security fix"
+  "Railpack must retain generated runtime packages and pin the Debian 13 PCRE2 and OpenSSL security fixes"
 )
 
 const packageJson = JSON.parse(fs.readFileSync("package.json", "utf8"))

@@ -83,6 +83,42 @@ the dependency policy and migration audit.
 
 ## Continuation and acceptance
 
+### Runtime OpenSSL correction
+
+Fresh final-image scans of the first candidate rejected two HIGH findings:
+`CVE-2026-75804` and `CVE-2026-84782` in Debian `libssl3t64`
+`3.5.7-1~deb13u2`. [Debian DSA-6531-1](https://security-tracker.debian.org/tracker/DSA-6531-1)
+fixes these in `3.5.7-1~deb13u3`; an older green image scan does not cover the
+September 29 disclosure. No affected candidate was published or deployed.
+
+Both Docker recipes now use the signed distroless index
+`sha256:e792ab3d241a468a4fd7519ddbbebe66b49b5f365771716ea688ad40b6c6f1c2`.
+Keyless signature/certificate/transparency verification passed against the
+official distroless identity. Its amd64 and arm64 manifests each preserve
+20 of 21 layers exactly; the sole changed layer upgrades `libssl3t64` from
+`u2` to `u3`, with identical licensing and no package additions or removals.
+The index was uploaded October 1 at 12:33:25 UTC. The pnpm publication cooling
+policy applies to workspace packages, not these signed OS security artifacts.
+
+Read-only SSH confirmed the same vulnerable OS library and OpenSSL CLI in
+both active Railway applications on Debian 13. Updating candidate images
+alone would not repair those source-built services. The root Railpack config
+therefore pins `libssl3t64`, `openssl`, and `openssl-provider-legacy` to `u3`,
+preserving generated packages and the existing PCRE2 correction. Signed apt
+verification and exact installation passed in an owned throwaway copy of the
+reviewed Railpack base. Its package set changed only by those upgrades and the
+existing PCRE2 fix, with no additions or removals. Deployment acceptance must
+read back complete Debian package versions; upstream OpenSSL version output
+does not expose Debian backports.
+
+The copied Node 26.9.0 executable and its separately embedded OpenSSL remain
+distinct from the OS package inventory. Node's published advisory review and
+the binary hashes remain separate evidence; an OS scan does not certify
+embedded-library coverage. No runtime-version hold, scan severity gate, or
+exception list was relaxed by this correction.
+
+### Local verification and release gate
+
 The local checkout had stale work overlapping 20 newer staging commits.
 Every existing changed file was privately backed up and byte-verified before
 reconciling onto `2a15471`; unrelated local skills/configuration and `Default/`

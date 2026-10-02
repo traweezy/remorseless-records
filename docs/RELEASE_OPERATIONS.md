@@ -237,6 +237,19 @@ fix is distinct from the bookworm image recipe above. Acceptance requires
 checking the installed package version in both new live application
 deployments after exact-SHA success; a generated plan alone is insufficient.
 
+The October 2 correction additionally pins `libssl3t64`, `openssl`, and
+`openssl-provider-legacy` to `3.5.7-1~deb13u3` in that runtime apt layer.
+Scoped read-only checks found all active application source runtimes still
+using the vulnerable `u2` library and CLI. An owned throwaway copy of the
+reviewed Railpack runtime verified the signed apt metadata and all three
+exact upgrades, alongside the existing PCRE2 correction, with no package
+additions or removals. Confirm the full Debian package versions in both new
+live deployments; `openssl version` alone omits the security-backport revision.
+The separately signed distroless base refresh changes only its `libssl3t64`
+layer on amd64 and arm64, preserving the Node executable and other layers.
+Both final application image scans and deployed source-runtime checks remain
+required. See the [October 2 evidence](SECURITY_FOLLOWUP_2026-10-02.md).
+
 Railway currently builds both applications from GitHub source with Railpack.
 Publishing an image therefore does not prove the Railway deployment is that
 image. Keep the hardening-plan deployed-artifact item open until a separately

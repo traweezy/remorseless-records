@@ -23,7 +23,7 @@ const expectedPolicy = {
     arm64: "c90c21008853899dfa102eeaa43b703c2bf41553dd56b13aac6da2803d5884b7",
   },
   runtimeBaseImage:
-    "gcr.io/distroless/cc-debian13:nonroot@sha256:54df941ed0d06a1bd95ef5e0ce391fd8d9f94b64782dc9a60062727849ee3f97",
+    "gcr.io/distroless/cc-debian13:nonroot@sha256:e792ab3d241a468a4fd7519ddbbebe66b49b5f365771716ea688ad40b6c6f1c2",
   repository: "https://github.com/traweezy/remorseless-records",
   trivy: {
     repository: "aquasecurity/setup-trivy",
