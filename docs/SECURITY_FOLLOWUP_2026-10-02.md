@@ -1,7 +1,10 @@
 # Security follow-up — October 2, 2026
 
-Status: remediation in progress; exact-revision CI and staging acceptance are
-required before resuming the hardening backlog. This entry supersedes older
+Status: exact-revision CI, both Railway deployments and live acceptance passed
+on `07c3052` at 23:20 UTC. Local hardening work may resume after CI,
+but each next push must wait for the previous revision's complete staging
+acceptance.
+This follows the user's October 2 timing instruction and supersedes older
 claims about current credential validity or release acceptance, without
 changing their historical evidence.
 
@@ -34,10 +37,13 @@ Railway skipped the configuration-triggered candidate because CI was failing.
 The active Backend was still deployment
 `32e70862-469b-4e65-9ca7-d3eda0a0c696` at `2a15471`. Its liveness and all
 11 readiness checks passed, but those checks do not establish email delivery.
-The replacement is configured; staging email remains unavailable until a new
-Backend deployment loads it. Do not redeploy the old configuration, bypass
-CI, or send a test email without authorization. Acceptance must verify the
-new exact revision and active process credential after all release gates pass.
+Staging email remained unavailable until the new Backend loaded the replacement.
+The accepted `07c3052` deployment now runs that replacement: an in-memory HMAC
+comparison bound the actual Medusa process credential to the scoped Railway
+value, and a read-only provider request confirmed its sending-only restriction.
+No key or comparison proof was retained in output. No test email or failed-job
+retry was performed; successful delivery is not established by these checks.
+Do not redeploy the old configuration or bypass CI.
 
 The historical serialized configuration also contained database, Redis,
 session-signing, and object-storage credentials. Their present validity and
@@ -156,14 +162,55 @@ heuristic on `cfc9dfe`. The final assertions compare complete approved reports,
 including nested data, exact fingerprints, validated paths, and canonical
 timestamps; unexpected fields or private hostname leakage fail that contract.
 No CodeQL suppression was added. Exact `3.5.9-r0` fixture pins passed fresh
-builds, scans, and all 142 integration cases locally. The next candidate must
-still pass CodeQL and service integration in GitHub.
+builds, scans, and all 142 integration cases locally. The final candidate
+`07c3052` also passed CodeQL and normal-transport service integration in GitHub.
 
 The user subsequently required direct pushes to `staging`, without PR merges.
 Obtain all required candidate checks, then deliver the logical Conventional
 Commits in one protected fast-forward push. Preserve every required check;
 only the PR delivery requirement changes. The existing PR provides validation
-for this batch. Watch all four workflows on the exact staging revision, and
+for this batch. Once all four workflows pass on the exact staging revision,
+local implementation, review, testing, and commits for the next batch may
+overlap the Railway rollout. Hold the next push until the previous release
+passes both exact-revision deployments and live acceptance. Continue to
 verify both deployed revisions, readiness, live routes, scheduler observation,
 and bounded logs before calling this release accepted. Record those results
 in the handoff; older green runs do not satisfy these requirements.
+
+### Accepted staging revision
+
+All four staging push workflows and both automatic Railway deployments passed
+on `07c30525174ac358b4e0e02f58cd47363d01aefa`. Exact run/deployment IDs,
+health/catalog/scheduler evidence, browser counts and bounded log results are
+in the opening [handoff entry](NEXT_SESSION_HANDOFF.md). Both live services
+have OpenSSL packages `3.5.7-1~deb13u3` and PCRE2 `10.46-1~deb13u2`;
+all five reviewed DTLS/QUIC/shared-OpenSSL flags are false. Node's separately
+embedded OpenSSL is unchanged; OS package acceptance does not establish a
+blanket absence of upstream vulnerabilities.
+
+The deployed browser suites passed 85 cases with eight expected skips and no
+failures or retries. Both guard responses correlated with exact-revision
+runtime events and Railway HTTP logs. The bounded post-browser window had
+zero HTTP 5xx and no unclassified warning/error after narrow review of the
+existing stream-close family: 14 diagnostic groups and 14 matching render
+events, digest `3072950123`. Installed Next 16.3.8 source confirms this
+destination-close cancellation path and ignored-frame formatting. This does
+not prove which browser request caused each cancellation or hidden stack
+changes; diagnostics remain visible and no application filter was relaxed.
+
+Initial temporary acceptance checks failed on assumptions in the harness:
+Resend's sending-only response omitted a trailing period, and the native
+Backend guard logs `http.request.completed` without a problem-code field.
+Railway's text filter also returned no rows for the structured request field.
+Corrected validation retained strict provider status/code/message checks and
+verified the actual native completion contract from bounded logs. Original
+failed results remain retained alongside the passing evidence. These were
+checker corrections, not application changes or suppressed CI findings.
+
+Private sanitized evidence resides in
+`/tmp/remorseless-staging-acceptance-20261002-4iuwwyhq`,
+`/tmp/remorseless-deployed-browser-20261002-ifjj47hl`, and
+`/tmp/remorseless-log-acceptance-reviewed-20261002.jsonl`.
+These temporary paths are evidence from this session, not durable tooling or
+authorization for future provider actions. Final acceptance notes are folded
+into the next substantive batch without a routine documentation-only push.

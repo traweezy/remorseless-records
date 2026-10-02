@@ -53,9 +53,18 @@ those required checks or substitute fabricated statuses to allow a push.
    If either starts before its required service checks finish, treat that as
    a release-control failure even if the deployment later succeeds.
 6. Wait for Root, Backend, Storefront, and Runtime Images CI to succeed on the
-   exact SHA.
+   exact pushed SHA. Once all four pass, local implementation, review, testing,
+   and commits for the next batch may begin while Railway finishes deploying.
 7. Wait for both Railway staging services to deploy that exact SHA, then run
    health, readiness, route/API, log, and applicable browser acceptance.
+   Continue monitoring this release while working on the next batch. Keep the
+   next batch local until both deployments and these acceptance checks pass;
+   resolve any failure before its push.
+
+This timing reflects the user's October 2 instruction: successful exact-revision
+CI permits the next local work, while successful Railway deployment and live
+acceptance permit the next batch's push. CI alone does not establish release
+acceptance. Apply the same sequence to every direct staging push.
 
 Railway watch paths are evaluated for the pushed commit. A grouped push can
 contain application changes yet end with an unwatched documentation-only
@@ -67,8 +76,9 @@ wait for all four exact-SHA workflows to pass, then use
 with that explicit `commitSha` for the skipped
 service. `railway redeploy` reuses the older deployment commit. Treat the
 manual API call as separately gated by the verified workflows and repeat the
-same live acceptance checks. Do not start another feature batch while the
-accepted security SHA is absent from either service.
+same live acceptance checks. Do not push the next batch while the previous
+staging SHA is absent from either service or its acceptance remains unresolved.
+Local work may continue after all four exact-SHA CI workflows pass.
 
 Treat the **push**, rather than each commit, as the expensive release unit.
 The batch should close multiple concrete items from the hardening plan, not
@@ -134,8 +144,9 @@ report is a release-control defect; fix and rerun the monitor before accepting
 the observation evidence. Never clear the latch to make the observation
 healthy.
 
-Do not begin another staging release candidate while any exact-SHA staging gate
-is unresolved.
+Do not begin the next local batch before all four CI workflows pass on the
+previous pushed SHA. Do not push that next batch until the previous SHA passes
+both Railway deployments and all required live acceptance checks.
 
 ## Immutable runtime image candidates
 

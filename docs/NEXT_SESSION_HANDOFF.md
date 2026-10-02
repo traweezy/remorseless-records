@@ -2,21 +2,24 @@
 
 Last updated: 2026-10-02 (America/New_York)
 
-## October 2 security continuation
+## October 2 security acceptance and continuation
 
 Start with [the October 2 security follow-up](SECURITY_FOLLOWUP_2026-10-02.md).
-The current staging source is `2a15471`; September 28 CI correctly rejected
-an active Resend credential in Git history. The user authorized replacement
-and revocation. The old key is now invalid and a sending-only replacement is
-stored in the staging Backend, but its rollout is held by failing CI. Staging
-email remains unavailable until the accepted deployment loads that key.
+The current staging source is `07c30525174ac358b4e0e02f58cd47363d01aefa`,
+delivered by a protected direct fast-forward push. All four staging push
+workflows passed, and both Railway services deployed that exact revision.
+Live acceptance completed at 23:20 UTC. The running Backend loaded the valid
+sending-only replacement Resend key; the exposed key remains revoked. No
+email was sent, so this establishes credential readiness rather than delivery.
 
-The ongoing batch pins the scanner runtime, repairs affected dependencies,
+The delivered batch pins the scanner runtime, repairs affected dependencies,
 and retains the unique checks/docs from the stale local work after a private,
 byte-verified backup and reconciliation. The user approved the exact Next
-16.3.8 family cooling exception. Finish local gates, logical Conventional
-Commits, validated direct staging delivery, all four exact-revision workflows,
-and deployed acceptance before starting another item. No production or
+16.3.8 family cooling exception. Use logical Conventional Commits and direct
+staging pushes. The user's latest timing instruction allows local work on the
+next batch once all four exact-revision CI workflows pass. Keep monitoring
+Railway and hold the next push until both services deploy the previous exact
+SHA and its live acceptance passes. No production or
 dormant client environment change is included. Other historical credential
 rotation remains unverified. The dated sections below are historical evidence,
 not current acceptance of this security batch.
@@ -24,9 +27,49 @@ not current acceptance of this security batch.
 The user subsequently required direct pushes to `staging`, without PR merges.
 Follow the updated release runbook: retain all required CI checks and use an
 exact passing candidate for the fast-forward push. PR #18 provides candidate
-validation for this batch; its initial run found three literal-redaction test
-regex findings and unavailable Alpine fixture package pins. Repair those
-without suppressions before delivery. `master` remains outside this change.
+validation for this batch; its initial test-redaction CodeQL findings and
+unavailable Alpine fixture package pins were repaired without suppressions.
+The final candidate and staging push workflows passed. Staging retains all
+23 strict required checks and administrator enforcement; only its PR
+requirement was removed. `master` retains its reviewed PR path and 26 checks.
+
+Exact staging push evidence:
+
+- Root CI [37075514307](https://github.com/traweezy/remorseless-records/actions/runs/37075514307),
+  Backend CI [37075514326](https://github.com/traweezy/remorseless-records/actions/runs/37075514326),
+  Storefront CI [37075514319](https://github.com/traweezy/remorseless-records/actions/runs/37075514319),
+  and Runtime Images [37075514327](https://github.com/traweezy/remorseless-records/actions/runs/37075514327)
+  all passed on `07c3052`.
+- Railway Backend `b7999ef4-332c-41b0-b9a1-18fe70a07086` and Storefront
+  `d169ad8d-2bc1-422c-9913-ac70b3dd3c54` automatically deployed the exact
+  revision after CI and reached `SUCCESS`. No fallback deployment was needed.
+- Both liveness/readiness pairs passed. Backend operations and the ordinary
+  23:16:00 UTC scheduler heartbeat were healthy on the exact revision.
+  Authenticated bounded reads verified 461 Products, 442 Discography records,
+  one returned handle, three shelves and 25 memberships. Existing healthy
+  retention snapshots were observed; those jobs were not triggered again.
+- Both running services use Node 26.9.0, Debian OpenSSL packages
+  `3.5.7-1~deb13u3`, and PCRE2 `10.46-1~deb13u2`. All five reviewed
+  DTLS/QUIC/shared-OpenSSL flags were false. This does not patch Node's
+  separate embedded OpenSSL library or close unrelated upstream findings.
+- Deployed Chromium responsive acceptance passed 69 cases with eight expected
+  skips; Firefox/WebKit passed all 16 cases. Total: 85 passed, zero failures,
+  flaky outcomes or retries. Desktop/mobile checkout and Quick Shop screenshots
+  were inspected. Commerce mutations used browser fixtures.
+- Bounded deployment logs through 23:19:58 UTC contained 501 Backend and 519
+  Storefront rows, below the capture limit. Both intentional guard requests
+  matched the exact revision, runtime request/trace identity and Railway HTTP
+  identity. Independent HTTP 5xx filters returned zero. Backend warnings were
+  the three intentional guard 400s; Storefront retained 14 known stream-close
+  diagnostic groups and matching render events under digest `3072950123`.
+  No unclassified warning/error remained after review. This is bounded
+  acceptance, not a claim of error-free application logs.
+
+The rule updates and final acceptance evidence are retained locally for the
+next substantive batch; do not create a routine documentation-only staging
+push. Other historically exposed credentials and the production readiness
+requirements remain open as recorded in the security follow-up and hardening
+plan. The dated sections below remain historical evidence.
 
 ## September 20 security incident hold
 

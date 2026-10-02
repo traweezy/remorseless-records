@@ -7,15 +7,24 @@ supersedes the local `tmp/HARDENING_NEXT_STEPS.md` working note. Detailed
 operating procedures remain in the linked runbooks and ADRs; this document
 tracks what is still required before production traffic is approved.
 
-## Current security hold — October 2
+## Current security maintenance — accepted October 2
 
 The [October 2 security follow-up](SECURITY_FOLLOWUP_2026-10-02.md) takes
 precedence over the historical release snapshots below. An active Resend key
 in Git history caused the September 28 CI failures at `2a15471`. Its approved
-replacement is stored and the old key is revoked; staging email restoration
-still requires the accepted Backend rollout. Scanner reproducibility and
-dependency repairs must pass local gates, the protected staging PR, all four
-exact-merge-revision workflows, and live acceptance before new feature work.
+replacement is loaded and verified in the active Backend process, and the old
+key is revoked. No email was sent to test delivery. Scanner and
+dependency repairs reached staging by direct fast-forward push at `07c3052`;
+all four exact-revision workflows passed and both Railway deployments
+succeeded. Live readiness, catalog, scheduler, runtime packages, request/log
+correlation and 85 deployed browser cases passed. Known stream-cancellation
+diagnostics remain visible; bounded HTTP 5xx filters returned zero.
+
+Per the user's latest instruction, local work on the next batch may begin
+once CI passes, while Railway rollout
+and acceptance continue. Hold its push until both services deploy the previous
+exact revision and all required live acceptance checks pass. Keep Conventional
+Commits, required candidate checks, and direct staging delivery.
 The separate review of other historically exposed credentials remains open.
 Existing production, business/tax, recovery, and dormant-client boundaries
 remain unchanged.

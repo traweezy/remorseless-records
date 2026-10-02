@@ -91,10 +91,12 @@ pnpm run railway:apply:staging
   owning service.
 - The root and service-local `.nvmrc` pins must match the scanned runtime-image
   Node version; `qa:runtime-images` enforces this across local and CI gates.
-  After a grouped staging merge, compare active deployment SHAs with the
+  After a grouped direct staging push, compare active deployment SHAs with the
   accepted head. Railway can skip an unwatched final commit even when earlier
   commits in the batch changed watched files. Use the exact-SHA deployment
   procedure in `docs/RELEASE_OPERATIONS.md` after all four workflows pass.
+  At that point, the next batch may be developed locally while Railway rolls
+  out; hold its push until both previous deployments and live acceptance pass.
 - Documentation and `.railway/**` are intentionally not build inputs. Apply
   Railway IaC changes through the guarded staging wrapper after their source
   commit passes CI. A documentation-only staging push must run GitHub checks
