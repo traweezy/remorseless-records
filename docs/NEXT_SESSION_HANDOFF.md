@@ -15,11 +15,18 @@ The ongoing batch pins the scanner runtime, repairs affected dependencies,
 and retains the unique checks/docs from the stale local work after a private,
 byte-verified backup and reconciliation. The user approved the exact Next
 16.3.8 family cooling exception. Finish local gates, logical Conventional
-Commits, the protected staging PR, all four exact-merge-revision workflows,
+Commits, validated direct staging delivery, all four exact-revision workflows,
 and deployed acceptance before starting another item. No production or
 dormant client environment change is included. Other historical credential
 rotation remains unverified. The dated sections below are historical evidence,
 not current acceptance of this security batch.
+
+The user subsequently required direct pushes to `staging`, without PR merges.
+Follow the updated release runbook: retain all required CI checks and use an
+exact passing candidate for the fast-forward push. PR #18 provides candidate
+validation for this batch; its initial run found three literal-redaction test
+regex findings and unavailable Alpine fixture package pins. Repair those
+without suppressions before delivery. `master` remains outside this change.
 
 ## September 20 security incident hold
 

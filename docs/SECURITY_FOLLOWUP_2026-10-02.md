@@ -148,8 +148,18 @@ Initial local harness attempts incorrectly injected integration-only Redis
 and media settings into unit/build commands. Correcting that temporary harness
 resolved the failures; no application assertion or gate was weakened.
 
-Submit the logical Conventional Commits together through a protected staging
-pull request. Watch all four workflows on the exact staging merge revision, and
+The initial PR #18 run on `6d34b11` passed Root CI and Runtime Images, but
+CodeQL rejected three hostname-redaction test regexes and the disposable
+fixture build could no longer obtain Alpine OpenSSL `3.5.8-r0`. Literal
+substring assertions retain the same negative coverage without regex
+ambiguity; exact `3.5.9-r0` fixture pins require fresh builds and scans.
+Neither failure permits a suppression or a skipped service integration gate.
+
+The user subsequently required direct pushes to `staging`, without PR merges.
+Obtain all required candidate checks, then deliver the logical Conventional
+Commits in one protected fast-forward push. Preserve every required check;
+only the PR delivery requirement changes. The existing PR provides validation
+for this batch. Watch all four workflows on the exact staging revision, and
 verify both deployed revisions, readiness, live routes, scheduler observation,
 and bounded logs before calling this release accepted. Record those results
 in the handoff; older green runs do not satisfy these requirements.

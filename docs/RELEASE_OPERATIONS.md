@@ -21,23 +21,34 @@ It does not authorize a production deployment by itself.
   exact `master` commit is a separate manual operation after release approval.
 - Both Railway staging deployment triggers must retain `checkSuites: true`.
   They have been observed to wait for relevant CI suites, but Backend can
-  begin before Storefront CI finishes. Protected pull-request checks provide
-  the full cross-workflow gate before merging to `staging`; do not treat the
+  begin before Storefront CI finishes. Required candidate checks provide
+  the full cross-workflow gate before pushing to `staging`; do not treat the
   Railway trigger as proof that every workflow passed. Railway source
   reconnection can reset this field; verify it after every source or
   repository-link change.
 
 ## Normal staging workflow
 
-1. Confirm `git status -sb` reports `staging...origin/staging` and a clean tree.
+On October 2, the user instructed direct pushes to `staging` instead of PR
+merges. Support that delivery path by removing only staging's PR requirement;
+retain its 23 strict, app-bound required checks, administrator enforcement,
+and force-push/deletion restrictions. Keep `master` protection unchanged.
+Candidate checks must still pass before the protected fast-forward push.
+The existing PR can provide those checks for this batch without being merged.
+Future PR-free validation needs real dependency review on the candidate ref;
+the current three dependency-review jobs run only on PR events. Do not drop
+those required checks or substitute fabricated statuses to allow a push.
+
+1. Inspect the branch and working tree; preserve unrelated local changes and
+   verify that the candidate contains the current remote `staging` revision.
 2. Assemble a cohesive batch of several related, independently reviewable
    hardening outcomes and update the authoritative docs. Keep each logical
    change in its own small Conventional Commit.
 3. Run focused checks plus lint, strict typecheck, relevant coverage, security
    scans, and both production builds.
-4. Review the complete batch, push its topic branch once, and merge it through
-   a protected `staging` pull request after required checks pass. Do not push
-   each commit as it is created.
+4. Review the complete batch and obtain every required check on its exact
+   candidate SHA. Push that SHA directly to `staging` as a fast-forward,
+   without a PR merge. Do not push each commit as it is created.
 5. Confirm both exact-SHA Railway deployments honor their relevant CI wait.
    If either starts before its required service checks finish, treat that as
    a release-control failure even if the deployment later succeeds.
@@ -63,8 +74,8 @@ Treat the **push**, rather than each commit, as the expensive release unit.
 The batch should close multiple concrete items from the hardening plan, not
 just record evidence or adjust one small helper. Build and test the whole batch
 locally before the push, then run the exact-SHA CI and deployment checks once
-for the final staging merge head. Required pull-request checks run on the
-reviewed batch before that merge. Record post-deployment evidence in the
+for the final staging revision. Required candidate checks run on the
+reviewed batch before that push. Record post-deployment evidence in the
 handoff and fold it
 into the next substantive batch; do not routinely create a separate docs-only
 staging push. A release-control failure, urgent security fix, or rollback may
