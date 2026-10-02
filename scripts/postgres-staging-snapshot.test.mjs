@@ -309,10 +309,45 @@ test("binds a private published bundle to exact source and system identity", asy
       !JSON.stringify({ result, scope }).includes("fake-private-password")
     )
     assert.ok(!JSON.stringify({ result, scope }).includes("fake-api-token"))
-    assert.equal(
-      JSON.stringify({ result, scope }).includes("db.proxy.rlwy.net"),
-      false
+    // Exact shapes also reject private data in unknown or nested fields.
+    assert.match(
+      names[0],
+      /^postgres-staging-snapshot-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u
     )
+    const published = join(output, names[0])
+    assert.deepEqual(result, {
+      status: "staging_snapshot_bound",
+      archivePath: join(published, "database.dump"),
+      manifestPath: join(published, "database.manifest.json"),
+      receiptPath: join(published, "database.restore-receipt.json"),
+      sourceScopePath: join(published, "source-scope.receipt.json"),
+      archiveSha256: sha(Buffer.from("isolated-fixture-archive")),
+      sourceMajor: 16,
+    })
+    assert.deepEqual(scope, {
+      schemaVersion: 1,
+      capturedAt: new Date(scope.capturedAt).toISOString(),
+      source: {
+        projectId: ids.project,
+        environmentId: ids.environment,
+        serviceId: ids.service,
+        serviceInstanceId: ids.serviceInstance,
+        deploymentId: ids.deployment,
+        deploymentInstanceId: ids.replica,
+        volumeInstanceId: ids.volumeInstance,
+        volumeId: ids.volume,
+        volumeMountPath: "/var/lib/postgresql/data",
+      },
+      sourceSystemId: systemId,
+      originalEndpointFingerprint: sha("db.proxy.rlwy.net:51985/railway"),
+      mappedEndpointFingerprint: sha("127.0.0.1:55321/railway"),
+      archiveSha256: sha(Buffer.from("isolated-fixture-archive")),
+      manifestSha256: sha(await readFile(result.manifestPath)),
+      restoreReceiptSha256: sha(await readFile(result.receiptPath)),
+      sourceMajor: 16,
+      tunnelHost: "ssh.railway.com",
+      tunnelTlsMode: "require",
+    })
   })
 })
 

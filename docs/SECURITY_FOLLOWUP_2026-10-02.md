@@ -150,10 +150,14 @@ resolved the failures; no application assertion or gate was weakened.
 
 The initial PR #18 run on `6d34b11` passed Root CI and Runtime Images, but
 CodeQL rejected three hostname-redaction test regexes and the disposable
-fixture build could no longer obtain Alpine OpenSSL `3.5.8-r0`. Literal
-substring assertions retain the same negative coverage without regex
-ambiguity; exact `3.5.9-r0` fixture pins require fresh builds and scans.
-Neither failure permits a suppression or a skipped service integration gate.
+fixture build could no longer obtain Alpine OpenSSL `3.5.8-r0`. Replacing the
+regexes with literal substring assertions triggered a second URL-sanitization
+heuristic on `cfc9dfe`. The final assertions compare complete approved reports,
+including nested data, exact fingerprints, validated paths, and canonical
+timestamps; unexpected fields or private hostname leakage fail that contract.
+No CodeQL suppression was added. Exact `3.5.9-r0` fixture pins passed fresh
+builds, scans, and all 142 integration cases locally. The next candidate must
+still pass CodeQL and service integration in GitHub.
 
 The user subsequently required direct pushes to `staging`, without PR merges.
 Obtain all required candidate checks, then deliver the logical Conventional

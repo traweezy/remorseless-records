@@ -288,7 +288,18 @@ test("reports only bounded facts after both staging and database identity checks
     assert.equal(report.pgStatStatementsPreloaded, false)
     assert.ok(!JSON.stringify(report).includes("secret-do-not-log"))
     assert.ok(!JSON.stringify(report).includes("private-token-do-not-log"))
-    assert.equal(JSON.stringify(report).includes("db.proxy.rlwy.net"), false)
+    // Allow only the complete public report, including every nested field.
+    assert.deepEqual(report, {
+      event: "postgres.observability_preflight.completed",
+      ...inventory,
+      source: "staging_postgres_live_read_only",
+      observedAtStart: new Date(report.observedAtStart).toISOString(),
+      observedAtEnd: new Date(report.observedAtEnd).toISOString(),
+      durationMs:
+        Date.parse(report.observedAtEnd) - Date.parse(report.observedAtStart),
+      sourceIdentityVerified: true,
+      readOnly: true,
+    })
   })
 })
 
