@@ -224,12 +224,11 @@ permissions, all of them are required before the handler runs. Rate limits,
 body parsers, upload handling, and the other operational middleware remain
 separate from this policy-only manifest.
 
-Existing permission-aware Content and operations component boundaries avoid
+Permission-aware Content, operations, and Catalog component boundaries avoid
 protected fetches and dead-end controls. Dashboard route
 `handle.permissions` is metadata, not a security or render boundary. Catalog
-routes and widgets still need explicit fail-closed component boundaries before
-restricted-role UI behavior can be called complete; direct requests are
-already protected by the backend manifest.
+workspaces and Product/Variant widgets use explicit fail-closed render guards;
+direct requests are independently protected by the backend manifest.
 
 The pinned Dashboard's unsupported native Product Import action and route are
 removed from both source and production bundles. A fail-closed repository check
@@ -271,7 +270,7 @@ flowchart TD
   Login[Administrator signs in] --> Roles[Medusa resolves assigned roles]
   Roles --> Permission[Effective permissions]
   Permission --> UI[Permission-aware Admin component boundary]
-  Permission --> Catalog[Catalog metadata; component boundary pending]
+  Permission --> Catalog[Catalog component and widget boundaries]
   UI --> API[Request reaches Medusa]
   Catalog --> API
   API --> Check{Required route policy granted?}
@@ -312,9 +311,8 @@ them without adding per-user links. Product-import authorization adds two more
 task-specific policies. Its accepted staging rollout verified 249 non-deleted
 policies, one wildcard, and 248 concrete Super Admin permissions. The catalog
 manifest adds 11 definitions, bringing the code-registered custom total to 27.
-Its release acceptance must verify 260 non-deleted policies, one wildcard, and
-259 concrete Super Admin permissions before that catalog slice is considered
-deployed; those figures are expectations, not completed rollout evidence.
+Its accepted staging rollout verified 260 non-deleted policies, one wildcard,
+and 259 concrete Super Admin permissions.
 The secured pre-activation snapshot and exact deployment evidence are recorded
 in [ADR 0006](docs/adr/0006-native-admin-rbac.md).
 
@@ -325,11 +323,11 @@ old signed session can use it; backend authorization still rejects the old
 session, so reauthentication is both the UX and security boundary. Medusa's
 public Admin extension API cannot yet hide custom top-level or nested sidebar
 items by permission, so a restricted user may still see a denied custom
-workspace in that shell. Permission-aware Content and operations routes show a
-restricted-access page without starting their protected query. Catalog
-`handle.permissions` metadata alone does not provide that boundary; explicit
-catalog route and widget guards remain a follow-up. The backend independently
-rejects every unauthorized direct request.
+workspace in that shell. Permission-aware Content, operations, and Catalog
+routes show a restricted-access page without starting their protected query.
+Catalog `handle.permissions` metadata alone does not provide that boundary;
+explicit route and widget guards enforce it. The backend independently rejects
+every unauthorized direct request.
 
 A non-production rehearsal with RBAC disabled can report the bootstrap script
 as pending. Medusa checks the script's feature predicate before inserting its

@@ -426,9 +426,9 @@ false 200 or remapper 500. The preflight is one indexed Variant lookup per
 single-Variant update; list, batch, and read paths are unchanged.
 
 Dashboard `handle.permissions` is route metadata, not a fail-closed component
-boundary. Catalog routes and widgets still require explicit permission-aware
-render boundaries before restricted-role UI behavior is complete. The backend
-manifest is authoritative regardless of what the Dashboard renders.
+boundary. Catalog workspaces and Product/Variant widgets use explicit
+`AdminPermissionBoundary` guards before protected content mounts or fetches.
+The backend manifest is authoritative regardless of what the Dashboard renders.
 
 ## Checkout payment authority
 

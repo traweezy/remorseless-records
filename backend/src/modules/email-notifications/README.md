@@ -71,7 +71,10 @@ JavaScript.
 
 ### Trigger an email notification
 
-Build a validated, minimal projection and verify its durable result:
+Build a validated, minimal projection and verify its durable result. The
+template data must include a validated `emailOptions: { subject }` plus only
+the fields required by that template; `validatedRecipient` is a validated
+single mailbox and `order.id` is an opaque, validated order ID:
 
 ```typescript
 const idempotencyKey = `order-placed:${order.id}`
@@ -91,104 +94,27 @@ await createAndVerifyNotifications(notificationModuleService, [payload])
 
 ### Adding a new template
 
-To add a new email template:
-
-#### 1. Create the template component
-
-Add a new file in the templates directory using the shared base template and
-local primitives. For example, `new-template.tsx`:
-
-```tsx
-import * as React from 'react'
-import { Base } from './base'
-import { Text, Link } from './primitives'
-
-export const NEW_TEMPLATE_KEY = 'new-template'
-
-export interface NewTemplateProps {
-  greeting: string
-  actionUrl: string
-  preview?: string
-}
-
-export const isNewTemplateData = (data: any): data is NewTemplateProps =>
-  typeof data.greeting === 'string' && typeof data.actionUrl === 'string'
-
-export const NewTemplate = ({ greeting, actionUrl, preview = 'You have a new message' }: NewTemplateProps) => (
-  <Base preview={preview}>
-    <Text>{greeting}</Text>
-    <Text>Click <Link href={actionUrl}>here</Link> to take action.</Text>
-  </Base>
-)
-
-// Add preview props for the email dev server
-NewTemplate.PreviewProps = {
-  greeting: 'Hello there!',
-  actionUrl: 'https://example.com/action',
-  preview: 'Preview of the new template'
-} as NewTemplateProps
-```
-
-#### 2. Add the new template key to the `EmailTemplates` enum:
-
-```typescript
-import { NEW_TEMPLATE_KEY } from './new-template'
-
-export enum EmailTemplates {
-  // ...
-  NEW_TEMPLATE = NEW_TEMPLATE_KEY, // Add new key here
-}
-```
-
-#### 3. Add template handling to `generateEmailTemplate`
-Update the `generateEmailTemplate` function to handle the new template:
-
-```tsx
-import NewTemplate, { NEW_TEMPLATE_KEY, isNewTemplateData } from './new-template'
-
-export enum EmailTemplates {
-  // ...
-  NEW_TEMPLATE = NEW_TEMPLATE_KEY,
-}
-
-export function generateEmailTemplate(templateKey: string, data: unknown): ReactNode {
-  switch (templateKey) {
-    // ...
-    case EmailTemplates.NEW_TEMPLATE:
-      if (!isNewTemplateData(data)) {
-        throw new MedusaError(
-          MedusaError.Types.INVALID_DATA,
-          `Invalid data for template "${EmailTemplates.NEW_TEMPLATE}"`
-        )
-      }
-      return (<NewTemplate {...data} />)
-    default:
-      throw new MedusaError(
-        MedusaError.Types.INVALID_DATA,
-        `Unknown template key: "${templateKey}"`,
-      )
-  }
-}
-```
-
-#### 4. Trigger the new template in a subscriber
-Finally, call `createNotifications` with the new template key and data
-
-```typescript
-await notificationModuleService.createNotifications({
-  to: user.email,
-  channel: 'email',
-  template: EmailTemplates.NEW_TEMPLATE, // or 'new-template'
-  data: {
-    emailOptions: {
-      subject: 'Action Required',
-    },
-    greeting: 'Hello there!',
-    actionUrl: `${BACKEND_URL}/take-action?token=${user.token}`,
-    preview: 'An important action is awaiting you...',
-  },
-})
-```
+1. Add a named component under `templates/` using `Base` and the local
+   email-safe primitives. Give it a unique key and a type guard that accepts
+   `unknown`, validates the complete minimal data projection, and rejects
+   malformed or oversized values. Use non-secret preview fixtures.
+2. Register the key, guard, and component in `templates/index.tsx`. Add the
+   exact key to `SUPPORTED_TEMPLATES` in `services/resend.ts`; the provider
+   rejects unregistered templates. Keep `emailOptions` limited to one validated
+   subject.
+3. In the subscriber, resolve and validate recipient and business identifiers
+   at the boundary, build only the template's required projection, and pass a
+   stable opaque idempotency key through `emailIdempotencyFields`. Call
+   `createAndVerifyNotifications` and require its durable acknowledgement.
+   `order-placed.ts` and `invite-created.ts` show the supported patterns.
+4. If the message contains a one-time link, construct it from a validated,
+   configured HTTPS origin and encoded token, validate its exact path and query,
+   redact the stored secret after verified delivery. The invite subscriber and
+   `buildInviteNotificationLink` provide the existing implementation. Never
+   derive a link by interpolating an untrusted token into a base URL.
+5. Cover invalid template data, recipient, URL, provider response, retry,
+   replay, and redaction behavior with focused tests before enabling the new
+   event.
 
 ## Additional Info & Documentation
 

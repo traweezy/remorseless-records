@@ -1,7 +1,7 @@
 # ADR 0002: Medusa-owned switchable tax providers
 
-- Status: accepted and implemented for provider collection; ADR 0007 adds the
-  accepted tax-disabled operating mode, whose implementation is pending
+- Status: accepted and implemented for provider collection; ADR 0007 records
+  the implemented audited tax-disabled operating mode
 - Date: 2026-07-25
 - Scope: US storefront tax calculation, reporting, refunds, and payment linkage
 
@@ -14,9 +14,9 @@ must not calculate an independent second total after Medusa has prepared the
 order.
 
 ADR 0007 separates the decision to collect tax from this provider selection.
-When its implementation is complete, an explicit audited disabled mode will
-produce controlled zero-tax evidence without calling either provider. Provider
-failure must still never silently fall back to that mode.
+The audited disabled mode produces controlled zero-tax evidence without calling
+either provider. Provider failure must still never silently fall back to that
+mode.
 
 The same fresh Stripe Tax `Calculation` used to populate Medusa's tax lines must
 be linked to the Medusa-created PaymentIntent. The PaymentIntent amount must

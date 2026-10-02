@@ -1,6 +1,7 @@
 # ADR 0007: Model tax collection as an audited operating mode
 
-- Status: accepted; implemented locally, staging acceptance pending
+- Status: accepted and implemented; production use requires business and tax
+  approval
 - Date: 2026-08-30
 - Scope: tax calculation, checkout, payment binding, evidence, reporting, and
   merchant controls
@@ -197,9 +198,10 @@ build and full local Playwright matrix passed 53 tests with two intentional
 skips and zero failures across desktop checkout, Pixel 7, and iPhone 15 Pro.
 Those tests use explicit rendered-state assertions after `domcontentloaded` so
 background cache and telemetry activity cannot deadlock the release gate.
-Database migration rehearsal, re-enable browser coverage, the no-provider-call
-staging trace, exact-SHA CI, and Railway acceptance remain release evidence
-rather than assumptions in this ADR.
+The preceding paragraph records the original local implementation acceptance.
+Subsequent staging release evidence is tracked in the production hardening plan
+and next-session handoff. Business and qualified tax approval for using
+disabled mode in production remain open.
 
 ## References
 
