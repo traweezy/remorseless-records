@@ -236,7 +236,7 @@ restore passed; scheduled backup/PITR, role cutover and Redis
 migration remain open; see
 [INFRASTRUCTURE_RECOVERY.md](INFRASTRUCTURE_RECOVERY.md) for the precise evidence.
 
-Historical sections below retain dated evidence. Next.js 16.3.4 is installed;
+Historical sections below retain dated evidence. Next.js 16.3.8 is installed;
 the previous browser sandbox limitation is resolved with sandboxed Brave.
 Old passing scans are not evidence against new advisories. Production does not
 exist; live Redis migration, recovery infrastructure, role/network cutovers,
@@ -656,8 +656,8 @@ restore drills. Exact-SHA CI acceptance remains to be recorded in the handoff.
 ## Operating contract
 
 - `staging` is the protected default integration branch and the only branch
-  connected to automatic Railway staging deploys. Normal work merges through
-  a protected `staging` pull request.
+  connected to automatic Railway staging deploys. Normal work is delivered
+  by a protected direct fast-forward push after candidate-tag CI passes.
 - `master` is the production-candidate branch and advances only through a
   reviewed pull request from an exact, accepted `staging` commit.
 - Production deploys are manual from an approved exact `master` SHA. A merge to
@@ -673,13 +673,13 @@ restore drills. Exact-SHA CI acceptance remains to be recorded in the handoff.
 - Batch compatible families as explicitly requested on September 6 and
   reaffirmed on September 20. Review each family's risks independently,
   complete its focused checks and docs, then run the combined full local
-  gates before one topic-branch push. Do not push each logical commit or
+  gates before one grouped staging push. Do not push each logical commit or
   routine documentation-only acceptance checkpoint separately.
-- Push the completed batch as cohesive atomic commits, merge the protected
-  pull request, then watch all
-  GitHub Actions jobs and affected Railway staging deployments to `SUCCESS`
-  and run the batch's health, route, API, log, and browser acceptance before
-  accepting the next batch. Batching does not waive compatibility reviews.
+- Validate the complete batch on its exact candidate tag, then push the same
+  commit directly to staging and watch all four workflows. Once CI passes,
+  begin the next batch locally while monitoring Railway. Hold its push until
+  both previous exact-SHA deployments and health, route, API, log, and browser
+  acceptance pass. Batching does not waive compatibility reviews.
 - Do not change production traffic, paid services, credentials, domains,
   replicas, data, or destructive migrations without explicit approval.
 

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict"
+import { spawnSync } from "node:child_process"
 import { describe, it } from "node:test"
 
 import {
@@ -104,5 +105,115 @@ describe("Railway runtime-log acceptance", () => {
         ),
       /commit_sha, status/
     )
+  })
+
+  it("verifies native completion without inventing a problem-code field", () => {
+    const { problem_code: _unused, ...completion } = {
+      ...expectations,
+      service: "backend",
+      event: "http.request.completed",
+      level: "warn",
+    }
+    const native = { level: "warn", message: JSON.stringify(completion) }
+    assert.equal(
+      verifyRailwayRuntimeLog([native], completion, { profile: "completion" })
+        .request_id,
+      completion.request_id
+    )
+    assert.throws(() => verifyRailwayRuntimeLog([native], completion))
+    assert.throws(() =>
+      verifyRailwayRuntimeLog(
+        [native],
+        { ...completion, problem_code: "not_allowed" },
+        { profile: "completion" }
+      )
+    )
+    assert.throws(() =>
+      verifyRailwayRuntimeLog([native], expectations, { profile: "completion" })
+    )
+    assert.throws(() =>
+      verifyRailwayRuntimeLog([native], completion, { profile: "other" })
+    )
+    for (const field of [
+      "commit_sha",
+      "environment",
+      "event",
+      "level",
+      "request_id",
+      "service",
+      "trace_id",
+      "status",
+    ]) {
+      const altered = {
+        ...completion,
+        [field]: field === "status" ? 500 : "different",
+      }
+      assert.throws(() =>
+        verifyRailwayRuntimeLog([altered], completion, {
+          profile: "completion",
+        })
+      )
+    }
+  })
+
+  it("rejects conflicting copies of the exact event but permits its distinct completion event", () => {
+    assert.throws(
+      () =>
+        verifyRailwayRuntimeLog(
+          [structuredEvent, { ...structuredEvent, commit_sha: "e".repeat(40) }],
+          expectations
+        ),
+      /conflicting identities/u
+    )
+    assert.equal(
+      verifyRailwayRuntimeLog(
+        [
+          structuredEvent,
+          { ...structuredEvent, event: "http.request.completed" },
+        ],
+        expectations
+      ).event,
+      "api.problem"
+    )
+  })
+
+  it("CLI supports completion and cannot silently waive problem evidence", () => {
+    const { problem_code: _unused, ...completion } = {
+      ...expectations,
+      service: "backend",
+      event: "http.request.completed",
+      level: "warn",
+    }
+    const args = Object.entries(completion).flatMap(([key, value]) => [
+      `--${key.replaceAll("_", "-")}`,
+      String(value),
+    ])
+    const run = (options, input = JSON.stringify(completion)) =>
+      spawnSync(
+        process.execPath,
+        [
+          new URL("./verify-railway-runtime-log.mjs", import.meta.url).pathname,
+          ...options,
+        ],
+        { encoding: "utf8", input, timeout: 10000 }
+      )
+    assert.equal(run([...args, "--profile", "completion"]).status, 0)
+    assert.equal(run(args).status, 1)
+    assert.equal(
+      run([...args, "--profile", "completion", "--problem-code", "invented"])
+        .status,
+      1
+    )
+    assert.equal(
+      run([...args, "--profile", "completion", "--profile", "completion"])
+        .status,
+      1
+    )
+    const invalid = run(
+      [...args, "--profile", "completion"],
+      "private-invalid-log"
+    )
+    assert.equal(invalid.status, 1)
+    assert.ok(!invalid.stderr.includes("private-invalid-log"))
   })
 })

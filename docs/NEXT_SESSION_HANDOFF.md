@@ -2,6 +2,25 @@
 
 Last updated: 2026-10-02 (America/New_York)
 
+## Current local release-tooling batch
+
+The next cohesive batch adds candidate-tag validation with genuine dependency
+review on the whole base/head range, read-only exact-revision GitHub/Railway
+readiness inspection, and native request-completion log acceptance. The
+workflow guards preserve all security jobs, protected check names and
+master-only image publication. The release runbook now describes candidate
+tags followed by direct staging pushes; no PR merge is required.
+
+Focused tests cover stale bases, wrong check identities, skipped/failed checks,
+deployment and branch drift, dependency readiness, bounded/redacted output,
+and conflicting log identities. The combined focused suite passed 176 tests;
+the release-policy coverage gate and both production builds passed locally.
+The Storefront build used an owned loopback Medusa fixture and the CI search
+fallback configuration; its client-bundle secret scan passed and the owned
+fixture stopped afterward. Full candidate CI and deployed acceptance
+must still be recorded before this batch is accepted. The accepted security
+revision below remains the baseline while this batch is validated.
+
 ## October 2 security acceptance and continuation
 
 Start with [the October 2 security follow-up](SECURITY_FOLLOWUP_2026-10-02.md).

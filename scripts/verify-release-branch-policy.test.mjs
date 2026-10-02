@@ -5,6 +5,7 @@ import test from "node:test"
 
 import {
   validateApplicationReleaseGraph,
+  validateDependencyReviewGate,
   validateReleaseBranches,
 } from "./verify-release-branch-policy.mjs"
 
@@ -542,18 +543,74 @@ test("Storefront rejects lost build opt-in, omitted master gates and broadened t
 })
 
 test("release branch triggers and manual production remain enforced", () => {
-  for (const source of Object.values(workflows)) {
+  const runtime = readFileSync(
+    new URL("../.github/workflows/runtime-images.yml", import.meta.url),
+    "utf8"
+  )
+  for (const source of [...Object.values(workflows), runtime]) {
+    validateReleaseBranches(source, "fixture")
     assert.throws(() =>
       validateReleaseBranches(
         source.replace("branches: [staging, master]", "branches: [master]"),
         "fixture"
       )
     )
+    for (const tags of [
+      '    tags: ["**"]',
+      "",
+      '    tags: ["staging-candidate/**"]\n    tags: ["other/**"]',
+    ])
+      assert.throws(() =>
+        validateReleaseBranches(
+          source.replace('    tags: ["staging-candidate/**"]', tags),
+          "fixture"
+        )
+      )
     assert.throws(() =>
       validateReleaseBranches(
         `${source}\n    environment: production\n`,
         "fixture"
       )
     )
+  }
+})
+
+test("dependency review rejects skipped ranges, shallow history, changed refs and warn-only execution", () => {
+  const root = readFileSync(
+    new URL("../.github/workflows/root.yml", import.meta.url),
+    "utf8"
+  )
+  for (const source of [root, ...Object.values(workflows)]) {
+    validateDependencyReviewGate(source)
+    for (const [before, after] of [
+      ["          fetch-depth: 0", "          fetch-depth: 1"],
+      [
+        "        run: node scripts/dependency-review-range.mjs",
+        "        run: echo ignored",
+      ],
+      [
+        "          base-ref: ${{ steps.review-range.outputs.base }}",
+        "          base-ref: ${{ github.sha }}",
+      ],
+      [
+        "          head-ref: ${{ steps.review-range.outputs.head }}",
+        "          head-ref: staging",
+      ],
+      [
+        "          fail-on-severity: high",
+        "          fail-on-severity: critical",
+      ],
+      [
+        "          fail-on-severity: high",
+        "          fail-on-severity: high\n          warn-only: true",
+      ],
+      [
+        "        id: review-range",
+        "        id: review-range\n        if: false",
+      ],
+    ])
+      assert.throws(() =>
+        validateDependencyReviewGate(source.replace(before, after))
+      )
   }
 })

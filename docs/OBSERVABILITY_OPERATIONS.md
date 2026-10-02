@@ -130,6 +130,36 @@ span metrics for PostgreSQL/Knex and Redis, but alerts must continue to use only
 low-cardinality operation names and must not enable query parameters or full
 SQL/Redis arguments.
 
+## Exact-request runtime-log acceptance
+
+`scripts/verify-railway-runtime-log.mjs` reads bounded JSON lines from stdin
+and verifies the exact request, trace, revision, environment, service, level,
+event and HTTP status. Use a deployment-scoped, bounded log capture; a text
+filter may not search structured attributes promoted out of the message.
+Never print the raw capture into a shared transcript. Keep the original
+response request/trace headers and Railway request ID for an independent
+HTTP-log match on the same deployment.
+
+The default `problem` profile additionally requires `--problem-code` and
+preserves the custom API problem contract. Native Medusa guard responses may
+instead emit `http.request.completed` without a problem-code field. Select
+that explicit contract rather than inventing a field:
+
+```bash
+node scripts/verify-railway-runtime-log.mjs \
+  --profile completion --commit-sha <full-SHA> --environment staging \
+  --event http.request.completed --level warn --service backend \
+  --status 400 --request-id <response-request-ID> --trace-id <response-trace-ID>
+```
+
+Supply the bounded JSON capture through stdin. `completion` only accepts the
+native completion event and rejects `--problem-code`; omitting the code from
+the default problem profile still fails. Distinct event types for one request
+are allowed, but conflicting copies of the expected event fail even if one
+copy matches. Neither a successful runtime match nor an HTTP 400 proves
+whole-window health; separately inspect bounded warnings/errors and query
+HTTP 5xx, retaining known diagnostic families without suppressing them.
+
 ## Service objectives
 
 Objectives are evaluated over a rolling 30-day window unless an alert below

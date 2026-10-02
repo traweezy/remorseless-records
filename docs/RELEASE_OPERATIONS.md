@@ -34,10 +34,23 @@ merges. Support that delivery path by removing only staging's PR requirement;
 retain its 23 strict, app-bound required checks, administrator enforcement,
 and force-push/deletion restrictions. Keep `master` protection unchanged.
 Candidate checks must still pass before the protected fast-forward push.
-The existing PR can provide those checks for this batch without being merged.
-Future PR-free validation needs real dependency review on the candidate ref;
-the current three dependency-review jobs run only on PR events. Do not drop
-those required checks or substitute fabricated statuses to allow a push.
+Run the four existing workflows on a lightweight candidate tag named
+`staging-candidate/<current-staging-full-SHA>/<candidate-full-SHA>`. The tag
+identifies the entire reviewed batch without a feature-branch or PR merge.
+Do not move or reuse candidate tags. An amended candidate gets a new tag.
+
+All three dependency-review jobs execute real comparisons on candidate and
+long-lived branch pushes. `scripts/dependency-review-range.mjs` verifies the
+checkout, repository, full commit identities and ancestry. Candidate tags
+must name the current fetched staging base and their own exact head; a normal
+push compares `before` with the pushed SHA, covering the whole batch. PRs keep
+their actual base/head comparison. Manual branch runs compare the head's
+parent; manual candidate-tag runs retain the tag's whole-batch base. Scheduled
+audits continue to inspect the complete dependency set. The pinned
+[dependency review action](https://github.com/actions/dependency-review-action/tree/a1d282b36b6f3519aa1f3fc636f609c47dddb294)
+supports explicit base/head inputs outside PR events; GitHub also supports
+[CodeQL results on tag references](https://docs.github.com/en/rest/code-scanning/code-scanning#upload-an-analysis-as-sarif-data).
+No status is fabricated, check removed, or image published for candidate tags.
 
 1. Inspect the branch and working tree; preserve unrelated local changes and
    verify that the candidate contains the current remote `staging` revision.
@@ -47,7 +60,8 @@ those required checks or substitute fabricated statuses to allow a push.
 3. Run focused checks plus lint, strict typecheck, relevant coverage, security
    scans, and both production builds.
 4. Review the complete batch and obtain every required check on its exact
-   candidate SHA. Push that SHA directly to `staging` as a fast-forward,
+   candidate tag. Run the read-only candidate readiness check below, then
+   push that SHA directly to `staging` as a fast-forward,
    without a PR merge. Do not push each commit as it is created.
 5. Confirm both exact-SHA Railway deployments honor their relevant CI wait.
    If either starts before its required service checks finish, treat that as
@@ -65,6 +79,49 @@ This timing reflects the user's October 2 instruction: successful exact-revision
 CI permits the next local work, while successful Railway deployment and live
 acceptance permit the next batch's push. CI alone does not establish release
 acceptance. Apply the same sequence to every direct staging push.
+
+### Read-only release inspection
+
+Use the pinned root toolchain. After reviewing the committed batch and local
+gates, capture the current remote staging SHA, verify it is an ancestor of
+the candidate, and push only the candidate tag to run CI. Once its four
+workflows finish, inspect the exact candidate and previous deployments:
+
+```bash
+pnpm run release:staging:readiness -- \
+  --sha <candidate-full-SHA> --candidate-base <current-staging-full-SHA>
+```
+
+The command retains all 23 exact GitHub-App-bound check names and branch
+protections, rejects failed/skipped/missing/latest incomplete checks, verifies
+the lightweight tag identity, and checks the previous staging deployment pair
+and uncached `/live` and `/ready` responses. It rechecks branch/tag/deployment
+identities after the reads. Changed targets, incomplete API pages and bounded
+transport failures fail closed. It performs no push, deployment, configuration
+change, variable export, SSH, or provider-message operation.
+
+After the direct staging push:
+
+```bash
+pnpm run release:staging:readiness -- --sha <pushed-full-SHA> --ci-only
+pnpm run release:staging:readiness -- --sha <pushed-full-SHA>
+```
+
+The first command can establish `readyForLocalWork` while Railway rolls out.
+The second establishes readiness for live acceptance. Exit 0 means the
+requested checks passed, exit 2 means a check remains pending or unhealthy,
+and exit 1 means identity or evidence could not be verified. JSON output is
+allowlisted; raw provider payloads and errors are not emitted. Neither command
+sets `releaseAccepted`: authenticated catalog/operations, an ordinary exact-SHA
+heartbeat, runtime package checks, correlated logs and applicable deployed
+browsers still complete acceptance before the next batch's push. Candidate
+readiness checks the previous deployments, and does not recreate their earlier
+full acceptance evidence. Retain that evidence in the handoff.
+
+For native HTTP guard logs, use the explicit `completion` profile described
+in [observability operations](OBSERVABILITY_OPERATIONS.md). A native Medusa
+400 need not emit the custom API problem event; do not invent its fields or
+assume a provider text filter searches every structured attribute.
 
 Railway watch paths are evaluated for the pushed commit. A grouped push can
 contain application changes yet end with an unwatched documentation-only

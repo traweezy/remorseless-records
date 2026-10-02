@@ -22,7 +22,7 @@ const verifiedSecretScanner = [
   "security/trufflehog@6f3c981e7b77f235fd2702dd74af25fc4b72bf11 # v3.96.0",
 ].join("")
 const dependencyReviewCondition =
-  '${{ contains(fromJson(\'["pull_request","merge_group"]\'), github.event_name) }}'
+  '${{ contains(fromJson(\'["pull_request","push","workflow_dispatch"]\'), github.event_name) }}'
 const runtimeCondition = (flag) =>
   `\${{ github.event_name != 'pull_request' || github.base_ref == 'master' || (vars.ENABLE_STOREFRONT_BUILD == 'true' && vars.${flag} == 'true') }}`
 const aggregateCondition = (flag) =>
@@ -138,8 +138,45 @@ const requireGateStep = (job, marker, allowEnv = false) => {
   }
 }
 
+export const validateDependencyReviewGate = (source) => {
+  const job = applicationJobs(source).get("dependency-review")
+  assert.ok(job, "Dependency review must remain present")
+  assert.equal(job.controls.get("if"), dependencyReviewCondition)
+  assert.equal(job.controls.get("needs"), undefined)
+  assert.deepEqual(
+    job.steps,
+    [
+      [
+        "      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7",
+        "        with:",
+        "          fetch-depth: 0",
+      ],
+      [
+        "      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7",
+        "        with:",
+        "          node-version-file: .nvmrc",
+      ],
+      [
+        "      - name: Verify dependency review range",
+        "        id: review-range",
+        "        run: node scripts/dependency-review-range.mjs",
+      ],
+      [
+        "      - name: Dependency review",
+        "        uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0",
+        "        with:",
+        "          fail-on-severity: high",
+        "          base-ref: ${{ steps.review-range.outputs.base }}",
+        "          head-ref: ${{ steps.review-range.outputs.head }}",
+      ],
+    ],
+    "Dependency review must execute the exact validated comparison without bypasses"
+  )
+}
+
 export const validateApplicationReleaseGraph = (source, application) => {
   assert.ok(["backend", "storefront"].includes(application))
+  validateDependencyReviewGate(source)
   const storefront = application === "storefront"
   const expected = {
     ...commonJobs,
@@ -360,6 +397,11 @@ export const validateReleaseBranches = (source, workflowPath) => {
     [expectedBranches, expectedBranches],
     `${workflowPath} must run pushes and pull requests for staging and master`
   )
+  assert.match(
+    source,
+    /^  push:\n    branches: \[staging, master\]\n    tags: \["staging-candidate\/\*\*"\]$/mu
+  )
+  assert.equal(source.match(/^    tags:/gmu)?.length, 1)
   assert.doesNotMatch(
     source,
     /^\s*environment:\s*production\s*$/mu,
@@ -371,6 +413,7 @@ export const verifyReleaseBranchPolicy = () => {
   for (const workflowPath of workflowPaths) {
     const source = fs.readFileSync(workflowPath, "utf8")
     validateReleaseBranches(source, workflowPath)
+    validateDependencyReviewGate(source)
     if (workflowPath !== ".github/workflows/root.yml") {
       validateApplicationReleaseGraph(
         source,
@@ -378,6 +421,10 @@ export const verifyReleaseBranchPolicy = () => {
       )
     }
   }
+  validateReleaseBranches(
+    fs.readFileSync(".github/workflows/runtime-images.yml", "utf8"),
+    "runtime-images"
+  )
   console.log(
     "Release branch policy verified: unchanged security barriers, parallel independent runtime gates, staging integration, master promotion, and manual production."
   )

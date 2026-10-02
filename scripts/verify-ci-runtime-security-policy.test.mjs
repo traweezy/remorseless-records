@@ -276,7 +276,7 @@ describe("CI runtime security policy", () => {
         ],
         [
           "history truncation",
-          source.replace("fetch-depth: 0", "fetch-depth: 1"),
+          source.replace(/(^  secrets:\n[\s\S]*?fetch-depth:) 0/mu, "$1 1"),
         ],
         [
           "scan exclusion",

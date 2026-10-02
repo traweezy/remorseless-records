@@ -3,7 +3,6 @@ const EXPECTED_STRING_FIELDS = [
   "environment",
   "event",
   "level",
-  "problem_code",
   "request_id",
   "service",
   "trace_id",
@@ -65,12 +64,28 @@ export const normalizeRailwayRuntimeLog = (record) => {
   }
 }
 
-const validateExpectations = (expectations) => {
+const validateExpectations = (expectations, profile) => {
   if (!isRecord(expectations)) {
     throw new TypeError("Runtime-log expectations must be an object")
   }
 
-  for (const field of EXPECTED_STRING_FIELDS) {
+  if (!["problem", "completion"].includes(profile)) {
+    throw new TypeError("Unknown runtime-log profile")
+  }
+  if (
+    profile === "completion" &&
+    (expectations.event !== "http.request.completed" ||
+      Object.hasOwn(expectations, "problem_code"))
+  ) {
+    throw new TypeError(
+      "Completion profile requires the native HTTP completion contract"
+    )
+  }
+  const fields = [
+    ...EXPECTED_STRING_FIELDS,
+    ...(profile === "problem" ? ["problem_code"] : []),
+  ]
+  for (const field of fields) {
     const value = expectations[field]
     if (typeof value !== "string" || value.length === 0 || value.length > 128) {
       throw new TypeError(
@@ -82,24 +97,31 @@ const validateExpectations = (expectations) => {
   if (!Number.isInteger(expectations.status)) {
     throw new TypeError("Expected status must be an integer")
   }
+  return fields
 }
 
-export const verifyRailwayRuntimeLog = (records, expectations) => {
+export const verifyRailwayRuntimeLog = (
+  records,
+  expectations,
+  { profile = "problem" } = {}
+) => {
   if (!Array.isArray(records)) {
     throw new TypeError("Railway log records must be an array")
   }
-  validateExpectations(expectations)
+  const fields = validateExpectations(expectations, profile)
 
   const normalized = records.map(normalizeRailwayRuntimeLog)
   const requestRecords = normalized.filter(
-    (record) => record.request_id === expectations.request_id
+    (record) =>
+      record.request_id === expectations.request_id &&
+      record.event === expectations.event
   )
 
   if (requestRecords.length === 0) {
     throw new Error("Exact request ID was absent from Railway runtime logs")
   }
 
-  const expectedFields = [...EXPECTED_STRING_FIELDS, "status"]
+  const expectedFields = [...fields, "status"]
   const mismatchSets = requestRecords.map((record) =>
     expectedFields.filter((field) => record[field] !== expectations[field])
   )
@@ -112,6 +134,10 @@ export const verifyRailwayRuntimeLog = (records, expectations) => {
     throw new Error(
       `Exact-request Railway event mismatched fields: ${mismatchedFields.join(", ")}`
     )
+  }
+
+  if (mismatchSets.some((fields) => fields.length > 0)) {
+    throw new Error("Exact-request Railway events have conflicting identities")
   }
 
   return requestRecords[matchingIndex]

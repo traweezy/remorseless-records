@@ -111,6 +111,7 @@ const securitySteps = (source) => {
       "on:",
       "  push:",
       "    branches: [staging, master]",
+      '    tags: ["staging-candidate/**"]',
       "  pull_request:",
       "    branches: [staging, master]",
       "  schedule:",

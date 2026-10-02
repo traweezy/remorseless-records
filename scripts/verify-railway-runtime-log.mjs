@@ -22,14 +22,21 @@ const usage =
   "Usage: railway logs --json ... | node scripts/verify-railway-runtime-log.mjs " +
   "--commit-sha SHA --environment NAME --event NAME --level LEVEL " +
   "--problem-code CODE --request-id ID --service NAME --status CODE " +
-  "--trace-id ID"
+  "--trace-id ID [--profile problem|completion] (completion omits --problem-code)"
 
 const parseArguments = (arguments_) => {
   const expectations = Object.create(null)
+  let profile
 
   for (let index = 0; index < arguments_.length; index += 2) {
     const option = arguments_[index]
     const value = arguments_[index + 1]
+    if (option === "--profile") {
+      if (profile !== undefined || !["problem", "completion"].includes(value))
+        throw new Error(usage)
+      profile = value
+      continue
+    }
     const field = OPTION_FIELDS.get(option)
     if (!field || typeof value !== "string" || value.startsWith("--")) {
       throw new Error(usage)
@@ -40,11 +47,15 @@ const parseArguments = (arguments_) => {
     expectations[field] = field === "status" ? Number(value) : value
   }
 
-  if (Object.keys(expectations).length !== OPTION_FIELDS.size) {
+  profile ??= "problem"
+  if (
+    Object.keys(expectations).length !==
+    OPTION_FIELDS.size - (profile === "completion" ? 1 : 0)
+  ) {
     throw new Error(usage)
   }
 
-  return expectations
+  return { expectations, profile }
 }
 
 const readStandardInput = async () => {
@@ -64,9 +75,9 @@ const readStandardInput = async () => {
 }
 
 const main = async () => {
-  const expectations = parseArguments(process.argv.slice(2))
+  const { expectations, profile } = parseArguments(process.argv.slice(2))
   const records = parseRailwayLogJsonLines(await readStandardInput())
-  verifyRailwayRuntimeLog(records, expectations)
+  verifyRailwayRuntimeLog(records, expectations, { profile })
   console.log(
     `Verified ${expectations.service} ${expectations.event} for exact request ID and commit SHA.`
   )
