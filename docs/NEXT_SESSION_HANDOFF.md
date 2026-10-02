@@ -1,6 +1,25 @@
 # Next-session handoff
 
-Last updated: 2026-09-20 (America/New_York)
+Last updated: 2026-10-02 (America/New_York)
+
+## October 2 security continuation
+
+Start with [the October 2 security follow-up](SECURITY_FOLLOWUP_2026-10-02.md).
+The current staging source is `2a15471`; September 28 CI correctly rejected
+an active Resend credential in Git history. The user authorized replacement
+and revocation. The old key is now invalid and a sending-only replacement is
+stored in the staging Backend, but its rollout is held by failing CI. Staging
+email remains unavailable until the accepted deployment loads that key.
+
+The ongoing batch pins the scanner runtime, repairs affected dependencies,
+and retains the unique checks/docs from the stale local work after a private,
+byte-verified backup and reconciliation. The user approved the exact Next
+16.3.8 family cooling exception. Finish local gates, logical Conventional
+Commits, the protected staging PR, all four exact-merge-revision workflows,
+and deployed acceptance before starting another item. No production or
+dormant client environment change is included. Other historical credential
+rotation remains unverified. The dated sections below are historical evidence,
+not current acceptance of this security batch.
 
 ## September 20 security incident hold
 

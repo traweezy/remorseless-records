@@ -1,11 +1,24 @@
 # Production Hardening Plan
 
-Last reviewed: September 20, 2026 UTC
+Last reviewed: October 2, 2026 UTC
 
 This is the authoritative launch-readiness backlog for Remorseless Records. It
 supersedes the local `tmp/HARDENING_NEXT_STEPS.md` working note. Detailed
 operating procedures remain in the linked runbooks and ADRs; this document
 tracks what is still required before production traffic is approved.
+
+## Current security hold — October 2
+
+The [October 2 security follow-up](SECURITY_FOLLOWUP_2026-10-02.md) takes
+precedence over the historical release snapshots below. An active Resend key
+in Git history caused the September 28 CI failures at `2a15471`. Its approved
+replacement is stored and the old key is revoked; staging email restoration
+still requires the accepted Backend rollout. Scanner reproducibility and
+dependency repairs must pass local gates, the protected staging PR, all four
+exact-merge-revision workflows, and live acceptance before new feature work.
+The separate review of other historically exposed credentials remains open.
+Existing production, business/tax, recovery, and dormant-client boundaries
+remain unchanged.
 
 ## Active continuation — September 20 UTC onward
 

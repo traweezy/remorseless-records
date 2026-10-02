@@ -13,6 +13,19 @@
     "publishedAt": "2026-08-07T20:19:45.000Z",
     "runtime": "node24"
   },
+  "trufflehogAction": {
+    "repository": "trufflesecurity/trufflehog",
+    "version": "v3.96.0",
+    "commit": "6f3c981e7b77f235fd2702dd74af25fc4b72bf11",
+    "publishedAt": "2026-07-24T18:23:23.000Z",
+    "runtime": "composite"
+  },
+  "trufflehogScanner": {
+    "image": "ghcr.io/trufflesecurity/trufflehog",
+    "version": "3.97.9",
+    "digest": "sha256:52e67fef4d054ecff5c2ce4b4ae376626d1ef54aa0898b53cac19c25e92e14db",
+    "publishedAt": "2026-09-24T09:11:59.000Z"
+  },
   "trivyDatabaseRepository": "ghcr.io/aquasecurity/trivy-db",
   "observedRuns": [
     33501919188, 33501919166, 33501919132, 33497796533, 33497931380

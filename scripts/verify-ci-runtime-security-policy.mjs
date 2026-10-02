@@ -25,6 +25,22 @@ const reviewedActions = {
     runtime: "node24",
     version: "v2.2.0",
   },
+  trufflehog: {
+    commit: "6f3c981e7b77f235fd2702dd74af25fc4b72bf11",
+    publishedAt: "2026-07-24T18:23:23.000Z",
+    repository: "trufflesecurity/trufflehog",
+    runtime: "composite",
+    version: "v3.96.0",
+  },
+}
+// The composite action defaults to :latest independently of its source pin.
+// A tag plus manifest-list digest fixes the scanner bytes on both architectures.
+const reviewedTrufflehogScanner = {
+  image: "ghcr.io/trufflesecurity/trufflehog",
+  digest:
+    "sha256:52e67fef4d054ecff5c2ce4b4ae376626d1ef54aa0898b53cac19c25e92e14db",
+  publishedAt: "2026-09-24T09:11:59.000Z",
+  version: "3.97.9",
 }
 const forbiddenEndpoints = new Set(["cloudflare-dns.com:443", "dns.google:443"])
 const trivyDatabaseRepository = "ghcr.io/aquasecurity/trivy-db"
@@ -68,9 +84,7 @@ const extractActionSteps = (source, repository, expectedCount) => {
     assert.ok(startIndex >= 0, `${repository} must be inside a step`)
     const endIndex = lines.findIndex(
       (line, index) =>
-        index > match.index &&
-        line.trim().startsWith("- ") &&
-        leadingWidth(line) === stepIndent
+        index > match.index && line.trim() && leadingWidth(line) <= stepIndent
     )
     return {
       ...match,
@@ -120,6 +134,8 @@ export const validateCiRuntimeManifest = (manifest) => {
     manifest.shaiHuludDetector,
     reviewedActions.shaiHuludDetector
   )
+  assert.deepEqual(manifest.trufflehogAction, reviewedActions.trufflehog)
+  assert.deepEqual(manifest.trufflehogScanner, reviewedTrufflehogScanner)
   assert.equal(manifest.trivyDatabaseRepository, trivyDatabaseRepository)
   assert.ok(
     Array.isArray(manifest.observedRuns) && manifest.observedRuns.length === 5
@@ -287,6 +303,49 @@ export const validateTrivyFilesystemGate = (source, rootWorkflow = false) => {
   )
 }
 
+export const validateTrufflehogGate = (source) => {
+  const lines = source.split(/\r?\n/u)
+  const starts = lines.flatMap((line, index) =>
+    /^  secrets:\s*$/u.test(line) ? [index] : []
+  )
+  assert.equal(starts.length, 1, "Require one secret-scan job")
+  const start = starts[0]
+  const end = lines.findIndex(
+    (line, index) => index > start && line.trim() && leadingWidth(line) <= 2
+  )
+  const job = lines.slice(start, end === -1 ? lines.length : end).join("\n")
+  assert.doesNotMatch(
+    job,
+    /^\s+["']?(?:if|continue-on-error)["']?\s*:/mu,
+    "Secret scanning must not be skipped or suppress failures"
+  )
+  assert.equal(
+    readStepScalar(job.split("\n"), "fetch-depth"),
+    "0",
+    "Scheduled and manual secret scans must retain full Git history"
+  )
+
+  const [scanner] = extractActionSteps(
+    job,
+    reviewedActions.trufflehog.repository,
+    1
+  )
+  assertAction(scanner, reviewedActions.trufflehog)
+  const step = scanner.block.map((line) => line.trim()).filter(Boolean)
+  assert.match(step[0], /^- name: TruffleHog(?: \(verified only\))?$/u)
+  assert.deepEqual(
+    step.slice(1),
+    [
+      `uses: ${reviewedActions.trufflehog.repository}@${reviewedActions.trufflehog.commit} # ${reviewedActions.trufflehog.version}`,
+      "with:",
+      `image: ${reviewedTrufflehogScanner.image}`,
+      `version: ${reviewedTrufflehogScanner.version}@${reviewedTrufflehogScanner.digest}`,
+      "extra_args: --only-verified",
+    ],
+    "Require the immutable scanner image without scan exclusions or failure suppression"
+  )
+}
+
 export const verifyCiRuntimeSecurityPolicy = () => {
   const manifest = JSON.parse(readFileSync(manifestPath, "utf8"))
   validateCiRuntimeManifest(manifest)
@@ -304,11 +363,13 @@ export const verifyCiRuntimeSecurityPolicy = () => {
         ".github/workflows/backend.yml",
         ".github/workflows/storefront.yml",
       ].includes(workflow.path)
-    )
+    ) {
       validateTrivyFilesystemGate(
         source,
         workflow.path === ".github/workflows/root.yml"
       )
+      validateTrufflehogGate(source)
+    }
   }
 
   const workflowDirectory = join(root, ".github", "workflows")
@@ -356,7 +417,7 @@ export const verifyCiRuntimeSecurityPolicy = () => {
     0
   )
   console.info(
-    `CI runtime security verified: ${hardenedJobCount} blocked-egress jobs across ${manifest.workflows.length} workflows, two exact Node 24 action identities, and one fixed Trivy database source.`
+    `CI runtime security verified: ${hardenedJobCount} blocked-egress jobs across ${manifest.workflows.length} workflows, two exact Node 24 action identities, one fixed Trivy database source, and three immutable TruffleHog scanner gates.`
   )
 }
 

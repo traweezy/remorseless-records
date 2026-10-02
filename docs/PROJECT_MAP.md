@@ -1,7 +1,9 @@
 # Project map and continuation guide
 
-Last indexed: September 20, 2026 (UTC). Latest application staging release
-acceptance is recorded in the handoff linked below.
+Last indexed: October 2, 2026 (UTC). The inventory covered 1,589 project files
+and 98 documentation/reference files, excluding unrelated `Default/` and
+generated/dependency outputs. Current security work and release acceptance
+are recorded in the handoff linked below.
 
 ## Start here
 
@@ -56,6 +58,7 @@ user data and is excluded from project work.
 | Document | Use it for |
 | --- | --- |
 | [Next session handoff](NEXT_SESSION_HANDOFF.md) | Current continuation point and exact acceptance evidence |
+| [October 2 security follow-up](SECURITY_FOLLOWUP_2026-10-02.md) | Historical credential revocation, dependency repair, and pending release gates |
 | [Production hardening plan](PRODUCTION_HARDENING_PLAN.md) | Completed engineering work, open launch blockers, and approval requirements |
 | [Dependency migration audit](DEPENDENCY_MIGRATION_AUDIT_2026-07-23.md) | Package families, cooling, compatibility, exceptions, and migration holds |
 | [QA runbook](QA_RUNBOOK.md) | Local gates, browser scenarios, screenshots, and acceptance procedures |

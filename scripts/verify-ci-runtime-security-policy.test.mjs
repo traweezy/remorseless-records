@@ -4,6 +4,7 @@ import { describe, it } from "node:test"
 
 import {
   validateCiRuntimeManifest,
+  validateTrufflehogGate,
   validateTrivyFilesystemGate,
   validateWorkflowRuntimeSecurity,
 } from "./verify-ci-runtime-security-policy.mjs"
@@ -196,6 +197,124 @@ describe("CI runtime security policy", () => {
     const missingSecurityJob = structuredClone(manifest)
     missingSecurityJob.workflows[3].securityJobCount = 1
     assert.throws(() => validateCiRuntimeManifest(missingSecurityJob))
+
+    const movingScanner = structuredClone(manifest)
+    movingScanner.trufflehogScanner.version = "latest"
+    assert.throws(() => validateCiRuntimeManifest(movingScanner))
+
+    const unreviewedScanner = structuredClone(manifest)
+    unreviewedScanner.trufflehogScanner.digest = `sha256:${"a".repeat(64)}`
+    assert.throws(() => validateCiRuntimeManifest(unreviewedScanner))
+
+    const unreviewedAction = structuredClone(manifest)
+    unreviewedAction.trufflehogAction.commit = "a".repeat(40)
+    assert.throws(() => validateCiRuntimeManifest(unreviewedAction))
+  })
+
+  it("pins every secret scanner and rejects skipped or weakened scans", () => {
+    const scannerVersion = `version: ${manifest.trufflehogScanner.version}@${manifest.trufflehogScanner.digest}`
+    const actionUse = `uses: ${manifest.trufflehogAction.repository}@${manifest.trufflehogAction.commit} # ${manifest.trufflehogAction.version}`
+    for (const name of ["root", "backend", "storefront"]) {
+      const source = readFileSync(
+        new URL(`../.github/workflows/${name}.yml`, import.meta.url),
+        "utf8"
+      )
+      assert.doesNotThrow(() => validateTrufflehogGate(source))
+      const changes = [
+        ["moving version", source.replace(scannerVersion, "version: latest")],
+        [
+          "tag without digest",
+          source.replace(scannerVersion, "version: 3.97.9"),
+        ],
+        [
+          "missing version",
+          source.replace(`          ${scannerVersion}\n`, ""),
+        ],
+        [
+          "different image digest",
+          source.replace(
+            manifest.trufflehogScanner.digest,
+            `sha256:${"a".repeat(64)}`
+          ),
+        ],
+        [
+          "different registry",
+          source.replace(
+            manifest.trufflehogScanner.image,
+            "example.com/scanner"
+          ),
+        ],
+        [
+          "unreviewed action",
+          source.replace(manifest.trufflehogAction.commit, "a".repeat(40)),
+        ],
+        [
+          "step skip condition",
+          source.replace(actionUse, `if: false\n        ${actionUse}`),
+        ],
+        [
+          "step failure suppression",
+          source.replace(
+            actionUse,
+            `continue-on-error: true\n        ${actionUse}`
+          ),
+        ],
+        [
+          "job skip condition",
+          source.replace("  secrets:\n", "  secrets:\n    if: false\n"),
+        ],
+        [
+          "quoted job skip condition",
+          source.replace("  secrets:\n", '  secrets:\n    "if": false\n'),
+        ],
+        [
+          "job failure suppression",
+          source.replace(
+            "  secrets:\n",
+            "  secrets:\n    continue-on-error: true\n"
+          ),
+        ],
+        [
+          "history truncation",
+          source.replace("fetch-depth: 0", "fetch-depth: 1"),
+        ],
+        [
+          "scan exclusion",
+          source.replace(
+            "extra_args: --only-verified",
+            "extra_args: --only-verified --exclude-detectors=Resend"
+          ),
+        ],
+        [
+          "disabled verification",
+          source.replace(
+            "extra_args: --only-verified",
+            "extra_args: --no-verification"
+          ),
+        ],
+        [
+          "base range override",
+          source.replace(
+            "extra_args: --only-verified",
+            "base: HEAD~1\n          extra_args: --only-verified"
+          ),
+        ],
+        [
+          "duplicate version key",
+          source.replace(
+            scannerVersion,
+            `${scannerVersion}\n          version: latest`
+          ),
+        ],
+      ]
+      for (const [reason, changed] of changes) {
+        assert.notEqual(changed, source, `${name}: exercise ${reason}`)
+        assert.throws(
+          () => validateTrufflehogGate(changed),
+          `${name}: reject ${reason}`
+        )
+      }
+    }
   })
 
   it("fails filesystem scans on every HIGH/CRITICAL finding", () => {
