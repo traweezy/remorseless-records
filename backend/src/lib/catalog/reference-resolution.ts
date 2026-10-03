@@ -85,6 +85,10 @@ export const resolveOrCreateCatalogArtist = async (
     await catalogService.createCatalogArtists([payload], sharedContext),
     { fields: payload }
   )
+  // SQL foreign keys use scalar DML fields, so dependent records cannot rely
+  // on MikroORM inferring insert order. Keep this flush in the caller's
+  // transaction; standalone creates already commit their own transaction.
+  await sharedContext?.transactionManager?.flush()
 
   return {
     created: true,
@@ -179,6 +183,7 @@ export const resolveOrCreateCatalogReferenceValue = async (
     await catalogService.createCatalogReferenceValues([payload], sharedContext),
     { fields: payload }
   )
+  await sharedContext?.transactionManager?.flush()
 
   return {
     created: true,

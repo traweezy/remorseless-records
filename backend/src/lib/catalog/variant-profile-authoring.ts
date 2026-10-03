@@ -154,6 +154,23 @@ const buildVariantProfilePatch = ({
   variantId: string
 }): Record<string, unknown> => {
   const payload: Record<string, unknown> = {
+    ...(currentVersion === 0
+      ? {
+          product_profile_id: null,
+          format_id: null,
+          format_detail_id: null,
+          format_label: null,
+          format_detail_label: null,
+          display_label: null,
+          preorder_release_date: null,
+          backorder_note: null,
+          image_url: null,
+          availability_status: "available",
+          preorder_allowed: false,
+          backorder_allowed: false,
+          metadata: {},
+        }
+      : {}),
     variant_id: variantId,
     version: currentVersion + 1,
   }
@@ -293,6 +310,9 @@ export const mutateCatalogVariantProfile = async (
       await catalogService.createCatalogAuthoringOperations(
         [
           {
+            completed_at: null,
+            error_code: null,
+            error_detail: null,
             actor_id: input.actorId,
             aggregate_id: input.aggregateId,
             command: input.command,

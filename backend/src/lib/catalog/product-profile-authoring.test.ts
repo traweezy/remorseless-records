@@ -39,7 +39,9 @@ const serviceFixture = (): ServiceMock => {
   } as unknown as ServiceMock
 
   service.runCatalogTransaction.mockImplementation((async (task) =>
-    task({ manager: {} } as never)) as CatalogService["runCatalogTransaction"])
+    task({
+      transactionManager: { flush: jest.fn() },
+    } as never)) as CatalogService["runCatalogTransaction"])
   service.createCatalogAuthoringOperations.mockImplementation(
     async (payloads) =>
       payloads.map((payload) => {

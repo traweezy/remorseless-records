@@ -1,3 +1,5 @@
+import { resolveObjectStorageConfig } from "../storage/config"
+
 import {
   buildBackendContentSecurityPolicy,
   buildBackendResponseHeaders,
@@ -7,6 +9,30 @@ import {
 } from "./security-headers"
 
 describe("Backend security headers", () => {
+  it("allows the provider's resolved media origin when the public URL is omitted", () => {
+    const storage = resolveObjectStorageConfig({
+      environment: {
+        MINIO_ENDPOINT: "https://media.example.com",
+        MINIO_ACCESS_KEY: "fixture-access",
+        MINIO_SECRET_KEY: "fixture-secret",
+      },
+      required: true,
+    })
+    const policy = buildBackendContentSecurityPolicy({
+      isDevelopment: false,
+      mediaUrls: [storage?.fileUrl, "https://admin.example.com"],
+    })
+
+    expect(policy).toContain(
+      "img-src 'self' data: blob: https://media.example.com https://admin.example.com"
+    )
+    expect(policy).toContain(
+      "media-src 'self' blob: https://media.example.com https://admin.example.com"
+    )
+    expect(policy).toContain("connect-src 'self';")
+    expect(policy).toContain("script-src 'self';")
+  })
+
   it("builds a production Admin policy without inline script execution", () => {
     const policy = buildBackendContentSecurityPolicy({
       isDevelopment: false,

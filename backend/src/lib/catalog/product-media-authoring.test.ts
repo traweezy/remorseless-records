@@ -51,7 +51,7 @@ const serviceFixture = () => {
   }
   service.runCatalogTransaction.mockImplementation(
     async (callback: (context: Record<string, unknown>) => unknown) =>
-      callback({ transactionManager: {} })
+      callback({ transactionManager: { flush: jest.fn() } })
   )
   service.listCatalogAuthoringOperations.mockResolvedValue([])
   service.listCatalogMediaAssets.mockResolvedValue([])
@@ -138,7 +138,11 @@ describe("catalog product media authoring", () => {
   it("creates a pending operation and owns newly created assets", async () => {
     const service = serviceFixture()
     const createdAsset = assetFixture()
-    service.createCatalogMediaAssets.mockResolvedValue([createdAsset])
+    service.createCatalogMediaAssets.mockImplementation(
+      async ([payload]: Array<Record<string, unknown>>) => [
+        { ...createdAsset, ...payload },
+      ]
+    )
 
     const result = await mutateCatalogProductMedia(
       service as never,
@@ -246,15 +250,11 @@ describe("catalog product media authoring", () => {
 
     service.retrieveCatalogMediaAsset.mockReset()
     service.listCatalogMediaAssets.mockResolvedValue([])
-    service.createCatalogMediaAssets.mockResolvedValue([
-      {
-        ...assetFixture(
-          "cmedia_active",
-          "https://media.example/quarantined.jpg"
-        ),
-        source_file_key: "file_quarantined",
-      },
-    ])
+    service.createCatalogMediaAssets.mockImplementation(
+      async ([payload]: Array<Record<string, unknown>>) => [
+        { ...assetFixture("cmedia_active"), ...payload },
+      ]
+    )
     await mutateCatalogProductMedia(
       service as never,
       commandFixture([

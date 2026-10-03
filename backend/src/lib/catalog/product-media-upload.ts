@@ -138,6 +138,9 @@ export const performCatalogMediaUpload = async (
   const operation = readCatalogTransactionOperationMutation(
     await catalogService.createCatalogAuthoringOperations([
       {
+        completed_at: null,
+        error_code: null,
+        error_detail: null,
         actor_id: input.actorId,
         aggregate_id: input.idempotencyKey,
         command: "catalog.product-media.upload",
@@ -170,6 +173,17 @@ export const performCatalogMediaUpload = async (
       )
       compensation.fileIds.push(uploaded.id)
       const assetPayload = {
+        alt_text: null,
+        caption: null,
+        crop_intent: null,
+        derivatives: {},
+        focal_x: null,
+        focal_y: null,
+        lifecycle_status: "active" as const,
+        purge_eligible_at: null,
+        quarantined_at: null,
+        quarantined_by: null,
+        version: 1,
         byte_size: file.size,
         content_sha256: file.sha256,
         derivative_status: "source_only" as const,

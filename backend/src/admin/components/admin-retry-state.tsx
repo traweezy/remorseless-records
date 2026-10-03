@@ -1,7 +1,7 @@
 "use client"
 
 import { memo, useCallback, type ReactNode } from "react"
-import { Alert, Button, Container, Text } from "@medusajs/ui"
+import { Alert, Button, Container, Heading, Text } from "@medusajs/ui"
 
 export type AdminRetryStateProps = {
   message: ReactNode
@@ -22,7 +22,9 @@ export const AdminRetryState = memo<AdminRetryStateProps>(
     return (
       <Container aria-busy={retrying}>
         <Alert role="alert" variant="error">
-          <Text weight="plus">{title}</Text>
+          <Heading level="h2" className="text-sm font-medium">
+            {title}
+          </Heading>
           <Text size="small">{message}</Text>
         </Alert>
         <Button

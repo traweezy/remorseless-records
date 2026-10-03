@@ -673,6 +673,9 @@ export const upsertShelf = async (
       await catalogService.createCatalogAuthoringOperations(
         [
           {
+            completed_at: null,
+            error_code: null,
+            error_detail: null,
             actor_id: actorId,
             aggregate_id: aggregateId,
             command,
@@ -711,7 +714,13 @@ export const upsertShelf = async (
     const version = currentVersion + 1
     const payload: Record<string, unknown> = { handle, version }
     if (!existing) {
+      // Native create responses retain omitted nullable fields as undefined.
+      // Supply the complete record required by the persistence boundary.
       payload.archived_at = null
+      payload.description = null
+      payload.product_limit = null
+      payload.starts_at = null
+      payload.ends_at = null
     }
     if (title !== undefined) {
       payload.title = title
@@ -936,6 +945,9 @@ export const setShelfArchived = async (
       await catalogService.createCatalogAuthoringOperations(
         [
           {
+            completed_at: null,
+            error_code: null,
+            error_detail: null,
             actor_id: actorId,
             aggregate_id: id,
             command,

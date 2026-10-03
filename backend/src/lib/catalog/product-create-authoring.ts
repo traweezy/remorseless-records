@@ -172,6 +172,9 @@ export const beginCatalogProductCreation = async (
     const [operation] = await catalogService.createCatalogAuthoringOperations(
       [
         {
+          completed_at: null,
+          error_code: null,
+          error_detail: null,
           actor_id: input.actorId,
           aggregate_id: creationAggregateId(input.idempotencyKey),
           command: "catalog.product.create",

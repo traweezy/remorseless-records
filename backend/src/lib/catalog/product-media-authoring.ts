@@ -178,7 +178,7 @@ const resolveMediaAsset = async (
   }
 
   const reusable = await findReusableAsset(catalogService, input, sharedContext)
-  const createPayload = reusable
+  const sourcePayload = reusable
     ? {
         alt_text: reusable.alt_text,
         byte_size: reusable.byte_size,
@@ -200,6 +200,29 @@ const resolveMediaAsset = async (
         ...patch,
       }
     : patch
+  const createPayload: Record<string, unknown> = {
+    source_file_key: null,
+    original_filename: null,
+    mime_type: null,
+    byte_size: null,
+    width: null,
+    height: null,
+    content_sha256: null,
+    alt_text: null,
+    caption: null,
+    focal_x: null,
+    focal_y: null,
+    crop_intent: null,
+    derivative_status: "source_only",
+    lifecycle_status: "active",
+    quarantined_at: null,
+    quarantined_by: null,
+    purge_eligible_at: null,
+    derivatives: {},
+    version: 1,
+    metadata: {},
+    ...sourcePayload,
+  }
   if (!createPayload.source_url) {
     throw new MedusaError(
       MedusaError.Types.INVALID_DATA,
@@ -354,6 +377,9 @@ export const mutateCatalogProductMedia = async (
       await catalogService.createCatalogAuthoringOperations(
         [
           {
+            completed_at: null,
+            error_code: null,
+            error_detail: null,
             actor_id: input.actorId,
             aggregate_id: input.aggregateId,
             command: input.command,
@@ -429,6 +455,12 @@ export const mutateCatalogProductMedia = async (
       }
     )
     if (itemPayloads.length) {
+      if (createdAssetIds.size) {
+        // These SQL foreign keys use scalar model fields. MikroORM cannot
+        // infer parent insertion order, so flush new assets before links
+        // within the same transaction; failures still roll back both.
+        await sharedContext.transactionManager!.flush()
+      }
       readExactCatalogProductMediaItems(
         await catalogService.createCatalogProductMediaItems(
           itemPayloads,

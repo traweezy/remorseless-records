@@ -285,6 +285,23 @@ const buildProfilePatch = ({
   productTypeId: string | null | undefined
 }): Record<string, unknown> => {
   const payload: Record<string, unknown> = {
+    ...(!existing
+      ? {
+          release_title: null,
+          label_id: null,
+          product_type_id: null,
+          release_date: null,
+          release_year: null,
+          description_html: null,
+          search_keywords: [],
+          tracklist: [],
+          credits: {},
+          pressing_notes: {},
+          merch_details: {},
+          metadata: {},
+          content_schema_version: 1,
+        }
+      : {}),
     product_id: productId,
     version: currentVersion + 1,
   }
@@ -319,7 +336,7 @@ const buildProfilePatch = ({
   if (patch.descriptionHtml !== undefined) {
     const description = toCatalogNullableString(patch.descriptionHtml)
     payload.description_html = description
-      ? sanitizeRichTextHtml(description)
+      ? toCatalogNullableString(sanitizeRichTextHtml(description))
       : null
   }
   if (patch.searchKeywords !== undefined) {
@@ -437,6 +454,9 @@ export const mutateCatalogProductProfile = async (
       await catalogService.createCatalogAuthoringOperations(
         [
           {
+            completed_at: null,
+            error_code: null,
+            error_detail: null,
             actor_id: input.actorId,
             aggregate_id: input.aggregateId,
             command: input.command,
@@ -498,6 +518,11 @@ export const mutateCatalogProductProfile = async (
       productId: input.aggregateId,
       version: currentVersion + 1,
     })
+    if (input.patch.artists?.length || input.patch.references?.length) {
+      // Persist the SQL parent before adding artist/reference links without
+      // committing the encompassing authoring transaction.
+      await sharedContext.transactionManager!.flush()
+    }
     if (input.patch.artists !== undefined) {
       await replaceArtists(
         catalogService,

@@ -27,7 +27,7 @@ const serviceFixture = () => {
   }
   service.runCatalogTransaction.mockImplementation(
     async (callback: (context: Record<string, unknown>) => unknown) =>
-      callback({ transactionManager: {} })
+      callback({ transactionManager: { flush: jest.fn() } })
   )
   service.createCatalogAuthoringOperations.mockImplementation(
     async (payloads: Record<string, unknown>[]) =>
@@ -229,7 +229,7 @@ describe("catalog variant profile authoring", () => {
     )
     expect(
       service.createCatalogVariantProfiles.mock.calls[0]?.[0]?.[0]
-    ).not.toHaveProperty("availability_status")
+    ).toHaveProperty("availability_status", "available")
     expect(service.updateCatalogAuthoringOperations).not.toHaveBeenCalled()
   })
 

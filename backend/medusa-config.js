@@ -51,7 +51,7 @@ const objectStorageConfig = resolveObjectStorageConfig({
 });
 const responseHeaders = buildBackendResponseHeaders({
   isDevelopment,
-  mediaUrls: [process.env.MINIO_FILE_URL, BACKEND_URL],
+  mediaUrls: [objectStorageConfig?.fileUrl, BACKEND_URL],
 });
 const productIndexSettings = meilisearchSettings.products;
 const meilisearchCandidateIndex = process.env.MEILISEARCH_CANDIDATE_INDEX?.trim();

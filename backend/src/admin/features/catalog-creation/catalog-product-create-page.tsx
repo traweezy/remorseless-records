@@ -724,29 +724,6 @@ const CatalogProductCreatePageContent = memo(() => {
     })
   }, [])
 
-  const handleNext = useCallback(() => {
-    const issues = resolveCatalogCreationValidationIssues(values, step)
-    if (issues.length) {
-      setStepErrors(issues)
-      return
-    }
-    goToStep(Math.min(catalogCreationSteps.length - 1, step + 1))
-  }, [goToStep, step, values])
-
-  const handleBack = useCallback(() => {
-    goToStep(Math.max(0, step - 1))
-  }, [goToStep, step])
-
-  const handleChangeStep = useCallback(
-    (event: MouseEvent<HTMLButtonElement>) => {
-      const nextStep = Number(dataTarget(event).dataset?.step)
-      if (Number.isInteger(nextStep)) {
-        goToStep(nextStep)
-      }
-    },
-    [goToStep]
-  )
-
   const handleValidationNavigate = useCallback(
     (issue: CatalogCreationValidationIssue) => {
       if (!issue.targetId) {
@@ -762,19 +739,45 @@ const CatalogProductCreatePageContent = memo(() => {
     [focusValidationTarget, step]
   )
 
+  const handleNext = useCallback(() => {
+    const issues = resolveCatalogCreationValidationIssues(values, step)
+    if (issues.length) {
+      setStepErrors(issues)
+      if (issues[0]) handleValidationNavigate(issues[0])
+      return
+    }
+    goToStep(Math.min(catalogCreationSteps.length - 1, step + 1))
+  }, [goToStep, handleValidationNavigate, step, values])
+
+  const handleBack = useCallback(() => {
+    goToStep(Math.max(0, step - 1))
+  }, [goToStep, step])
+
+  const handleChangeStep = useCallback(
+    (event: MouseEvent<HTMLButtonElement>) => {
+      const nextStep = Number(dataTarget(event).dataset?.step)
+      if (Number.isInteger(nextStep)) {
+        goToStep(nextStep)
+      }
+    },
+    [goToStep]
+  )
+
   const handleSave = useCallback(() => {
     const issues = resolveCatalogCreationValidationIssues(values)
     if (issues.length) {
       setStepErrors(issues)
+      if (issues[0]) handleValidationNavigate(issues[0])
       return
     }
     void form.handleSubmit()
-  }, [form, values])
+  }, [form, handleValidationNavigate, values])
 
   const handleRetry = useCallback(() => {
     const issues = resolveCatalogCreationValidationIssues(values)
     if (issues.length) {
       setStepErrors(issues)
+      if (issues[0]) handleValidationNavigate(issues[0])
       return
     }
 
@@ -823,7 +826,7 @@ const CatalogProductCreatePageContent = memo(() => {
       setStepErrors([])
       void form.handleSubmit()
     })()
-  }, [form, inspectRetryStatus, step, values])
+  }, [form, handleValidationNavigate, inspectRetryStatus, step, values])
 
   const handleCancel = useCallback(() => {
     if (formState.isDirty) {

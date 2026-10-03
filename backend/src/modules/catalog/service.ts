@@ -264,6 +264,9 @@ class CatalogModuleService extends MedusaService({
       await this.createCatalogAuthoringOperations(
         [
           {
+            completed_at: null,
+            error_code: null,
+            error_detail: null,
             idempotency_key: input.idempotencyKey,
             command: input.command,
             aggregate_id: input.aggregateId,
