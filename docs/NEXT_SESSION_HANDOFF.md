@@ -11,6 +11,18 @@ Live application-object ownership has moved to `app_owner`; credential and
 application cutover are in progress. Follow the newest entry below before any
 further provider change.
 
+### Initial startup-batch CI correction — October 3 UTC
+
+Direct staging revision `2d33aafe1a18c9e58a25af9b15727dc2a4285664`
+passed Root `37090509971` and Runtime Images `37090509934`. Backend
+`37090509889` failed CodeQL on High alert 61 because the new loopback TLS unit
+fixture explicitly disabled certificate verification. Storefront shares the
+same analysis gate. Railway held the new revision; the accepted 1092e81 pair
+remained live. The correction generates an IP SAN and trusts only the fixture
+certificate, keeping validation enabled. No suppression or dismissal is used.
+Repeat all four workflows and exact Railway acceptance on the correction.
+Database roles and saved variables stay in the prepared state below.
+
 ### Live database roles prepared — October 3 UTC
 
 The source remained PostgreSQL 16.11, system ID `7527124368992473123` and the

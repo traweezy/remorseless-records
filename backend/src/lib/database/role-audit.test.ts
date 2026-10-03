@@ -58,6 +58,8 @@ describe("read-only database role inspection", () => {
           "1",
           "-subj",
           "/CN=localhost",
+          "-addext",
+          "subjectAltName=IP:127.0.0.1",
           "-keyout",
           join(directory, "key.pem"),
           "-out",
@@ -65,9 +67,10 @@ describe("read-only database role inspection", () => {
         ],
         { stdio: "ignore", timeout: 10_000 }
       )
+      const certificate = await readFile(join(directory, "cert.pem"))
       server.setSecureContext({
         key: await readFile(join(directory, "key.pem")),
-        cert: await readFile(join(directory, "cert.pem")),
+        cert: certificate,
       })
       server.on("secureConnection", (peer) => {
         peers.add(peer)
@@ -80,7 +83,7 @@ describe("read-only database role inspection", () => {
       socket = connect({
         host: "127.0.0.1",
         port: address.port,
-        rejectUnauthorized: false,
+        ca: certificate,
       })
       await once(socket, "secureConnect")
       const client = { ...createClient(), connection: { stream: socket } }
