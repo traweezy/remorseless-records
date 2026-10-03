@@ -1,6 +1,8 @@
 import assert from "node:assert/strict"
 import { spawnSync } from "node:child_process"
 import test from "node:test"
+import { BACKUPS_QUERY } from "./lib/staging-backups.mjs"
+import { backupFixture } from "./test-fixtures/staging-backups.mjs"
 
 import {
   assertRevision,
@@ -403,8 +405,11 @@ const transportFixture = (mutate = () => {}) => {
         }
       else {
         assert.equal(args[0], "api")
-        result = deploymentFixture(sha)
-        deploymentReads++
+        if (args[1] === BACKUPS_QUERY) result = backupFixture()
+        else {
+          result = deploymentFixture(sha)
+          deploymentReads++
+        }
       }
       mutate(result, { command, args, deploymentReads, branchReads })
       return JSON.stringify(result)
@@ -430,9 +435,19 @@ test("collector rechecks deployments and branch after probing; health never clai
     full.commands.filter(
       ([, args]) => args[0] === "api" && args[1].startsWith("query ")
     ).length,
-    2
+    3
   )
   assert.ok(!JSON.stringify(result).includes("must-never-be-emitted"))
+  assert.equal(result.backups.passed, true)
+  const stale = await collectReleaseReadiness(
+    { sha },
+    transportFixture((value, state) => {
+      if (state.args[1] === BACKUPS_QUERY) value.postgresBackups = []
+    })
+  )
+  assert.equal(stale.readyForLocalWork, true)
+  assert.equal(stale.readyForAcceptance, false)
+  assert.equal(stale.backups.passed, false)
   const ciOnly = transportFixture()
   assert.equal(
     (await collectReleaseReadiness({ sha, ciOnly: true }, ciOnly)).passed,

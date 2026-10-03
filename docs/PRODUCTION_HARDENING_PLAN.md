@@ -1,11 +1,48 @@
 # Production Hardening Plan
 
-Last reviewed: October 2, 2026 UTC
+Last reviewed: October 3, 2026 UTC
 
 This is the authoritative launch-readiness backlog for Remorseless Records. It
 supersedes the local `tmp/HARDENING_NEXT_STEPS.md` working note. Detailed
 operating procedures remain in the linked runbooks and ADRs; this document
 tracks what is still required before production traffic is approved.
+
+## Current staging acceptance — October 3 UTC
+
+Revision `2460f30237d9a2fbf4c1e0ca94a421b12f75625f` was pushed directly
+to staging. All four workflows and 23 required checks passed; both exact-SHA
+Railway deployments and live acceptance completed by `00:32:35Z`. The batch
+removes candidate-tag/pre-push GitHub validation, retains whole-batch push
+dependency review, and repairs Meilisearch asynchronous index creation.
+Search's atomic swap succeeded, with 461 live and rollback documents. Health,
+catalog, ordinary scheduler, runtime package/credential checks, correlated
+logs and 85 deployed browser cases passed. Known stream-close diagnostics
+remain visible; bounded HTTP 5xx filters returned zero. See the handoff for
+exact run and deployment identities and the preceding failed deployment.
+
+A separate read-only audit verified recent repeated DAILY backup records for
+PostgreSQL, Redis and Bucket. This closes the missing scheduled-run evidence,
+not restoration, PITR or off-site retention. Keep post-acceptance evidence for
+the next substantive batch, without a routine documentation-only push.
+
+## Database and recovery diagnostics — next staging batch
+
+The role auditor now rejects explicit configuration-parameter privileges and
+executable SECURITY DEFINER routines across PUBLIC, inherited and SET-reachable
+roles. This closes two ways a seemingly narrow login could regain authority;
+it does not perform the live role split.
+
+Database readiness now distinguishes creation of the acquired connection from
+reuse, records available/occupied/pending pool counts, and reports creation
+time only when its complete duration was observed. Concurrent probes share
+bounded listeners and retain no connection identifiers. Existing timeout and
+operations thresholds stay unchanged. Real PostgreSQL acceptance and the next
+deployment's observations determine what this adds to the cold-start evidence.
+
+Full staging release readiness now includes the exact three-volume backup
+freshness gate. Its first live audit passed at `2026-10-03T00:47:24Z`, with six
+unexpired scheduled records per volume. The on-demand/release check is not a
+scheduled monitor or evidence of restoration, PITR or off-site retention.
 
 ## Current security maintenance — accepted October 2
 
@@ -30,9 +67,9 @@ The separate review of other historically exposed credentials remains open.
 Existing production, business/tax, recovery, and dormant-client boundaries
 remain unchanged.
 
-## Active continuation — September 20 UTC onward
+## Historical acceptance — September 20 UTC onward
 
-The latest accepted staging pair is Backend and Storefront at
+The last staging pair in this September 20 sequence was Backend and Storefront at
 `7d14cf5ea7c05f6af9aeb4ff3da8887928f274da`. Exact-SHA Root, Backend,
 Storefront, and Runtime Images CI passed (runs `35537432411`, `35537432386`,
 `35537432400`, and `35537432408`). Railway waited for check suites, then
@@ -3426,8 +3463,11 @@ Both commands explicitly reported that no files or database records changed.
       and Bucket after exact-revision deployment acceptance. September 20
       preflights bound each READY volume to the staging project/environment;
       new PostgreSQL and Redis named checkpoints are listed, and each volume
-      reports exactly one DAILY schedule with six-day retention. The first
-      scheduled run and an isolated restore remain unverified. These snapshots
+      reports exactly one DAILY schedule with six-day retention. A read-only
+      October 3 audit verified repeated scheduled records for all three exact
+      volumes, with latest records from October 2 and no gap over 24 hours
+      12 seconds in the listed schedule history. An isolated volume restore
+      remains unverified. These snapshots
       stay in the same Railway project and do not satisfy PITR or off-site
       retention; monitor exclusive block growth and backup cost.
 - [ ] Configure off-site media backup and verify object checksums and restores.

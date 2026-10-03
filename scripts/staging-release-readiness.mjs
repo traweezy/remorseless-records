@@ -7,6 +7,10 @@ import { promisify } from "node:util"
 
 import { normalizeScriptArguments } from "./lib/cli-arguments.mjs"
 import {
+  BACKUPS_QUERY,
+  evaluateStagingBackups,
+} from "./lib/staging-backups.mjs"
+import {
   assertRevision,
   evaluateReleaseCi,
   evaluateReleaseHealth,
@@ -96,6 +100,44 @@ export const DEPLOYMENTS_QUERY = `query StagingRelease($environmentId:String!,$b
   ${STAGING.services.map((service) => `${service.alias}:serviceInstance(environmentId:$environmentId,serviceId:$${service.alias}Id){serviceId serviceName environmentId healthcheckPath activeDeployments{id status projectId environmentId serviceId meta} latestDeployment{id status meta} domains{serviceDomains{domain environmentId serviceId} customDomains{domain environmentId serviceId}}}`).join("\n")}
 }`
 
+export const verifiedStagingRailwayReader = async (
+  capture = captureCommand
+) => {
+  const binary = join(
+    dirname(require.resolve("@railway/cli/package.json")),
+    "bin",
+    process.platform === "win32" ? "railway.exe" : "railway"
+  )
+  const railway = async (args) => JSON.parse(await capture(binary, args))
+  const manifest = JSON.parse(
+    await readFile(join(root, "package.json"), "utf8")
+  )
+  ensure(
+    (await capture(binary, ["--version"])).trim() ===
+      `railway ${manifest.devDependencies["@railway/cli"]}`
+  )
+  const guard = await readFile(join(root, "scripts/railway-config.mjs"), "utf8")
+  ensure(
+    [STAGING.projectId, STAGING.environmentId].every((id) =>
+      guard.includes(`id: "${id}"`)
+    )
+  )
+  const [status, environments] = await Promise.all([
+    railway(["status", "--json"]),
+    railway(["environment", "list", "--json"]),
+  ])
+  ensure(status.id === STAGING.projectId && status.name === "store")
+  const linked = environments.environments.filter(
+    (environment) => environment.isLinked
+  )
+  ensure(
+    linked.length === 1 &&
+      linked[0].id === STAGING.environmentId &&
+      linked[0].name === "staging"
+  )
+  return railway
+}
+
 export const collectReleaseReadiness = async (
   options,
   { capture = captureCommand, health = readPublicHealth } = {}
@@ -141,38 +183,7 @@ export const collectReleaseReadiness = async (
     ensure(finalBranch.commit.sha === sha)
     return { ...report, passed: ci.passed }
   }
-  const binary = join(
-    dirname(require.resolve("@railway/cli/package.json")),
-    "bin",
-    process.platform === "win32" ? "railway.exe" : "railway"
-  )
-  const railway = async (args) => JSON.parse(await capture(binary, args))
-  const manifest = JSON.parse(
-    await readFile(join(root, "package.json"), "utf8")
-  )
-  ensure(
-    (await capture(binary, ["--version"])).trim() ===
-      `railway ${manifest.devDependencies["@railway/cli"]}`
-  )
-  const guard = await readFile(join(root, "scripts/railway-config.mjs"), "utf8")
-  ensure(
-    [STAGING.projectId, STAGING.environmentId].every((id) =>
-      guard.includes(`id: "${id}"`)
-    )
-  )
-  const [status, environments] = await Promise.all([
-    railway(["status", "--json"]),
-    railway(["environment", "list", "--json"]),
-  ])
-  ensure(status.id === STAGING.projectId && status.name === "store")
-  const linked = environments.environments.filter(
-    (environment) => environment.isLinked
-  )
-  ensure(
-    linked.length === 1 &&
-      linked[0].id === STAGING.environmentId &&
-      linked[0].name === "staging"
-  )
+  const railway = await verifiedStagingRailwayReader(capture)
   const deploymentSnapshot = async () => {
     const response = await railway([
       "api",
@@ -205,6 +216,9 @@ export const collectReleaseReadiness = async (
       })
     )
   )
+  const backups = evaluateStagingBackups(
+    await railway(["api", BACKUPS_QUERY, "--compact"])
+  )
   const [after, finalBranch] = await Promise.all([
     deploymentSnapshot(),
     api("branches/staging"),
@@ -216,11 +230,13 @@ export const collectReleaseReadiness = async (
   const passed =
     ci.passed &&
     deployments.every((service) => service.passed) &&
-    probes.every((probe) => probe.passed)
+    probes.every((probe) => probe.passed) &&
+    backups.passed
   return {
     ...report,
     deployments,
     health: probes,
+    backups,
     readyForAcceptance: passed,
     passed,
     remainingAcceptance: [

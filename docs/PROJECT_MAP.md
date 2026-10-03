@@ -44,7 +44,7 @@ framework scaffolding rather than project-specific operational instructions.
 | Disposable service tests | `scripts/run-disposable-integration.mjs`, `scripts/scan-disposable-integration-images.mjs`, `docker/integration/` |
 | Runtime image candidates | `backend/Dockerfile.runtime`, `storefront/Dockerfile.runtime`, `scripts/*runtime-image*.mjs`, `scripts/security/runtime-image-policy.json` |
 | CI and scheduled monitoring | `.github/workflows/{root,backend,storefront,runtime-images,staging-scheduler-monitor,staging-operations-monitor}.yml` |
-| Direct staging batch validation | `scripts/dependency-review-range.mjs`, `scripts/staging-release-readiness.mjs`, `scripts/lib/staging-release.mjs`; [release runbook](RELEASE_OPERATIONS.md) |
+| Direct staging batch validation | `scripts/dependency-review-range.mjs`, `scripts/staging-release-readiness.mjs`, `scripts/staging-backup-audit.mjs`, `scripts/lib/staging-release.mjs`; [release runbook](RELEASE_OPERATIONS.md) |
 | Railway application configuration | [Railway guide](../.railway/README.md), `.railway/railway.ts`, guarded `scripts/railway-config.mjs` |
 | Reproducible dependency corrections | `patches/`, lockfile patch hashes, and their matching `scripts/verify-*.mjs` behavioral/policy gates |
 

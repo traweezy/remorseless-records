@@ -197,15 +197,22 @@ runtime DML and migrator ownership, and prove that an initially narrowed
 remain 30 and 10 seconds. Public connections must prove negotiated TLS, and
 connect/query/close failures cannot produce an accepted result.
 
-These are bounded catalog capability checks, not a complete authorization
-certification: separately review executable `SECURITY DEFINER` functions,
-extensions, application-specific capabilities, default privileges, and future
-grants. The auditor checks whether `lo_compat_privileges` is currently enabled,
-but does not inventory parameter `SET` grants that could permit enabling it
-later; review those grants for the login and its inherited/reachable roles
-separately. Role-audit tests create only transactionally rolled-back fixtures on
-the explicitly guarded disposable local PostgreSQL service. Passing them does
-not perform the staging role cutover or satisfy its operational evidence.
+All three profiles also reject explicit parameter `SET`/`ALTER SYSTEM` ACLs
+and executable `SECURITY DEFINER` routines for the login, current role and
+inherited/SET-reachable principals, including PUBLIC grants. Parameter checks
+cover custom parameters as well as `lo_compat_privileges`; a currently disabled
+setting cannot conceal authority to enable it later. Ordinary user-settable
+settings without an explicit ACL do not fail this check. Definer execution is
+checked across all namespaces, with no implicit system-schema exemption.
+
+These remain bounded catalog capability checks, not a complete authorization
+certification. Review routine bodies, extensions, application-specific
+capabilities, default privileges and future grants separately. A required
+trusted definer routine needs a deliberate policy review; do not weaken its
+ACL check simply to pass a role cutover. The real PostgreSQL tests prove
+parameter changes and definer execution with benign, transactionally rolled-back
+fixtures on the explicitly guarded disposable service. Passing them does not
+perform the staging role cutover or satisfy its operational evidence.
 
 ### Staging authority verification — September 15, 2026 UTC
 
@@ -712,11 +719,58 @@ scheduled run appeared at `2026-09-20T10:01:00.913Z` as backup
 `70a98541-890f-4c91-8f9f-d108b0da4205`, with its exact schedule ID
 `e17fec78-7494-43cc-b36f-8a35a64ccf2d`, 1,528 MB referenced and initially
 0 MB exclusive. The earlier named manual checkpoint remained listed on the
-same READY volume. PostgreSQL and Redis first scheduled runs await their later
-cron times. These same-project volume snapshots are neither
+same READY volume. At that September 20 check, PostgreSQL and Redis first
+scheduled runs awaited their later cron times. These same-project volume snapshots are neither
 PITR nor off-site copies, and no volume restore, Redis queue reconciliation,
 or media version-history restore was performed. The floating/unpullable support
 image sources still block a proven service restore and rollback.
+
+A fresh read-only audit at `2026-10-03T00:26:18Z` verified the same three
+READY volume instances, their exact staging project/environment/service
+bindings, no pending deletion, and the original single DAILY schedules with
+six-day retention. All three now have repeated scheduled backup records:
+
+| Service | Latest scheduled record | Created October 2 (UTC) | Listed scheduled records | Latest referenced / exclusive MB |
+| --- | --- | --- | --- | --- |
+| PostgreSQL | `501f0813-e35e-40da-b7d1-dd7dc9714612` | 19:34:01 | 7 | 1,169 / 1 |
+| Redis | `373ed525-4d18-49f9-a69d-5702463ac4ba` | 01:40:16 | 6 | 1,108 / 0 |
+| Bucket | `eeb465a5-7e8b-4f4e-888f-ed74106a4c81` | 10:01:02 | 7 | 1,529 / 274 |
+
+Each latest record carries its exact expected schedule ID and an October 8
+expiry. The maximum interval between the currently listed scheduled records
+was under 24 hours 12 seconds. This closes the missing scheduled-run evidence;
+it does not reconstruct expired history or prove restoration. The API also
+still listed some records whose expiry had passed, so list membership alone
+does not establish restore eligibility or completed retention cleanup.
+Exclusive size across all listed manual and scheduled records totaled 394 MB
+for PostgreSQL, 789 MB for Redis, and 2,467 MB for Bucket. These point-in-time
+metadata totals are not billing totals or a cost cap. No backup creation,
+schedule change, restore, or data mutation was performed.
+
+### Repeatable staging backup freshness gate
+
+`pnpm run data:staging:backups:audit` reads the pinned staging PostgreSQL, Redis
+and Bucket volume identities, schedules and listed snapshot metadata through
+the verified pinned Railway CLI. Full `release:staging:readiness` runs this
+same gate before permitting deployed acceptance. The standalone audit passed
+at `2026-10-03T00:47:24Z`; all three original daily schedules retained six
+unexpired scheduled records with no policy reasons.
+
+The gate requires ready volumes below 90% capacity, the exact reviewed daily
+schedules with six-day retention, a newest unexpired scheduled record within
+26 hours, at least two unexpired records, and no inter-record gap over 26 hours.
+It allows two minutes of provider timestamp skew for retention. Expired records
+listed for over 48 hours require investigation; briefly listed expired metadata
+is counted explicitly. Missing sizes remain unknown. Identity drift, malformed
+records, duplicate backup IDs or an unexpectedly large unpaginated inventory
+fail closed. Exit 0 is healthy, 2 is observed degradation, and 1 is unverified
+evidence. Reports exclude credentials and arbitrary provider text.
+
+This is a release-time and on-demand check, not a continuously scheduled
+monitor. No broad Railway account token was added to GitHub. Snapshot metadata
+does not establish physical cleanup, successful restoration, off-site retention
+or PITR; those report fields remain false. Schedule changes need an explicit
+review of the pinned identities and policy before the gate can accept them.
 
 ## Media backup and restore
 

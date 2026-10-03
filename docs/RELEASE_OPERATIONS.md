@@ -77,7 +77,9 @@ supports explicit base/head inputs outside PR events.
 This timing reflects the user's October 2 instruction: successful exact-revision
 CI permits the next local work, while successful Railway deployment and live
 acceptance permit the next batch's push. CI alone does not establish release
-acceptance. Apply the same sequence to every direct staging push.
+acceptance. Apply the same sequence to every direct staging push. During an
+ongoing hardening request, continue the next substantive batch after these
+gates; an accepted release is a checkpoint, not a reason to end the task.
 
 ### Read-only release inspection
 
@@ -91,7 +93,11 @@ pnpm run release:staging:readiness -- --sha <pushed-full-SHA>
 The command checks all 23 exact GitHub-App-bound check names and the expected
 staging protection policy, rejecting failed/skipped/missing/latest incomplete
 checks. Full readiness also checks the exact deployment pair and uncached
-`/live` and `/ready` responses, then rechecks branch/deployment identities.
+`/live` and `/ready` responses plus the pinned PostgreSQL/Redis/Bucket backup
+freshness gate, then rechecks branch/deployment identities. See the
+[infrastructure recovery guide](INFRASTRUCTURE_RECOVERY.md#repeatable-staging-backup-freshness-gate)
+for backup age, retention and inventory requirements. This proves current
+snapshot metadata, not restore, off-site or PITR acceptance.
 Changed targets, incomplete API pages and bounded transport failures fail
 closed. It performs no push, deployment, configuration change, variable export,
 SSH, or provider-message operation. `--ci-only` selects the GitHub-only form.

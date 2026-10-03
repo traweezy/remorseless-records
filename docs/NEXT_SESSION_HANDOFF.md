@@ -12,17 +12,60 @@ until both Railway deployments and live acceptance pass.
 
 The correction removes candidate-tag triggers and parsing, retains whole-batch
 dependency review on ordinary pushes, and makes the read-only release checker
-inspect staging directly. The owner push exception was applied at 00:11:44 UTC on October 3: staging
-administrator enforcement is disabled, all 23 strict app-bound check
-definitions and force/deletion definitions are preserved, and master
+inspect staging directly. The owner push exception was applied at 00:11:44 UTC
+on October 3: staging administrator enforcement is disabled, all 23 strict
+app-bound check definitions and force/deletion definitions are preserved, and master
 protection was independently unchanged. See the current release runbook.
 
-Revision `1f06391d7b1103689d761bb295701f4cce39329f` is pushed to staging.
+Corrective revision `2460f30237d9a2fbf4c1e0ca94a421b12f75625f` was pushed
+directly to staging. Root CI [37081323139](https://github.com/traweezy/remorseless-records/actions/runs/37081323139),
+Backend CI [37081323190](https://github.com/traweezy/remorseless-records/actions/runs/37081323190),
+Storefront CI [37081323119](https://github.com/traweezy/remorseless-records/actions/runs/37081323119),
+and Runtime Images [37081323231](https://github.com/traweezy/remorseless-records/actions/runs/37081323231) all passed,
+including all 23 required checks. Railway Backend
+`d9d55e0d-b764-482b-9fc1-a3ac104b00c7` and Storefront
+`8331afce-cd4c-43e6-8112-8029391d0994` both reached `SUCCESS` on that exact
+revision. Live acceptance completed at `2026-10-03T00:32:35Z`:
+
+- Both liveness/readiness pairs passed. Backend operations returned healthy
+  with all 11 dependencies and no reasons. The ordinary scheduler heartbeat
+  completed at `00:30:05Z` on the exact SHA. Bounded authenticated reads
+  verified 461 Products, 442 Discography records, one returned handle, three
+  shelves and 25 memberships. Existing retention snapshots were observed;
+  neither retention job was triggered.
+- Search preparation completed at `00:28:44Z`. Meilisearch swap task `17361`
+  succeeded at `00:28:40.250Z` for `products` and
+  `products_build_20261003t002832317z_2460f30237d9`. Read-only checks found
+  461 documents in both live and rollback indexes. An additional diagnostic
+  initially looked for the swap in index-filtered task history; the corrected
+  bounded type/time query verified the exact global swap and index pair.
+- Both running services use Node 26.9.0, Debian OpenSSL packages
+  `3.5.7-1~deb13u3`, and PCRE2 `10.46-1~deb13u2`; all five reviewed
+  DTLS/QUIC/shared-OpenSSL flags remain false. The actual Backend process
+  uses the configured, valid sending-only replacement Resend credential.
+  No email was sent.
+- Deployed responsive browsers passed 69 cases with eight expected skips;
+  Firefox/WebKit passed all 16. There were zero failures, flaky outcomes or
+  retries. Fresh desktop/mobile checkout and Quick Shop screenshots were
+  inspected. Commerce writes used browser fixtures.
+- Bounded logs from `00:29:38Z` through `00:32:17Z` contained 181 Backend
+  and 484 Storefront rows, below the 2,000-row cap. Both intentional guard
+  requests matched runtime request/trace/SHA and Railway HTTP identities.
+  Independent HTTP 5xx filters returned zero. Backend had one intentional
+  guard warning; Storefront retained 12 known stream-close groups and matching
+  render events under digest `3072950123`. No unclassified warning/error
+  remained. This does not claim error-free logs outside the bounded window.
+
+The next batch may now advance under the same direct staging sequence. Keep
+these post-deployment notes for that substantive batch rather than causing
+another routine documentation-only push.
+
+Previous revision `1f06391d7b1103689d761bb295701f4cce39329f` failed acceptance.
 Its Root CI `37079762235`, Backend CI `37079762185`, Storefront CI
 `37079762172`, and Runtime Images `37079762158` all passed. Storefront
 `9c054de5-cdfb-4591-a62c-f63132d87007` succeeded, but Backend
 `b7604cae-f096-4e23-9329-f2da84262719` failed during search preparation.
-The previous Backend remains active; this mixed pair is not accepted.
+That mixed pair was not accepted.
 
 The installed Meilisearch SDK places API error codes in `error.cause.code`.
 The rebuild only recognized `error.code`, so it failed before the plugin's
@@ -32,18 +75,51 @@ reads confirmed that task `17348` finished at `00:05:48.381Z`, after the
 The correction recognizes both error shapes, waits for creation, handles only
 an exact concurrent `index_already_exists` task failure, and requires read-back
 before continuing. Other failures remain fatal. No live-index swap occurred
-in the failed release. Search regression tests passed 35 cases; full Backend coverage passed 283
-suites / 2,248 tests and the Backend production build passed.
+in the failed release. Search regression tests passed 35 cases; full Backend
+coverage passed 283 suites / 2,248 tests and the Backend production build passed.
 
-Deliver the search fix and direct-push correction together as a corrective
-staging push; do not retry the known race or call `1f06391` accepted. Full
-exact-revision CI and deployed acceptance are still required on the correction.
-The accepted security revision below remains the previous complete baseline.
+The search fix and direct-push correction were delivered together in the
+accepted corrective staging push; do not call `1f06391` accepted. The security
+revision below is the previous complete baseline.
+
+During rollout, a read-only audit verified repeated daily backup records for
+all three exact PostgreSQL, Redis, and Bucket staging volumes. Each retains
+its original single DAILY schedule and six-day retention. October 2 records
+close the previously missing scheduled-run evidence; restoration, PITR,
+off-site retention and expired-record cleanup remain separate. See the fresh
+October 3 evidence in [infrastructure recovery](INFRASTRUCTURE_RECOVERY.md).
+
+## Current hardening batch — database authority and backup evidence
+
+Local implementation adds parameter-ACL/definer-routine authority checks,
+connection creation/reuse/pool-count diagnostics, and an exact staging volume
+backup freshness gate integrated into release readiness. The live backup audit
+passed at `2026-10-03T00:47:24Z`; all three volumes had six unexpired scheduled
+records. Runtime database role cutover, restore/PITR/off-site proof and a
+continuous backup monitor remain separate work.
+
+Normal Docker published ports again failed protocol exchange on this host;
+the owned exact-image loopback relay is used for local service acceptance.
+The fresh pinned Trivy 0.70.0 scan accepted both disposable image IDs with a
+current database at `00:49:01Z`. The global 0.75.0 scanner was correctly
+rejected before scanning, and the configured unavailable desktop Docker
+context was not changed. The complete local service aggregate passed: 61 real
+Backend/role cases, 44 commerce regressions, 34 PostgreSQL recovery cases,
+Redis capacity/AOF/aggregate contracts, API parity and session rotation. All
+150 PostgreSQL and 22 Redis relay connections closed without transport errors;
+owned containers/network were removed. Shared lint/type/policy gates,
+Backend coverage (284 suites / 2,273 tests), and both production builds pass;
+the Storefront build uses the deterministic loopback fixture and synthetic
+runtime secrets, matching CI. The ambient local build correctly refused its
+missing strong cookie secret before that fixture run.
+
+The ongoing hardening request continues across release checkpoints. Do not
+end the task after this batch or create a routine evidence-only push.
 
 ## October 2 security acceptance and continuation
 
 Start with [the October 2 security follow-up](SECURITY_FOLLOWUP_2026-10-02.md).
-The current staging source is `07c30525174ac358b4e0e02f58cd47363d01aefa`,
+The earlier security baseline was `07c30525174ac358b4e0e02f58cd47363d01aefa`,
 delivered by a protected direct fast-forward push. All four staging push
 workflows passed, and both Railway services deployed that exact revision.
 Live acceptance completed at 23:20 UTC. The running Backend loaded the valid
@@ -62,14 +138,14 @@ dormant client environment change is included. Other historical credential
 rotation remains unverified. The dated sections below are historical evidence,
 not current acceptance of this security batch.
 
-The user subsequently required direct pushes to `staging`, without PR merges.
-Follow the updated release runbook: retain all required CI checks and use an
-exact passing candidate for the fast-forward push. PR #18 provides candidate
-validation for this batch; its initial test-redaction CodeQL findings and
+The initial direct-push implementation used PR #18 for candidate validation
+of this security batch; its initial test-redaction CodeQL findings and
 unavailable Alpine fixture package pins were repaired without suppressions.
-The final candidate and staging push workflows passed. Staging retains all
-23 strict required checks and administrator enforcement; only its PR
-requirement was removed. `master` retains its reviewed PR path and 26 checks.
+The final candidate and staging push workflows passed. At that point staging
+retained all 23 strict required checks and administrator enforcement; only its
+PR requirement was removed. The user's later correction superseded that flow:
+use the direct-only, post-push CI sequence at the top of this handoff and in
+the current release runbook. `master` retains its reviewed PR path and 26 checks.
 
 Exact staging push evidence:
 
