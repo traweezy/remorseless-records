@@ -1,3 +1,4 @@
+import { loadProductAuthoringView } from "../src/lib/catalog/product-authoring-view"
 import type {
   FileTypes,
   ILockingModule,
@@ -186,6 +187,12 @@ medusaIntegrationTestRunner({
             handle: command.handle,
           }
         )
+        const authoring = await loadProductAuthoringView(
+          container,
+          created.productId
+        )
+        expect(authoring.commerce.id).toBe(created.productId)
+        expect(authoring.catalog.variants).toHaveLength(2)
         const replayed = (
           await createCatalogProductWorkflow(container).run({ input })
         ).result

@@ -1,5 +1,5 @@
 diff --git a/dist/app.js b/dist/app.js
-index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..483de42137568d9bb22e3586ea14eaa4cf438fc8 100644
+index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..7da3717be2d59112db1ca9a2ff2299f069bce95a 100644
 --- a/dist/app.js
 +++ b/dist/app.js
 @@ -111811,17 +111811,25 @@ var init_layout_composer = __esm({
@@ -145,7 +145,69 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..483de42137568d9bb22e3586ea14eaa4
                { label: t5("actions.create"), to: "create" }
              ]
            }
-@@ -134419,35 +134389,9 @@ var init_product_general_section = __esm({
+@@ -123571,8 +123541,9 @@ var init_form = __esm({
+       if (!fieldContext) {
+         throw new Error("useFormField should be used within a FormField");
+       }
+-      const { id: id2 } = itemContext;
++      const { id: id2 , hasHint, hasMessage, setHasHint, setHasMessage } = itemContext;
+       return {
++        hasHint, hasMessage, setHasHint, setHasMessage,
+         id: id2,
+         name: fieldContext.name,
+         formItemId: `${id2}-form-item`,
+@@ -123585,7 +123556,9 @@ var init_form = __esm({
+     Item = (0, import_react78.forwardRef)(
+       ({ className, ...props }, ref) => {
+         const id2 = (0, import_react78.useId)();
+-        return /* @__PURE__ */ (0, import_jsx_runtime81.jsx)(FormItemContext.Provider, { value: { id: id2 }, children: /* @__PURE__ */ (0, import_jsx_runtime81.jsx)(
++    const [hasHint, setHasHint] = (0, import_react78.useState)(false);
++    const [hasMessage, setHasMessage] = (0, import_react78.useState)(false);
++        return /* @__PURE__ */ (0, import_jsx_runtime81.jsx)(FormItemContext.Provider, { value: { id: id2, hasHint, hasMessage, setHasHint, setHasMessage }, children: /* @__PURE__ */ (0, import_jsx_runtime81.jsx)(
+           "div",
+           {
+             ref,
+@@ -123624,7 +123597,7 @@ var init_form = __esm({
+     Label4.displayName = "Form.Label";
+     Control = (0, import_react78.forwardRef)(({ ...props }, ref) => {
+       const {
+-        error,
++        error, hasHint, hasMessage,
+         formItemId,
+         formDescriptionId,
+         formErrorMessageId,
+@@ -123635,7 +123608,7 @@ var init_form = __esm({
+         {
+           ref,
+           id: formItemId,
+-          "aria-describedby": !error ? `${formDescriptionId}` : `${formDescriptionId} ${formErrorMessageId}`,
++          "aria-describedby": [hasHint && formDescriptionId, hasMessage && formErrorMessageId].filter(Boolean).join(" ") || undefined,
+           "aria-invalid": !!error,
+           "aria-labelledby": formLabelId,
+           ...props
+@@ -123644,7 +123617,8 @@ var init_form = __esm({
+     });
+     Control.displayName = "Form.Control";
+     Hint = (0, import_react78.forwardRef)(({ className, ...props }, ref) => {
+-      const { formDescriptionId } = useFormField();
++      const { formDescriptionId, setHasHint } = useFormField();
++  (0, import_react78.useEffect)(() => { setHasHint(true); return () => setHasHint(false); }, [setHasHint]);
+       return /* @__PURE__ */ (0, import_jsx_runtime81.jsx)(
+         import_ui54.Hint,
+         {
+@@ -123657,8 +123631,10 @@ var init_form = __esm({
+     });
+     Hint.displayName = "Form.Hint";
+     ErrorMessage = (0, import_react78.forwardRef)(({ className, children, ...props }, ref) => {
+-      const { error, formErrorMessageId } = useFormField();
++      const { error, formErrorMessageId, setHasMessage } = useFormField();
+       const msg = error ? String(error?.message) : children;
++  const hasMessage = Boolean(msg && msg !== "undefined");
++  (0, import_react78.useEffect)(() => { setHasMessage(hasMessage); return () => setHasMessage(false); }, [hasMessage, setHasMessage]);
+       if (!msg || msg === "undefined") {
+         return null;
+       }
+@@ -134419,35 +134395,9 @@ var init_product_general_section = __esm({
        product
      }) => {
        const { t: t5 } = (0, import_react_i18next88.useTranslation)();
@@ -181,7 +243,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..483de42137568d9bb22e3586ea14eaa4
        return /* @__PURE__ */ (0, import_jsx_runtime136.jsxs)(import_ui99.Container, { className: "divide-y p-0", children: [
          /* @__PURE__ */ (0, import_jsx_runtime136.jsxs)("div", { className: "flex items-center justify-between px-6 py-4", children: [
            /* @__PURE__ */ (0, import_jsx_runtime136.jsx)(import_ui99.Heading, { children: product.title }),
-@@ -134476,16 +134420,7 @@ var init_product_general_section = __esm({
+@@ -134476,16 +134426,7 @@ var init_product_general_section = __esm({
                          }
                        ]
                      }
@@ -199,7 +261,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..483de42137568d9bb22e3586ea14eaa4
                  ]
                }
              )
-@@ -135147,8 +135082,6 @@ var init_product_variant_section = __esm({
+@@ -135147,8 +135088,6 @@ var init_product_variant_section = __esm({
      useColumns4 = (product) => {
        const { t: t5 } = (0, import_react_i18next93.useTranslation)();
        const navigate = (0, import_react_router_dom38.useNavigate)();
@@ -208,7 +270,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..483de42137568d9bb22e3586ea14eaa4
        const [searchParams] = (0, import_react_router_dom38.useSearchParams)();
        const tableSearchParams = (0, import_react140.useMemo)(() => {
          const filtered = new URLSearchParams();
-@@ -135159,23 +135092,6 @@ var init_product_variant_section = __esm({
+@@ -135159,23 +135098,6 @@ var init_product_variant_section = __esm({
          }
          return filtered;
        }, [searchParams]);
@@ -232,7 +294,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..483de42137568d9bb22e3586ea14eaa4
        const optionColumns = (0, import_react140.useMemo)(() => {
          if (!product?.options) {
            return [];
-@@ -135232,13 +135148,6 @@ var init_product_variant_section = __esm({
+@@ -135232,13 +135154,6 @@ var init_product_variant_section = __esm({
                }
              }
            ];
@@ -246,7 +308,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..483de42137568d9bb22e3586ea14eaa4
            const inventoryItemsCount = variant.inventory_items?.length || 0;
            switch (inventoryItemsCount) {
              case 0:
-@@ -135271,9 +135180,9 @@ var init_product_variant_section = __esm({
+@@ -135271,9 +135186,9 @@ var init_product_variant_section = __esm({
                });
              }
            }
@@ -258,7 +320,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..483de42137568d9bb22e3586ea14eaa4
        );
        const getInventory = (0, import_react140.useCallback)(
          (variant) => {
-@@ -141169,29 +141078,8 @@ var init_loader5 = __esm({
+@@ -141169,29 +141084,8 @@ var init_loader5 = __esm({
  // src/routes/product-variants/product-variant-detail/components/variant-general-section/variant-general-section.tsx
  function VariantGeneralSection({ variant }) {
    const { t: t5 } = (0, import_react_i18next124.useTranslation)();
@@ -288,7 +350,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..483de42137568d9bb22e3586ea14eaa4
    return /* @__PURE__ */ (0, import_jsx_runtime183.jsxs)(import_ui133.Container, { className: "divide-y p-0", children: [
      /* @__PURE__ */ (0, import_jsx_runtime183.jsxs)("div", { className: "flex items-center justify-between px-6 py-4", children: [
        /* @__PURE__ */ (0, import_jsx_runtime183.jsxs)("div", { children: [
-@@ -141224,16 +141112,7 @@ function VariantGeneralSection({ variant }) {
+@@ -141224,16 +141118,7 @@ function VariantGeneralSection({ variant }) {
                    }
                  ]
                }
@@ -306,7 +368,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..483de42137568d9bb22e3586ea14eaa4
            ]
          }
        ) })
-@@ -218597,14 +218476,6 @@ function getRouteMap({
+@@ -218597,14 +218482,6 @@ function getRouteMap({
                    path: "",
                    lazy: () => Promise.resolve().then(() => (init_product_list2(), product_list_exports)),
                    children: [
@@ -321,7 +383,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..483de42137568d9bb22e3586ea14eaa4
                      {
                        path: "export",
                        lazy: () => Promise.resolve().then(() => (init_product_export2(), product_export_exports))
-@@ -221160,9 +221031,10 @@ var init_dashboard_app = __esm({
+@@ -221160,9 +221037,10 @@ var init_dashboard_app = __esm({
        }
        /**
         * Returns widgets for a given base zone grouped by layout section.
@@ -335,7 +397,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..483de42137568d9bb22e3586ea14eaa4
         */
        getWidgetsForSections(route, sections) {
          const result = {};
-@@ -221170,7 +221042,9 @@ var init_dashboard_app = __esm({
+@@ -221170,7 +221048,9 @@ var init_dashboard_app = __esm({
            if (!zone.startsWith(route)) {
              continue;
            }
@@ -346,7 +408,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..483de42137568d9bb22e3586ea14eaa4
            const mainSection = sections.includes("main") ? "main" : sections[0];
            const section = suffix || mainSection;
            if (!result[section]) {
-@@ -221180,6 +221054,7 @@ var init_dashboard_app = __esm({
+@@ -221180,6 +221060,7 @@ var init_dashboard_app = __esm({
              const sourceId = ext.widgetId ?? `${zone}:${i}`;
              result[section].push({
                Component: ext.Component,
@@ -388,6 +450,83 @@ index dc03eeee9046413b7ce3d07eb2c2849dfa3ebd37..ca288289d16d24234350d67080f15ef8
      /* @__PURE__ */ jsxs(DropdownMenu.Content, { className: "z-[1]", align: "end", children: [
        /* @__PURE__ */ jsx(
          DropdownMenu.RadioGroup,
+diff --git a/dist/chunk-OBQI23QM.mjs b/dist/chunk-OBQI23QM.mjs
+index 6f27499862661d77f4a4bddeb1c06f50005d2ee3..4b9941b221a87f32ab09cbc4eee3ee3091621433 100644
+--- a/dist/chunk-OBQI23QM.mjs
++++ b/dist/chunk-OBQI23QM.mjs
+@@ -12,7 +12,9 @@ import {
+   createContext,
+   forwardRef,
+   useContext,
+-  useId
++  useId,
++  useState,
++  useEffect
+ } from "react";
+ import {
+   Controller,
+@@ -43,8 +45,9 @@ var useFormField = () => {
+   if (!fieldContext) {
+     throw new Error("useFormField should be used within a FormField");
+   }
+-  const { id } = itemContext;
++  const { id , hasHint, hasMessage, setHasHint, setHasMessage } = itemContext;
+   return {
++        hasHint, hasMessage, setHasHint, setHasMessage,
+     id,
+     name: fieldContext.name,
+     formItemId: `${id}-form-item`,
+@@ -57,7 +60,9 @@ var useFormField = () => {
+ var Item = forwardRef(
+   ({ className, ...props }, ref) => {
+     const id = useId();
+-    return /* @__PURE__ */ jsx(FormItemContext.Provider, { value: { id }, children: /* @__PURE__ */ jsx(
++    const [hasHint, setHasHint] = useState(false);
++    const [hasMessage, setHasMessage] = useState(false);
++    return /* @__PURE__ */ jsx(FormItemContext.Provider, { value: { id, hasHint, hasMessage, setHasHint, setHasMessage }, children: /* @__PURE__ */ jsx(
+       "div",
+       {
+         ref,
+@@ -96,7 +101,7 @@ var Label = forwardRef(({ className, optional = false, tooltip, icon, ...props }
+ Label.displayName = "Form.Label";
+ var Control = forwardRef(({ ...props }, ref) => {
+   const {
+-    error,
++    error, hasHint, hasMessage,
+     formItemId,
+     formDescriptionId,
+     formErrorMessageId,
+@@ -107,7 +112,7 @@ var Control = forwardRef(({ ...props }, ref) => {
+     {
+       ref,
+       id: formItemId,
+-      "aria-describedby": !error ? `${formDescriptionId}` : `${formDescriptionId} ${formErrorMessageId}`,
++      "aria-describedby": [hasHint && formDescriptionId, hasMessage && formErrorMessageId].filter(Boolean).join(" ") || undefined,
+       "aria-invalid": !!error,
+       "aria-labelledby": formLabelId,
+       ...props
+@@ -116,7 +121,8 @@ var Control = forwardRef(({ ...props }, ref) => {
+ });
+ Control.displayName = "Form.Control";
+ var Hint = forwardRef(({ className, ...props }, ref) => {
+-  const { formDescriptionId } = useFormField();
++  const { formDescriptionId, setHasHint } = useFormField();
++  useEffect(() => { setHasHint(true); return () => setHasHint(false); }, [setHasHint]);
+   return /* @__PURE__ */ jsx(
+     HintComponent,
+     {
+@@ -129,8 +135,10 @@ var Hint = forwardRef(({ className, ...props }, ref) => {
+ });
+ Hint.displayName = "Form.Hint";
+ var ErrorMessage = forwardRef(({ className, children, ...props }, ref) => {
+-  const { error, formErrorMessageId } = useFormField();
++  const { error, formErrorMessageId, setHasMessage } = useFormField();
+   const msg = error ? String(error?.message) : children;
++  const hasMessage = Boolean(msg && msg !== "undefined");
++  useEffect(() => { setHasMessage(hasMessage); return () => setHasMessage(false); }, [hasMessage, setHasMessage]);
+   if (!msg || msg === "undefined") {
+     return null;
+   }
 diff --git a/dist/chunk-OZPB6JBL.mjs b/dist/chunk-OZPB6JBL.mjs
 index 05649d580083c5d28a1d9c75c8907e6b7e655c96..f735fd72ae22e34e92ce52c53e703134f50771c2 100644
 --- a/dist/chunk-OZPB6JBL.mjs
@@ -860,6 +999,107 @@ index 1c1a8180222bae4279fa60e23703a76c2437316f..5b06cc2c6c87624d164458aa4c4486a5
        <EllipsisHorizontal />
      </IconButton>
    )
+diff --git a/src/components/common/form/form.tsx b/src/components/common/form/form.tsx
+index 2e7fbf05b88933c5255d1cd89a380091133c154b..e19993a8959d28c77f4a50dd4933216e137a6301 100644
+--- a/src/components/common/form/form.tsx
++++ b/src/components/common/form/form.tsx
+@@ -13,6 +13,8 @@ import React, {
+   forwardRef,
+   useContext,
+   useId,
++  useState,
++  useEffect,
+ } from "react"
+ import {
+   Controller,
+@@ -52,6 +54,10 @@ const Field = <
+ }
+ 
+ type FormItemContextValue = {
++  hasHint: boolean
++  hasMessage: boolean
++  setHasHint: React.Dispatch<React.SetStateAction<boolean>>
++  setHasMessage: React.Dispatch<React.SetStateAction<boolean>>
+   id: string
+ }
+ 
+@@ -71,9 +77,10 @@ const useFormField = () => {
+     throw new Error("useFormField should be used within a FormField")
+   }
+ 
+-  const { id } = itemContext
++  const { id, hasHint, hasMessage, setHasHint, setHasMessage } = itemContext
+ 
+   return {
++    hasHint, hasMessage, setHasHint, setHasMessage,
+     id,
+     name: fieldContext.name,
+     formItemId: `${id}-form-item`,
+@@ -87,9 +94,11 @@ const useFormField = () => {
+ const Item = forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
+   ({ className, ...props }, ref) => {
+     const id = useId()
++    const [hasHint, setHasHint] = useState(false)
++    const [hasMessage, setHasMessage] = useState(false)
+ 
+     return (
+-      <FormItemContext.Provider value={{ id }}>
++      <FormItemContext.Provider value={{ id, hasHint, hasMessage, setHasHint, setHasMessage }}>
+         <div
+           ref={ref}
+           className={clx("flex flex-col space-y-2", className)}
+@@ -145,6 +154,8 @@ const Control = forwardRef<
+ >(({ ...props }, ref) => {
+   const {
+     error,
++    hasHint,
++    hasMessage,
+     formItemId,
+     formDescriptionId,
+     formErrorMessageId,
+@@ -156,9 +167,7 @@ const Control = forwardRef<
+       ref={ref}
+       id={formItemId}
+       aria-describedby={
+-        !error
+-          ? `${formDescriptionId}`
+-          : `${formDescriptionId} ${formErrorMessageId}`
++        [hasHint && formDescriptionId, hasMessage && formErrorMessageId].filter(Boolean).join(" ") || undefined
+       }
+       aria-invalid={!!error}
+       aria-labelledby={formLabelId}
+@@ -172,7 +181,11 @@ const Hint = forwardRef<
+   HTMLParagraphElement,
+   React.HTMLAttributes<HTMLParagraphElement>
+ >(({ className, ...props }, ref) => {
+-  const { formDescriptionId } = useFormField()
++  const { formDescriptionId, setHasHint } = useFormField()
++  useEffect(() => {
++    setHasHint(true)
++    return () => setHasHint(false)
++  }, [setHasHint])
+ 
+   return (
+     <HintComponent
+@@ -189,10 +202,16 @@ const ErrorMessage = forwardRef<
+   HTMLParagraphElement,
+   React.HTMLAttributes<HTMLParagraphElement>
+ >(({ className, children, ...props }, ref) => {
+-  const { error, formErrorMessageId } = useFormField()
++  const { error, formErrorMessageId, setHasMessage } = useFormField()
+   const msg = error ? String(error?.message) : children
+ 
+-  if (!msg || msg === "undefined") {
++  const hasMessage = Boolean(msg && msg !== "undefined")
++  useEffect(() => {
++    setHasMessage(hasMessage)
++    return () => setHasMessage(false)
++  }, [hasMessage, setHasMessage])
++
++  if (!hasMessage) {
+     return null
+   }
+ 
 diff --git a/src/components/filtering/order-by/order-by.tsx b/src/components/filtering/order-by/order-by.tsx
 index 20111880b52dc6de18727d963f3c6f274b6c791f..8d4987f622a9e8a884d39b5600e9250b71aeb13c 100644
 --- a/src/components/filtering/order-by/order-by.tsx

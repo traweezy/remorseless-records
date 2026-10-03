@@ -158,6 +158,8 @@ patchedDependencies:
   '@radix-ui/react-dialog@1.1.5': patches/@radix-ui__react-dialog@1.1.5.patch
   braces@3.0.3: patches/braces@3.0.3.patch
   next@16.3.8: patches/next@16.3.8.patch
+  '@hookform/resolvers@3.4.2': patches/@hookform__resolvers@3.4.2.patch
+  '@medusajs/draft-order@2.18.0': patches/@medusajs__draft-order@2.18.0.patch
 
 minimumReleaseAge: 10080
 minimumReleaseAgeStrict: true

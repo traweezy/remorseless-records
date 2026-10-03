@@ -13,6 +13,17 @@ bullet bodies. Require all four exact-SHA workflows/23 checks before starting
 the next local batch; require exact deployments and all nine service/job/live
 acceptance before its next push. Do not stop for routine decisions.
 
+Current Batch 6 application revision is `e136dc5` (all four workflows/23 checks
+passed; both apps and backup/migration succeeded). Further local corrections
+cover native Zod validation, both native form copies' accessibility, rich-text
+plain-content imports, variant-profile list reads, media validation focus and
+successful creation navigation. The owned product now exists as an unpublished
+draft; no fresh sandbox payment/refund has run. Shelf restore/cancel/archive
+passes live and leaves it inactive/archived. Preserve the scheduler incident
+latch and full observation window. See the latest dated section in
+[END_TO_END_AUDIT.md](END_TO_END_AUDIT.md) for current proofs, failed local
+Docker aggregate attempts, exact fixture ownership and pending acceptance.
+
 Batch 5 rotated PostgreSQL administrator, Redis and JWT/cookie credentials,
 verified old-key rejection and native provider/session sign-in, and revoked
 storage root API access using exact-release dynamic configuration. Separate
@@ -61,6 +72,14 @@ regressions are the next corrective group within batch 6, alongside Contact
 feedback and consistent delivery/returns copy. The earlier worker's 22:32
 schedule delay also leaves a preserved 24-hour scheduler alert; acceptance is
 still open. See [live retest evidence](END_TO_END_AUDIT.md#live-retests-and-further-corrective-work--october-3-2300-utc).
+
+The second corrective group is now pushed at `e136dc5` and has passed all four
+workflows and 23 required checks (Root `37160902311`, Backend `37160902343`,
+Storefront `37160902320`, Runtime Images `37160902286`). Railway rollout and
+live retests remain open. Native Admin testing also found a reproducible
+Zod 4/resolver 3 validation-feedback failure, while valid refund-reason
+create/edit passed on an owned fixture. This needs its own repair within the
+same audit batch. See the newer corrective-release section in the audit ledger.
 
 The initial repair group remains documented below.
 The [audit repair table](END_TO_END_AUDIT.md#initial-repair-group--deployment-and-live-retests-pending)

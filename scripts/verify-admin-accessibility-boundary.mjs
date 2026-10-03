@@ -79,6 +79,7 @@ for (const findingCode of [
 }
 
 for (const caseName of [
+  "native-refund-reason-validation",
   "product-create-validation-200-percent",
   "product-create-offerings-laptop",
   "product-authoring-wide",
@@ -110,6 +111,17 @@ for (const source of [
 
 assert.match(uiPatchSource, /"aria-label": rest\["aria-label"\]/u)
 assert.match(uiPatchSource, /"aria-hidden": true/u)
+assert.ok(uiPatchSource.includes('"aria-label": "Close dialog"'))
+assert.ok(dashboardPatchSource.includes("hasHint && formDescriptionId"))
+assert.ok(dashboardPatchSource.includes("hasMessage && formErrorMessageId"))
+const draftOrderPatchSource = await readRepositoryFile(
+  "patches/@medusajs__draft-order@2.18.0.patch"
+)
+assert.ok(draftOrderPatchSource.includes("hasHint && formDescriptionId"))
+assert.ok(draftOrderPatchSource.includes("hasMessage && formErrorMessageId"))
+assert.ok(uiPatchSource.includes("components/focus-modal/focus-modal.js"))
+assert.ok(uiPatchSource.includes("components/drawer/drawer.js"))
+
 for (const label of ["Open actions", "Sort results"]) {
   assert.ok(dashboardPatchSource.includes(`aria-label="${label}"`))
 }

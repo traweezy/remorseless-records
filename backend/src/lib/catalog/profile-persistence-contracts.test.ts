@@ -10,6 +10,7 @@ import {
   readCatalogReferenceValueMutation,
   readCatalogReferenceValuePage,
   readCatalogVariantProfileMutation,
+  readCatalogVariantProfileList,
   readCatalogVariantProfiles,
   readExactCatalogProductArtists,
   readExactCatalogProductReferences,
@@ -140,6 +141,27 @@ const operation = (overrides: Record<string, unknown> = {}) => ({
 })
 
 describe("catalog profile persistence contracts", () => {
+  it("reads nonempty variant lists while enforcing membership and uniqueness", () => {
+    const first = variantProfile()
+    const second = variantProfile({ id: "cvprof_2", variant_id: "variant_2" })
+    expect(
+      readCatalogVariantProfileList([second, first], ["variant_1", "variant_2"])
+    ).toEqual([second, first])
+    expect(readCatalogVariantProfileList([], ["variant_1"])).toEqual([])
+    for (const invalid of [
+      [variantProfile({ variant_id: "variant_foreign" })],
+      [first, variantProfile({ id: "cvprof_2" })],
+      [first, variantProfile({ variant_id: "variant_2" })],
+      [variantProfile({ version: 0 })],
+    ]) {
+      expect(() =>
+        readCatalogVariantProfileList(invalid, ["variant_1", "variant_2"])
+      ).toThrow(INVALID_PROFILE)
+    }
+    expect(() => readCatalogVariantProfiles([first], "variant_2")).toThrow(
+      INVALID_PROFILE
+    )
+  })
   it("distinguishes absent artist rows from malformed persistence data", () => {
     expect(readCatalogArtist(null, "artist_1")).toBeNull()
     expect(readCatalogArtist(artist(), "artist_1")).toMatchObject({

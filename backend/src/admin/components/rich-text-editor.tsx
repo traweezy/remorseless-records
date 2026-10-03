@@ -38,7 +38,6 @@ import {
 import { $setBlocksType } from "@lexical/selection"
 import {
   $createParagraphNode,
-  $getRoot,
   $getSelection,
   $isRangeSelection,
   $isTextNode,
@@ -48,6 +47,8 @@ import {
   type TextFormatType,
 } from "lexical"
 import { Button, Input, Label, Text } from "@medusajs/ui"
+
+import { $replaceRichTextRoot } from "./rich-text-import"
 
 const EXTERNAL_SYNC_TAG = "remorseless-external-html"
 
@@ -180,10 +181,8 @@ const HtmlSyncPlugin = memo<HtmlSyncPluginProps>(({ syncedHtmlRef, value }) => {
     syncedHtmlRef.current = value
     editor.update(
       () => {
-        const root = $getRoot()
-        root.clear()
         if (!value.trim()) {
-          root.append($createParagraphNode())
+          $replaceRichTextRoot([])
           return
         }
         const document = new globalThis.DOMParser().parseFromString(
@@ -191,7 +190,7 @@ const HtmlSyncPlugin = memo<HtmlSyncPluginProps>(({ syncedHtmlRef, value }) => {
           "text/html"
         )
         const nodes = $generateNodesFromDOM(editor, document)
-        root.append(...(nodes.length ? nodes : [$createParagraphNode()]))
+        $replaceRichTextRoot(nodes)
       },
       { tag: EXTERNAL_SYNC_TAG }
     )

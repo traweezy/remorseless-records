@@ -26,6 +26,8 @@ const sharedContracts = Object.freeze({
     "node --test scripts/migration-boundary.test.mjs scripts/release-prepare.test.mjs scripts/backend-runtime-start.test.mjs scripts/postgres-role-split.test.mjs scripts/postgres-logical-backup.test.mjs scripts/postgres-restore.test.mjs scripts/recovery-process.test.mjs scripts/postgres-recovery-cli.test.mjs scripts/postgres-staging-snapshot.test.mjs scripts/postgres-business-aggregate.test.mjs scripts/postgres-business-parity.test.mjs scripts/postgres-stripe-parity.test.mjs scripts/postgres-isolated-target.test.mjs scripts/provision-postgres-recovery-client.test.mjs scripts/media-backup.test.mjs scripts/media-object-checksum.test.mjs scripts/media-backup-cli.test.mjs scripts/media-restore-drill.test.mjs scripts/redis-aof-recovery.test.mjs scripts/redis-aof-capture.test.mjs scripts/redis-aof-isolated-replay.test.mjs scripts/backend-isolated-startup-smoke.test.mjs && pnpm run qa:postgres-live-business-aggregate && pnpm run qa:postgres-observability-preflight && pnpm run qa:redis-capacity && pnpm run qa:redis-live-aggregate && pnpm run qa:redis-failed-job-classifier && pnpm run qa:redis-pg-evidence-triage",
   "qa:storefront-provider-fixture":
     "node --test storefront/scripts/ci-medusa-fixture.test.mjs",
+  "qa:dashboard-form-validation":
+    "node --test scripts/verify-dashboard-form-validation.test.mjs",
   "qa:dashboard-product-create":
     "node scripts/verify-dashboard-product-create-boundary.mjs",
   "qa:workflow-scheduler-timestamps":

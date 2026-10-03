@@ -210,6 +210,8 @@ const CatalogProductCreatePageContent = memo(() => {
   const [clearOpen, setClearOpen] = useState(false)
   const [leaveOpen, setLeaveOpen] = useState(false)
   const [allowNavigation, setAllowNavigation] = useState(false)
+  // Router blockers run synchronously, before a success state update commits.
+  const allowNavigationRef = useRef(false)
   const [draftPersistenceEnabled, setDraftPersistenceEnabled] = useState(
     Boolean(initialDraft)
   )
@@ -220,7 +222,8 @@ const CatalogProductCreatePageContent = memo(() => {
   const [submitted, setSubmitted] = useState(false)
   const [mediaUploading, setMediaUploading] = useState(false)
   const pageStartRef = useRef<HTMLDivElement>(null)
-  const pendingFocusTargetRef = useRef<string | null>(null)
+  const [focusRequest, setFocusRequest] =
+    useState<CatalogCreationValidationIssue | null>(null)
   const idempotencyKeyRef = useRef(crypto.randomUUID())
   const lastSubmittedValuesRef = useRef<string | null>(null)
 
@@ -268,6 +271,7 @@ const CatalogProductCreatePageContent = memo(() => {
       }
       removeDraft()
       setSubmitted(true)
+      allowNavigationRef.current = true
       setAllowNavigation(true)
       navigate(`/catalog/products/${encodeURIComponent(result.productId)}`)
     },
@@ -287,7 +291,7 @@ const CatalogProductCreatePageContent = memo(() => {
   const blocker = useBlocker(
     ({ currentLocation, nextLocation }) =>
       formState.isDirty &&
-      !allowNavigation &&
+      !allowNavigationRef.current &&
       currentLocation.pathname !== nextLocation.pathname
   )
   const artistOptions = useMemo<CatalogControlledOption[]>(
@@ -408,13 +412,10 @@ const CatalogProductCreatePageContent = memo(() => {
     target.scrollIntoView({ behavior: "smooth", block: "center" })
   }, [])
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: Changing steps intentionally retries focus after the target panel mounts.
+  // Wait for the error summary and destination panel to commit before focus.
   useEffect(() => {
-    const targetId = pendingFocusTargetRef.current
-    if (!targetId) {
-      return undefined
-    }
-    pendingFocusTargetRef.current = null
+    if (!focusRequest?.targetId || focusRequest.step !== step) return undefined
+    const targetId = focusRequest.targetId
     if (!globalThis.requestAnimationFrame || !globalThis.cancelAnimationFrame) {
       focusValidationTarget(targetId)
       return undefined
@@ -423,7 +424,7 @@ const CatalogProductCreatePageContent = memo(() => {
       focusValidationTarget(targetId)
     })
     return () => globalThis.cancelAnimationFrame(frame)
-  }, [focusValidationTarget, step])
+  }, [focusRequest, focusValidationTarget, step])
 
   const setField = useCallback(
     (field: keyof CatalogCreationFormValues, value: string) => {
@@ -715,7 +716,7 @@ const CatalogProductCreatePageContent = memo(() => {
   )
 
   const goToStep = useCallback((nextStep: number) => {
-    pendingFocusTargetRef.current = null
+    setFocusRequest(null)
     setStep(nextStep)
     setStepErrors([])
     pageStartRef.current?.scrollIntoView({
@@ -729,14 +730,10 @@ const CatalogProductCreatePageContent = memo(() => {
       if (!issue.targetId) {
         return
       }
-      if (issue.step === step) {
-        focusValidationTarget(issue.targetId)
-        return
-      }
-      pendingFocusTargetRef.current = issue.targetId
+      setFocusRequest({ ...issue })
       setStep(issue.step)
     },
-    [focusValidationTarget, step]
+    []
   )
 
   const handleNext = useCallback(() => {
@@ -849,6 +846,7 @@ const CatalogProductCreatePageContent = memo(() => {
       writeDraft(values, step)
     }
     setLeaveOpen(false)
+    allowNavigationRef.current = true
     setAllowNavigation(true)
     if (blocker.state === "blocked") {
       blocker.proceed()

@@ -9,8 +9,8 @@ Batch 5 release acceptance is complete at `960fe7b`. Run
 and 493 control candidates in 187 files; it is a starting inventory, not a
 coverage claim. The user has signed into Admin and the Stripe Dashboard confirms
 the expected sandbox. No fresh payment/refund has run. The initial shelf failure
-was repaired; the owned shelf now exists and is archived. Product creation still
-needs the final-save correction and live retest described below.
+was repaired; the owned shelf now exists and is archived. One owned product was created successfully after the second repair group;
+its editor and native summary exposed further issues documented below.
 
 ## Initial repair group — deployment and live retests pending
 
@@ -109,6 +109,37 @@ The 200-percent Admin validation screenshot also shows the heading partially
 beneath the fixed header after focus movement; retain this visual finding for
 live inspection. These local results do not replace staging retests, payment
 execution, or the outstanding scheduler observation window.
+
+### Corrective release and native Admin findings — October 3, 23:19 UTC
+
+The next corrective group is pushed directly to `staging` at
+`e136dc5f84ffa3a6dc966b939f883c6581ec25f5`, with Conventional Commits
+`3be3624` (catalog persistence/archive feedback) and `e136dc5` (Contact/copy).
+Root `37160902311`, Backend `37160902343`, Storefront `37160902320`, and
+Runtime Images `37160902286` all passed, including all 23 required checks.
+There were 30 successful check runs and one conditional skip overall. Both
+runtime image evidence bundles verified. Railway rollout and live corrected
+retests remain pending; this is not batch acceptance.
+
+The push hooks passed lint/types and both Storefront coverage groups: 146
+files / 972 tests and 39 transactional files / 362 tests. Private evidence is
+under `release-e136dc5/` and `local-corrective-verification/` in the audit directory.
+The local CI/service watchers exited with SIGTERM during observation; they were
+restarted at 23:17 UTC. Preserve the approximately 23:14:45–23:17:07 gap rather
+than claiming uninterrupted local observation. Fresh provider state showed no
+service faults and the same supporting-service instances.
+
+Native settings navigation adds 19 settings destinations to the audit ledger.
+Refund-reason list/filter/empty/clear/create/edit/cancel checks ran live. The
+owned reason uses the `RR Audit b8517c2c` prefix and will be retained if linked
+to financial history. Empty create submissions expose `B6-NATIVE-ZOD-RESOLVER`:
+no inline errors, no invalid-field state and focus left on Save, with an
+uncaught ZodError. An isolated call through Dashboard 2.18.0's actual Zod 4.2.0
+and resolver 3.4.2 reproduces it; the resolver expects the removed `errors`
+property. Valid create/edit succeeds. Repair this shared native validation
+boundary and verify nested/union errors, native focus and unrelated exceptions
+before accepting the Admin audit. Do not weaken validation or change React
+versions to hide it.
 
 This is **batch 6**, after credential/dependency maintenance and before the
 client environment clone in batch 7. Audit the complete shopping and operator
@@ -374,3 +405,84 @@ create/edit/order/refund checks.
 - [ ] Mark the audit release accepted only after these gates pass. **Do not
       create the client environment before acceptance.** The subsequent clone
       still needs independent acceptance with the client's provider keys.
+
+### Second repair deployment and authoring audit — October 3, 23:40 UTC
+
+`e136dc5f84ffa3a6dc966b939f883c6581ec25f5` passed all four workflows and 23
+required checks (Root `37160902311`, Backend `37160902343`, Storefront
+`37160902320`, Runtime Images `37160902286`). Exact Backend deployment
+`bade75f0-e787-4b9c-94b6-e462f00336bc` and Storefront deployment
+`74f2a58d-d961-48ed-bead-845309aafcae` succeeded. Runtime/image/migration and
+release readiness checks passed. Deployed responsive browsers passed 87 cases,
+with eight documented skips and zero retries. These do not establish payment
+acceptance. All nine Railway services/jobs reached expected states; the local
+watcher has a documented 23:14:45–23:17:07 observation gap.
+
+Recovery execution `7c43aa89-044b-413d-9fbb-2cc56c33ce51` published encrypted
+archive `922ce02b-9f5e-4bd9-ae1e-ec18388e3b6a` at 23:23 UTC (four database files
+and 1,168 media objects), before the three new owned audit uploads. Redis retained
+its process identity at 7,584 seconds uptime. A 23:30 ordinary scheduler heartbeat
+completed with 291 ms schedule delay and no attempted/failed completions; the
+previous incident latch and full 24-hour observation requirement remain open.
+
+Actual media upload, ordering and three aspect ratios now work. Native creation
+saved exactly one draft `prod_01M421F4YN6SE1TFFXMPXYSPF5` through succeeded operation
+`catop_01M421F4X5SPA5BN2W3DTEZERG`. Native Admin confirms both variants have 20
+units. The draft remains unpublished pending repair and verification. Three
+media objects belong to this run; do not treat the pre-upload archive as their
+backup. A controlled native refund reason was created and edited successfully;
+no refund or new sandbox purchase has happened yet.
+
+The actual Backend test key, Storefront test publishable key, independent Stripe
+sandbox account, payment-method configuration and native/lifecycle webhook
+identities were checked again. Contact invalid-submit focus passes live for
+Name, Email and Message. All six FAQ accordions pass mouse/keyboard controls,
+including Home, and their US-only delivery/processing/return copy is consistent.
+
+| Finding | Reproduction and correction in progress | Acceptance still required |
+| --- | --- | --- |
+| `B6-NATIVE-ZOD-RESOLVER` | Blank native refund-reason submission throws ZodError instead of showing inline feedback. The pinned 3.4.2 resolver expects Zod 3 `.errors`; native Dashboard uses Zod 4 `.issues`. A bounded compatibility patch retains RHF/React versions and checks all five distributed resolver entry points. | Rebuilt native invalid/valid forms, deployed readback and complete Admin coverage. |
+| `B6-CREATE-SUCCESS-NAV` | Successful draft creation navigates before the state update disables its own dirty guard, showing false product-not-created copy. Make the guard decision synchronous. | Actual successful creation redirects without a leave prompt; dirty cancel still warns. |
+| `B6-MEDIA-ALT-FOCUS` | Blank image descriptions block progress, but focus remains on Continue. Apply the focus request after the error summary/panel commits. | Actual upload and repeated invalid submissions focus the first missing description. |
+| `B6-RICHTEXT-PLAIN-IMPORT` | A newly created plain-text description produces root-level Lexical text nodes and crashes the whole editor (error 282). Preserve inline runs inside paragraphs, existing block order and formatting. | Rebuilt and deployed plain/inline/block editor journeys and saves. |
+| `B6-VARIANT-PROFILE-LIST` | The saved owned profile is valid. The authoring reader rejects nonempty variant-profile lists by comparing each ID against an omitted single-ID argument. Keep list membership/uniqueness and single-ID checks while fixing the optional comparison. | Native workflow creation followed by the real authoring reader; deployed summary and storefront. |
+
+Private evidence retains both initial failures and corrected diagnostics. This
+remains Batch 6 corrective work, not a new batch or acceptance. The exhaustive
+route/control ledger, actual sandbox checkout/3DS/declines/refunds, cleanup,
+scheduler observation and final nine-service acceptance are still incomplete.
+
+The native invalid-form regression additionally exposed `B6-NATIVE-FORM-A11Y`:
+unnamed FocusModal/Drawer close controls and descriptions pointing at absent
+hint elements. The correction covers both Dashboard and the draft-order
+plugin's bundled forms. The initial failed axe reports are retained. Shelf
+restore/cancel/archive now passes live on `e136dc5`; read-only persistence
+confirms owned shelf version 5, inactive and archived. Three owned media assets
+retain the original 800×800, 1200×600 and 600×1000 dimensions, intended order
+and alt text.
+
+The first local aggregate passed all 70 native Medusa cases, 44 payment cases,
+38 PostgreSQL cases and eight Redis capacity cases before Docker Desktop
+rejected host `/tmp` bind mounts for AOF recovery. A workspace temporary path
+was correctly rejected by the backup ancestor-permission guard. The native
+Docker daemon cannot expose its published test ports here; that attempt was
+cancelled and owned fixtures removed. The unmodified two-case AOF suite passes
+against the native daemon with its normal isolated bind/socket paths. These
+are distinct observations, not a claim that one full local aggregate passed;
+the exact-revision CI service-container aggregate remains required.
+
+Focused follow-up checks passed all six native session-rotation cases against
+the guarded Desktop Redis fixture, and the queue aggregate's eleven replay
+modes against the verified native image. Every owned container/network from
+those runs was removed. The final Admin unit run passed 65 suites/249 cases;
+the preceding full Backend coverage run passed 289 suites/2,320 cases. The
+new resolver contract passed 15 cases spanning all five distributed formats.
+
+Final local rendered verification passed all 14 Admin matrix cases with zero
+axe violations/incomplete checks and no other findings. A separate compiled
+browser assertion verifies the plain description is actually present in a
+contenteditable editor. Native validation, wide authoring, and 200%-equivalent
+validation screenshots were inspected; the latter now keeps the heading and
+focused Artist control visible. Shared lint/type/policy checks, frozen install
+and Backend production build pass. Candidate corrections still require their
+own exact-SHA CI, deployed retests and service acceptance before closure.

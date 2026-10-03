@@ -26,6 +26,14 @@ if (!Number.isInteger(concurrency) || concurrency < 1 || concurrency > 4) {
 
 const cases = [
   {
+    axeInclude: "[role=dialog]",
+    height: 900,
+    name: "native-refund-reason-validation",
+    route: "/app/settings/refund-reasons/create",
+    setup: "native-refund-reason-validation",
+    width: 1440,
+  },
+  {
     height: 900,
     name: "product-create-validation-200-percent",
     route: "/app/products/create",

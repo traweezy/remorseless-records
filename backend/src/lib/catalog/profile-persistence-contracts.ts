@@ -643,7 +643,7 @@ const variantProfileRecord = (
 ): CatalogVariantProfileRecord => {
   const source = record(value)
   const variantId = identifier(source.variant_id, "variant_")
-  if (variantId !== expectedVariantId) {
+  if (expectedVariantId !== undefined && variantId !== expectedVariantId) {
     return invalidProfilePersistence()
   }
   return {

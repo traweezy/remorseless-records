@@ -1412,3 +1412,39 @@ and after cancellation. The installed-byte check covers all ten artifacts.
 Storefront CI. The fixture has no commerce/provider integration. Remove this
 backport only when a reviewed, cooled release includes the fix and passes the
 same regression plus production deployment/browser acceptance.
+
+
+### October 3 native Admin form compatibility patch
+
+The live Batch 6 audit found native Medusa 2.18.0 refund-reason validation throws
+instead of displaying required-field errors: Dashboard resolves Zod 4.2.0 with
+`@hookform/resolvers` 3.4.2 and RHF 7.49.1. Keep those reviewed versions and both
+React trees. `patches/@hookform__resolvers@3.4.2.patch` converts genuine Zod 4
+issues (including nested union-relative paths) into the existing resolver's
+error representation, retains Zod 3, raw/sync transforms and native validity,
+and propagates unrelated exceptions. Its source and five runtime entry points
+are patched; stale published source-map references are removed from changed
+bundles. The upstream package remains MIT licensed; no package version or new
+registry artifact is introduced, so no cooling exception is needed.
+
+Reference: the official [resolver implementation](https://github.com/react-hook-form/resolvers/blob/master/zod/src/zod.ts)
+and the installed 3.4.2 source. `qa:dashboard-form-validation` runs actual CJS,
+ESM and UMD paths against both installed Zod APIs; it is a shared Root CI/local
+contract. Native invalid submission also joins the rendered Admin matrix.
+The patch must be removed or re-reviewed with the future coordinated Medusa
+upgrade; this is not an authorization to upgrade RHF or resolver majors.
+
+`pnpm patch-commit` also resolved an unrelated `third-party-web` update. That
+unreviewed change was removed and the original 0.29.2 graph restored before a
+successful root frozen-lockfile installation. The final lock diff is confined
+to the reviewed local patch hashes and their dependency edges.
+
+Rendered native validation also exposed an unnamed modal close button and an
+`aria-describedby` reference to a description that does not exist. Extend the
+existing Dashboard/UI patches and add a same-version `@medusajs/draft-order`
+2.18.0 patch: the plugin ships a separate bundled form implementation used by
+its native routes. Both form copies register mounted hints/messages, while
+Drawer and FocusModal close buttons receive accessible names. The plugin ships
+these implementations in CJS/ESM Admin bundles, not separate TypeScript source;
+patch both published entry points and preserve its MIT license. All four
+changes preserve registry versions and the reviewed dependency boundaries.

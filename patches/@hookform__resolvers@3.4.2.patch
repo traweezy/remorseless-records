@@ -1,0 +1,199 @@
+diff --git a/zod/dist/zod.js b/zod/dist/zod.js
+index 822451d400aaead5cfd5b9000acd54bb386c6929..c42454099bfa655e91a1b8bbd40048f80b6a8aa6 100644
+--- a/zod/dist/zod.js
++++ b/zod/dist/zod.js
+@@ -1,2 +1,21 @@
+-var r=require("react-hook-form"),e=require("@hookform/resolvers"),o=function(e,o){for(var n={};e.length;){var s=e[0],t=s.code,i=s.message,a=s.path.join(".");if(!n[a])if("unionErrors"in s){var u=s.unionErrors[0].errors[0];n[a]={message:u.message,type:u.code}}else n[a]={message:i,type:t};if("unionErrors"in s&&s.unionErrors.forEach(function(r){return r.errors.forEach(function(r){return e.push(r)})}),o){var c=n[a].types,f=c&&c[s.code];n[a]=r.appendErrors(a,o,n,t,f?[].concat(f,s.message):s.message)}e.shift()}return n};exports.zodResolver=function(r,n,s){return void 0===s&&(s={}),function(t,i,a){try{return Promise.resolve(function(o,i){try{var u=Promise.resolve(r["sync"===s.mode?"parse":"parseAsync"](t,n)).then(function(r){return a.shouldUseNativeValidation&&e.validateFieldsNatively({},a),{errors:{},values:s.raw?t:r}})}catch(r){return i(r)}return u&&u.then?u.then(void 0,i):u}(0,function(r){if(function(r){return null!=r.errors}(r))return{values:{},errors:e.toNestErrors(o(r.errors,!a.shouldUseNativeValidation&&"all"===a.criteriaMode),a)};throw r}))}catch(r){return Promise.reject(r)}}};
+-//# sourceMappingURL=zod.js.map
++// Remorseless: accept Zod 4 issues without changing the pinned RHF contract.
++function rrZodIssues(error) {
++  if (error?._zod?.traits?.has('$ZodError') && Array.isArray(error.issues)) {
++    return error.issues.map(issue => rrZod4Issue(issue, []));
++  }
++  return Array.isArray(error?.errors) ? [...error.errors] : null;
++}
++function rrZod4Issue(issue, prefix) {
++  const path = [...prefix, ...issue.path];
++  if (issue.code === 'invalid_union' && issue.errors?.some(branch => branch.length)) {
++    return {
++      ...issue,
++      path,
++      unionErrors: issue.errors.filter(branch => branch.length).map(branch => ({
++        errors: branch.map(child => rrZod4Issue(child, path)),
++      })),
++    };
++  }
++  return { ...issue, path };
++}
++var r=require("react-hook-form"),e=require("@hookform/resolvers"),o=function(e,o){for(var n=Object.create(null);e.length;){var s=e[0],t=s.code,i=s.message,a=s.path.join(".");if(!n[a])if("unionErrors"in s){var u=s.unionErrors[0].errors[0];n[a]={message:u.message,type:u.code}}else n[a]={message:i,type:t};if("unionErrors"in s&&s.unionErrors.forEach(function(r){return r.errors.forEach(function(r){return e.push(r)})}),o){var c=n[a].types,f=c&&c[s.code];n[a]=r.appendErrors(a,o,n,t,f?[].concat(f,s.message):s.message)}e.shift()}return n};exports.zodResolver=function(r,n,s){return void 0===s&&(s={}),function(t,i,a){try{return Promise.resolve(function(o,i){try{var u=Promise.resolve(r["sync"===s.mode?"parse":"parseAsync"](t,n)).then(function(r){return a.shouldUseNativeValidation&&e.validateFieldsNatively({},a),{errors:{},values:s.raw?t:r}})}catch(r){return i(r)}return u&&u.then?u.then(void 0,i):u}(0,function(r){if(rrZodIssues(r))return{values:{},errors:e.toNestErrors(o(rrZodIssues(r),!a.shouldUseNativeValidation&&"all"===a.criteriaMode),a)};throw r}))}catch(r){return Promise.reject(r)}}};
+diff --git a/zod/dist/zod.mjs b/zod/dist/zod.mjs
+index e560c0edcc1a5d3f81c587e6efb743397a6011c1..29d3ba375a43f5f26cbce9842fa78acc7149ea0d 100644
+--- a/zod/dist/zod.mjs
++++ b/zod/dist/zod.mjs
+@@ -1,2 +1,21 @@
+-import{appendErrors as r}from"react-hook-form";import{validateFieldsNatively as e,toNestErrors as o}from"@hookform/resolvers";var n=function(e,o){for(var n={};e.length;){var t=e[0],s=t.code,i=t.message,a=t.path.join(".");if(!n[a])if("unionErrors"in t){var u=t.unionErrors[0].errors[0];n[a]={message:u.message,type:u.code}}else n[a]={message:i,type:s};if("unionErrors"in t&&t.unionErrors.forEach(function(r){return r.errors.forEach(function(r){return e.push(r)})}),o){var c=n[a].types,f=c&&c[t.code];n[a]=r(a,o,n,s,f?[].concat(f,t.message):t.message)}e.shift()}return n},t=function(r,t,s){return void 0===s&&(s={}),function(i,a,u){try{return Promise.resolve(function(o,n){try{var a=Promise.resolve(r["sync"===s.mode?"parse":"parseAsync"](i,t)).then(function(r){return u.shouldUseNativeValidation&&e({},u),{errors:{},values:s.raw?i:r}})}catch(r){return n(r)}return a&&a.then?a.then(void 0,n):a}(0,function(r){if(function(r){return null!=r.errors}(r))return{values:{},errors:o(n(r.errors,!u.shouldUseNativeValidation&&"all"===u.criteriaMode),u)};throw r}))}catch(r){return Promise.reject(r)}}};export{t as zodResolver};
+-//# sourceMappingURL=zod.module.js.map
++// Remorseless: accept Zod 4 issues without changing the pinned RHF contract.
++function rrZodIssues(error) {
++  if (error?._zod?.traits?.has('$ZodError') && Array.isArray(error.issues)) {
++    return error.issues.map(issue => rrZod4Issue(issue, []));
++  }
++  return Array.isArray(error?.errors) ? [...error.errors] : null;
++}
++function rrZod4Issue(issue, prefix) {
++  const path = [...prefix, ...issue.path];
++  if (issue.code === 'invalid_union' && issue.errors?.some(branch => branch.length)) {
++    return {
++      ...issue,
++      path,
++      unionErrors: issue.errors.filter(branch => branch.length).map(branch => ({
++        errors: branch.map(child => rrZod4Issue(child, path)),
++      })),
++    };
++  }
++  return { ...issue, path };
++}
++import{appendErrors as r}from"react-hook-form";import{validateFieldsNatively as e,toNestErrors as o}from"@hookform/resolvers";var n=function(e,o){for(var n=Object.create(null);e.length;){var t=e[0],s=t.code,i=t.message,a=t.path.join(".");if(!n[a])if("unionErrors"in t){var u=t.unionErrors[0].errors[0];n[a]={message:u.message,type:u.code}}else n[a]={message:i,type:s};if("unionErrors"in t&&t.unionErrors.forEach(function(r){return r.errors.forEach(function(r){return e.push(r)})}),o){var c=n[a].types,f=c&&c[t.code];n[a]=r(a,o,n,s,f?[].concat(f,t.message):t.message)}e.shift()}return n},t=function(r,t,s){return void 0===s&&(s={}),function(i,a,u){try{return Promise.resolve(function(o,n){try{var a=Promise.resolve(r["sync"===s.mode?"parse":"parseAsync"](i,t)).then(function(r){return u.shouldUseNativeValidation&&e({},u),{errors:{},values:s.raw?i:r}})}catch(r){return n(r)}return a&&a.then?a.then(void 0,n):a}(0,function(r){if(rrZodIssues(r))return{values:{},errors:o(n(rrZodIssues(r),!u.shouldUseNativeValidation&&"all"===u.criteriaMode),u)};throw r}))}catch(r){return Promise.reject(r)}}};export{t as zodResolver};
+diff --git a/zod/dist/zod.modern.mjs b/zod/dist/zod.modern.mjs
+index 9e0418d4b670694ec9fab074631e049dda6ccca2..1e4cb03e7c1fba533ccc4c0026b86cb157972f45 100644
+--- a/zod/dist/zod.modern.mjs
++++ b/zod/dist/zod.modern.mjs
+@@ -1,2 +1,21 @@
+-import{appendErrors as r}from"react-hook-form";import{validateFieldsNatively as o,toNestErrors as e}from"@hookform/resolvers";const s=(o,e)=>{const s={};for(;o.length;){const t=o[0],{code:a,message:n,path:i}=t,c=i.join(".");if(!s[c])if("unionErrors"in t){const r=t.unionErrors[0].errors[0];s[c]={message:r.message,type:r.code}}else s[c]={message:n,type:a};if("unionErrors"in t&&t.unionErrors.forEach(r=>r.errors.forEach(r=>o.push(r))),e){const o=s[c].types,n=o&&o[t.code];s[c]=r(c,e,s,a,n?[].concat(n,t.message):t.message)}o.shift()}return s},t=(r,t,a={})=>async(n,i,c)=>{try{const e=await r["sync"===a.mode?"parse":"parseAsync"](n,t);return c.shouldUseNativeValidation&&o({},c),{errors:{},values:a.raw?n:e}}catch(r){if((r=>null!=r.errors)(r))return{values:{},errors:e(s(r.errors,!c.shouldUseNativeValidation&&"all"===c.criteriaMode),c)};throw r}};export{t as zodResolver};
+-//# sourceMappingURL=zod.modern.mjs.map
++// Remorseless: accept Zod 4 issues without changing the pinned RHF contract.
++function rrZodIssues(error) {
++  if (error?._zod?.traits?.has('$ZodError') && Array.isArray(error.issues)) {
++    return error.issues.map(issue => rrZod4Issue(issue, []));
++  }
++  return Array.isArray(error?.errors) ? [...error.errors] : null;
++}
++function rrZod4Issue(issue, prefix) {
++  const path = [...prefix, ...issue.path];
++  if (issue.code === 'invalid_union' && issue.errors?.some(branch => branch.length)) {
++    return {
++      ...issue,
++      path,
++      unionErrors: issue.errors.filter(branch => branch.length).map(branch => ({
++        errors: branch.map(child => rrZod4Issue(child, path)),
++      })),
++    };
++  }
++  return { ...issue, path };
++}
++import{appendErrors as r}from"react-hook-form";import{validateFieldsNatively as o,toNestErrors as e}from"@hookform/resolvers";const s=(o,e)=>{const s=Object.create(null);for(;o.length;){const t=o[0],{code:a,message:n,path:i}=t,c=i.join(".");if(!s[c])if("unionErrors"in t){const r=t.unionErrors[0].errors[0];s[c]={message:r.message,type:r.code}}else s[c]={message:n,type:a};if("unionErrors"in t&&t.unionErrors.forEach(r=>r.errors.forEach(r=>o.push(r))),e){const o=s[c].types,n=o&&o[t.code];s[c]=r(c,e,s,a,n?[].concat(n,t.message):t.message)}o.shift()}return s},t=(r,t,a={})=>async(n,i,c)=>{try{const e=await r["sync"===a.mode?"parse":"parseAsync"](n,t);return c.shouldUseNativeValidation&&o({},c),{errors:{},values:a.raw?n:e}}catch(r){if(rrZodIssues(r))return{values:{},errors:e(s(rrZodIssues(r),!c.shouldUseNativeValidation&&"all"===c.criteriaMode),c)};throw r}};export{t as zodResolver};
+diff --git a/zod/dist/zod.module.js b/zod/dist/zod.module.js
+index e560c0edcc1a5d3f81c587e6efb743397a6011c1..29d3ba375a43f5f26cbce9842fa78acc7149ea0d 100644
+--- a/zod/dist/zod.module.js
++++ b/zod/dist/zod.module.js
+@@ -1,2 +1,21 @@
+-import{appendErrors as r}from"react-hook-form";import{validateFieldsNatively as e,toNestErrors as o}from"@hookform/resolvers";var n=function(e,o){for(var n={};e.length;){var t=e[0],s=t.code,i=t.message,a=t.path.join(".");if(!n[a])if("unionErrors"in t){var u=t.unionErrors[0].errors[0];n[a]={message:u.message,type:u.code}}else n[a]={message:i,type:s};if("unionErrors"in t&&t.unionErrors.forEach(function(r){return r.errors.forEach(function(r){return e.push(r)})}),o){var c=n[a].types,f=c&&c[t.code];n[a]=r(a,o,n,s,f?[].concat(f,t.message):t.message)}e.shift()}return n},t=function(r,t,s){return void 0===s&&(s={}),function(i,a,u){try{return Promise.resolve(function(o,n){try{var a=Promise.resolve(r["sync"===s.mode?"parse":"parseAsync"](i,t)).then(function(r){return u.shouldUseNativeValidation&&e({},u),{errors:{},values:s.raw?i:r}})}catch(r){return n(r)}return a&&a.then?a.then(void 0,n):a}(0,function(r){if(function(r){return null!=r.errors}(r))return{values:{},errors:o(n(r.errors,!u.shouldUseNativeValidation&&"all"===u.criteriaMode),u)};throw r}))}catch(r){return Promise.reject(r)}}};export{t as zodResolver};
+-//# sourceMappingURL=zod.module.js.map
++// Remorseless: accept Zod 4 issues without changing the pinned RHF contract.
++function rrZodIssues(error) {
++  if (error?._zod?.traits?.has('$ZodError') && Array.isArray(error.issues)) {
++    return error.issues.map(issue => rrZod4Issue(issue, []));
++  }
++  return Array.isArray(error?.errors) ? [...error.errors] : null;
++}
++function rrZod4Issue(issue, prefix) {
++  const path = [...prefix, ...issue.path];
++  if (issue.code === 'invalid_union' && issue.errors?.some(branch => branch.length)) {
++    return {
++      ...issue,
++      path,
++      unionErrors: issue.errors.filter(branch => branch.length).map(branch => ({
++        errors: branch.map(child => rrZod4Issue(child, path)),
++      })),
++    };
++  }
++  return { ...issue, path };
++}
++import{appendErrors as r}from"react-hook-form";import{validateFieldsNatively as e,toNestErrors as o}from"@hookform/resolvers";var n=function(e,o){for(var n=Object.create(null);e.length;){var t=e[0],s=t.code,i=t.message,a=t.path.join(".");if(!n[a])if("unionErrors"in t){var u=t.unionErrors[0].errors[0];n[a]={message:u.message,type:u.code}}else n[a]={message:i,type:s};if("unionErrors"in t&&t.unionErrors.forEach(function(r){return r.errors.forEach(function(r){return e.push(r)})}),o){var c=n[a].types,f=c&&c[t.code];n[a]=r(a,o,n,s,f?[].concat(f,t.message):t.message)}e.shift()}return n},t=function(r,t,s){return void 0===s&&(s={}),function(i,a,u){try{return Promise.resolve(function(o,n){try{var a=Promise.resolve(r["sync"===s.mode?"parse":"parseAsync"](i,t)).then(function(r){return u.shouldUseNativeValidation&&e({},u),{errors:{},values:s.raw?i:r}})}catch(r){return n(r)}return a&&a.then?a.then(void 0,n):a}(0,function(r){if(rrZodIssues(r))return{values:{},errors:o(n(rrZodIssues(r),!u.shouldUseNativeValidation&&"all"===u.criteriaMode),u)};throw r}))}catch(r){return Promise.reject(r)}}};export{t as zodResolver};
+diff --git a/zod/dist/zod.umd.js b/zod/dist/zod.umd.js
+index 78012f1873f4712011bf9df17e3951429e98a192..5e7f2fee6b21a5ac85baa60a442ac82adf8738ee 100644
+--- a/zod/dist/zod.umd.js
++++ b/zod/dist/zod.umd.js
+@@ -1,2 +1,21 @@
+-!function(r,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports,require("react-hook-form"),require("@hookform/resolvers")):"function"==typeof define&&define.amd?define(["exports","react-hook-form","@hookform/resolvers"],e):e((r||self).hookformResolversZod={},r.ReactHookForm,r.hookformResolvers)}(this,function(r,e,o){var n=function(r,o){for(var n={};r.length;){var s=r[0],t=s.code,i=s.message,a=s.path.join(".");if(!n[a])if("unionErrors"in s){var u=s.unionErrors[0].errors[0];n[a]={message:u.message,type:u.code}}else n[a]={message:i,type:t};if("unionErrors"in s&&s.unionErrors.forEach(function(e){return e.errors.forEach(function(e){return r.push(e)})}),o){var f=n[a].types,c=f&&f[s.code];n[a]=e.appendErrors(a,o,n,t,c?[].concat(c,s.message):s.message)}r.shift()}return n};r.zodResolver=function(r,e,s){return void 0===s&&(s={}),function(t,i,a){try{return Promise.resolve(function(n,i){try{var u=Promise.resolve(r["sync"===s.mode?"parse":"parseAsync"](t,e)).then(function(r){return a.shouldUseNativeValidation&&o.validateFieldsNatively({},a),{errors:{},values:s.raw?t:r}})}catch(r){return i(r)}return u&&u.then?u.then(void 0,i):u}(0,function(r){if(function(r){return null!=r.errors}(r))return{values:{},errors:o.toNestErrors(n(r.errors,!a.shouldUseNativeValidation&&"all"===a.criteriaMode),a)};throw r}))}catch(r){return Promise.reject(r)}}}});
+-//# sourceMappingURL=zod.umd.js.map
++!function(r,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports,require("react-hook-form"),require("@hookform/resolvers")):"function"==typeof define&&define.amd?define(["exports","react-hook-form","@hookform/resolvers"],e):e((r||self).hookformResolversZod={},r.ReactHookForm,r.hookformResolvers)}(this,function(r,e,o){// Remorseless: accept Zod 4 issues without changing the pinned RHF contract.
++function rrZodIssues(error) {
++  if (error?._zod?.traits?.has('$ZodError') && Array.isArray(error.issues)) {
++    return error.issues.map(issue => rrZod4Issue(issue, []));
++  }
++  return Array.isArray(error?.errors) ? [...error.errors] : null;
++}
++function rrZod4Issue(issue, prefix) {
++  const path = [...prefix, ...issue.path];
++  if (issue.code === 'invalid_union' && issue.errors?.some(branch => branch.length)) {
++    return {
++      ...issue,
++      path,
++      unionErrors: issue.errors.filter(branch => branch.length).map(branch => ({
++        errors: branch.map(child => rrZod4Issue(child, path)),
++      })),
++    };
++  }
++  return { ...issue, path };
++}
++var n=function(r,o){for(var n=Object.create(null);r.length;){var s=r[0],t=s.code,i=s.message,a=s.path.join(".");if(!n[a])if("unionErrors"in s){var u=s.unionErrors[0].errors[0];n[a]={message:u.message,type:u.code}}else n[a]={message:i,type:t};if("unionErrors"in s&&s.unionErrors.forEach(function(e){return e.errors.forEach(function(e){return r.push(e)})}),o){var f=n[a].types,c=f&&f[s.code];n[a]=e.appendErrors(a,o,n,t,c?[].concat(c,s.message):s.message)}r.shift()}return n};r.zodResolver=function(r,e,s){return void 0===s&&(s={}),function(t,i,a){try{return Promise.resolve(function(n,i){try{var u=Promise.resolve(r["sync"===s.mode?"parse":"parseAsync"](t,e)).then(function(r){return a.shouldUseNativeValidation&&o.validateFieldsNatively({},a),{errors:{},values:s.raw?t:r}})}catch(r){return i(r)}return u&&u.then?u.then(void 0,i):u}(0,function(r){if(rrZodIssues(r))return{values:{},errors:o.toNestErrors(n(rrZodIssues(r),!a.shouldUseNativeValidation&&"all"===a.criteriaMode),a)};throw r}))}catch(r){return Promise.reject(r)}}}});
+diff --git a/zod/src/zod.ts b/zod/src/zod.ts
+index 8a5e2416c17316eb9d3a9c65b6625c8990c7fe80..84dc82a0f404747e802353e456398e05cd22d5e0 100644
+--- a/zod/src/zod.ts
++++ b/zod/src/zod.ts
+@@ -1,15 +1,35 @@
+ import { appendErrors, FieldError, FieldErrors } from 'react-hook-form';
+-import { z, ZodError } from 'zod';
++import { z } from 'zod';
+ import { toNestErrors, validateFieldsNatively } from '@hookform/resolvers';
+ import type { Resolver } from './types';
+ 
+-const isZodError = (error: any): error is ZodError => error.errors != null;
++// Remorseless: accept Zod 4 issues without changing the pinned RHF contract.
++function rrZodIssues(error: any): z.ZodIssue[] | null {
++  if (error?._zod?.traits?.has('$ZodError') && Array.isArray(error.issues)) {
++    return error.issues.map((issue: any) => rrZod4Issue(issue, []));
++  }
++  return Array.isArray(error?.errors) ? [...error.errors] : null;
++}
++function rrZod4Issue(issue: any, prefix: (string | number)[]): any {
++  const path = [...prefix, ...issue.path];
++  if (issue.code === 'invalid_union' && issue.errors?.some((branch: any[]) => branch.length)) {
++    return {
++      ...issue,
++      path,
++      unionErrors: issue.errors.filter((branch: any[]) => branch.length).map((branch: any[]) => ({
++        errors: branch.map((child: any) => rrZod4Issue(child, path)),
++      })),
++    };
++  }
++  return { ...issue, path };
++}
++
+ 
+ const parseErrorSchema = (
+   zodErrors: z.ZodIssue[],
+   validateAllFieldCriteria: boolean,
+ ) => {
+-  const errors: Record<string, FieldError> = {};
++  const errors: Record<string, FieldError> = Object.create(null);
+   for (; zodErrors.length; ) {
+     const error = zodErrors[0];
+     const { code, message, path } = error;
+@@ -70,12 +90,13 @@ export const zodResolver: Resolver =
+         values: resolverOptions.raw ? values : data,
+       };
+     } catch (error: any) {
+-      if (isZodError(error)) {
++      const issues = rrZodIssues(error);
++      if (issues) {
+         return {
+           values: {},
+           errors: toNestErrors(
+             parseErrorSchema(
+-              error.errors,
++              issues,
+               !options.shouldUseNativeValidation &&
+                 options.criteriaMode === 'all',
+             ),

@@ -17,6 +17,7 @@ const names = [
   "qa:admin-browser-boundary",
   "qa:database-release-boundary",
   "qa:storefront-provider-fixture",
+  "qa:dashboard-form-validation",
   "qa:dashboard-product-create",
   "qa:workflow-scheduler-timestamps",
   "qa:disposable-integration-boundary",
@@ -45,14 +46,14 @@ const removeCommand = (source, command) =>
     .filter((entry) => entry !== command)
     .join(" && ")
 
-test("accepts ten shared contracts and reports unit-fixture rather than service integration coverage", () => {
+test("accepts eleven shared contracts and reports unit-fixture rather than service integration coverage", () => {
   assert.deepEqual(
     manifest.scripts[aggregate].split(" && "),
     names.map((name) => `pnpm run ${name}`)
   )
   assert.deepEqual(validate(), {
     event: "ci.shared_contracts.verified",
-    contractCount: 10,
+    contractCount: 11,
     serviceIntegration: false,
   })
   for (const forbidden of [

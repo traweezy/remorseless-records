@@ -129,6 +129,7 @@ const listKeyByPath = new Map([
   ["/admin/campaigns", "campaigns"],
   ["/admin/collections", "collections"],
   ["/admin/customer-groups", "customer_groups"],
+  ["/admin/refund-reasons", "refund_reasons"],
   ["/admin/customers", "customers"],
   ["/admin/inventory-items", "inventory_items"],
   ["/admin/notifications", "notifications"],
@@ -304,7 +305,7 @@ const fixtureFor = (url) => {
       ],
       profile: {
         credits: { production: "Test Engineer" },
-        descriptionHtml: "<p>Fixture release description.</p>",
+        descriptionHtml: "Fixture release description with plain text.",
         id: "profile_acceptance",
         labelId: null,
         merchDetails: {},
@@ -823,6 +824,29 @@ try {
       }
     }
     throw new Error(`Could not find ${label} button.`)
+  }
+  if (route === "/app/catalog/products/product_acceptance") {
+    await page.waitForFunction(() =>
+      Array.from(document.querySelectorAll('[contenteditable="true"]')).some(
+        (editor) =>
+          editor.textContent?.includes(
+            "Fixture release description with plain text."
+          )
+      )
+    )
+  }
+  if (setup === "native-refund-reason-validation") {
+    await page.waitForSelector('[role="dialog"] input[name="label"]')
+    await clickButton("Save")
+    await page.waitForFunction(() => {
+      const label = document.querySelector('input[name="label"]')
+      const code = document.querySelector('input[name="code"]')
+      return (
+        label?.getAttribute("aria-invalid") === "true" &&
+        code?.getAttribute("aria-invalid") === "true" &&
+        document.activeElement === label
+      )
+    })
   }
   if (setup === "catalog-create-offerings") {
     await clickButton("Continue")
