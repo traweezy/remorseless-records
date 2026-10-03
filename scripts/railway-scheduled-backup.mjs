@@ -1,11 +1,12 @@
 import assert from "node:assert/strict"
-import { mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises"
+import { mkdtemp, rm, writeFile } from "node:fs/promises"
 import { createRequire } from "node:module"
 import { tmpdir } from "node:os"
 import { basename, dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import { createPostgresClientEnvironment } from "./lib/postgres-logical-backup.mjs"
 import {
+  openRegularFile,
   readBackupManifest,
   readRestoreReceipt,
 } from "./lib/postgres-restore.mjs"
@@ -15,7 +16,6 @@ import {
   scheduledSourceIdentity,
   validateScheduledSourceScope,
 } from "./lib/recovery-policy.mjs"
-import { runRecoveryCommand } from "./lib/recovery-process.mjs"
 import { createRecoveryStore } from "./lib/recovery-s3.mjs"
 import { pruneRecoverySnapshots } from "./lib/recovery-retention.mjs"
 import {
@@ -24,6 +24,7 @@ import {
   writeRecoverySnapshot,
 } from "./lib/recovery-vault.mjs"
 import { STAGING } from "./lib/staging-release.mjs"
+import { runPrivateCommand } from "./postgres-staging-snapshot.mjs"
 
 const require = createRequire(
   new URL("../operations/package.json", import.meta.url)
@@ -88,12 +89,50 @@ export const verifyScheduledDatabaseIdentity = (value) => {
   })
 }
 
+// The nested snapshot process owns pg_dump, psql and the snapshot exporter.
+// Let its signal handler reap those clients before removing the private bundle.
+export const runScheduledSnapshot = (command, args, options) =>
+  runPrivateCommand(command, args, {
+    ...options,
+    timeoutMs: 600_000,
+    maxOutputBytes: 64 * 1024,
+    graceful: true,
+  })
+
+export const readScheduledBackupFile = async (path, signal) => {
+  const file = await openRegularFile(path)
+  try {
+    const before = await file.stat({ bigint: true })
+    assert.ok(before.size > 0n && before.size <= 128n * 1024n * 1024n)
+    const bytes = Buffer.alloc(Number(before.size) + 1)
+    let offset = 0
+    while (offset < bytes.length) {
+      signal?.throwIfAborted()
+      const { bytesRead } = await file.read(
+        bytes,
+        offset,
+        bytes.length - offset
+      )
+      if (!bytesRead) break
+      offset += bytesRead
+    }
+    const after = await file.stat({ bigint: true })
+    assert.equal(offset, Number(before.size))
+    for (const name of ["dev", "ino", "size", "mtimeNs", "ctimeNs"])
+      assert.equal(after[name], before[name])
+    signal?.throwIfAborted()
+    return bytes.subarray(0, offset)
+  } finally {
+    await file.close()
+  }
+}
+
 export const runScheduledBackup = async (
   environment = process.env,
   {
     signal,
     connect,
-    run = runRecoveryCommand,
+    run = runScheduledSnapshot,
     store = createRecoveryStore,
   } = {}
 ) => {
@@ -188,8 +227,12 @@ export const runScheduledBackup = async (
       originalEndpointFingerprint: connection.fingerprint,
       mappedEndpointFingerprint: connection.fingerprint,
       archiveSha256: manifest.sha256,
-      manifestSha256: recoveryHash(await readFile(snapshot.manifestPath)),
-      restoreReceiptSha256: recoveryHash(await readFile(snapshot.receiptPath)),
+      manifestSha256: recoveryHash(
+        await readScheduledBackupFile(snapshot.manifestPath, signal)
+      ),
+      restoreReceiptSha256: recoveryHash(
+        await readScheduledBackupFile(snapshot.receiptPath, signal)
+      ),
       connectionTransport: "railway_private",
     }
     validateScheduledSourceScope(scope)
@@ -232,9 +275,7 @@ export const runScheduledBackup = async (
       snapshot.receiptPath,
       scopePath,
     ]) {
-      const metadata = await stat(path)
-      assert.ok(metadata.isFile() && metadata.size <= 128 * 1024 * 1024)
-      const bytes = await readFile(path)
+      const bytes = await readScheduledBackupFile(path, signal)
       if (path === snapshot.archivePath)
         assert.equal(recoveryHash(bytes), manifest.sha256)
       sources.push({

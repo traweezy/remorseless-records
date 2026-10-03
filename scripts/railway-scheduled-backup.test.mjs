@@ -1,8 +1,19 @@
 import assert from "node:assert/strict"
 import { EventEmitter } from "node:events"
-import { access, mkdir, readFile, writeFile } from "node:fs/promises"
+import {
+  access,
+  mkdir,
+  mkdtemp,
+  readFile,
+  rm,
+  symlink,
+  truncate,
+  writeFile,
+} from "node:fs/promises"
+import { tmpdir } from "node:os"
 import { join } from "node:path"
 import test from "node:test"
+import { setTimeout as delay } from "node:timers/promises"
 import { createPostgresClientEnvironment } from "./lib/postgres-logical-backup.mjs"
 import {
   RECOVERY_SOURCE_SYSTEM_ID,
@@ -14,10 +25,63 @@ import { STAGING } from "./lib/staging-release.mjs"
 import { verifySourceScope } from "./postgres-isolated-target.mjs"
 import {
   runScheduledBackup,
+  runScheduledSnapshot,
+  readScheduledBackupFile,
   sourceIdentitySql,
   validateScheduledEnvironment,
   verifyScheduledDatabaseIdentity,
 } from "./railway-scheduled-backup.mjs"
+
+test("scheduled archive reads use a private pinned file descriptor and bounded size", async (t) => {
+  const directory = await mkdtemp(join(tmpdir(), "rr-backup-file-"))
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  const path = join(directory, "archive")
+  await writeFile(path, "private-fixture", { mode: 0o600 })
+  assert.equal(
+    (await readScheduledBackupFile(path)).toString(),
+    "private-fixture"
+  )
+  await assert.rejects(readScheduledBackupFile(path, AbortSignal.abort()))
+  const alias = join(directory, "alias")
+  await symlink(path, alias)
+  await assert.rejects(readScheduledBackupFile(alias))
+  await truncate(path, 128 * 1024 * 1024 + 1)
+  await assert.rejects(readScheduledBackupFile(path))
+  await truncate(path, 0)
+  await assert.rejects(readScheduledBackupFile(path))
+})
+
+test("nested snapshot cancellation waits for graceful child cleanup", async (t) => {
+  const directory = await mkdtemp(join(tmpdir(), "rr-snapshot-cancel-"))
+  const controller = new AbortController()
+  t.after(async () => {
+    controller.abort()
+    await rm(directory, { recursive: true, force: true })
+  })
+  const ready = join(directory, "ready")
+  const cleaned = join(directory, "cleaned")
+  const code = `const fs=require('node:fs');process.on('SIGTERM',()=>setTimeout(()=>{fs.writeFileSync(process.argv[2],'cleaned');process.exit(0)},50));fs.writeFileSync(process.argv[1],'ready');setInterval(()=>{},1000);`
+  const completion = runScheduledSnapshot(
+    process.execPath,
+    ["-e", code, ready, cleaned],
+    { environment: { PATH: process.env.PATH }, signal: controller.signal }
+  ).then(
+    () => ({ passed: true }),
+    () => ({ passed: false })
+  )
+  for (let attempt = 0; ; attempt++) {
+    try {
+      await access(ready)
+      break
+    } catch {
+      assert.ok(attempt < 200)
+      await delay(10)
+    }
+  }
+  controller.abort()
+  assert.equal((await completion).passed, false)
+  assert.equal(await readFile(cleaned, "utf8"), "cleaned")
+})
 
 const environment = {
   RAILWAY_PROJECT_ID: STAGING.projectId,
