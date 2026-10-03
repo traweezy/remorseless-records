@@ -158,7 +158,7 @@ sub source_state {
   my $persistence = info('persistence');
   my $replication = info('replication');
   my $keyspace = info('keyspace');
-  fail() unless ($server->{redis_version} // '') eq '8.0.3' &&
+  fail() unless ($server->{redis_version} // '') =~ /^(?:8\.0\.3|8\.10\.2)$/ &&
     ($server->{run_id} // '') =~ /^[a-f0-9]{40}$/ &&
     sha256_hex($server->{run_id}) eq $request->{runIdSha256} &&
     ($replication->{role} // '') eq 'master' &&
@@ -172,7 +172,9 @@ sub source_state {
     config('appendfilename') eq 'appendonly.aof' &&
     config('appenddirname') eq 'appendonlydir';
   my $data_dir = config('dir');
-  fail() unless $data_dir =~ m{^/bitnami(?:/[a-zA-Z0-9._-]+)+$} &&
+  my $expected_dir = '/bitnami/redis/data' .
+    ($server->{redis_version} eq '8.10.2' ? '/runtime' : '');
+  fail() unless $data_dir eq $expected_dir &&
     realpath($data_dir) eq $data_dir &&
     realpath("$data_dir/appendonlydir") eq "$data_dir/appendonlydir";
   my $path = '';

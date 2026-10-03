@@ -181,7 +181,7 @@ if (command === "CONFIG" && verb === "GET") {
   fs.renameSync(pending, file)
   process.stdout.write("OK\\n")
 } else if (command === "INFO" && verb === "server") {
-  process.stdout.write("# Server\\nredis_version:8.0.3\\nrun_id:" + "a".repeat(40) + "\\n")
+  process.stdout.write("# Server\\nredis_version:" + (state.version ?? "8.0.3") + "\\nrun_id:" + "a".repeat(40) + "\\n")
 } else if (command === "INFO" && verb === "replication") {
   process.stdout.write("# Replication\\nrole:master\\n")
 } else if (command === "INFO" && verb === "persistence") {
@@ -191,9 +191,9 @@ if (command === "CONFIG" && verb === "GET") {
 } else process.exit(1)
 `
 
-const fixture = async () => {
+const fixture = async ({ runtime = false, version = "8.0.3" } = {}) => {
   const root = await mkdtemp(join(tmpdir(), "redis-aof-capture-test-"))
-  const dataDir = join(root, "redis", "data")
+  const dataDir = join(root, "redis", "data", ...(runtime ? ["runtime"] : []))
   const aofDir = join(dataDir, "appendonlydir")
   await mkdir(aofDir, { recursive: true })
   await writeFile(join(aofDir, "appendonly.aof.manifest"), manifest)
@@ -203,7 +203,10 @@ const fixture = async () => {
   await writeFile(cli, fakeCli)
   await chmod(cli, 0o700)
   const stateFile = join(root, "redis-state.json")
-  await writeFile(stateFile, JSON.stringify({ dataDir, rewrite: "100" }))
+  await writeFile(
+    stateFile,
+    JSON.stringify({ dataDir, rewrite: "100", version })
+  )
   const scope = { ...sourceIds, mountPath: root }
   const environment = {
     ...process.env,
@@ -781,59 +784,80 @@ test("source instance drift and output-parent replacement remove private partial
   }
 })
 
-test("remote read-only preflight binds manifest and private streamed capture restores config", async () => {
-  const f = await fixture()
-  try {
-    const preflightCall = await invoke(f, {
-      mode: "preflight",
-      maxBytes: 1024 * 1024,
-    })
-    assert.equal(await preflightCall.closed, 0)
-    const event = JSON.parse(preflightCall.output())
-    const preflight = validatePreflight(event, f.scope, 1024 * 1024)
-    assert.equal(preflight.manifestSha256, hash(manifest))
-    assert.equal(
-      (await readFile(f.stateFile, "utf8")).includes('"rewrite":"100"'),
-      true
-    )
-    const archive = join(f.root, "archive")
-    await mkdir(archive, { mode: 0o700 })
-    const captureCall = await invoke(f, {
-      mode: "capture",
-      maxBytes: 1024 * 1024,
-      deadlineSeconds: 30,
-      manifestSha256: preflight.manifestSha256,
-      runIdSha256: preflight.runIdSha256,
-      priorRewritePercentage: preflight.priorRewritePercentage,
-      files: preflight.files,
-    })
-    assert.equal(await captureCall.closed, 0)
-    const events = captureCall.output().trim().split("\n").map(JSON.parse)
-    const result = await consumeCaptureEvents(
-      events,
-      archive,
-      preflight,
-      1024 * 1024
-    )
-    assert.equal(result.files.length, 3)
-    assert.equal(
-      await readFile(join(archive, "appendonly.aof.manifest"), "utf8"),
-      manifest
-    )
-    assert.equal(
-      await readFile(join(archive, "appendonly.aof.1.incr.aof"), "utf8"),
-      "synthetic-incr"
-    )
-    assert.equal(JSON.parse(await readFile(f.stateFile, "utf8")).rewrite, "100")
-    const postcheckCall = await invoke(f, {
-      mode: "postcheck",
-      runIdSha256: preflight.runIdSha256,
-      priorRewritePercentage: "100",
-    })
-    assert.equal(await postcheckCall.closed, 0)
-    assert.equal(JSON.parse(postcheckCall.output()).type, "postcheck")
-  } finally {
-    await rm(f.root, { recursive: true, force: true })
+for (const runtime of [false, true])
+  test(`remote preflight and capture preserve rewrite config for ${runtime ? "8.10.2 runtime" : "8.0.3 rollback"}`, async () => {
+    const f = await fixture({ runtime, version: runtime ? "8.10.2" : "8.0.3" })
+    try {
+      const preflightCall = await invoke(f, {
+        mode: "preflight",
+        maxBytes: 1024 * 1024,
+      })
+      assert.equal(await preflightCall.closed, 0)
+      const event = JSON.parse(preflightCall.output())
+      const preflight = validatePreflight(event, f.scope, 1024 * 1024)
+      assert.equal(preflight.manifestSha256, hash(manifest))
+      assert.equal(
+        (await readFile(f.stateFile, "utf8")).includes('"rewrite":"100"'),
+        true
+      )
+      const archive = join(f.root, "archive")
+      await mkdir(archive, { mode: 0o700 })
+      const captureCall = await invoke(f, {
+        mode: "capture",
+        maxBytes: 1024 * 1024,
+        deadlineSeconds: 30,
+        manifestSha256: preflight.manifestSha256,
+        runIdSha256: preflight.runIdSha256,
+        priorRewritePercentage: preflight.priorRewritePercentage,
+        files: preflight.files,
+      })
+      assert.equal(await captureCall.closed, 0)
+      const events = captureCall.output().trim().split("\n").map(JSON.parse)
+      const result = await consumeCaptureEvents(
+        events,
+        archive,
+        preflight,
+        1024 * 1024
+      )
+      assert.equal(result.files.length, 3)
+      assert.equal(
+        await readFile(join(archive, "appendonly.aof.manifest"), "utf8"),
+        manifest
+      )
+      assert.equal(
+        await readFile(join(archive, "appendonly.aof.1.incr.aof"), "utf8"),
+        "synthetic-incr"
+      )
+      assert.equal(
+        JSON.parse(await readFile(f.stateFile, "utf8")).rewrite,
+        "100"
+      )
+      const postcheckCall = await invoke(f, {
+        mode: "postcheck",
+        runIdSha256: preflight.runIdSha256,
+        priorRewritePercentage: "100",
+      })
+      assert.equal(await postcheckCall.closed, 0)
+      assert.equal(JSON.parse(postcheckCall.output()).type, "postcheck")
+    } finally {
+      await rm(f.root, { recursive: true, force: true })
+    }
+  })
+
+test("remote preflight rejects unreviewed versions and mismatched runtime directories", async () => {
+  for (const options of [
+    { version: "8.10.3", runtime: true },
+    { version: "8.10.2", runtime: false },
+    { version: "8.0.3", runtime: true },
+  ]) {
+    const f = await fixture(options)
+    try {
+      const call = await invoke(f, { mode: "preflight", maxBytes: 1024 * 1024 })
+      assert.notEqual(await call.closed, 0)
+      assert.equal(call.output(), "")
+    } finally {
+      await rm(f.root, { recursive: true, force: true })
+    }
   }
 })
 

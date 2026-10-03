@@ -28,6 +28,9 @@ test("checked-in remote helper uses only read-only RESP commands and emits no ke
   assert.equal(imageId, expectedImageId)
   for (const mode of [
     "normal",
+    "runtime",
+    "unknownVersion",
+    "wrongRuntimeDir",
     "empty",
     "wrongType",
     "oversize",
@@ -88,7 +91,7 @@ test("checked-in remote helper uses only read-only RESP commands and emits no ke
     )
     assert.ok(!result.output.includes("secret-order-123"))
     assert.ok(!result.output.includes("private:user-456"))
-    if (mode !== "normal" && mode !== "empty") {
+    if (!["normal", "runtime", "empty"].includes(mode)) {
       assert.notEqual(result.exitCode, 0)
       assert.equal(result.output, "")
       if (mode === "countDrift") {

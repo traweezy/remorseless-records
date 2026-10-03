@@ -33,6 +33,8 @@ my $request = encode_base64(encode_json({
 mkdir '/bitnami/redis' or die "fixture directory unavailable\n";
 mkdir '/bitnami/redis/data' or die "fixture directory unavailable\n";
 mkdir '/bitnami/redis/data/appendonlydir' or die "fixture directory unavailable\n";
+mkdir '/bitnami/redis/data/runtime' or die "fixture directory unavailable\n";
+mkdir '/bitnami/redis/data/runtime/appendonlydir' or die "fixture directory unavailable\n";
 
 my $server = IO::Socket::INET->new(
   LocalAddr => '127.0.0.1', LocalPort => 6379, Listen => 1,
@@ -103,7 +105,8 @@ sub response {
       ($args[0] eq 'keyspace' && $mode eq 'countDrift' && ++$keyspace_reads > 1)
         ? 5 : 4;
     my %values = (
-      server => 'redis_version:8.0.3' . "\r\nrun_id:" .
+      server => 'redis_version:' . ($mode eq 'unknownVersion' ? '8.10.3' :
+        ($mode eq 'runtime' || $mode eq 'wrongRuntimeDir' ? '8.10.2' : '8.0.3')) . "\r\nrun_id:" .
         $observed_run_id . "\r\n",
       persistence => join("\r\n", qw(
         aof_enabled:1 aof_rewrite_in_progress:0 aof_rewrite_scheduled:0
@@ -125,7 +128,7 @@ sub response {
     my %values = (
       appendonly => 'yes', appendfsync => 'everysec',
       appendfilename => 'appendonly.aof', appenddirname => 'appendonlydir',
-      dir => '/bitnami/redis/data',
+      dir => '/bitnami/redis/data' . ($mode eq 'runtime' ? '/runtime' : ''),
     );
     return $args[0] eq 'GET' && exists $values{$args[1]}
       ? array($args[1], $values{$args[1]}) : "-ERR config\r\n";

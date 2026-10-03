@@ -85,7 +85,7 @@ sub source_state {
   my $persistence = info_values('persistence');
   my $replication = info_values('replication');
   die "unexpected Redis server\n"
-    unless ($server->{redis_version} // '') eq '8.0.3' &&
+    unless ($server->{redis_version} // '') =~ /^(?:8\.0\.3|8\.10\.2)$/ &&
       ($server->{run_id} // '') =~ /^[a-f0-9]{40}$/ &&
       ($replication->{role} // '') eq 'master' &&
       ($persistence->{aof_enabled} // '') eq '1' &&
@@ -100,8 +100,11 @@ sub source_state {
       config_value('appenddirname') eq 'appendonlydir';
   my $data_dir = config_value('dir');
   my $mount = $request->{mountPath};
+  my $expected_dir = "$mount/redis/data" .
+    ($server->{redis_version} eq '8.10.2' ? '/runtime' : '');
   die "unsafe Redis directory\n"
     unless $mount =~ m{^/[a-zA-Z0-9._/-]+$} &&
+      $data_dir eq $expected_dir &&
       $data_dir =~ m{^\Q$mount\E(?:/[a-zA-Z0-9._-]+)+$} &&
       realpath($data_dir) eq $data_dir;
   my $aof_dir = "$data_dir/appendonlydir";

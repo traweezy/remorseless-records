@@ -239,7 +239,10 @@ export const validatePreflight = (event, scope, maxBytes) => {
     event?.type !== "preflight" ||
     !sha256Pattern.test(event.runIdSha256 ?? "") ||
     !sha256Pattern.test(event.manifestSha256 ?? "") ||
-    event.aofDir !== join(scope.mountPath, "redis/data/appendonlydir") ||
+    ![
+      join(scope.mountPath, "redis/data/appendonlydir"),
+      join(scope.mountPath, "redis/data/runtime/appendonlydir"),
+    ].includes(event.aofDir) ||
     !/^(?:0|[1-9]\d{0,4})$/u.test(event.autoRewritePercentage ?? "")
   )
     throw failure()

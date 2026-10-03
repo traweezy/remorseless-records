@@ -54,6 +54,10 @@ and rejected connections, cgroup peak and restart data. Backend CI runs the
 same drill and a strict image scan binding revision, user, startup path and
 inventory. Existing guarded recovery/queue probes retain Perl and their legacy
 CLI path, using the checksum-pinned fixture packages.
+Capture and live-queue probes accept only the reviewed version/directory pairs:
+8.0.3 in the original directory and 8.10.2 in `runtime`. Their regression tests
+exercise both and reject unknown versions or mismatched directories. This keeps
+fresh captures bound to the active server's files after migration.
 
 Retained Redis deployment `f75e3583-3d71-4787-9ada-12852e976fa0` currently reports
 `canRollback: true`, snapshot `b084f97c-813d-4dd9-81f7-a6f2f5dc96b9`. Before
