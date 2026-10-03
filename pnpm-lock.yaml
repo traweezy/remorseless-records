@@ -370,6 +370,15 @@ importers:
         specifier: ^5.9.3
         version: 5.9.3
 
+  operations:
+    dependencies:
+      '@aws-sdk/client-s3':
+        specifier: ^3.1121.0
+        version: 3.1121.0
+      pg:
+        specifier: 8.22.0
+        version: 8.22.0
+
   storefront:
     dependencies:
       '@medusajs/icons':

@@ -14,10 +14,12 @@ its own substantial batch push, then identified client staging as missing from
 that summary. Preserve the original six groups and insert client staging
 before production/launch acceptance: seven planned batches in this order.
 
-1. **Credential isolation and backup access:** isolate migration credentials
-   at the service level and integrate the restricted backup login.
-2. **Backup and recovery:** complete PITR, off-site database/media backups,
-   and timed recovery drills.
+1. **Accepted at `849abea`: credential isolation and backup access.** Migration
+   authority is isolated in a one-shot service, and restricted backup export is
+   integrated. The remaining six numbered groups each retain their own push.
+2. **Backup and recovery:** configure Railway database/media recovery archives,
+   native PITR and timed recovery drills. The user selected Railway-only storage
+   on October 3; an outside-provider account is no longer a prerequisite.
 3. **Queues and supporting services:** reconcile queues/payments, configure
    Redis capacity, and pin/upgrade supporting services.
 4. **Telemetry and diagnostics:** finish database telemetry, investigate pool
@@ -45,32 +47,37 @@ batch 7's push. The detailed client-clone checklist below defines ownership,
 provider identity, data, rollback and testing requirements. Client testing
 readiness is a separate outcome from production launch approval.
 
-This is the next-session batch structure, not an instruction to resume tonight
-or evidence that external prerequisites are available. Preserve the detailed
-acceptance requirements, upstream-fix dependency and production approval path;
-report any outstanding item accurately instead of marking a partial batch
-complete. Fold the current local closing notes into batch 1.
+The current request selects batch 2. Its complete encrypted database/media
+backup and timed restore passed; the scheduled runner is awaiting release
+acceptance. Native PITR remains blocked by the official image vulnerability
+scan (2 Critical, 84 High, 7 Unknown). No database redeploy or PITR enablement
+has been performed. Preserve the detailed acceptance requirements, external
+prerequisites, upstream-fix dependency and production approval path. Carry
+post-acceptance closing notes into the next substantive batch.
 
 ## Current staging acceptance — October 3 UTC
 
-The latest accepted revision is `2ab44fc69cc8995a54d88e7c38e8d0e1502c778e`.
-All four workflows/23 checks, both exact Railway deployments and live
-acceptance passed; final readiness was collected at `03:07:41.683Z`. The live
-staging database role split and mandatory runtime startup audit are accepted.
-Health, ordinary scheduler after the final switch, catalog/runtime checks,
-85 browser cases, screenshots and bounded correlated logs passed. The earlier
-parser backport, recovery-image correction and migration-directory support
-remain delivered. Both new CodeQL findings were fixed without suppression.
-See the handoff for exact identities and limits. The user asked to stop after
-this batch; these closing notes stay local for the next substantive push.
+The latest accepted revision is `849abea47c0a6a3b86b67896796136d1bed0b555`.
+All four workflows/23 checks, both exact Railway app deployments and the
+one-shot Migrations job passed. Backend has no migration credential at service
+or startup-ancestor level, uses the enforced runtime role, and reads a protected
+receipt for the exact job/SHA. The old migration password is rejected on the
+application's private network. Restricted backup export and a 171-table isolated
+restore/migration rehearsal passed. Health, the ordinary scheduler after the
+final switch, runtime/catalog checks, 85 browser cases and screenshots passed.
+The bounded correlated log review had zero HTTP 5xx and no unclassified errors;
+19 existing stream-close groups remain explicitly open under batch 4. See the
+handoff for exact identities, CI corrections and evidence. These closing notes
+are carried into batch 2; its release has not yet been accepted.
 
 ### Accepted staging database credential and startup batch
 
 The deployed launcher removes release/backup credentials and libpq overrides
 from the Backend application process using process replacement, and audits the
 runtime role before Medusa starts. Enforcement is now enabled and the actual
-process uses `app_runtime`. Service-level variables and ancestor processes remain a
-separate credential boundary. Live PostgreSQL ownership and role creation
+process uses `app_runtime`. The later accepted batch `849abea` also closes the
+service-level variable and startup-ancestor credential boundary. Live
+PostgreSQL ownership and role creation
 followed a fresh verified backup and exact source/inventory guards. Runtime,
 migration and backup authority checks passed. The migration audit exposed
 PostgreSQL's masked TLS statistics under its default owner role; the correction
@@ -3520,11 +3527,13 @@ Both commands explicitly reported that no files or database records changed.
       least-privilege runtime role and a separate migration/DDL role. Exact
       revision `2ab44fc` passed both rollout phases with enforcement enabled;
       production must apply and independently accept the same role contract.
-- [ ] Isolate migration credentials from the Backend service's variables and
-      ancestor processes using a separate migration service or credential
-      broker. The accepted launcher removes them from the Medusa process but
-      does not isolate a fully compromised service. Wire portable backups to
-      `app_backup` while keeping privileged source-identity reads separate.
+- [x] Isolate staging migration credentials from Backend service variables and
+      ancestor processes using the separate one-shot Migrations service.
+      Accepted at `849abea`: the old credential is revoked, all three inspected
+      startup processes omit privileged database credentials, and Backend reads
+      the protected exact-job/SHA receipt. Portable exports use `app_backup`
+      with source-identity reads kept separate. Production acceptance remains
+      part of batch 7.
 - [x] Require TLS for every non-private database connection.
 - [x] Move Storefront Redis to the Railway private service reference and prove
       exact-deployment port-6379 service flows complete without drops.
@@ -3552,15 +3561,15 @@ Both commands explicitly reported that no files or database records changed.
       remains unverified. These snapshots
       stay in the same Railway project and do not satisfy PITR or off-site
       retention; monitor exclusive block growth and backup cost.
-- [ ] Configure off-site media backup and verify object checksums and restores.
-      The guarded full restore-drill CLI now has a default dry-run, exact
-      private-manifest/content-hash binding, an empty disposable-target gate,
-      explicit transfer/read budgets, and synthetic corruption/cancellation
-      coverage. It has not been run against an approved off-site target; the
-      provider, credentials, retention/version-history policy, cost and actual
-      restore acceptance remain open. A bounded September 20 current-state
-      inventory counted 1,168 objects and 436,743,909 bytes; bucket versioning
-      is unconfigured, so this does not establish recoverable object history.
+- [x] Retain an encrypted complete database/media snapshot in a separate
+      Railway managed bucket and verify a full download/restore. On October 3,
+      all 1,168 media objects (436,743,909 bytes) and 172 database table counts
+      restored in 202.880 seconds. The user selected Railway-only storage;
+      this supersedes the outside-provider prerequisite, without claiming
+      provider-outage resilience or object-version history.
+- [ ] Accept the daily `RecoveryBackups` runner and 30-day retention on the
+      exact batch 2 revision. Source and tests are implemented; CI, Railway
+      completion and a restore of its runtime-produced archive remain required.
 - [x] Document Redis recovery semantics and Meilisearch rebuild/snapshot
       recovery.
 - [x] Capture the pinned staging Redis multipart AOF under a bounded rewrite
@@ -3654,12 +3663,14 @@ reviewed backup profile; it also verifies actual TLS negotiation for public
 transport.
 
 The original role split and startup enforcement passed staging at `2ab44fc`.
-Batch 1 moves `db:migrate` and `db:sync-links` into a separate one-shot Railway
-service, makes Backend require its protected exact-SHA receipt, revokes the old
+Batch 1, accepted at `849abea`, moves `db:migrate` and `db:sync-links` into a
+separate one-shot Railway service, makes Backend require its protected exact-SHA
+receipt, revokes the old
 shared migration credential, and uses `app_backup` for portable exports while
 isolating privileged source-identity reads. Local restore/migration rehearsal
-passed; consult the handoff for live cutover acceptance before closing this
-item. Production requires independent approval and verification.
+and live cutover acceptance passed; the handoff records the exact CI,
+deployments and boundary checks. Production requires independent approval and
+verification.
 
 Portable PostgreSQL protection now has credential-safe, no-shell tooling. The
 backup command emits a custom-format `0600` archive plus SHA-256 manifest after
@@ -3667,7 +3678,7 @@ backup command emits a custom-format `0600` archive plus SHA-256 manifest after
 non-canonical/symlink inputs, checksum drift, the source service, and non-empty
 targets, and requires the dry-run target fingerprint before applying to a
 disposable database. Staging Railway volume schedules are now present for
-PostgreSQL, Redis, and Bucket; the first scheduled run has not been verified.
+PostgreSQL, Redis, and Bucket, with repeated recent DAILY records verified.
 PITR, an off-site media target, and timed restores still require controlled
 environment changes, so the broader recovery items remain open.
 

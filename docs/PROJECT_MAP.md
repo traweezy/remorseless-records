@@ -39,7 +39,7 @@ framework scaffolding rather than project-specific operational instructions.
 | Storefront interactions and state | `storefront/src/components/`, `storefront/src/features/`, `storefront/src/lib/cart/`, `store/`, `query/`, and `storefront/src/providers/` |
 | Storefront provider decoding, search, security | `storefront/src/lib/data/`, `medusa/`, `search/`, `security/`, `http/`; `storefront/src/config/`; `storefront/next.config.ts` |
 | Health, telemetry, request correlation | Both applications' `src/lib/health/` and `src/lib/observability/`; Backend `src/api/health/`; `scripts/observe-*-health.mjs`, `scripts/verify-railway-runtime-log.mjs` |
-| Data maintenance and recovery | `backend/src/scripts/`, `backend/src/cli/`, root `scripts/postgres-*.mjs`, `media-backup.mjs`, `media-restore-drill.mjs`, `redis-capacity-audit.mjs`, `redis-aof-capture.mjs`, `redis-aof-recovery.mjs`, `redis-aof-isolated-replay.mjs`, `backend-isolated-startup-smoke.mjs` |
+| Data maintenance and recovery | `backend/src/scripts/`, `backend/src/cli/`, root `scripts/postgres-*.mjs`, `railway-recovery-*.mjs`, `railway-scheduled-backup.mjs`, `staging-recovery-audit.mjs`, `operations/Dockerfile`, `media-backup.mjs`, `media-restore-drill.mjs`, `redis-capacity-audit.mjs`, `redis-aof-capture.mjs`, `redis-aof-recovery.mjs`, `redis-aof-isolated-replay.mjs`, `backend-isolated-startup-smoke.mjs` |
 | Unit, service, browser, accessibility, performance QA | Application test/config files; `scripts/*.test.mjs`; `storefront/e2e/`; `storefront/playwright*.ts`; `qa/`; `lighthouse/` |
 | Disposable service tests | `scripts/run-disposable-integration.mjs`, `scripts/scan-disposable-integration-images.mjs`, `docker/integration/` |
 | Runtime image candidates | `backend/Dockerfile.runtime`, `storefront/Dockerfile.runtime`, `scripts/*runtime-image*.mjs`, `scripts/security/runtime-image-policy.json` |
@@ -104,11 +104,11 @@ contracts before applying generic framework examples from those files.
 ## Verified continuation boundary
 
 Latest acceptance is October 3 UTC at revision
-`2ab44fc69cc8995a54d88e7c38e8d0e1502c778e`: all four workflows/23 checks,
-both Railway deployments, enforced staging database roles and live acceptance
-passed. The user has now resumed batch 1: service-level migration isolation and
-restricted backup integration. Read the opening handoff for current cutover
-status, exact acceptance evidence and the six subsequent separate batches.
+`849abea47c0a6a3b86b67896796136d1bed0b555`: all four workflows/23 checks,
+both Railway app deployments, the isolated migration job and live acceptance
+passed. Batch 1 closes service-level migration isolation and restricted backup
+integration. Batch 2 is next and has not started. Read the opening handoff for
+exact acceptance evidence and the six remaining separate batches.
 The snapshots below are historical.
 
 At the 07:54 UTC acceptance, the application pair was Backend `33de0ec` and

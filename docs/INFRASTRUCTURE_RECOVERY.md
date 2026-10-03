@@ -1,12 +1,130 @@
 # Infrastructure, data protection, and recovery
 
-Last reviewed: 2026-09-20 UTC
+Last reviewed: 2026-10-03 UTC
 
 This runbook defines the production approval packet and the recovery contract
 for PostgreSQL, media, Redis, and Meilisearch. It does not authorize creating a
 Railway production environment, changing credentials, enabling paid backup
 features, removing public endpoints, or restoring data. Those are separate
 reviewed operations.
+
+## Railway recovery archives — October 3 batch 2
+
+The user explicitly selected **all storage inside Railway**, replacing the
+outside-provider backup prerequisite in older sections. Use a separate managed
+bucket from the PostgreSQL/MinIO volumes. This protects against a source-volume
+loss or an application deletion, but does not establish survival of a Railway
+account/provider outage. Production recovery remains a separate acceptance.
+
+Resources in project `store` (`1f39263a-25e4-4d69-abc2-f0287b331d1e`), staging
+(`799a2f98-f819-495d-b8b6-12e71af86568`):
+
+- `RecoveryArchives`: bucket `e48fdf14-924d-4edd-a80a-d05ba17847fc`, region `iad`,
+  separate from the MinIO source. Destination fingerprint
+  `dcd9d375e6bdcc6e039d2153baa37dd000a5c62d9ab5ce3bb1a008d77498b03d`.
+- `RecoveryBackups`: service `913ddfd6-2b39-4188-bd73-6787bc80a313`. Desired
+  configuration is daily at 04:00 UTC, restart `NEVER`, no public domain, pinned
+  Dockerfile inputs, staging branch and `checkSuites: true`. Initial deployment
+  and exact-revision runtime acceptance are pending this batch's release.
+- The encryption key exists only as `BACKUP_ENCRYPTION_KEY` in that service.
+  Preserve it: losing/replacing it makes old archives unreadable. Do not copy it
+  into logs, source, reports or application variables. Recovery requires access
+  to this service key and the managed bucket credentials.
+
+The runner uses `app_backup` (read-only, connection limit three) over
+`postgres.railway.internal:5432/railway`. It verifies the database system ID
+`7527124368992473123`, PostgreSQL major 16 and exact role membership. A dedicated
+session advisory lock serializes scheduled backups, and a shared migration lock
+pauses release DDL during the exported snapshot only. Disconnection cancels the
+backup; all child processes are reaped before private temporary files are
+removed. Media uses `bucket.railway.internal:9000/medusa-media`. The source
+inventory is compared again before publication, and drift fails the job.
+
+`operations/Dockerfile` provides non-root Node 26.9.0 and PostgreSQL 16.15 clients
+on the pinned distroless base. PostgreSQL source has an exact SHA-256; Debian
+OpenSSL packages and existing workspace SDK dependencies retain reviewed pins.
+The build downloads signed Debian packages over HTTPS. GitHub Runtime Images
+builds and scans this runner inside the existing Backend validation job, with
+zero Critical, High or Unknown findings and a fresh, unchanged Trivy database.
+The PostgreSQL clients produce uncompressed custom archives; restore tooling
+uses the separately scanned same-major recovery image.
+
+Each snapshot has a fresh UUID prefix under `rr-recovery/v1/`. AES-256-GCM
+protects every database/media object and the manifest, with unique nonces and
+object-path authentication. Every ciphertext is downloaded and hashed before
+the final receipt is published. Source files and media are never overwritten.
+The operator receipt's SHA-256 is required for a restore; retain the sanitized
+`recovery.backup.completed` record outside the job's transient filesystem.
+
+Railway managed buckets currently have no native versioning, object lock or
+lifecycle rules. Format 2 therefore authenticates its creation timestamp inside
+the encrypted manifest. After a successful new backup, the runner removes only
+verified complete snapshots older than 30 days, always preserving at least the
+two newest sets and the current snapshot. It retains format 1, incomplete or
+unknown prefixes for operator review. Corrupt receipts, inventory changes or
+delete errors fail retention visibly. An interrupted deletion is not considered
+a successful restore; every retained object must pass authentication. Perform
+restores within the retention window; coordinate an older restore with the job
+before it becomes eligible for removal. Object limits are 128 MiB each, 1 GiB
+per snapshot and 10,000 entries; archive inventory is bounded to 100,000 entries
+and 100 GiB. Exceeding a budget fails rather than silently omitting data.
+
+Operator commands (existing target guards remain mandatory):
+
+```bash
+pnpm run data:railway:backup -- --bundle <private-verified-bundle> --output-dir <private-evidence-dir>
+# Review the dry-run hash, then repeat with --apply --confirm <hash>.
+pnpm run data:railway:backup-audit
+pnpm run data:railway:restore-drill -- --help
+pnpm run data:postgres:pitr-audit
+```
+
+The archive audit authenticates complete format-2 manifests and object sizes,
+requiring a snapshot no older than 26 hours; it does not read every ciphertext
+again. Check it daily and during release acceptance. Native Railway volume
+schedules and their existing freshness audit remain in place. There is no new
+external notification service or automatic archive-freshness alert in this
+batch; a failed/stale runner needs operator investigation using its sanitized
+phase and provider job status.
+
+The scheduled source receipt is schema 2: it binds the runtime job's exact
+project/environment/service/deployment/revision, private database endpoint,
+system ID and archive hashes. It does not assert a fresh provider query of the
+PostgreSQL deployment/SSH instance. Operator schema-1 receipts retain that
+provider/SSH identity chain. Both use the same archive/manifest/row-count
+verification before any isolated restore; neither permits replacing staging.
+
+### Measured full restore and remaining PITR gate
+
+A fresh restricted snapshot at `2026-10-03T15:20:39.493Z` had archive SHA-256
+`0c8614c92460fd408dbe4496d8e50410e2f1c5ebd171f3e3af95c9148e640a48`.
+The local timed restore verified 172 tables and 172 table row-count comparisons
+in 6.545 seconds, then removed its owned target. These counts are tables, not
+the total number of data rows.
+
+Snapshot `866680ed-f0e2-4eb7-b58d-6cff6eb0951e` retained four database files plus
+all 1,168 media objects in RecoveryArchives. Receipt SHA-256:
+`3b5c880e5253283be40391736f36477bc3a51bbb5bc8f40ea9ef1609f4a434ac`.
+Full download and restore completed from `15:41:58.607Z` to `15:45:21.486Z`
+in **202.880 seconds**. All media checksums matched (436,743,909 bytes); all 172
+database table counts matched, with 5.743 seconds in the database phase. This
+initial archive is format 1 and remains exempt from automatic expiration.
+Private evidence is under `/tmp/remorseless-batch2-recovery-evidence` and
+`/tmp/remorseless-batch2-downloaded-restore`. The owned temporary Railway bucket
+`RecoveryDrill-20261003` (`d850da9d-0e8e-4e9a-8f77-dc40a83d7a35`) contains only
+verified drill output and should be deleted after retaining the result.
+
+**Native PITR is not enabled.** Fresh provider evidence reports no archive
+bucket/WAL coverage. The official PostgreSQL 16 image candidate (amd64 digest
+`sha256:473d81e468cecbc50b679c1853900d0d78fa52d2ee9c6f124bbe583a64c73f0f`)
+scanned with 2 Critical, 84 High and 7 Unknown findings. Enabling PITR on the
+current floating `latest` source could also change the PostgreSQL major.
+No database source, volume or WAL configuration was changed. A supported,
+major-pinned image must pass the existing security policy before enabling
+PITR, then a separate timestamp restore must prove the recovery window. The
+new fail-closed PITR audit is read-only and does not itself prove a restore.
+The archive drill proves data recovery, not application/payment/provider
+acceptance or object-version history.
 
 ## Current staging inventory
 
@@ -289,6 +407,17 @@ access, Redis or provider keys. All 171 existing row counts remained unchanged;
 only the receipt table was added. This proves the restricted logical backup
 path and migration boundary, not PITR or off-site backup acceptance. Live
 cutover and exact-revision release acceptance are recorded in the handoff.
+
+Live service isolation was accepted on October 3 at `849abea`, after all four
+workflows, 23 checks, the exact migration job and both app deployments passed.
+The old migration password returned `28P01` through Backend's private-network
+connection. Do not infer password revocation from an SSH loopback connection:
+that transport accepted the retired password in this operation, while the
+application's actual private endpoint rejected it. Runtime, backup and
+administrator credentials were preserved. The backup role rejected DML and
+DDL; `pg_control_system()` remained readable metadata on this server, so its
+denial is not an acceptance condition. The corrected private credential
+acceptance record and final runtime/ancestor checks are linked in the handoff.
 
 The auditor never prints role/database names, connection strings, or raw
 driver errors. Its single read-only catalog query checks the original session

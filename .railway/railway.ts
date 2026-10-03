@@ -166,7 +166,38 @@ export default defineRailway(() => {
         "redis://${{Redis.REDISUSER}}:${{Redis.REDISPASSWORD}}@${{Redis.RAILWAY_PRIVATE_DOMAIN}}:6379",
     },
   })
+  const RecoveryBackups = service("RecoveryBackups", {
+    source: remorselessRecords,
+    build: {
+      builder: "DOCKERFILE",
+      dockerfilePath: "operations/Dockerfile",
+      watchPatterns: [
+        "/operations/**",
+        "/scripts/**",
+        ...SHARED_BUILD_WATCH_PATTERNS,
+      ],
+    },
+    replicas: { "us-east4-eqdc4a": 1 },
+    deploy: {
+      preDeployCommand: [],
+      restartPolicyType: "NEVER",
+      cronSchedule: "0 4 * * *",
+    },
+    networking: { privateNetworkEndpoint: "recoverybackups" },
+    env: {
+      BACKUP_ENCRYPTION_KEY: preserve(),
+      BACKUP_S3_ACCESS_KEY: preserve(),
+      BACKUP_S3_SECRET_KEY: preserve(),
+      BACKUP_S3_ENDPOINT: preserve(),
+      BACKUP_S3_BUCKET: preserve(),
+      DATABASE_BACKUP_URL: "${{Postgres.DATABASE_BACKUP_URL}}",
+      MEDIA_SOURCE_ENDPOINT: "http://bucket.railway.internal:9000",
+      MEDIA_SOURCE_BUCKET: "medusa-media",
+      MEDIA_SOURCE_ACCESS_KEY: "${{Backend.MINIO_ACCESS_KEY}}",
+      MEDIA_SOURCE_SECRET_KEY: "${{Backend.MINIO_SECRET_KEY}}",
+    },
+  })
   return project("store", {
-    resources: [Backend, Migrations, Storefront],
+    resources: [Backend, Migrations, Storefront, RecoveryBackups],
   })
 })

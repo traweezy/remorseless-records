@@ -18,7 +18,7 @@
     "qa:ci-shared-contracts-boundary": "node --test --experimental-test-coverage --test-coverage-include=scripts/verify-ci-shared-contracts.mjs --test-coverage-lines=80 --test-coverage-branches=80 --test-coverage-functions=80 scripts/verify-ci-shared-contracts.test.mjs && node scripts/verify-ci-shared-contracts.mjs",
     "api:contract:generate": "node scripts/generate-api-contract.mjs --write",
     "qa:api-contract": "node --test scripts/generate-api-contract.test.mjs && node scripts/generate-api-contract.mjs --check",
-    "qa:release-policy": "node --test --experimental-test-coverage --test-coverage-include=scripts/dependency-review-range.mjs --test-coverage-include=scripts/staging-release-readiness.mjs --test-coverage-include=scripts/lib/staging-release.mjs --test-coverage-include=scripts/lib/staging-backups.mjs --test-coverage-include=scripts/staging-backup-audit.mjs --test-coverage-lines=80 --test-coverage-branches=80 --test-coverage-functions=80 scripts/verify-release-branch-policy.test.mjs scripts/verify-codeql-sarif.test.mjs scripts/dependency-review-range.test.mjs scripts/staging-release-readiness.test.mjs scripts/staging-backup-audit.test.mjs && node scripts/verify-release-branch-policy.mjs",
+    "qa:release-policy": "node --test --experimental-test-coverage --test-coverage-include=scripts/dependency-review-range.mjs --test-coverage-include=scripts/staging-release-readiness.mjs --test-coverage-include=scripts/lib/staging-release.mjs --test-coverage-include=scripts/lib/staging-backups.mjs --test-coverage-include=scripts/staging-backup-audit.mjs --test-coverage-lines=80 --test-coverage-branches=80 --test-coverage-functions=80 scripts/verify-release-branch-policy.test.mjs scripts/verify-codeql-sarif.test.mjs scripts/dependency-review-range.test.mjs scripts/staging-release-readiness.test.mjs scripts/staging-backup-audit.test.mjs && node scripts/verify-release-branch-policy.mjs && pnpm run qa:recovery-evidence",
     "qa:dependency-supply-chain": "node --test scripts/verify-dependency-supply-chain-policy.test.mjs scripts/js-yaml-security.test.mjs && pnpm run qa:network-dependency-security && node scripts/verify-dependency-supply-chain-policy.mjs",
     "qa:network-dependency-security": "node --test scripts/network-dependency-security.test.mjs scripts/glob-dependency-security.test.mjs scripts/braces-dependency-security.test.mjs scripts/braces-backport-policy.test.mjs scripts/transport-dependency-security.test.mjs scripts/ftp-dependency-security.test.mjs",
     "qa:ci-runtime-security": "node --test scripts/verify-ci-runtime-security-policy.test.mjs && node scripts/verify-ci-runtime-security-policy.mjs",
@@ -91,7 +91,14 @@
     "qa:storefront:launch": "pnpm --filter remorseless-records-storefront run test:e2e:launch",
     "qa:lighthouse": "lhci autorun --config=./lighthouse/lhci.config.js",
     "qa:ci": "pnpm run qa:lint && pnpm run qa:mobile && pnpm run qa:a11y && pnpm run qa:lighthouse",
-    "prepare": "node scripts/install-git-hooks.mjs"
+    "prepare": "node scripts/install-git-hooks.mjs",
+    "qa:recovery-evidence": "node --test --experimental-test-coverage --test-coverage-include=scripts/lib/staging-pitr.mjs --test-coverage-include=scripts/staging-pitr-audit.mjs --test-coverage-include=scripts/postgres-timed-recovery.mjs --test-coverage-lines=80 --test-coverage-branches=80 --test-coverage-functions=80 scripts/staging-pitr-audit.test.mjs scripts/postgres-timed-recovery.test.mjs && pnpm run qa:recovery-vault",
+    "data:postgres:pitr-audit": "node scripts/staging-pitr-audit.mjs",
+    "data:postgres:timed-recovery": "node scripts/postgres-timed-recovery.mjs",
+    "qa:recovery-vault": "node --test --experimental-test-coverage --test-coverage-include=scripts/lib/recovery-vault.mjs --test-coverage-include=scripts/lib/recovery-s3.mjs --test-coverage-lines=80 --test-coverage-branches=80 --test-coverage-functions=80 scripts/recovery-vault.test.mjs scripts/railway-recovery-cli.test.mjs && node --test scripts/recovery-retention.test.mjs scripts/railway-scheduled-backup.test.mjs scripts/scan-recovery-image.test.mjs",
+    "data:railway:backup": "node scripts/railway-recovery-backup.mjs",
+    "data:railway:restore-drill": "node scripts/railway-recovery-restore.mjs",
+    "data:railway:backup-audit": "node scripts/staging-recovery-audit.mjs"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.13.0",

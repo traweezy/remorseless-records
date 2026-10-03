@@ -4,39 +4,109 @@ Last updated: 2026-10-03 (America/New_York)
 
 ## Current continuation — direct staging only
 
-The user resumed with **batch 1 only**: isolate migration credentials at the
-service level and integrate the restricted backup login. Complete its staging
-push, all CI and Railway/live acceptance; leave the other six batches separate.
-The preceding accepted revision is `2ab44fc69cc8995a54d88e7c38e8d0e1502c778e`.
+**Batch 2 is in progress: Railway recovery archives and scheduled runner.**
+The user selected the next batch and explicitly requested that all storage stay
+in Railway. This supersedes the outside-provider account prerequisite. Source
+MinIO and PostgreSQL remain unchanged. `RecoveryArchives` is a separate managed
+bucket in the same staging environment; `RecoveryBackups` holds its credentials
+and the client-side encryption key. The new daily runner, retention guards,
+image scan and recovery commands are implemented locally; their direct staging
+push, exact CI, Railway job and application acceptance are still pending.
 
-Batch-1 implementation adds a one-shot `Migrations` service, protected exact-SHA
-migration receipts, strict Backend external mode and separate source-identity
-versus read-only export connections. The fresh restricted archive restored all
-171 tables; the migration rehearsal passed with unchanged existing row counts.
-The new service shell is `129d6f7a-13f1-49d4-9828-0d02911a3326`, in the existing
-staging environment. At this commit's preparation, its source remains
-unconnected and the live credential cutover/release gates remain pending.
-The first push `90d0e15` exposed a mock Redis state-file race, corrected in
-`ed7facf`; all four workflows and 23 checks passed on that correction. Both apps
-deployed it before the credential cutover. The migration password was rotated
-and its old value rejected over Backend's private network; Backend's migration
-variable is removed and external mode is applied. The first isolated job build
-then failed because Medusa requires signing values at configuration load time.
-The follow-up adds a provider-free `build:migrations` wrapper with temporary
-signing values and a non-live database URL. Deployment and final acceptance of
-that correction remain pending. Do not infer acceptance from this record;
-append exact CI, deployment and live evidence after the corrected rollout.
+A real restricted snapshot restored 172 tables and all 172 saved table row
+counts in 6.545 seconds. The full encrypted archive contains four database
+files plus all 1,168 media objects. Download, plaintext checksum verification,
+media restore into a separate Railway bucket and an isolated database restore
+completed in 202.880 seconds. Database-only restore took 5.743 seconds; its owned
+target was removed. These are current-state, same-provider recovery proofs.
+The temporary `RecoveryDrill-20261003` bucket is owned drill output; remove it
+through the scoped cleanup after retaining the evidence.
 
-### Next session: seven separate batch pushes
+Native PITR is still blocked. PostgreSQL remains 16.11 on its existing floating
+source, and native PITR is disabled. The official PostgreSQL 16 candidate had
+2 Critical, 84 High and 7 Unknown findings. No image/security gate was weakened
+and no database image or WAL setting was changed. Resolve a supported clean
+PITR image and perform a timestamp restore before closing this remaining gate.
+Do not claim batch 2 fully complete while this blocker remains.
+
+See the opening recovery section in `docs/INFRASTRUCTURE_RECOVERY.md` for exact
+resources, receipt hashes, encryption/retention behavior and operations. The
+last accepted release is still batch 1 below until fresh batch 2 acceptance.
+
+### Previous accepted batch 1
+
+**Batch 1 is complete and accepted** on
+`849abea47c0a6a3b86b67896796136d1bed0b555`. The current continuation selects batch 2, preserving the separate pushes below.
+
+Migration authority now belongs only to the one-shot Railway `Migrations`
+service. Backend uses `app_runtime`, requires an exact-scope migration receipt,
+and has no migration/backup/source-identity/libpq credentials in its provider
+variables or any of the three inspected startup processes. The migration login
+was rotated; the old password was rejected with `28P01` over Backend's actual
+private network. The completed job and receipt match the final SHA. Migration
+builds use temporary signing values and a non-live database URL; no application
+signing secrets or provider keys are stored on the job.
+
+All four workflows and 23 required checks passed: Root `37130140666`, Backend
+`37130140709`, Storefront `37130140685` (attempt 2), Runtime Images
+`37130140621`. Exact successful Railway deployments:
+
+- Backend: `de6f42b5-2126-411b-9571-d7fc9a514fc0`.
+- Storefront: `ee07794c-4174-41dd-916c-7210169f364d`.
+- Migrations: `067c6a48-8c4f-466f-9e30-348fd8b4944a`, service
+  `129d6f7a-13f1-49d4-9828-0d02911a3326`, completed at `14:53:03Z`, restart
+  `NEVER`, no public domain.
+
+Both apps were ready by `14:55:15Z`; final exact-revision readiness passed at
+`15:00:49.726Z`. Runtime package/role/receipt checks passed;
+the ordinary scheduler heartbeat at `14:56:00.100Z` followed the final switch.
+Catalog and dependency health passed (461 products, 442 discography entries,
+three shelves). All 85 deployed browser cases passed without retries/flakes,
+with eight documented skips; desktop/mobile screenshots were inspected.
+Correlated logs from `14:48:40.616Z` through `14:58:16.517Z` had zero HTTP 5xx,
+no truncation and no unclassified warnings/errors. The single Backend stderr
+audit-command echo was bound to its successful release step. Storefront still
+reported 19 known stream-close groups with digest `3072950123`; these remain
+batch 4 work, not a claim of clean application logs.
+
+Restricted `app_backup` export succeeded and rejects DML/DDL. The initial
+archive restored all 171 tables on an isolated PostgreSQL 16 target, and real
+migrations preserved every existing table's row count. The owned target was
+removed. A fresh restricted archive completed at `14:33:17Z`, SHA-256
+`cb67c838a67741d7c3e104ee64305ed364c591ae9e2dfc93ae48d8ece71af983`.
+This is portable backup integration, not PITR/off-site recovery completion.
+
+The batch contains Conventional Commits `90d0e15`, `ed7facf` and `849abea`,
+pushed directly to staging with normal hooks. Corrections fixed an atomic
+mock-state publication race and the migration build's missing signing values.
+One Storefront Lighthouse build failed inside Next's external Google-font URL
+parser; the unchanged failed-job rerun passed the build and audit. All gates
+were retained. The post-apply IaC plan contains only the existing Backend and
+Storefront restart-policy readback differences, with no unexpected changes.
+
+Private evidence includes `/tmp/remorseless-batch1-accepted-readiness.json`,
+`/tmp/remorseless-batch1-credential-acceptance.json`,
+`/tmp/remorseless-batch1-migration-acceptance.json`, the runtime/observation and
+reviewed-log files with the same prefix, and browser artifacts under
+`/tmp/remorseless-release-batch-browsers-dibsSO`. The corrected credential
+acceptance record supersedes an inaccurate combined identity-denial flag in
+the diagnostic journal: `pg_control_system()` is readable by the backup login
+here; DML and DDL remain denied. Password retirement must be checked over the
+application's private connection, not inferred from the SSH loopback tunnel.
+Refresh this evidence before a new release. These closing notes remain local
+for the next substantive batch, without a routine documentation-only push.
+
+### Batch plan: one accepted, six separate pushes remaining
 
 The user requires each remaining group to be its own substantial batch.
 Their follow-up added the missing client testing environment: retain the
 original six groups and insert a separate client-staging batch before
 production/launch acceptance, giving seven planned pushes in this order:
 
-1. Service-level migration credential isolation and restricted backup login
-   integration.
-2. PITR, off-site database/media backups, and timed recovery drills.
+1. **Accepted:** service-level migration credential isolation and restricted
+   backup login integration at `849abea`.
+2. PITR, Railway database/media recovery archives, and timed recovery drills.
+   The user explicitly selected Railway-only storage on October 3.
 3. Queue/payment reconciliation, Redis capacity, and supporting-service image
    pinning/upgrades.
 4. Database telemetry, pool-contention investigation, and Storefront
@@ -59,7 +129,7 @@ Watch all four exact-revision workflows and 23 required checks. The next batch
 may start locally once CI passes, but its push must wait for both Railway
 deployments and live acceptance of the preceding batch. Continue through the
 remaining groups only within the current user request; this request selects
-batch 1.
+batch 2.
 Keep external prerequisites and outstanding approvals explicit rather than
 claiming an incomplete group is finished. The detailed scope and acceptance
 remain in the production hardening plan and affected runbooks.

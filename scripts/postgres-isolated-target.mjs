@@ -19,6 +19,7 @@ import { createConnection, createServer } from "node:net"
 import { basename, dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import { normalizeScriptArguments } from "./lib/cli-arguments.mjs"
+import { validateScheduledSourceScope } from "./lib/recovery-policy.mjs"
 import {
   businessParitySchemaSql,
   businessParitySql,
@@ -227,54 +228,58 @@ export const verifySourceScope = async (paths) => {
     await archive.close()
   }
   const scope = JSON.parse(scopeBytes.toString("utf8"))
-  assert.deepEqual(Object.keys(scope).sort(), [
-    "archiveSha256",
-    "capturedAt",
-    "manifestSha256",
-    "mappedEndpointFingerprint",
-    "originalEndpointFingerprint",
-    "restoreReceiptSha256",
-    "schemaVersion",
-    "source",
-    "sourceMajor",
-    "sourceSystemId",
-    "tunnelHost",
-    "tunnelTlsMode",
-  ])
-  assert.equal(scope.schemaVersion, 1)
-  assert.equal(scope.sourceMajor, 16)
-  assert.match(scope.sourceSystemId, sourceIdPattern)
-  for (const key of [
-    "archiveSha256",
-    "manifestSha256",
-    "restoreReceiptSha256",
-    "originalEndpointFingerprint",
-    "mappedEndpointFingerprint",
-  ])
-    assert.match(scope[key], sha256Pattern)
-  assert.notEqual(
-    scope.originalEndpointFingerprint,
-    scope.mappedEndpointFingerprint
-  )
-  assert.deepEqual(Object.keys(scope.source).sort(), [
-    "deploymentId",
-    "deploymentInstanceId",
-    "environmentId",
-    "projectId",
-    "serviceId",
-    "serviceInstanceId",
-    "volumeId",
-    "volumeInstanceId",
-    "volumeMountPath",
-  ])
-  for (const [key, value] of Object.entries(scope.source)) {
-    if (key === "volumeMountPath") {
-      assert.ok(typeof value === "string" && value.startsWith("/"))
-      assert.equal(resolve(value), value)
-    } else assert.match(value, uuidPattern)
+  if (scope.schemaVersion === 2) {
+    validateScheduledSourceScope(scope)
+  } else {
+    assert.deepEqual(Object.keys(scope).sort(), [
+      "archiveSha256",
+      "capturedAt",
+      "manifestSha256",
+      "mappedEndpointFingerprint",
+      "originalEndpointFingerprint",
+      "restoreReceiptSha256",
+      "schemaVersion",
+      "source",
+      "sourceMajor",
+      "sourceSystemId",
+      "tunnelHost",
+      "tunnelTlsMode",
+    ])
+    assert.equal(scope.schemaVersion, 1)
+    assert.equal(scope.sourceMajor, 16)
+    assert.match(scope.sourceSystemId, sourceIdPattern)
+    for (const key of [
+      "archiveSha256",
+      "manifestSha256",
+      "restoreReceiptSha256",
+      "originalEndpointFingerprint",
+      "mappedEndpointFingerprint",
+    ])
+      assert.match(scope[key], sha256Pattern)
+    assert.notEqual(
+      scope.originalEndpointFingerprint,
+      scope.mappedEndpointFingerprint
+    )
+    assert.deepEqual(Object.keys(scope.source).sort(), [
+      "deploymentId",
+      "deploymentInstanceId",
+      "environmentId",
+      "projectId",
+      "serviceId",
+      "serviceInstanceId",
+      "volumeId",
+      "volumeInstanceId",
+      "volumeMountPath",
+    ])
+    for (const [key, value] of Object.entries(scope.source)) {
+      if (key === "volumeMountPath") {
+        assert.ok(typeof value === "string" && value.startsWith("/"))
+        assert.equal(resolve(value), value)
+      } else assert.match(value, uuidPattern)
+    }
+    assert.equal(scope.tunnelHost, "ssh.railway.com")
+    assert.equal(scope.tunnelTlsMode, "require")
   }
-  assert.equal(scope.tunnelHost, "ssh.railway.com")
-  assert.equal(scope.tunnelTlsMode, "require")
   assert.equal(new Date(scope.capturedAt).toISOString(), scope.capturedAt)
   const signal = AbortSignal.timeout(30_000)
   const manifest = await readBackupManifest(paths.manifestPath, signal)

@@ -51,7 +51,7 @@ pnpm run railway:apply:staging
   application partial, preserved variables, exact SDK version, pnpm-only
   commands, dependency-aware readiness gates, and the staging-only boundary.
 - The stable `applications` partial intentionally owns Backend, Storefront and the one-shot
-  Migrations job. Railway's beta importer currently plans non-idempotent source and
+  Migrations job and the scheduled RecoveryBackups runner. Railway's beta importer currently plans non-idempotent source and
   builder changes for imported database and support services; those resources
   remain dashboard-managed until a clean whole-project import is possible.
 - Apply only a plan with zero unexpected deletes. After an apply, wait for all
@@ -125,3 +125,11 @@ pnpm run railway:apply:staging
   exact SHA. Successful job exit and a runtime-readable receipt are required
   release evidence. See the service isolation section in
   `docs/INFRASTRUCTURE_RECOVERY.md`; inspect the scoped plan before applying.
+
+- RecoveryBackups uses `operations/Dockerfile`, the same staging GitHub source
+  and CI hold, a daily `0 4 * * *` UTC schedule, restart `NEVER`, and no public
+  domain. It reads the restricted PostgreSQL login and current MinIO media over
+  private networking. Preserve its existing encryption key and archive bucket
+  credentials. The `applications` partial owns this runner, not the archive
+  bucket or PostgreSQL/MinIO services. Verify its completed structured receipt,
+  archive freshness and a full restore after the initial deployment.

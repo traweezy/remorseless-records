@@ -55,6 +55,7 @@ export const openRegularFile = async (path) => {
 export const readBackupManifest = async (path, signal) => {
   const file = await openRegularFile(path)
   try {
+    signal?.throwIfAborted()
     const chunks = []
     let bytes = 0
     for await (const chunk of file.createReadStream({
@@ -76,6 +77,7 @@ export const readBackupManifest = async (path, signal) => {
 export const readRestoreReceipt = async (path, signal) => {
   const file = await openRegularFile(path)
   try {
+    signal?.throwIfAborted()
     const chunks = []
     let bytes = 0
     for await (const chunk of file.createReadStream({

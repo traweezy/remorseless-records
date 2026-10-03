@@ -140,7 +140,7 @@ assert.equal(
 )
 assert.deepEqual(
   definition.resources.map(({ name }) => name).sort(),
-  ["Backend", "Migrations", "Storefront"],
+  ["Backend", "Migrations", "RecoveryBackups", "Storefront"],
   "The application partial must not take ownership of data or support resources"
 )
 
@@ -156,6 +156,40 @@ const getService = (name) => {
 const backend = getService("Backend")
 const migrations = getService("Migrations")
 const storefront = getService("Storefront")
+const recovery = getService("RecoveryBackups")
+assert.deepEqual(recovery.build, {
+  builder: "DOCKERFILE",
+  dockerfilePath: "operations/Dockerfile",
+  watchPatterns: [
+    "/operations/**",
+    "/scripts/**",
+    ...SHARED_BUILD_WATCH_PATTERNS,
+  ],
+})
+assert.equal(recovery.deploy.restartPolicyType, "NEVER")
+assert.equal(recovery.deploy.cronSchedule, "0 4 * * *")
+assert.deepEqual(recovery.deploy.preDeployCommand, [])
+assert.ok(!recovery.deploy.healthcheckPath)
+assert.deepEqual(recovery.variables, {
+  ...Object.fromEntries(
+    [
+      "BACKUP_ENCRYPTION_KEY",
+      "BACKUP_S3_ACCESS_KEY",
+      "BACKUP_S3_SECRET_KEY",
+      "BACKUP_S3_ENDPOINT",
+      "BACKUP_S3_BUCKET",
+    ].map((name) => [name, { type: "preserve" }])
+  ),
+  ...Object.fromEntries(
+    Object.entries({
+      DATABASE_BACKUP_URL: "${{Postgres.DATABASE_BACKUP_URL}}",
+      MEDIA_SOURCE_ENDPOINT: "http://bucket.railway.internal:9000",
+      MEDIA_SOURCE_BUCKET: "medusa-media",
+      MEDIA_SOURCE_ACCESS_KEY: "${{Backend.MINIO_ACCESS_KEY}}",
+      MEDIA_SOURCE_SECRET_KEY: "${{Backend.MINIO_SECRET_KEY}}",
+    }).map(([name, value]) => [name, { type: "literal", value }])
+  ),
+})
 
 assert.deepEqual(migrations.build, {
   ...backend.build,
@@ -211,7 +245,7 @@ for (const name of ["MEDUSA_ADMIN_EMAIL", "MEDUSA_ADMIN_PASSWORD"]) {
   )
 }
 
-for (const service of [backend, storefront, migrations]) {
+for (const service of [backend, storefront, migrations, recovery]) {
   assert.deepEqual(service.source, {
     type: "github",
     repo: "traweezy/remorseless-records",
@@ -231,7 +265,7 @@ for (const service of [backend, storefront, migrations]) {
 
   for (const [name, value] of Object.entries(service.variables)) {
     // The migration job's complete, minimal variable map is asserted above.
-    if (service.name === "Migrations") continue
+    if (["Migrations", "RecoveryBackups"].includes(service.name)) continue
     if (
       service.name === "Backend" &&
       Object.hasOwn(backendMigrationVariables, name)
