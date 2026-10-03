@@ -1,6 +1,57 @@
 # Storefront, Admin and Stripe end-to-end audit
 
-Status: **planned, not executed**. Requested October 3, 2026.
+Status: **in progress; not accepted**. Requested October 3, 2026.
+
+Batch 5 release acceptance is complete at `960fe7b`. Run
+`b8517c2c-e013-46bd-9765-e4475641fd82` uses owned-fixture prefix
+`RR Audit b8517c2c`. Private inventory/evidence is in
+`artifacts/end-to-end-audit-2026-10-03/`. The source inventory has 44 page routes
+and 493 control candidates in 187 files; it is a starting inventory, not a
+coverage claim. The user has signed into Admin and the Stripe Dashboard confirms
+the expected sandbox. No fresh payment/refund has run. The owned shelf creation
+failed and rolled back; the product wizard currently holds a browser-only draft.
+
+## Initial repair group — deployment and live retests pending
+
+These fixes are part of batch 6, not acceptance of the exhaustive audit. They
+must reach staging before the blocked authoring/media journeys can continue.
+The full route/control ledger and remaining financial scenarios stay open.
+
+| Finding | Reproduction and correction | Current evidence |
+| --- | --- | --- |
+| `B6-QUICK-SHOP` / `B4-ASSETS` | A cold optional chunk left a click with no visible drawer. Keep the dismissible drawer shell immediate, lazy-load its content, and offer Retry after a failed chunk. | Failure retained; delay/reopen and failed-download/retry pass on desktop and both phone profiles, plus Firefox/WebKit. |
+| `B6-FONTS` / `B5-FONTS` | Google font fetching intermittently broke builds. Vendor 18 byte-identical WOFF2 assets with pinned sources, hashes and four SIL OFL notices. Root-level theme aliases also previously missed body-scoped font variables; define them on the root so Bebas Neue/Teko headings render as intended. | Local production build, integrity verifier and three rendered font cases pass. Browser requests stay local; only four Latin subsets preload. Remaining glyph subsets and existing fallback metrics are retained. |
+| `B6-ADMIN-MEDIA` | Native product thumbnails were all blocked by CSP although the media returned HTTP 200. CSP now uses the resolved storage file URL, including the existing endpoint/bucket fallback. | Exact media-origin regression passes; script/connect restrictions stay unchanged. Live image retest pending. |
+| `B6-LEGACY-HTML` | Seventeen of 462 active imported profiles failed the existing strict HTML reader and prevented the catalog workspace loading. A bounded transactional migration applies the unchanged sanitizer, updating versions only for changed records. | Read-only staging preview verifies all 17 become readable with unchanged visible text; native PostgreSQL tests verify safe-row preservation and idempotence. Preserve the pre-release encrypted backup; rollback does not restore unsafe markup. |
+| `B6-NATIVE-CREATE` | Native Medusa create responses omit unspecified fields; strict readers rejected shelf/profile/media creation, while mocks filled the gaps. Create complete payloads without relaxing decoders. SQL foreign keys represented as scalar model fields also need parent writes flushed before dependent links, within the same transaction. | Native tests cover shelves, stale versions, profiles, new artists/vocabulary, uploads, URL media and reuse. A dependent failure rolls back the parent, reference and audit operation. |
+| `B6-FORM-FOCUS` | Empty required fields kept keyboard focus on Continue. Next, Save and Retry now navigate to the first invalid field using the existing step/focus mechanism. | Rendered Admin regression checks Title, then Artist after Title is supplied. All 13 Admin matrix cases pass; live retest pending. |
+| `B6-ADMIN-ERROR-HEADING` | Full-page retry states had no semantic heading. The shared retry title is now a heading; the matrix adds the unavailable tax-report state. | The normal tax-report fixture now echoes the selected state/period instead of a hard-coded historical quarter, retaining date/time-zone parsing. Real tax calculations and filing settings are unchanged. |
+| `B6-TAX-LINK-CONTRAST` | The official filing-portal link had 3.52:1 contrast on its panel. Tax-report links now use the normal foreground with a persistent underline and retained focus ring. | The initial axe failure is retained; rebuilt 13-case Admin matrix passes with zero axe violations. |
+
+All 13 rebuilt Admin accessibility cases passed with zero axe violations; their
+rendered screenshots were inspected. Initial fixture/readiness failures and the
+real 3.52:1 contrast failure remain retained alongside the passing correction.
+
+Local Storefront matrices: 90 passed / two documented skips in responsive CI,
+57 passed across Chromium/Firefox/WebKit, and 20 launch/receipt/structured-data
+cases passed, all with zero retries. Native integration includes 69 Medusa
+cases, the payment lifecycle and complete PostgreSQL/Redis/recovery/session
+aggregate. These are controlled fixtures, not real Stripe sandbox acceptance.
+Backend coverage passed 288 suites / 2,300 tests; Storefront coverage passed
+146 suites / 972 tests plus 39 suites / 362 tests. Both production builds and
+shared lint/type/policy checks passed. The pre-migration Railway archive audit
+passed for archive `15563662-660f-4a52-ba04-b9c1b4b6a783`, created October 3 at
+21:36 UTC, preserving the original imported descriptions.
+
+The Admin harness now preserves the browser sandbox, waits for rendered page
+readiness and emits bounded diagnostics when a case aborts. Initial incomplete
+loading screenshots/navigation failures remain retained. One subsequent matrix
+overlapped a local Backend rebuild and is invalid; run builds and their browser
+acceptance sequentially against a stable artifact.
+
+A further live copy finding remains open: Home/About promise worldwide shipping
+and international rates. Reconcile those claims against the configured checkout
+destinations and shipping policy during the continuing audit before acceptance.
 
 This is **batch 6**, after credential/dependency maintenance and before the
 client environment clone in batch 7. Audit the complete shopping and operator

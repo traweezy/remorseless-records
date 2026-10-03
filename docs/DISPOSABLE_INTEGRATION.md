@@ -68,6 +68,15 @@ MinIO, tax-provider and telemetry credentials/routing with empty or safe test
 values so those files cannot re-enable these integrations. A synthetic `.env`
 regression verifies that override behavior against the installed loader.
 
+The suite also exercises native catalog persistence, including shelf creation,
+replay/stale versions, minimal profiles, new artist/vocabulary links, managed
+asset writes and URL media reuse. Its media provider is stubbed; real S3 upload
+is a separate staging check. Imported-description normalization preserves safe
+rows and is idempotent. A dependent authoring failure must roll back already
+flushed parent/reference/audit writes inside the same PostgreSQL transaction.
+These cases intentionally use native create responses because mocks previously
+concealed omitted fields and SQL foreign-key insertion ordering.
+
 The suite verifies real API readiness, custom migrations, payment-lifecycle
 idempotency/retries, distributed locks, a real PostgreSQL backup/restore CLI
 roundtrip and rejection/cancellation guards,

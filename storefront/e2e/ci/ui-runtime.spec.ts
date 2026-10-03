@@ -96,6 +96,67 @@ const expectDecorativeIcons = async (control: Locator): Promise<void> => {
   await expect(control.getByRole("img")).toHaveCount(0)
 }
 
+test("UI runtime quick shop opens and closes while optional chunks are delayed", async ({
+  page,
+}, testInfo) => {
+  const chunksReady = Promise.withResolvers<void>()
+  const productReady = Promise.withResolvers<void>()
+  await page.route("**/api/search/products", (route) =>
+    route.fulfill({ json: quickShopSearch })
+  )
+  await page.route(`**/api/products/${quickShopHandle}`, async (route) => {
+    await productReady.promise
+    await route.fulfill({ json: { product: quickShopProduct } })
+  })
+  try {
+    const hydrated = page.waitForResponse(
+      (response) => new URL(response.url()).pathname === "/api/cart"
+    )
+    await page.goto("/catalog", { waitUntil: "load" })
+    await hydrated
+    await page
+      .getByRole("searchbox", {
+        name: "Search catalog by product or artist name",
+      })
+      .fill("runtime")
+    const trigger = page.getByRole("button", {
+      name: `Quick shop ${quickShopTitle}`,
+    })
+    await expect(trigger).toBeVisible()
+    // Delay only code requested after the catalog is interactive. The drawer
+    // must acknowledge the click and remain dismissible without that code.
+    await page.route("**/_next/static/chunks/**", async (route) => {
+      await chunksReady.promise
+      await route.continue()
+    })
+    await trigger.press("Enter")
+    const drawer = page.getByRole("dialog", { name: "Quick shop" })
+    await expect(
+      drawer.getByRole("heading", { name: "Loading release" })
+    ).toBeVisible()
+    await page.screenshot({
+      path: testInfo.outputPath("quick-shop-delayed-chunks.png"),
+    })
+    await drawer.getByRole("button", { name: "Close quick shop" }).click()
+    await expect(drawer).toBeHidden()
+    await expect(trigger).toBeFocused()
+    await trigger.press("Enter")
+    await expect(drawer).toBeVisible()
+    chunksReady.resolve()
+    productReady.resolve()
+    await expect(
+      drawer.getByRole("heading", { name: quickShopTitle })
+    ).toBeVisible()
+    await page.keyboard.press("Escape")
+    await expect(drawer).toBeHidden()
+    await expect(trigger).toBeFocused()
+  } finally {
+    chunksReady.resolve()
+    productReady.resolve()
+    await page.unrouteAll({ behavior: "wait" })
+  }
+})
+
 test.beforeEach(async ({ page, context, baseURL }) => {
   const preferences = buildCookiePreferences(
     { analytics: false, marketing: false },
@@ -118,6 +179,64 @@ test.beforeEach(async ({ page, context, baseURL }) => {
   await page.route("**/api/cart", (route) =>
     route.fulfill({ json: cartEnvelopeFrom({ cart: null }) })
   )
+})
+
+test("UI runtime quick shop retries a failed optional chunk without losing the drawer", async ({
+  page,
+}, testInfo) => {
+  await page.route("**/api/search/products", (route) =>
+    route.fulfill({ json: quickShopSearch })
+  )
+  await page.route(`**/api/products/${quickShopHandle}`, (route) =>
+    route.fulfill({ json: { product: quickShopProduct } })
+  )
+  const hydrated = page.waitForResponse(
+    (response) => new URL(response.url()).pathname === "/api/cart"
+  )
+  await page.goto("/catalog", { waitUntil: "load" })
+  await hydrated
+  await page
+    .getByRole("searchbox", {
+      name: "Search catalog by product or artist name",
+    })
+    .fill("runtime")
+  const trigger = page.getByRole("button", {
+    name: `Quick shop ${quickShopTitle}`,
+  })
+  await expect(trigger).toBeVisible()
+  let failChunks = true
+  let rejectedChunks = 0
+  await page.route("**/_next/static/chunks/**", async (route) => {
+    if (failChunks) {
+      rejectedChunks += 1
+      await route.abort("failed")
+    } else {
+      await route.continue()
+    }
+  })
+  await trigger.press("Enter")
+  const drawer = page.getByRole("dialog", { name: "Quick shop" })
+  await expect(
+    drawer.getByRole("heading", { name: "Unable to load quick shop" })
+  ).toBeVisible()
+  expect(rejectedChunks).toBeGreaterThan(0)
+  await expect(
+    drawer.getByRole("button", { name: "Close quick shop" })
+  ).toBeEnabled()
+  await page.screenshot({
+    path: testInfo.outputPath("quick-shop-code-error.png"),
+  })
+  failChunks = false
+  await drawer.getByRole("button", { name: "Retry", exact: true }).click()
+  await expect(
+    drawer.getByRole("heading", { name: quickShopTitle })
+  ).toBeVisible()
+  await expect(
+    drawer.getByRole("button", { name: "Add to cart" })
+  ).toBeEnabled()
+  await page.keyboard.press("Escape")
+  await expect(drawer).toBeHidden()
+  await expect(trigger).toBeFocused()
 })
 
 for (const reducedMotion of ["no-preference", "reduce"] as const) {

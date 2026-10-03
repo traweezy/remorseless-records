@@ -9,6 +9,14 @@ visual review, actual sandbox purchases/refunds, Admin/Stripe reconciliation,
 findings and completion gate. Existing fixture and smoke suites are inputs to
 that audit; their passing counts do not establish exhaustive live coverage.
 
+Storefront builds verify the vendored font hashes, sources and SIL OFL notices
+before invoking Next. See `storefront/public/fonts/README.md`. The rendered
+font regression checks actual loaded faces, root theme tokens, immutable local
+responses and absence of Google Fonts requests. Keep a stable Backend build
+throughout the Admin browser matrix; rebuilding `.medusa` while it is being
+served invalidates the result. The Admin harness uses the browser sandbox and
+requires the page to finish rendering before inspecting layout and focus.
+
 Historical credential maintenance uses
 `pnpm run data:staging:credentials:audit -- --require-retired` and the
 [coordinated rotation runbook](CREDENTIAL_ROTATION.md). The command checks

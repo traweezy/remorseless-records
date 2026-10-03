@@ -29,8 +29,9 @@ production/launch acceptance to batch 8. This supersedes the seven-batch plan.
 4. **Telemetry release accepted at `9a90adc`:** bounded indexing, native
    database statistics, private timing windows and the Next stream-abort fix
    passed all 23 CI checks and live acceptance; history/asset limits remain.
-5. **Credential and dependency maintenance (in progress):** finish remaining credential
-   rotations and replace the braces mitigation before its November 2 expiry.
+5. **Credential maintenance release accepted at `960fe7b`:** PostgreSQL, Redis,
+   JWT/cookie retirement and storage root API revocation passed. Braces expiry,
+   storage process/image and font/Console carryovers remain explicitly open.
 6. **Exhaustive Storefront, Admin and Stripe audit:** inventory and interact
    with every reachable page, control and supported workflow; inspect layout,
    consistency, image proportions, cursors and accessibility across devices.
@@ -64,7 +65,7 @@ Batch 4's telemetry release is accepted at `9a90adc`, after all nine staging
 services, completed jobs, runtime boundaries, 70 pool samples, native metrics,
 85 browser cases and zero-stream-error log acceptance. The first browser attempt
 had a retained cold-chunk timeout; the unchanged full repeat passed without
-retries or flakes. Batch 5 is in progress; see the
+retries or flakes. Batch 5 is release-accepted at `960fe7b`; see the
 [credential maintenance record](CREDENTIAL_ROTATION.md). Batch 2's recovery archive release is
 accepted at `7352a3b`: the deployed runner completed, exited cleanly, and its
 encrypted database/media archive passed a full 205.587-second restore. The
@@ -97,8 +98,11 @@ October 3 and selected batch 3 while the following batch-2 items remain open.
 | B3-ROLLBACK | Batch 3 / historical image drift | Railway rollback to the retained floating Redis deployment loaded 8.2.1 instead of the former live 8.0.3. Do not use it as an exact-binary rollback. The new 8.10.2 runtime is pinned and its fresh AOF passed isolated load/restart; a native volume restore and a rollback preserving subsequent writes remain separate evidence. |
 | B4-NATIVE-SNAPSHOT | Recovery / provider capacity | PostgreSQL native snapshot creation hit Railway's ten-backup plan limit. Preserve existing snapshots; review retention/capacity separately. A fresh encrypted Railway archive and guarded logical snapshot preceded the same-image database restart. No native restore or fresh native snapshot is implied. |
 | B4-HISTORY | Telemetry / attribution limit | Unbounded catalog transformation is reproducible and now bounded, but the historical 2,856-waiter spike cannot be conclusively attributed retrospectively. Observe the new workload-specific windows and rollout health without raising thresholds. |
-| B4-ASSETS | Browser / cold-load follow-up | The first deployed quick-shop test waited over five seconds for a code chunk and passed on retry. Subsequent asset reads took 79–307 ms and the unchanged 85-case suite passed without retries/flakes. Retain the trace; investigate cold asset latency and an immediate loading affordance before calling the cold-load experience verified. |
+| B4-ASSETS | Browser / cold-load follow-up | The first deployed quick-shop test waited over five seconds for a code chunk and passed on retry. Subsequent asset reads took 79–307 ms and the unchanged 85-case suite passed without retries/flakes. Batch 5 reproduced cold-chunk delays in both quick shop and home shelves; its first attempt had two flakes and the unchanged repeat passed. Retain all traces; investigate cold asset latency and an immediate loading affordance before calling the cold-load experience verified. |
 | B5-BRACES | Batch 5 / upstream release unavailable | October 3 review still finds braces 3.0.3 newest and no fixed release for GHSA-vfj7-8cjw-p6xm. Retain the exact all-copy byte/behavior mitigation, raw High finding and November 2 expiry. Replace it only with a reviewed, cooled fixed release and passing consumer/runtime-image regressions; no extension or alert dismissal is implied. |
+| B5-FONTS | Batch 5 / build determinism follow-up | The first accessibility job on `960fe7b` failed before pa11y because Next's Google-font URL extension parser received a nonmatching URL; another build on the same SHA passed. Retain the attempt. In the visual audit, evaluate pinned local font assets with license/provenance and rendered parity so Google response changes cannot break builds. A passing retry alone does not close this dependency. |
+| B5-MEDIA | Batch 5 / root API revoked; process-secret replacement open | Old-root S3/Admin/Console login is rejected. App, read-only backup and independent operator IAM users work; all 1,168 objects and a fresh backup passed. Historical values are absent from Railway configuration, and future-start root access is disabled. The unchanged running Bucket still contains the old process secret. Its image is unavailable from the registry; replace/migrate it with verified recovery before restarting or cloning. Keep `B3-MINIO` open. |
+| B5-CONSOLE | Batch 5 / private connectivity and rebuild open | Native Console login/session/list/logout passed through guarded loopback, but the current IPv4-only listener cannot serve the IPv6-only private DNS address; no public domain exists. Repair intended operator access using a pinned, reproducible maintained deployment alongside storage migration. Do not rebuild its floating Go/Console source merely to replace unused credential variables. |
 
 The archive restore covers current data, not native object-version history or
 provider-outage survival; Railway-only storage is the user's accepted scope.
@@ -108,15 +112,16 @@ infrastructure runbook; do not silently turn them into successful live tests.
 
 ### Latest accepted release
 
-The latest accepted revision is `9a90adc06abdbd4a45eb3204581cdd9b19dbf674`.
-All four workflows/23 checks, all nine staging services, completed migration and
-backup jobs, runtime credentials/package checks, native PostgreSQL statistics,
-70 database probes and 85 deployed browser cases passed. Correlated live logs
-contained zero stream-close errors and zero HTTP 5xx. Redis retained one run
-identity for over an hour, with zero OOM events and healthy persistence.
-The first browser attempt's cold-chunk timeout remains `B4-ASSETS`; the unchanged
-full repeat passed without retries/flakes. Detailed IDs, window limits and
-private evidence are in [the handoff](NEXT_SESSION_HANDOFF.md).
+The latest accepted revision is `960fe7bbc47b912770c8357c148f5bd6cb75b3f8`.
+All four workflows/23 checks, all nine staging services/jobs, restricted backup
+execution and credential rejection proofs passed. The strict configuration
+audit finds no exposed values; storage root API revocation leaves its process
+secret and image replacement as explicit limits. Native sign-in, runtime
+boundaries, scheduler/catalog, 85 browser cases and correlated logs passed.
+First CI/browser/verifier failures remain in the evidence. Batch 6's exhaustive
+audit is now in progress; no fresh purchase/refund is claimed yet. See the
+[credential record](CREDENTIAL_ROTATION.md) and [handoff](NEXT_SESSION_HANDOFF.md).
+Private evidence is durable under `artifacts/staging-2026-10-03/batch5-960fe7b/`.
 
 ### Previous batch 3 acceptance
 

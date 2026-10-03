@@ -4,28 +4,74 @@ Last updated: 2026-10-03 (America/New_York)
 
 ## Current continuation — direct staging only
 
-**Batch 4 is release-accepted at `9a90adc`.** Full revision:
-`9a90adc06abdbd4a45eb3204581cdd9b19dbf674`. The next planned substantive
-push is **batch 5 (credential/dependency maintenance), now in progress**, followed by **batch 6
-(exhaustive Storefront/Admin/Stripe audit)**, **batch 7 (the client's cloned
-Railway environment)** and **batch 8 (production approval)**. The user added
-the audit before the client clone on October 3. The audit is planned, not executed. Its
-[checklist and completion gate](END_TO_END_AUDIT.md) require every reachable
-control/workflow, visual and image/cursor checks, fresh Stripe test-card
-purchases, native Medusa refunds, independent Admin/Stripe verification,
-fixes and retests. Accept the audit before creating the client environment.
-Keep earlier recovery/support-service limits in
-[the carryover register](PRODUCTION_HARDENING_PLAN.md#carryovers-between-batches).
+**Batch 5 is release-accepted at `960fe7b`.** Full revision:
+`960fe7bbc47b912770c8357c148f5bd6cb75b3f8`. Continue **batch 6: exhaustive
+Storefront/Admin/Stripe audit**, then batch 7's client clone in the same Railway
+project, with production approval separately in batch 8. Push directly to
+`staging`, one substantial batch at a time, using Conventional Commits with
+bullet bodies. Require all four exact-SHA workflows/23 checks before starting
+the next local batch; require exact deployments and all nine service/job/live
+acceptance before its next push. Do not stop for routine decisions.
 
-Batch 5's [credential maintenance record](CREDENTIAL_ROTATION.md) identifies
-five still-configured historical credential families, the completed private
-Redis-reference cleanup, fresh encrypted backup and coordinated cutover gates.
-The repeatable redacted audit is implemented and its baseline correctly exits
-2 until retirement. No rotation or release acceptance is claimed by this
-pre-push record. Matured Railway CLI, multer and morgan cooling exceptions are
-removed; exact package versions and patches are unchanged. Next 16.3.8 keeps
-its approved exception until October 7. Braces still has no upstream fixed
-release; retain the exact mitigation and November 2 expiry (`B5-BRACES`).
+Batch 5 rotated PostgreSQL administrator, Redis and JWT/cookie credentials,
+verified old-key rejection and native provider/session sign-in, and revoked
+storage root API access using exact-release dynamic configuration. Separate
+app/read-only-backup/operator IAM users passed permission and media parity
+checks. **The unchanged Bucket still contains the historical root secret in
+its process behind disabled root API access.** Its unavailable/vulnerable image
+and Console's IPv4-only listener remain clone/launch carryovers. The strict
+configuration audit passes; that is distinct from process-secret replacement.
+See [the complete maintenance evidence](CREDENTIAL_ROTATION.md) and
+[carryover register](PRODUCTION_HARDENING_PLAN.md#carryovers-between-batches).
+
+Exact CI: Root `37152539195`, Backend `37152539193`, Storefront `37152539210`
+(attempt 2), Runtime Images `37152539208`. The initial accessibility build's
+Google font-loader failure remains `B5-FONTS`. Matured Railway/multer/morgan
+cooling exceptions were removed without package/lockfile changes. Next 16.3.8
+retains the approved exception until October 7; braces retains the reviewed
+mitigation and November 2 expiry pending an upstream fix.
+
+Exact deployed applications/jobs:
+
+- Backend `13c79dd6-cb5a-43da-b082-4146424fecca`.
+- Storefront `3ed20860-1abc-4ff2-a008-ca1ba9f79227`.
+- Migrations `1bd03b0c-ebe2-4314-9140-9230df017216`, completed and exited.
+- RecoveryBackups `05cb7aac-6a43-4118-85b8-091518dfa119`, execution
+  `53982889-b78a-47be-b760-6735d4abb6a1`, completed and exited.
+- Redis `86737878-a01a-4326-b608-5c8a288fad7f`, same pinned 8.10.2 source from
+  `cf1c05c`; stable run identity, UID 1000, healthy AOF/RDB, zero OOM/evictions.
+
+All nine services/jobs passed observation. The fresh post-revocation backup
+published archive `15563662-660f-4a52-ba04-b9c1b4b6a783` with four database files
+and 1,168 media objects. Runtime/role/ancestor/migration/notification/Next checks,
+ordinary 21:32 UTC scheduler and catalog passed. First browser run had two
+cold-chunk flakes; the unchanged 85-case repeat passed with eight skips and no
+retries/flakes. Application correlation passed with zero HTTP 5xx or unknown
+warnings/errors in the final bounded window. Failed attempts remain documented.
+Durable private receipts, traces/screenshots and checksum manifest:
+`artifacts/staging-2026-10-03/batch5-960fe7b/`. Closing notes join batch 6's push.
+
+Batch 6 has begun reconnaissance and a substantial repair group, not acceptance.
+The [audit repair table](END_TO_END_AUDIT.md#initial-repair-group--deployment-and-live-retests-pending)
+tracks cold quick shop, local fonts/root typography, Admin media CSP, 17 legacy
+descriptions, native catalog creation/transaction ordering, form focus and tax
+link contrast. Local gates include 2,300 Backend tests, both Storefront coverage
+groups, 69 native Medusa integration cases/full recovery aggregate, 167
+Storefront browser passes plus two skips, and 13 Admin accessibility cases.
+These need exact staging deployment and live retests; the remaining exhaustive
+coverage and actual purchases/refunds are still open. Its ignored private source
+inventory contains 44 page routes and 493 control candidates across 187 source
+files; these are not completed tests. Reconcile native Admin navigation and
+rendered states into the [audit checklist](END_TO_END_AUDIT.md). Current run ID:
+`b8517c2c-e013-46bd-9765-e4475641fd82`, fixture prefix `RR Audit b8517c2c`.
+Private evidence: `artifacts/end-to-end-audit-2026-10-03/`. The user signed into
+staging Admin, and Stripe Dashboard independently confirms Remorseless Records
+Staging (`acct_1Rkv3jIM4tTeFQ3W`, `livemode:false`). Recheck sessions at use.
+Sandbox purchases/refunds are explicitly authorized; use owned fixtures and
+native Medusa refund actions, preserve financial history, and use controlled
+Resend test recipients. No fresh audit purchase/refund has run yet.
+
+### Previous batch 4 acceptance
 
 Accepted batch 4 bounds catalog transformation concurrency, emits privacy-safe
 60-second database pool/query windows, enables native PostgreSQL statement and

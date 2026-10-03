@@ -167,7 +167,7 @@ const MobileTaxRecord = memo(({ record }: { record: TaxRecord }) => {
       <div className="flex items-start justify-between gap-3">
         <div>
           <a
-            className="inline-flex min-h-6 min-w-6 items-center rounded-sm text-ui-fg-interactive hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ui-fg-interactive"
+            className="inline-flex min-h-6 min-w-6 items-center rounded-sm text-ui-fg-base underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ui-fg-interactive"
             href={`/app/orders/${record.orderId}`}
           >
             Order #{record.displayId}
@@ -631,7 +631,7 @@ export const TaxRecordsPageContent = memo(() => {
                 Official filing portal
               </Text>
               <a
-                className="mt-1 inline-flex min-h-6 min-w-6 cursor-pointer items-center rounded-sm text-ui-fg-interactive hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ui-fg-interactive"
+                className="mt-1 inline-flex min-h-6 min-w-6 cursor-pointer items-center rounded-sm text-ui-fg-base underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ui-fg-interactive"
                 href={filingProfile.portalUrl}
                 rel="noreferrer"
                 target="_blank"
@@ -808,7 +808,7 @@ export const TaxRecordsPageContent = memo(() => {
               {report.unassignedRecordExamples.slice(0, 5).map((record) => (
                 <li key={record.orderId}>
                   <a
-                    className="cursor-pointer rounded-sm text-ui-fg-interactive hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ui-fg-interactive"
+                    className="cursor-pointer rounded-sm text-ui-fg-base underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ui-fg-interactive"
                     href={`/app/orders/${record.orderId}`}
                   >
                     Order #{record.displayId}
@@ -1037,7 +1037,7 @@ export const TaxRecordsPageContent = memo(() => {
                     <Table.Cell>{formatDate(record.occurredAt)}</Table.Cell>
                     <Table.Cell>
                       <a
-                        className="inline-flex min-h-6 min-w-6 items-center rounded-sm text-ui-fg-interactive hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ui-fg-interactive"
+                        className="inline-flex min-h-6 min-w-6 items-center rounded-sm text-ui-fg-base underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ui-fg-interactive"
                         href={`/app/orders/${record.orderId}`}
                       >
                         #{record.displayId}
@@ -1309,7 +1309,7 @@ export const TaxRecordsPageContent = memo(() => {
           {filingProfile.separateReconciliation} Review the official{" "}
           {filingProfile.returnName} instructions, then file through{" "}
           <a
-            className="-mx-1 inline-flex min-h-6 items-center rounded-sm px-1 text-ui-fg-interactive hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ui-fg-interactive"
+            className="-mx-1 inline-flex min-h-6 items-center rounded-sm px-1 text-ui-fg-base underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ui-fg-interactive"
             href={filingProfile.portalUrl}
             rel="noreferrer"
             target="_blank"

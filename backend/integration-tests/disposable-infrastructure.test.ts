@@ -1,8 +1,26 @@
-import type { ILockingModule } from "@medusajs/framework/types"
+import type { FileTypes, ILockingModule } from "@medusajs/framework/types"
 import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
 import { medusaIntegrationTestRunner } from "@medusajs/test-utils"
 import { knex, type Knex } from "@mikro-orm/knex"
 import { createClient } from "redis"
+import { randomUUID } from "node:crypto"
+import type { MedusaRequest } from "@medusajs/framework"
+
+import {
+  setShelfArchived,
+  upsertShelf,
+} from "../src/api/admin/catalog/shelves/helpers"
+import type { CatalogService } from "../src/api/admin/catalog/utils"
+import { mutateCatalogProductProfile } from "../src/lib/catalog/product-profile-authoring"
+import { mutateCatalogVariantProfile } from "../src/lib/catalog/variant-profile-authoring"
+import {
+  readCatalogProductProfile,
+  readCatalogVariantProfiles,
+} from "../src/lib/catalog/profile-persistence-contracts"
+import { normalizeLegacyCatalogDescriptions } from "../src/lib/catalog/normalize-legacy-descriptions"
+import { performCatalogMediaUpload } from "../src/lib/catalog/product-media-upload"
+import { mutateCatalogProductMedia } from "../src/lib/catalog/product-media-authoring"
+import { readCatalogMediaAsset } from "../src/lib/catalog/transaction-persistence-contracts"
 
 import {
   createBackendReadinessProbes,
@@ -88,6 +106,309 @@ medusaIntegrationTestRunner({
   moduleName: "RemorselessDisposableInfrastructure",
   testSuite: ({ api, dbConfig, getContainer }) => {
     describe("disposable PostgreSQL and Redis integration", () => {
+      it("creates and replays an Admin shelf using native persistence responses", async () => {
+        const container = getContainer()
+        const catalog = container.resolve<CatalogService>("catalog")
+        const req = {
+          scope: container,
+          auth_context: { actor_id: "user_disposable_catalog_audit" },
+        } as unknown as MedusaRequest
+        const input = {
+          idempotencyKey: randomUUID(),
+          expectedVersion: 0,
+          title: "Disposable shelf",
+          handle: "disposable-native-shelf",
+          mode: "manual" as const,
+          automationType: "none" as const,
+          isActive: false,
+          productLimit: 2,
+          products: [],
+        }
+        const created = await upsertShelf(req, catalog, input)
+        expect(created.status).toBe(201)
+        expect(created.body.shelf).toMatchObject({
+          handle: input.handle,
+          title: input.title,
+          version: 1,
+          isActive: false,
+        })
+        const replayed = await upsertShelf(req, catalog, input)
+        expect(replayed.body).toEqual(created.body)
+        const updated = await upsertShelf(
+          req,
+          catalog,
+          {
+            idempotencyKey: randomUUID(),
+            expectedVersion: 1,
+            title: "Updated disposable shelf",
+          },
+          created.body.shelf.id
+        )
+        expect(updated.body.shelf).toMatchObject({
+          version: 2,
+          productLimit: 2,
+        })
+        await expect(
+          upsertShelf(
+            req,
+            catalog,
+            {
+              idempotencyKey: randomUUID(),
+              expectedVersion: 1,
+              title: "Stale title",
+            },
+            created.body.shelf.id
+          )
+        ).rejects.toThrow("changed after it was loaded")
+        const archived = await setShelfArchived(
+          req,
+          catalog,
+          created.body.shelf.id,
+          {
+            idempotencyKey: randomUUID(),
+            expectedVersion: 2,
+          },
+          true
+        )
+        expect(archived.shelf).toMatchObject({ version: 3, isActive: false })
+      })
+
+      it("creates minimal catalog profiles without missing nullable fields", async () => {
+        const catalog = getContainer().resolve<CatalogService>("catalog")
+        const profile = await mutateCatalogProductProfile(catalog, {
+          actorId: "user_disposable_catalog_audit",
+          aggregateId: "prod_disposable_catalog_audit",
+          command: "catalog.product-profile.upsert",
+          expectedVersion: 0,
+          idempotencyKey: randomUUID(),
+          requestSha256: "a".repeat(64),
+          patch: { descriptionHtml: "<script>discard()</script>" },
+        })
+        expect(profile).toMatchObject({ created: true, version: 1 })
+        const saved = readCatalogProductProfile(
+          await catalog.retrieveCatalogProductProfile(profile.profileId)
+        )
+        expect(saved).toMatchObject({
+          description_html: null,
+          release_title: null,
+        })
+        const variant = await mutateCatalogVariantProfile(catalog, {
+          actorId: "user_disposable_catalog_audit",
+          aggregateId: "variant_disposable_catalog_audit",
+          command: "catalog.variant-profile.upsert",
+          expectedVersion: 0,
+          idempotencyKey: randomUUID(),
+          requestSha256: "b".repeat(64),
+          patch: {},
+        })
+        expect(variant).toMatchObject({ created: true, version: 1 })
+        expect(
+          readCatalogVariantProfiles(
+            await catalog.listCatalogVariantProfiles({
+              variant_id: "variant_disposable_catalog_audit",
+            }),
+            "variant_disposable_catalog_audit"
+          )
+        ).toHaveLength(1)
+      })
+
+      it("persists new artist and vocabulary links in the profile transaction", async () => {
+        const catalog = getContainer().resolve<CatalogService>("catalog")
+        const result = await mutateCatalogProductProfile(catalog, {
+          actorId: "user_disposable_catalog_audit",
+          aggregateId: "prod_disposable_artist_profile",
+          command: "catalog.product-profile.upsert",
+          expectedVersion: 0,
+          idempotencyKey: randomUUID(),
+          requestSha256: "a".repeat(64),
+          patch: {
+            artists: [{ name: "Disposable Native Artist" }],
+            label: { label: "Disposable Native Label" },
+            references: [{ kind: "genre", label: "Disposable Native Genre" }],
+          },
+        })
+        expect(result.createdArtistIds).toHaveLength(1)
+        expect(result.createdReferenceValueIds).toHaveLength(2)
+        expect(
+          await catalog.listCatalogProductArtists({
+            product_profile_id: result.profileId,
+          })
+        ).toHaveLength(1)
+        expect(
+          await catalog.listCatalogProductReferences({
+            product_profile_id: result.profileId,
+          })
+        ).toHaveLength(1)
+      })
+
+      it("normalizes imported descriptions transactionally without changing safe rows", async () => {
+        const database = knex({ client: "pg", connection: dbConfig.clientUrl })
+        const table = "catalog_product_profiles"
+        try {
+          await database(table).insert([
+            {
+              id: "cprof_disposable_legacy",
+              product_id: "prod_disposable_legacy",
+              description_html:
+                '<p style="color:red">Keep the release notes.</p><iframe src="https://example.com/embed"></iframe>',
+              version: 4,
+            },
+            {
+              id: "cprof_disposable_safe",
+              product_id: "prod_disposable_safe",
+              description_html: "<p>Already safe.</p>",
+              version: 7,
+            },
+          ])
+          const normalize = () =>
+            database.transaction(async (transaction) =>
+              normalizeLegacyCatalogDescriptions(
+                async (sql, parameters) =>
+                  (await transaction.raw(sql, parameters)).rows
+              )
+            )
+          expect((await normalize()).changed).toBe(1)
+          const changed = await database(table)
+            .where({ id: "cprof_disposable_legacy" })
+            .first()
+          expect(readCatalogProductProfile(changed)).toMatchObject({
+            description_html: "<p>Keep the release notes.</p>",
+            version: 5,
+          })
+          expect(
+            await database(table).where({ id: "cprof_disposable_safe" }).first()
+          ).toMatchObject({
+            description_html: "<p>Already safe.</p>",
+            version: 7,
+          })
+          expect((await normalize()).changed).toBe(0)
+        } finally {
+          await database.destroy()
+        }
+      })
+
+      it("persists a complete native catalog asset after a provider upload", async () => {
+        const catalog = getContainer().resolve<CatalogService>("catalog")
+        // This case tests the native catalog write boundary. The provider is
+        // isolated; real object-store uploads are a separate staging check.
+        const fileService = {
+          createFiles: jest.fn().mockResolvedValue({
+            id: "file_disposable_catalog_audit",
+            url: "https://media.example.com/disposable.webp",
+          }),
+        } as unknown as FileTypes.IFileModuleService
+        const idempotencyKey = randomUUID()
+        const result = await performCatalogMediaUpload(catalog, fileService, {
+          actorId: "user_disposable_catalog_audit",
+          idempotencyKey,
+          requestSha256: "c".repeat(64),
+          files: [
+            {
+              content: "isolated-provider-fixture",
+              filename: "disposable.png",
+              remoteFilename: `${idempotencyKey}-00.webp`,
+              height: 20,
+              width: 40,
+              size: 100,
+              mimeType: "image/webp",
+              sha256: "d".repeat(64),
+              source: {
+                channels: 3,
+                filename: "disposable.png",
+                format: "png",
+                frames: 1,
+                height: 20,
+                width: 40,
+                mimeType: "image/png",
+                size: 120,
+                sha256: "e".repeat(64),
+              },
+            },
+          ],
+        })
+        expect(result.mutation.files).toHaveLength(1)
+        const id = result.mutation.files[0]!.mediaAssetId
+        expect(
+          readCatalogMediaAsset(await catalog.retrieveCatalogMediaAsset(id))
+        ).toMatchObject({
+          lifecycle_status: "active",
+          version: 1,
+          width: 40,
+          height: 20,
+          alt_text: null,
+          quarantined_at: null,
+        })
+      })
+
+      it("links a source URL and reuses its metadata with native media records", async () => {
+        const catalog = getContainer().resolve<CatalogService>("catalog")
+        for (const suffix of ["first", "reused"]) {
+          const result = await mutateCatalogProductMedia(catalog, {
+            actorId: "user_disposable_catalog_audit",
+            aggregateId: `prod_disposable_media_${suffix}`,
+            command: "catalog.product-media.replace",
+            expectedVersion: 0,
+            idempotencyKey: randomUUID(),
+            requestSha256: "f".repeat(64),
+            media: [
+              {
+                sourceUrl: "https://media.example.com/source-only.webp",
+                altText: "Owned fixture artwork",
+              },
+            ],
+          })
+          expect(result).toMatchObject({ version: 1, replayed: false })
+          expect(result.createdAssetIds).toHaveLength(1)
+          expect(
+            readCatalogMediaAsset(
+              await catalog.retrieveCatalogMediaAsset(
+                result.createdAssetIds[0]!
+              )
+            )
+          ).toMatchObject({
+            alt_text: "Owned fixture artwork",
+            byte_size: null,
+            lifecycle_status: "active",
+            quarantined_at: null,
+            version: 1,
+          })
+        }
+      })
+
+      it("rolls back catalog parents and audit records when a dependent link fails", async () => {
+        const catalog = getContainer().resolve<CatalogService>("catalog")
+        const idempotencyKey = randomUUID()
+        await expect(
+          mutateCatalogProductProfile(catalog, {
+            actorId: "user_disposable_catalog_audit",
+            aggregateId: "prod_disposable_rollback",
+            command: "catalog.product-profile.upsert",
+            expectedVersion: 0,
+            idempotencyKey,
+            requestSha256: "b".repeat(64),
+            patch: {
+              label: { label: "Disposable Rollback Label" },
+              artists: [{ artistId: "artist_disposable_missing" }],
+            },
+          })
+        ).rejects.toThrow()
+        expect(
+          await catalog.listCatalogProductProfiles({
+            product_id: "prod_disposable_rollback",
+          })
+        ).toHaveLength(0)
+        expect(
+          await catalog.listCatalogReferenceValues({
+            value: "disposable-rollback-label",
+          })
+        ).toHaveLength(0)
+        expect(
+          await catalog.listCatalogAuthoringOperations({
+            idempotency_key: idempotencyKey,
+          })
+        ).toHaveLength(0)
+      })
+
       it("observes real pool contention, slow SQL, failure and cleanup without retaining query data", async () => {
         const database = knex({
           client: "pg",

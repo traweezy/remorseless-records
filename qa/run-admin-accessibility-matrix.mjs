@@ -105,6 +105,13 @@ const cases = [
     route: "/app/operations/tax-records",
     width: 1920,
   },
+  {
+    height: 900,
+    name: "tax-records-unavailable-laptop",
+    route: "/app/operations/tax-records",
+    taxRecordsState: "unavailable",
+    width: 1440,
+  },
 ]
 
 const parseReport = (output, caseName) => {
@@ -126,6 +133,8 @@ const runCase = async (acceptanceCase) => {
     ADMIN_ACCEPTANCE_ROUTE: acceptanceCase.route,
     ADMIN_ACCEPTANCE_SCREENSHOT: screenshotPath,
     ADMIN_ACCEPTANCE_WIDTH: String(acceptanceCase.width),
+    ADMIN_ACCEPTANCE_TAX_RECORDS_STATE:
+      acceptanceCase.taxRecordsState ?? "ready",
     ...(acceptanceCase.click
       ? { ADMIN_ACCEPTANCE_CLICK: acceptanceCase.click }
       : {}),

@@ -42,6 +42,11 @@ const [
 ])
 
 const packageManifest = JSON.parse(packageSource)
+assert.doesNotMatch(
+  acceptanceSource,
+  /--(?:no-sandbox|disable-setuid-sandbox)/u
+)
+assert.match(acceptanceSource, /await page\.waitForFunction/u)
 assert.equal(
   packageManifest.scripts?.["qa:admin:accessibility"],
   "node qa/run-admin-accessibility-matrix.mjs"

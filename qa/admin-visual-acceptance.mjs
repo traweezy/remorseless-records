@@ -11,6 +11,9 @@ import {
 const require = createRequire(new URL("../package.json", import.meta.url))
 const puppeteer = require("puppeteer")
 const { AxePuppeteer } = require("@axe-core/puppeteer")
+const {
+  parseTaxReportPeriod,
+} = require("./backend/.medusa/server/src/lib/tax-reporting/periods.js")
 
 const configuredBaseUrl = process.env.ADMIN_ACCEPTANCE_BASE_URL?.trim()
 const staticServer = configuredBaseUrl ? null : await startAdminStaticServer()
@@ -31,6 +34,8 @@ const clickText = process.env.ADMIN_ACCEPTANCE_CLICK ?? ""
 const setup = process.env.ADMIN_ACCEPTANCE_SETUP ?? ""
 const taxConfiguration =
   process.env.ADMIN_ACCEPTANCE_TAX_CONFIGURATION ?? "ready"
+const taxRecordsState =
+  process.env.ADMIN_ACCEPTANCE_TAX_RECORDS_STATE ?? "ready"
 const axeInclude = process.env.ADMIN_ACCEPTANCE_AXE_INCLUDE ?? "main"
 const browserExecutable =
   process.env.ADMIN_ACCEPTANCE_BROWSER?.trim() ||
@@ -55,6 +60,10 @@ if (!["ready", "unconfigured"].includes(taxConfiguration)) {
   throw new TypeError(
     "ADMIN_ACCEPTANCE_TAX_CONFIGURATION must be ready or unconfigured."
   )
+}
+if (!["ready", "unavailable"].includes(taxRecordsState)) {
+  await staticServer?.close()
+  throw new TypeError("Admin tax-records fixture state is invalid.")
 }
 if (
   !Number.isInteger(width) ||
@@ -505,9 +514,10 @@ const fixtureFor = (url) => {
     }
   }
   if (pathname === "/admin/tax-records") {
+    if (taxRecordsState === "unavailable") return { invalid: "fixture" }
     return {
       destinations: [],
-      filingState: "CT",
+      filingState: url.searchParams.get("filing_state") ?? "CT",
       filters: {
         collectionModes: ["collect", "disabled", "unknown"],
         currencies: [],
@@ -522,14 +532,10 @@ const fixtureFor = (url) => {
         states: [],
       },
       generatedAt: timestamp,
-      period: {
-        endDate: "2026-10-01",
-        endExclusive: "2026-10-01T04:00:00.000Z",
-        label: "Jul 1 – Sep 30, 2026",
-        startDate: "2026-07-01",
-        startInclusive: "2026-07-01T04:00:00.000Z",
-        timeZone: "America/New_York",
-      },
+      period: parseTaxReportPeriod({
+        startDate: url.searchParams.get("start") ?? "2026-07-01",
+        endDate: url.searchParams.get("end") ?? "2026-10-01",
+      }),
       records: [],
       resultCount: 0,
       source: {
@@ -677,11 +683,14 @@ const fixtureFor = (url) => {
 }
 
 let browser
+const navigations = []
+const issues = []
+const failedResponses = []
+const fixtureRequests = new Map()
 
 try {
   browser = await puppeteer.launch({
     args: [
-      "--no-sandbox",
       "--disable-dev-shm-usage",
       "--disable-extensions",
       `--window-size=${width},${height}`,
@@ -695,9 +704,11 @@ try {
   await page.emulateMediaFeatures([
     { name: "prefers-reduced-motion", value: "reduce" },
   ])
-  const issues = []
-  const failedResponses = []
-  const fixtureRequests = new Map()
+  page.on("framenavigated", (frame) => {
+    if (frame === page.mainFrame()) {
+      navigations.push(new URL(frame.url()).pathname)
+    }
+  })
   page.on("console", (message) => {
     if (message.type() === "error") {
       issues.push(`console:${message.text()}`)
@@ -787,6 +798,18 @@ try {
     timeout: 30_000,
     waitUntil: "domcontentloaded",
   })
+  // Wait for the compiled route and fixture requests, not just the shell.
+  // A fixed sleep alone can audit skeletons while lazy routes still load.
+  await page.waitForFunction(
+    () => {
+      const main = document.querySelector("main")
+      return (
+        main?.querySelector("h1,h2,h3") &&
+        !main.querySelector('[aria-busy="true"], .animate-pulse')
+      )
+    },
+    { timeout: 30_000 }
+  )
   await new Promise((resolve) => setTimeout(resolve, settleMs))
   const clickButton = async (label) => {
     const buttons = await page.$$("button")
@@ -815,6 +838,14 @@ try {
     await page.waitForSelector("#catalog-create-title")
     await clickButton("Continue")
     await page.waitForSelector('[role="alert"]')
+    await page.waitForFunction(
+      () => document.activeElement?.id === "catalog-create-title"
+    )
+    await page.type("#catalog-create-title", "Acceptance Release")
+    await clickButton("Continue")
+    await page.waitForFunction(
+      () => document.activeElement?.id === "catalog-create-artist"
+    )
   }
   if (setup === "tax-provider-availability") {
     await page.evaluate(() => {
@@ -826,6 +857,7 @@ try {
   }
   if (clickText) {
     await clickButton(clickText)
+    await page.waitForSelector(axeInclude, { visible: true })
     await new Promise((resolve) => setTimeout(resolve, 1_500))
   }
   await page.screenshot({ fullPage: true, path: screenshotPath })
@@ -1150,6 +1182,16 @@ try {
       `Admin visual acceptance failed: ${uniqueFindingCodes.join(", ")}`
     )
   }
+} catch (error) {
+  console.error(
+    JSON.stringify({
+      navigations: navigations.slice(0, 20),
+      issues: issues.slice(0, 20),
+      failedResponses: failedResponses.slice(0, 20),
+      fixtureRequests: Object.fromEntries(fixtureRequests),
+    })
+  )
+  throw error
 } finally {
   await browser?.close()
   await staticServer?.close()
