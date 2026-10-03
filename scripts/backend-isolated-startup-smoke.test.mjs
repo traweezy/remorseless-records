@@ -42,6 +42,47 @@ test("smoke child retains the exact runtime loader path without provider secrets
   assert.equal(environment.LD_LIBRARY_PATH, imageLoaderPath)
   assert.equal(environment.COMMIT_SHA, revision)
   assert.equal(Object.hasOwn(environment, "STRIPE_API_KEY"), false)
+  const runtime = backendChildEnvironment("synthetic", revision, "runtime")
+  assert.equal(new URL(runtime.DATABASE_URL).username, "app_runtime")
+  assert.equal(Object.hasOwn(runtime, "DATABASE_MIGRATION_URL"), false)
+  assert.throws(() =>
+    backendChildEnvironment("synthetic", revision, "arbitrary")
+  )
+})
+
+test("runtime smoke selects only the fixed isolated role and credential mount", () => {
+  const args = [
+    "--target-dir",
+    targetDir,
+    "--backend-image",
+    backendImageId,
+    "--revision",
+    revision,
+  ]
+  assert.equal(
+    parseArguments([...args, "--database-role", "runtime"]).databaseRole,
+    "runtime"
+  )
+  assert.throws(() => parseArguments([...args, "--database-role", "postgres"]))
+  const plans = containerPlans({
+    targetDir,
+    backendImageId,
+    revision,
+    owner: "a".repeat(32),
+    names: { anchor: "anchor", redis: "redis", backend: "backend" },
+    databaseRole: "runtime",
+  })
+  assert.ok(
+    plans.backend.includes(
+      `type=bind,source=${targetDir}/runtime-password,target=/run/recovery-password,readonly`
+    )
+  )
+  assert.ok(plans.backend.includes("RECOVERY_DATABASE_ROLE=runtime"))
+  assert.ok(
+    !plans.backend.some((value) =>
+      value.includes(`source=${targetDir}/password,`)
+    )
+  )
 })
 
 const fakeDocker = ({

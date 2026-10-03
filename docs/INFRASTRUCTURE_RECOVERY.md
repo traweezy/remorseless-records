@@ -141,6 +141,44 @@ Measure these objectives from the external operations monitors and provider
 metrics. Do not add replicas or paid monitoring until the baseline and alert
 owner exist.
 
+## October 3 recovery correction and authority rehearsal
+
+The [current restore evidence](POSTGRES_RESTORE_ACCEPTANCE.md) supersedes the
+old image's package-scan acceptance. The exact corrected PostgreSQL 16.15 image
+passed a fresh zero-UNKNOWN/HIGH/CRITICAL scan and a new 171-table staging-data
+restore. The initial overlong Unix-socket path failed and cleaned up; the
+runner now rejects that path before provisioning.
+
+`scripts/lib/postgres-role-split.mjs` builds a deterministic plan for the
+reviewed ordinary public tables/sequences and enum types, leaving all new roles NOLOGIN until
+the caller assigns separately generated secrets. It is not a connection or
+apply CLI. An operator must bind it to a fresh verified snapshot, an exact
+source/deployment/volume identity and a transactional re-read of schema,
+objects, ACLs, extensions and existing roles. Unsupported topology requires
+review; never feed a broad catalog blindly into this narrow planner.
+
+The three login connection limits are 40 runtime, five migration and three
+backup. Runtime receives SELECT/INSERT/UPDATE/DELETE and application sequence
+USAGE/SELECT, without TRUNCATE, schema/database CREATE, TEMP, role switching,
+ownership, or migration-ledger writes/sequence use. Migrator defaults to
+`app_owner` within this database, so future objects retain non-login ownership
+and default runtime grants. Backup inherits `pg_read_all_data` without SET or
+ADMIN membership options. Default function EXECUTE for PUBLIC is revoked for
+both potential migration creators; new definer routines need explicit review.
+
+On the isolated restore, all three authority audits passed; actual privilege
+and default-ownership checks passed, including 518 physical Product rows
+(the storefront's published, nondeleted API view has a different count).
+The read-only staging inventory found only `postgres` as a non-system role,
+171 ordinary tables/eight sequences/four independent enum types, no
+application routines, and no foreign servers, large objects, RLS policies,
+publications/subscriptions, default ACLs or parameter ACLs. Both actual Medusa migration commands passed on a final fresh restored target
+with the complete enum-aware role plan. Missing empty module migration
+directories were corrected in post-build rather than making the rehearsal
+container filesystem writable. Live ownership and credentials have not yet
+changed. The source remains PostgreSQL 16.11; this
+recovery-only image correction does not upgrade that live service.
+
 ## PostgreSQL authority split
 
 The production role plan uses three distinct login roles and one non-login

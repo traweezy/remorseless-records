@@ -15,6 +15,9 @@ const {
 } = require("./post-build-configuration")
 const { verifyAdminCspBuild } = require("./verify-admin-csp-build")
 const { rewriteRuntimeAliases } = require("./rewrite-runtime-aliases")
+const {
+  prepareRuntimeMigrationDirectories,
+} = require("./runtime-migration-directories")
 
 const MEDUSA_SERVER_PATH = path.join(process.cwd(), ".medusa", "server")
 const MEDUSA_PACKAGE_JSON = path.join(MEDUSA_SERVER_PATH, "package.json")
@@ -338,3 +341,7 @@ execFileSync(
     },
   }
 )
+
+prepareRuntimeMigrationDirectories(MEDUSA_SERVER_PATH, {
+  includeDependencies: true,
+})

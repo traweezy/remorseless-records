@@ -155,6 +155,7 @@ patchedDependencies:
   '@radix-ui/react-popover@1.1.5': patches/@radix-ui__react-popover@1.1.5.patch
   '@radix-ui/react-select@2.1.5': patches/@radix-ui__react-select@2.1.5.patch
   '@radix-ui/react-dialog@1.1.5': patches/@radix-ui__react-dialog@1.1.5.patch
+  braces@3.0.3: patches/braces@3.0.3.patch
 
 minimumReleaseAge: 10080
 minimumReleaseAgeStrict: true

@@ -51,7 +51,7 @@ import {
 import { openPrivateOutputDirectory } from "./lib/postgres-snapshot.mjs"
 
 const imageId =
-  "sha256:76db58e52e571729aa4ab51a5c597189e6f570086345c29b68b358067a6547e8"
+  "sha256:df109059f8fdae1b25c5ee9a032cdf9897323783020e0fb7f09771b20928bd67"
 const imageUser = "999:999"
 const maxArchiveBytes = 512 * 1024 * 1024
 const ownerLabel = "com.remorseless.recovery.target"
@@ -991,11 +991,23 @@ export const waitForTargetReady = async (
   }
 }
 
+export const assertTargetSocketPath = (baseDir) => {
+  // Linux sockaddr_un.sun_path includes a terminating NUL in its 108 bytes.
+  const socket = join(
+    baseDir,
+    `pg16-target-${"0".repeat(32)}`,
+    "socket",
+    ".s.PGSQL.5432"
+  )
+  assert.ok(Buffer.byteLength(socket, "utf8") < 108)
+}
+
 const create = async (baseDir, paths, signal) => {
   signal?.throwIfAborted()
-  await runCreatePhase("base_directory", () =>
-    canonicalPrivateDirectory(baseDir)
-  )
+  await runCreatePhase("base_directory", async () => {
+    await canonicalPrivateDirectory(baseDir)
+    assertTargetSocketPath(baseDir)
+  })
   const { scope, hashes } = await runCreatePhase("source_bundle", () =>
     verifySourceScope(paths)
   )

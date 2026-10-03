@@ -443,7 +443,7 @@ export const verifyDisposableIntegrationBoundary = async () => {
     )
   assert.equal(
     packageManifest.scripts?.["qa:postgres-recovery:integration"],
-    "node --test scripts/postgres-recovery.integration.test.mjs scripts/postgres-recovery-roundtrip.integration.test.mjs"
+    "node --test scripts/postgres-recovery.integration.test.mjs scripts/postgres-recovery-roundtrip.integration.test.mjs scripts/postgres-role-split.test.mjs"
   )
   const recoveryTest = await read(
     "scripts/postgres-recovery.integration.test.mjs"

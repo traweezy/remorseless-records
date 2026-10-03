@@ -4,6 +4,59 @@ Last updated: 2026-10-02 (America/New_York)
 
 ## Current continuation — direct staging only
 
+Latest accepted staging remains `214a27f5b9a652093491be2b6fa5efc4ef515392`;
+its completed acceptance is recorded below. The next local hardening batch is
+implemented, with the release-policy decision below pending. No live PostgreSQL
+role, credential or Railway variable has been changed for this batch.
+
+### Prepared batch and current release blocker — October 3 UTC
+
+- Braces 3.0.3 has an exact upstream-derived depth-limit backport, bounded
+  consumer regressions and eight-file integrity verification, including the
+  packaged image. Modified, oversized or linked package files are rejected.
+  GitHub alert 56/CVE-2026-93687 remains visible and has no upstream fixed
+  release. The fresh final candidate image scan reports 25 MEDIUM, eight LOW
+  and exactly one HIGH: this same braces finding by version. The existing
+  zero-High gate rejected the image. No ignore, VEX or acceptance-policy change
+  has been applied. The user was asked asynchronously to approve an exact,
+  temporary exception bound to patched bytes and regressions; no answer has
+  arrived. **Do not infer that approval from earlier Next.js cooling approval.**
+- Corrected PostgreSQL 16.15 recovery image, signed OpenSSL package hashes,
+  complete filesystem comparison, fresh scan and a new 171-table source-bound
+  restore passed. The target runner now rejects overlong Unix-socket paths
+  before provisioning.
+- The deterministic role plan covers 171 tables, eight sequences and all four
+  independent enum types. A final fresh target (`7692249216125980686`) passed
+  role/grant rehearsal at `01:36:15.991Z`; plan SHA-256 was
+  `b363aeb4d18be4e6083c97e372a260277d4e458b026fee47e95c0a3ca261f032` for
+  that isolated `postgres` database. Live `railway` produces a different plan
+  digest. All three audits and negative privilege checks passed. Both real
+  Medusa migration commands passed at `01:36:34.112Z` as `app_migrator`, with
+  its database-scoped default `app_owner` role. Subsequent startup as
+  `app_runtime` returned healthy database/Redis checks on that same final
+  candidate. Both owned rehearsal database targets and smoke containers were
+  removed. No provider egress or workers were enabled.
+- Migration rehearsal exposed missing empty migration directories in local
+  modules and packaged Medusa distributions. Post-build now prepares them in
+  the packaged tree; tests preserve existing migration bytes and reject
+  symlinks/store escapes. The smoke tool can use the fixed isolated runtime
+  role without mounting the administrator credential into the application.
+- Shared lint/type/policy checks, both production builds, Backend coverage
+  (285 suites / 2,280 tests), and the service integration aggregate passed.
+  The latter includes 37 PostgreSQL recovery/role cases; all 155 PostgreSQL
+  and 22 Redis relay connections closed cleanly and owned fixtures were removed.
+  Storefront compilation used the deterministic loopback fixture and verified
+  131 client assets.
+
+The local Backend image used for rehearsal is
+`sha256:839be49ab1f61203e37c90e301be6f0b935e22a123058e6e7ad866347bdf0b74`.
+Its label names the 214a27f base, but it includes this working batch; it is not
+an exact committed release artifact and is not accepted by the current scan
+policy. Repeat final-revision image/CI/Railway acceptance when the policy
+blocker is resolved. Hold live role/credential cutover until that delivery can
+complete. Direct staging remains the authorized destination.
+
+
 The user explicitly rejected candidate tags and an extra pre-push GitHub CI
 cycle. Use normal local gates and logical Conventional Commits, push the
 whole batch directly to `staging`, then watch all four exact-revision CI
@@ -89,7 +142,50 @@ close the previously missing scheduled-run evidence; restoration, PITR,
 off-site retention and expired-record cleanup remain separate. See the fresh
 October 3 evidence in [infrastructure recovery](INFRASTRUCTURE_RECOVERY.md).
 
-## Current hardening batch — database authority and backup evidence
+## Accepted authority/backup batch — October 3, 2026 UTC
+
+Direct staging revision `214a27f5b9a652093491be2b6fa5efc4ef515392` completed
+all four workflows and 23 required checks by `01:00:51Z`: Root
+[37083977395](https://github.com/traweezy/remorseless-records/actions/runs/37083977395),
+Backend [37083977431](https://github.com/traweezy/remorseless-records/actions/runs/37083977431),
+Storefront [37083977387](https://github.com/traweezy/remorseless-records/actions/runs/37083977387),
+and Runtime Images [37083977393](https://github.com/traweezy/remorseless-records/actions/runs/37083977393).
+Railway Backend `5643aabe-6697-4dbd-92dc-14926b4134d8` and Storefront
+`015b739e-978a-4d7c-83d7-50abb057bb35` both succeeded on that SHA. Live
+acceptance completed by `01:11:03Z`:
+
+- Both health pairs and all 11 Backend/two Storefront dependencies passed;
+  ordinary scheduler heartbeat completed at `01:06:06.563Z`. Catalog reads
+  returned 461 Products, 442 Discography records, three shelves and 25
+  memberships. The three-volume backup freshness gate passed.
+- Both running services retain Node 26.9.0, OpenSSL `3.5.7-1~deb13u3` and
+  PCRE2 `10.46-1~deb13u2`, with the five reviewed runtime flags false. The
+  running Backend uses the valid sending-only replacement Resend key; no
+  email was sent.
+- Responsive browsers passed 69 cases with eight expected skips; Firefox and
+  WebKit passed 16, without failures/retries/flakiness. Fresh desktop, Pixel 7
+  and iPhone 15 Pro Quick Shop screenshots were inspected.
+- Adjacent bounded log windows `01:05:00–01:07:29.062Z` and
+  `01:07:29.063–01:10:45.423Z` contained respectively 177/348 and 32/157
+  Backend/Storefront rows. Each matched its intentional guard correlation;
+  independent HTTP 5xx filters and unclassified errors were zero. Storefront
+  retained 12 then three known stream-close groups under digest `3072950123`.
+  Neither window reached the 2,000-row cap or showed truncation.
+
+A `01:06:05.608Z` readiness sample observed a reused connection, 1,694-ms
+acquisition, 6-ms query, ten occupied connections and 2,856 pending acquisitions.
+This is pool contention for that sample, not connection creation. Seventy
+follow-up samples every two seconds had zero pending acquisitions and a maximum
+30-ms acquisition, including the next checkout scheduler tick. A bounded seven-row deployment log review shows the checkout job started at
+`01:06:06.520Z`, after the slow probe completed; it examined 60 carts in
+43.226 ms with no failures. The transient queue remains unattributed.
+
+The next substantive batch combines the braces nesting backport, corrected
+same-major recovery image, and database role-split rehearsal/cutover work.
+Continue across checkpoints; the previous exact-SHA CI, rollout and live gates
+are complete, so the next validated batch may push directly to staging.
+
+### Implementation and local verification for the accepted batch
 
 Local implementation adds parameter-ACL/definer-routine authority checks,
 connection creation/reuse/pool-count diagnostics, and an exact staging volume

@@ -1,5 +1,53 @@
 # PostgreSQL logical restore acceptance
 
+## Current recovery image and role rehearsal — October 3, 2026 UTC
+
+The former image `76db58e52e57…` now fails a fresh package scan: OpenSSL
+CVE-2026-75804 and CVE-2026-84782 each affect its `libssl3t64` and legacy
+provider packages, for four High findings. Do not reuse its historical passing
+scan. The guarded target now pins
+`sha256:df109059f8fdae1b25c5ee9a032cdf9897323783020e0fb7f09771b20928bd67`.
+The reviewed [correction recipe](../docker/recovery/postgres16-openssl/README.md)
+updates both packages to `3.5.7-1~deb13u3`, preserving every PostgreSQL binary
+and all unrelated file contents/permissions. The original reduced image's
+missing build recipe remains a provenance limitation.
+
+Trivy 0.70.0 with the October 2 `19:00:34.190885353Z` database found zero
+UNKNOWN/HIGH/CRITICAL, 61 MEDIUM and 33 LOW findings on the exact final image.
+The database SHA-256 remained
+`c4607be32b728f4bf90501199693f0fcbc9b3908deb40c26286c0b8425a847ac`
+through the final `01:15:50Z` scan. Signed APT metadata, exact package hashes,
+controls, full filesystem comparison, CycloneDX and raw scan are retained in
+private local drill artifacts. PostgreSQL's current version-16 security table
+lists the reviewed server/client fixes at or below 16.15; package scanning
+alone does not cover the source-built server.
+
+A fresh shared staging snapshot completed at `01:14:42.344Z`, with source
+system identifier `7527124368992473123`, stable guarded Railway identities,
+and archive SHA-256
+`715817ba5a7d815884b1e73a77ebb443a43d9739ae548a9a4d3b8b3acaaa900e`.
+The owned, network-none corrected-image target had distinct system identifier
+`7692244315456290829`. Its single-use transactional restore verified all 171
+physical tables and their row counts, plus the receipt's schema invariants.
+Subsequent isolated role rehearsal passed all three authority profiles,
+runtime DML/DDL separation, migration-ledger protection, backup write denial,
+and owner/default-grant behavior for a newly migrated table.
+
+The first create attempt used a host Unix-socket path of 109 bytes, beyond
+Linux's 107-byte pathname maximum. Its owned resources were cleaned up. Create
+now rejects overlong UTF-8 paths in `base_directory`, before reading source
+artifacts or provisioning containers; tests cover exact byte boundaries. A
+shorter canonical private base directory resolved the failure. Select a short
+absolute path for the commands below.
+
+These local artifacts are neither scheduled nor off-site retention. Role
+rehearsal does not prove a live credential cutover, production provider
+behavior, PITR or production recovery duration. The final fresh target
+`7692249216125980686` additionally verified the complete role plan, including
+four enum owners, and both real Medusa migration commands by `01:36:34Z`.
+See the handoff for the separate Backend image scan blocker.
+
+
 Use this workflow for a trusted custom-format archive and an owned, empty,
 disposable PostgreSQL database on the **same server major** as its source.
 The two-command capture path below requires source writes to be quiesced before

@@ -9,6 +9,29 @@ tracks what is still required before production traffic is approved.
 
 ## Current staging acceptance — October 3 UTC
 
+The latest accepted revision is `214a27f5b9a652093491be2b6fa5efc4ef515392`.
+All four workflows/23 checks passed; both exact-SHA Railway services and live
+acceptance completed by `01:11:03Z`. Authority auditing, connection creation/
+reuse diagnostics and fresh-volume-backup release checks are deployed. Health,
+ordinary scheduler, catalog/runtime checks, 85 browser cases, screenshots and
+bounded correlated logs passed. One readiness sample identified transient pool
+contention; 70 subsequent samples were clear, including the next scheduler
+tick. Attribution remains open. See the handoff for exact identities and limits.
+
+### Next prepared batch and release gate
+
+The braces nesting backport, corrected recovery image, database role plan and
+read-only migration-directory support are locally implemented and tested. A
+fresh 171-table restore passed role/grant/enum-owner checks and both migration
+commands. Live PostgreSQL credentials and ownership remain unchanged. A new
+version-based High braces finding blocks the strict image gate despite verified
+backported bytes. An exact temporary mitigation exception is awaiting the user's
+decision; no scanner or audit suppression has been added. The previous Next.js
+cooling exception does not authorize this change. See the handoff and dependency
+audit for evidence and remaining delivery gates.
+
+### Previous accepted direct-push correction
+
 Revision `2460f30237d9a2fbf4c1e0ca94a421b12f75625f` was pushed directly
 to staging. All four workflows and 23 required checks passed; both exact-SHA
 Railway deployments and live acceptance completed by `00:32:35Z`. The batch
@@ -25,7 +48,7 @@ PostgreSQL, Redis and Bucket. This closes the missing scheduled-run evidence,
 not restoration, PITR or off-site retention. Keep post-acceptance evidence for
 the next substantive batch, without a routine documentation-only push.
 
-## Database and recovery diagnostics — next staging batch
+## Database and recovery diagnostics — deployed at 214a27f
 
 The role auditor now rejects explicit configuration-parameter privileges and
 executable SECURITY DEFINER routines across PUBLIC, inherited and SET-reachable

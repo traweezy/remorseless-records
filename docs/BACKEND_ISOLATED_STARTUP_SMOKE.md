@@ -34,6 +34,25 @@ node scripts/backend-isolated-startup-smoke.mjs \
   --revision "$REVISION"
 ```
 
+After applying and auditing the reviewed role plan on the disposable restore,
+`--database-role runtime` tests startup as the fixed `app_runtime` login. Write
+only that isolated role's synthetic password to the target's canonical
+`runtime-password` file (owned by the current UID, mode `0600`, 40–64 base64url
+characters). The runner mounts this file instead of the administrator password;
+the child receives no migration URL or provider credentials. Arbitrary role
+names and external credential paths are rejected. The ordinary restore verifier
+still uses the separate target-administrator credential before startup.
+
+The October 3 working candidate returned healthy database/Redis checks using
+`app_runtime` against a fresh 171-table restored target after the complete enum-aware role
+plan and both migration commands passed. The owned targets and smoke
+containers were removed. This is functional rehearsal,
+not final-release image acceptance: its fresh Trivy report still contains
+CVE-2026-93687 by braces 3.0.3 version despite verified backported files. The
+zero-High image gate rejected it; the proposed exact mitigation exception is
+pending the user's decision. No scanner was suppressed to run this isolated,
+network-none functional check.
+
 The CLI rejects a nonlocal Docker default context, a source/target identity or
 receipt mismatch, an unexpected image ID/revision or image user other than
 `1000:1000`, changed container security settings, unavailable Redis, degraded

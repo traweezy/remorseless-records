@@ -22,6 +22,7 @@ import { fileURLToPath } from "node:url"
 import { createPostgresClientEnvironment } from "./lib/postgres-logical-backup.mjs"
 import {
   assertContainerBoundary,
+  assertTargetSocketPath,
   createPhaseFailure,
   finishFailedCreate,
   isolatedTargetFailureEvent,
@@ -39,6 +40,33 @@ import {
 const scripts = fileURLToPath(new URL("./", import.meta.url))
 const sourcePassword = "local_integration_only"
 const sha256 = (bytes) => createHash("sha256").update(bytes).digest("hex")
+
+test("target paths reject Linux socket overflow before provisioning", async (t) => {
+  assert.doesNotThrow(() => assertTargetSocketPath(`/tmp/${"a".repeat(36)}`))
+  assert.throws(() => assertTargetSocketPath(`/tmp/${"a".repeat(37)}`))
+  assert.throws(() => assertTargetSocketPath(`/tmp/${"é".repeat(19)}`))
+  const parent = await mkdtemp(join(tmpdir(), "rr-socket-length-"))
+  t.after(() => rm(parent, { recursive: true, force: true }))
+  const base = join(parent, "x".repeat(40))
+  await mkdir(base, { mode: 0o700 })
+  await assert.rejects(
+    main([
+      "create",
+      "--base-dir",
+      base,
+      "--source-scope",
+      "/absent/scope",
+      "--archive",
+      "/absent/archive",
+      "--manifest",
+      "/absent/manifest",
+      "--receipt",
+      "/absent/receipt",
+    ]),
+    (error) => error.subphase === "base_directory"
+  )
+  assert.deepEqual(await readdir(base), [])
+})
 const readStateMetadata = async (path) => {
   const handle = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW)
   try {
@@ -371,7 +399,7 @@ test("readiness diagnosis only reports fixed timeout and owned container states"
     Id: state.containerId,
     Name: `/${state.containerName}`,
     Image:
-      "sha256:76db58e52e571729aa4ab51a5c597189e6f570086345c29b68b358067a6547e8",
+      "sha256:df109059f8fdae1b25c5ee9a032cdf9897323783020e0fb7f09771b20928bd67",
     Config: {
       Labels: { "com.remorseless.recovery.target": state.owner },
       User: "999:999",

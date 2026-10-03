@@ -19,7 +19,7 @@ const smokeLabel = "com.remorseless.recovery.backend-smoke"
 const imagePattern = /^sha256:[a-f0-9]{64}$/u
 const revisionPattern = /^[a-f0-9]{40}$/u
 const containerPattern = /^[a-f0-9]{64}$/u
-const help = `Usage: backend-isolated-startup-smoke --target-dir <restored-private-target> --backend-image <sha256:id> --revision <40-hex-sha>
+const help = `Usage: backend-isolated-startup-smoke --target-dir <restored-private-target> --backend-image <sha256:id> --revision <40-hex-sha> [--database-role runtime]
 Requires an already restored, source-bound disposable PostgreSQL target and a
 local Backend runtime image whose OCI revision and COMMIT_SHA equal --revision.
 Runs server-only Medusa and disposable Redis in an unnetworked Docker namespace;
@@ -76,24 +76,31 @@ const dockerCommand = (args, options) =>
 
 export const parseArguments = (args) => {
   if (args.length === 1 && args[0] === "--help") return { help: true }
-  assert.equal(args.length, 6)
+  assert.ok(args.length === 6 || args.length === 8)
   const values = {}
   for (let index = 0; index < args.length; index += 2) {
     const key = args[index]
     assert.ok(
-      ["--target-dir", "--backend-image", "--revision"].includes(key) &&
-        !(key in values)
+      [
+        "--target-dir",
+        "--backend-image",
+        "--revision",
+        "--database-role",
+      ].includes(key) && !(key in values)
     )
     values[key] = args[index + 1]
   }
-  assert.equal(Object.keys(values).length, 3)
+  assert.ok([3, 4].includes(Object.keys(values).length))
   assert.equal(resolve(values["--target-dir"]), values["--target-dir"])
   assert.match(values["--backend-image"], imagePattern)
   assert.match(values["--revision"], revisionPattern)
+  if (values["--database-role"] !== undefined)
+    assert.equal(values["--database-role"], "runtime")
   return {
     targetDir: values["--target-dir"],
     backendImageId: values["--backend-image"],
     revision: values["--revision"],
+    ...(values["--database-role"] ? { databaseRole: "runtime" } : {}),
   }
 }
 
@@ -175,6 +182,7 @@ export const containerPlans = ({
   owner,
   names,
   bootstrapPath = backendBootstrap,
+  databaseRole = "administrator",
 }) => ({
   anchor: [
     "run",
@@ -241,11 +249,13 @@ export const containerPlans = ({
     "--mount",
     `type=bind,source=${join(targetDir, "socket")},target=/run/recovery-pg,readonly`,
     "--mount",
-    `type=bind,source=${join(targetDir, "password")},target=/run/recovery-password,readonly`,
+    `type=bind,source=${join(targetDir, databaseRole === "runtime" ? "runtime-password" : "password")},target=/run/recovery-password,readonly`,
     "--mount",
     `type=bind,source=${bootstrapPath},target=/run/smoke-bootstrap.mjs,readonly`,
     "--env",
     `COMMIT_SHA=${revision}`,
+    "--env",
+    `RECOVERY_DATABASE_ROLE=${databaseRole}`,
     "--entrypoint",
     "node",
     backendImageId,
@@ -353,7 +363,13 @@ export const runSmoke = async (
   } = {}
 ) => {
   signal?.throwIfAborted()
-  const { targetDir, backendImageId, revision } = options
+  const {
+    targetDir,
+    backendImageId,
+    revision,
+    databaseRole = "administrator",
+  } = options
+  assert.ok(["administrator", "runtime"].includes(databaseRole))
   assert.equal(
     await docker([
       "context",
@@ -367,6 +383,18 @@ export const runSmoke = async (
   await assertLocalSocket()
   const verified = await verifyTarget(targetDir, signal)
   const state = await readState(targetDir, verified)
+  const credentialPath = join(
+    targetDir,
+    databaseRole === "runtime" ? "runtime-password" : "password"
+  )
+  if (databaseRole === "runtime") {
+    const credential = await lstat(credentialPath)
+    assert.ok(credential.isFile() && !credential.isSymbolicLink())
+    assert.equal(credential.uid, process.getuid())
+    assert.equal(credential.mode & 0o077, 0)
+    assert.equal(await realpath(credentialPath), credentialPath)
+    assert.ok(credential.size >= 40 && credential.size <= 65)
+  }
   assert.equal(await docker(["info", "--format", "{{.ID}}"]), state.daemonId)
   await assertImage(docker, backendImageId, revision)
   await assertImage(docker, redisImageId)
@@ -383,6 +411,7 @@ export const runSmoke = async (
     revision,
     owner,
     names,
+    databaseRole,
   })
   const created = new Map()
   let result
@@ -433,7 +462,7 @@ export const runSmoke = async (
                   destination: "/run/recovery-pg",
                 },
                 {
-                  source: join(targetDir, "password"),
+                  source: credentialPath,
                   destination: "/run/recovery-password",
                 },
                 {
@@ -538,6 +567,7 @@ export const runSmoke = async (
           checks,
           network: "none",
           workerMode: "server",
+          ...(databaseRole === "runtime" ? { databaseRole } : {}),
         }
         break
       } catch {

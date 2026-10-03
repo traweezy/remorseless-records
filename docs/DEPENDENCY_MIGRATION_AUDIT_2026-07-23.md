@@ -1,5 +1,48 @@
 # Dependency Migration Audit — 2026-07-23
 
+## Braces nesting backport — October 3, 2026 UTC
+
+GitHub added the package mapping for High
+[GHSA-vfj7-8cjw-p6xm](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm)
+(CVE-2026-93687) on October 2 at 22:36 UTC; repository alert 56 opened at
+23:01 UTC. The advisory was originally published September 18. `braces`
+3.0.3 remains the newest npm release and no fixed version is listed. The npm
+audit response did not yet include this newly mapped advisory; its zero High
+count does not close the GitHub finding.
+
+The root pnpm patch backports the five library-file changes from open upstream
+[PR 72](https://github.com/micromatch/braces/pull/72), exact head
+`d0d575e55e74a4e0218e5248fafb79efc3e54ebb` (MIT). Parsing now limits brace and
+parenthesis nesting to 100, and compilation, expansion and stringification
+bound direct AST recursion. Callers can lower the limit but cannot raise it
+above 100. This intentionally rejects exceptionally deep patterns that were
+previously capable of exhausting the stack. Ordinary globs and existing
+maximum-length/range limits remain covered.
+
+`patches/braces@3.0.3.patch` has SHA-256
+`37f95f7d660c05bfd44d4b429ca49ceeede99dcff68389f81ee9b995a8ea24d2`.
+The lockfile binds that patch and its two consumer edges; an unrelated
+`third-party-web` resolution change produced by patch-commit was removed
+before the successful frozen install. No package version, cooling exception,
+audit ignore or scanner suppression was added. GitHub alert 56 remains open;
+version-only scanners cannot verify installed backported bytes.
+The subsequent fresh Trivy database does include this advisory: the final
+working Backend candidate has one High finding and the current image gate
+rejects it. `scripts/lib/braces-backport.mjs` verifies eight exact package files
+and is integrity evidence only; it does not suppress that finding or authorize
+release. The exact mitigation exception is pending the user's decision.
+
+`qa:network-dependency-security` exercises the real Medusa Admin watcher and
+Awilix/fast-glob dependency paths in bounded 64-MiB child processes. It covers
+4,500-level strings/ASTs, mixed brace/parenthesis nesting, attempted limit
+bypasses, exact depth boundaries, literal delimiters and ordinary patterns.
+The unpatched package reproduced stack exhaustion; the patched package returns
+controlled depth errors. The packaged Backend runtime dependency was checked
+separately after its production build. Remove this patch only after a reviewed,
+cooled upstream fixed release passes the same regressions and the installed
+consumer graph and production image are verified. The upstream PR's reported
+test count is not a locally executed result.
+
 ## Dependency security correction — October 2, 2026
 
 Root, Backend, and Storefront now agree on exact mature security releases:
