@@ -8,6 +8,10 @@ import {
   createBackendReadinessProbes,
   runReadinessChecks,
 } from "../src/lib/health/readiness"
+import {
+  observeDatabaseDiagnostics,
+  withSearchDatabaseWorkload,
+} from "../src/lib/observability/database-diagnostics"
 import { PAYMENT_LIFECYCLE_MODULE } from "../src/modules/payment-lifecycle/constants"
 import type PaymentLifecycleModuleService from "../src/modules/payment-lifecycle/service"
 
@@ -84,6 +88,58 @@ medusaIntegrationTestRunner({
   moduleName: "RemorselessDisposableInfrastructure",
   testSuite: ({ api, dbConfig, getContainer }) => {
     describe("disposable PostgreSQL and Redis integration", () => {
+      it("observes real pool contention, slow SQL, failure and cleanup without retaining query data", async () => {
+        const database = knex({
+          client: "pg",
+          connection: dbConfig.clientUrl,
+          pool: { min: 0, max: 1 },
+        })
+        const events: Array<Record<string, unknown>> = []
+        const observer = observeDatabaseDiagnostics(database, (event) =>
+          events.push(event)
+        )
+        let held: unknown
+        try {
+          held = await database.client.acquireConnection()
+          const work = withSearchDatabaseWorkload(() =>
+            database
+              .raw("select pg_sleep(1.05), ?::text", [
+                "private-diagnostic-canary",
+              ])
+              .then(() => undefined)
+          )
+          await new Promise<void>((resolve) => setImmediate(resolve))
+          expect(database.client.pool?.numPendingAcquires()).toBe(1)
+          await new Promise((resolve) => setTimeout(resolve, 1_050))
+          await database.client.releaseConnection(held)
+          held = undefined
+          await work
+          await expect(database.raw("select 1 / 0")).rejects.toThrow()
+          observer.close()
+          expect(events).toHaveLength(1)
+          expect(events[0]).toMatchObject({
+            in_flight_acquires: 0,
+            in_flight_queries: 0,
+            unobserved: 0,
+            pending_acquires_peak: 1,
+            workloads: {
+              search_index: {
+                acquire: { completed: 1, slow: 1, failed: 0 },
+                query: { completed: 1, slow: 1, failed: 0 },
+              },
+              application: { query: { completed: 1, failed: 1 } },
+            },
+          })
+          expect(JSON.stringify(events)).not.toMatch(
+            /private-diagnostic|pg_sleep|select|division|clientUrl/
+          )
+        } finally {
+          if (held) await database.client.releaseConnection(held)
+          observer.close()
+          await database.destroy()
+        }
+      })
+
       it("distinguishes cold creation from waiting for an occupied connection", async () => {
         const database = knex({
           client: "pg",

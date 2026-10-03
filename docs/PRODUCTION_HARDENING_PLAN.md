@@ -22,10 +22,12 @@ before production/launch acceptance: seven planned batches in this order.
    PostgreSQL 16 image and timestamp restore are still required for PITR. The
    user selected Railway-only storage; an outside-provider account is no longer
    a prerequisite.
-3. **Queues and supporting services:** reconcile queues/payments, configure
-   Redis capacity, and pin/upgrade supporting services.
-4. **Telemetry and diagnostics:** finish database telemetry, investigate pool
-   contention, and address existing Storefront stream-close diagnostics.
+3. **Payment/Redis release accepted at `cf1c05c`; carryovers open:** bounded
+   Stripe reconciliation, pinned Redis 8.10.2, capacity and AOF replay passed.
+   MinIO, Meilisearch, history and provider-control limits remain below.
+4. **Telemetry and diagnostics — in progress:** continuous pool/query windows,
+   bounded indexing, native database statistics and the Next stream-abort fix
+   pass local tests; exact CI and Railway acceptance remain required.
 5. **Credential and dependency maintenance:** finish remaining credential
    rotations and replace the braces mitigation before its November 2 expiry.
 6. **Client testing environment:** directly clone `staging` into a different
@@ -49,10 +51,11 @@ batch 7's push. The detailed client-clone checklist below defines ownership,
 provider identity, data, rollback and testing requirements. Client testing
 readiness is a separate outcome from production launch approval.
 
-The current request selects batch 2. Its recovery archive release is accepted
-at `7352a3b`: the deployed runner completed, exited cleanly, and its encrypted
-database/media archive passed a full 205.587-second restore. The configured
-daily schedule's first calendar-triggered run is still due October 4 at 04:00
+Batch 3's release is accepted at `cf1c05c`; batch 4 is in progress as its own
+substantive staging push and is not yet release-accepted. Batch 2's recovery archive release is
+accepted at `7352a3b`: the deployed runner completed, exited cleanly, and its
+encrypted database/media archive passed a full 205.587-second restore. The
+configured daily schedule's first calendar-triggered run is still due October 4 at 04:00
 UTC. Native PITR remains blocked by the official image vulnerability
 scan (2 Critical, 84 High, 7 Unknown). No database redeploy or PITR enablement
 has been performed. Preserve the detailed acceptance requirements, external
@@ -77,6 +80,10 @@ October 3 and selected batch 3 while the following batch-2 items remain open.
 | B3-MINIO | Batch 3 / maintained replacement needed | Community MinIO is archived and the current release is affected by High GHSA-3rh2-v3gr-35p9. A digest pin alone does not fix it. Complete a Railway-hosted media replacement/migration with public URL compatibility, object checksums and rollback before closing this risk. |
 | B3-MEILI | Batch 3 / release cooling and migration | Review the October 1 stability fixes after seven-day cooling, then prove dump/import, index settings, search parity and rollback from 1.11.3 before changing its persistent image. Do not deploy an older candidate merely to avoid the cooling gate. |
 | B3-HISTORY | Batch 3 / retained historical evidence | Seven payments and both tax-evidence rows match the independently verified Stripe test account. Five payments predate tax evidence. Keep 238 terminal failed jobs retained, including the malformed native payment envelope; no automatic retry, deletion or invented backfill is authorized by count-only reports. |
+| B3-CI-HOLD | Batch 3 / provider hold follow-up | Railway began the superseded `4d15e77` Backend and Migrations builds after their GitHub workflow was cancelled, despite `checkSuites: true`. Both builds were explicitly cancelled before replacing the accepted apps. Investigate failure/cancellation handling and prove it fails closed; meanwhile require the existing all-four-workflow/23-check operator gate and exact-SHA deployment acceptance. |
+| B3-ROLLBACK | Batch 3 / historical image drift | Railway rollback to the retained floating Redis deployment loaded 8.2.1 instead of the former live 8.0.3. Do not use it as an exact-binary rollback. The new 8.10.2 runtime is pinned and its fresh AOF passed isolated load/restart; a native volume restore and a rollback preserving subsequent writes remain separate evidence. |
+| B4-NATIVE-SNAPSHOT | Recovery / provider capacity | PostgreSQL native snapshot creation hit Railway's ten-backup plan limit. Preserve existing snapshots; review retention/capacity separately. A fresh encrypted Railway archive and guarded logical snapshot preceded the same-image database restart. No native restore or fresh native snapshot is implied. |
+| B4-HISTORY | Telemetry / attribution limit | Unbounded catalog transformation is reproducible and now bounded, but the historical 2,856-waiter spike cannot be conclusively attributed retrospectively. Observe the new workload-specific windows and rollout health without raising thresholds. |
 
 The archive restore covers current data, not native object-version history or
 provider-outage survival; Railway-only storage is the user's accepted scope.
@@ -86,18 +93,21 @@ infrastructure runbook; do not silently turn them into successful live tests.
 
 ### Latest accepted release
 
-The latest accepted revision is `7352a3bfe0a4ad3030d1b9f97fb07aaafcf0bc50`.
-All four workflows/23 checks, both exact Railway app deployments, the one-shot
-Migrations job and the new RecoveryBackups execution passed. Runtime role and
-credential boundaries, the exact migration receipt, ordinary scheduler,
-authenticated catalog, 85 browser cases and screenshots passed. The correlated
-log window had zero HTTP 5xx, no truncation and no unclassified warnings/errors.
-The earlier Storefront stream-close digest remains open under batch 4 despite
-not appearing in this window. The deployed archive restored all 172 database
-table counts and 1,168 media objects in 205.587 seconds; all owned recovery
-targets were removed. Native PITR remains open, so batch 2 is not fully complete.
-See the handoff for exact identities, CI corrections and private evidence.
-Carry these closing notes into the next substantive batch.
+The latest accepted revision is `cf1c05cef000558055e6cc8e33260b7f8424f7ae`.
+All four workflows/23 checks, final Backend/Storefront/Redis deployments,
+Migrations and RecoveryBackups passed. Seven Stripe payments and both linked
+tax rows match; historical gaps remain. Redis 8.10.2 is pinned with bounded
+memory and AOF/RDB persistence; live capacity and fresh isolated AOF load/restart
+passed. Runtime roles/credentials, scheduler, catalog and 85 browser cases passed
+without retries/flakes; screenshots were inspected. The final correlated log
+window had zero HTTP 5xx and no unknown warnings/errors. The exact evidence and
+rollout corrections are in the opening handoff and recovery runbook.
+
+Batch 3 is not fully complete: the carryover register preserves MinIO and
+Meilisearch migration, historical evidence and provider-control limitations.
+Native PITR and the first calendar-triggered backup remain batch-2 carryovers.
+Closing notes remain local for the next substantive batch, with no routine
+documentation-only push.
 
 ### Accepted staging database credential and startup batch
 
@@ -3634,7 +3644,15 @@ Both commands explicitly reported that no files or database records changed.
       same-digest Quay source cutover;
       the other support images lack equal live-digest proof.
 - [ ] Enable `pg_stat_statements`, slow-query logging, I/O timing, and relevant
-      database/volume metrics with an overhead budget. A September 20 scoped,
+      database/volume metrics with an overhead budget. October 3 batch 4 enabled
+      native statement statistics and I/O timing with a 5,000-entry cap and
+      planning/utility tracking off, using a same-image restart after a fresh
+      Railway recovery archive. Schema-2 preflight adds bounded native counters;
+      Backend adds 60-second private timing/pool windows and bounded indexing.
+      Raw SQL logging stays off for privacy. Local fixture/overhead checks pass;
+      exact CI, deployed collection and rollout acceptance remain pending.
+      The native snapshot quota and historical attribution limits remain in
+      the carryover register. A September 20 scoped,
       read-only staging inventory found no `pg_stat_statements` preload or
       extension, `log_min_duration_statement=-1`, and `track_io_timing=off`.
       The application `railway` database's recorded and actual libc collation

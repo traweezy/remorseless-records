@@ -4,12 +4,107 @@ Last updated: 2026-10-03 (America/New_York)
 
 ## Current continuation — direct staging only
 
-**Batch 3 is now selected:** queue/payment reconciliation, Redis capacity and
-supporting-service image pinning/upgrades. Keep leftover work in the
-[carryover register](PRODUCTION_HARDENING_PLAN.md#carryovers-between-batches),
-including the native PITR blocker and first calendar-triggered backup check.
-The accepted batch-2 evidence below remains the release baseline until batch 3
-passes its own direct staging push, exact CI and Railway acceptance.
+**Batch 3's payment/Redis release is accepted at `cf1c05c`.** Full revision:
+`cf1c05cef000558055e6cc8e33260b7f8424f7ae`. **Batch 4 (telemetry and
+diagnostics) is in progress; its release is not yet accepted.** Batch 3 is not
+fully complete: retain the supporting-service and historical evidence limits in
+[the carryover register](PRODUCTION_HARDENING_PLAN.md#carryovers-between-batches).
+
+Batch 4 adds continuous private database timing/pool windows, a process-wide
+search transformation budget, native PostgreSQL statistics/I/O timing, and an
+exact Next 16.3.8 backport for client-aborted RSC streams. Both application
+builds, 287 Backend suites / 2,290 tests, Storefront coverage, the runtime
+cancellation/real-error tests, shared lint/types and the complete disposable
+service suite pass locally. The PostgreSQL 16 preflight fixtures pass all 15
+cases without skips. Preserve the all-four-workflow/23-check gate and exact
+Railway/browser/log acceptance before marking this batch complete.
+
+The native PostgreSQL snapshot request hit Railway's ten-backup plan limit;
+no old backups were deleted. A fresh encrypted Railway archive instead completed
+at `2026-10-03T18:50:17.069Z`, snapshot
+`f708bba5-f157-4dbd-984c-386dc22e1fa2`, receipt SHA-256
+`925f08141cde8a813a9e9879770f5ab5637440f0a3cf80334e81de737b528e0d`.
+The guarded logical snapshot also passed. Native snapshot capacity remains a
+carryover; the new archive was not fully restored again.
+
+The user-selected Stripe sandbox **Remorseless Records Staging**
+(`acct_1Rkv3jIM4tTeFQ3W`) independently matched the Backend test key. All seven
+PaymentIntents match Medusa/provider amount and currency; both linked tax rows
+match. Five payments predate tax evidence. The audit now accepts bounded
+fractional amounts and uses provider cent rounding, while retaining drift and
+negative-value detection. No payment, refund or customer-message operation was
+performed. Retain all 238 terminal failed jobs, including the malformed native
+payment event, without blanket retries, deletion or fabricated tax backfills.
+
+Redis is now official **8.10.2**, pinned by digest and built from the accepted
+revision. It runs as UID 1000 with one CPU, a 1 GB service limit, 512 MiB
+maxmemory, `noeviction`, AOF every-second fsync and RDB snapshots. The live capacity
+audit is healthy with roughly 7 MB used, zero evictions/rejected connections and
+healthy persistence. The 32,769-key CI fork/restart workload peaked at
+367,951,872 cgroup bytes and restarted in 1,183 ms. The fresh 59,043,542-byte
+AOF capture passed isolated, network-disabled load/restart with all 1,278 keys
+and 238 failed jobs preserved. Capture restored the rewrite setting.
+
+The maintenance stop began at `18:10:52Z`; both apps were back through readiness
+at `18:26:25.707Z`. Two Redis starts correctly failed the UID guard because
+Railway's legacy `RAILWAY_RUN_AS_ROOT=false` still forced root. That variable
+was removed; retain `RAILWAY_RUN_UID=1000` and the explicit startup path recorded
+in the recovery runbook. The retained floating-image rollback restored the
+queues but ran 8.2.1 instead of the former live 8.0.3. Do not treat it as an
+exact-binary rollback or use the old data after later writes. Native snapshot
+`70ac7db3-d1be-4be2-9f0b-2fc977c39012` was confirmed before maintenance; a native
+volume restore remains unverified. Current AOF replay passed independently.
+
+All four workflows and 23 required checks passed on the final SHA: Root
+`37142384807`, Backend `37142384727`, Storefront `37142384757`, Runtime Images
+`37142384716`. Final successful Railway deployments:
+
+- Backend: `ffc5a12f-da0f-4f3c-b678-3d873b78c866`.
+- Storefront: `4b994c94-acda-475d-8c4a-fe55988a9eca`.
+- Redis: `9c6c5a05-390d-4530-bcab-824cf8b05181`.
+- Migrations: `7b2f62a9-7dbe-4484-a9ea-d10bcc94be75`.
+- RecoveryBackups: `d1ee11bb-2e72-4f56-a146-7949f36b9b40`; execution
+  `6f389ad1-49b2-4760-938f-4d8130194d53` exited successfully.
+
+The ordinary scheduler heartbeat at `18:26:00.204Z` followed Backend's final
+switch. Runtime packages, `app_runtime` role/ancestor credential boundaries,
+exact migration receipt, restricted notification key and authenticated catalog
+passed (461 products, 442 discography entries, three shelves). All 85 browser
+cases passed with eight documented skips, zero retries/flakes; desktop/mobile
+screenshots were inspected. Correlated logs from `18:26:30Z` through
+`2026-10-03T18:28:53.323Z` had zero HTTP 5xx, no truncation and no unknown
+warnings/errors.
+The known stream-close digest `3072950123` appeared in 16 fully correlated
+groups and remains batch 4 work.
+Final readiness passed at `18:28:43.006Z`.
+
+The unchanged backup runner published snapshot
+`a0884f92-7342-42fb-a9c6-5aa99105805c` with four database files and 1,168 media
+objects; archive/retention checks passed. Receipt SHA-256:
+`3e5397fe92a4ba91584c498165938db2f281e556e7b8fa1d34edbf4ac49a72b0`.
+This new archive was not fully restored again; batch 2 retains the completed
+full restore proof. The first calendar-triggered backup is still due October 4
+at 04:00 UTC. PostgreSQL, MinIO and Meilisearch configurations are unchanged.
+
+Conventional Commits `3d56377`, `4d15e77`, `d9d9c9a` and `cf1c05c` were pushed
+directly to staging with normal hooks. Corrective commits kept strict version
+and runtime-directory guards aligned with the reviewed Redis fixture; the full
+disposable suite passed locally and in final CI. Superseded Railway Backend and
+Migrations builds started after cancelled CI despite `checkSuites: true`; both
+were cancelled before replacing accepted apps. The operator all-four/23-check
+gate remains mandatory; provider cancellation handling is an explicit carryover.
+
+Private evidence: `/tmp/remorseless-batch3-release-acceptance.json`,
+`/tmp/remorseless-batch3-accepted-readiness.json`, the batch-3 runtime/observe/log
+records, the backup and final AOF capture/replay records, and browser artifacts
+under `/tmp/remorseless-release-batch-browsers-bLwonV`. Redis process environment
+and `/proc` executable inspection were unavailable; its recorded hash is the
+installed server file, with running version/UID/configuration verified separately.
+Closing documentation remains local for the next substantive batch, without a
+routine documentation-only push. Preserve all carryovers and refresh evidence
+before the next release. Client cloning remains batch 6 in this same project.
+
+### Previous accepted batch 2
 
 **Batch 2's recovery archive release is accepted at `7352a3b`; native PITR
 remains open.** Full revision:

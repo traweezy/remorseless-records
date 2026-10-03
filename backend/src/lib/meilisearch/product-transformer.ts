@@ -11,6 +11,11 @@ import {
 } from "../catalog/shelves"
 import { LOW_STOCK_THRESHOLD } from "../catalog/stock"
 import { richTextToPlainText, sanitizeRichTextHtml } from "../content/rich-text"
+import {
+  ensureDatabaseDiagnostics,
+  withSearchDatabaseWorkload,
+} from "../observability/database-diagnostics"
+import { withSearchTransformBudget } from "./transform-budget"
 import { readRecordArray } from "../provider-boundary/records"
 
 type DefaultTransformer = (
@@ -1324,19 +1329,23 @@ const productSearchTransformer = async (
   product: Record<string, unknown>,
   defaultTransformer: DefaultTransformer,
   options?: TransformerOptions
-): Promise<SearchDocument> => {
-  const transformed = (await defaultTransformer(
-    product,
-    options
-  )) as DynamicRecord
-  const [catalogFacts, availability] = await Promise.all([
-    loadCatalogFacts(transformed, options),
-    loadVariantAvailability(transformed, options),
-  ])
-  return buildSearchDocument(
-    mergeVariantAvailability(transformed, availability),
-    catalogFacts
+): Promise<SearchDocument> =>
+  withSearchTransformBudget(() =>
+    withSearchDatabaseWorkload(async () => {
+      ensureDatabaseDiagnostics(options?.container)
+      const transformed = (await defaultTransformer(
+        product,
+        options
+      )) as DynamicRecord
+      const [catalogFacts, availability] = await Promise.all([
+        loadCatalogFacts(transformed, options),
+        loadVariantAvailability(transformed, options),
+      ])
+      return buildSearchDocument(
+        mergeVariantAvailability(transformed, availability),
+        catalogFacts
+      )
+    })
   )
-}
 
 export default productSearchTransformer

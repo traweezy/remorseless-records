@@ -1358,3 +1358,35 @@ the accepted remediation, and Storefront source deployment
 search, scheduler, operations, Redis, HTTP-status, and redacted-log acceptance
 passed. The later immutable GHCR-to-Railway artifact cutover remains separate;
 see `NEXT_SESSION_HANDOFF.md` before changing any pin.
+
+## Next.js stream cancellation backport — October 3, 2026
+
+Batch 4 keeps the exact approved Next **16.3.8** security release, matching SWC
+packages, React separation, webpack build and seven-day cooling policy. No
+package version changes. The installed release lacks upstream
+[PR #96715](https://github.com/vercel/next.js/pull/96715/files), merged August 26:
+a prematurely closed Node Flight destination must abort React with Next's
+`ResponseAborted` reason before React installs its generic close handler.
+This preserves genuine render-error reporting instead of filtering messages or
+digests in application instrumentation.
+
+`patches/next@16.3.8.patch` backports that listener into the CJS/ESM helpers and
+all eight published app-page runtime bundles. Bundle references use the same
+installed Next adapter class through a static relative require, which the
+production dependency trace must retain. MIT licensing and package engines are
+unchanged. Source maps remain upstream artifacts; generated bundle columns are
+not authoritative for the inserted listener. The manifest in
+`storefront/scripts/fixtures/stream-abort/patch-manifest.json` records original
+and patched SHA-256 for all ten files; the lockfile binds the pnpm patch hash.
+The large patch lines come from published minified bundles, not additional
+application behavior. An unrelated `third-party-web` resolution change from
+`patch-commit` was removed before frozen installation.
+
+The isolated webpack production fixture reproduced three false
+`onRequestError` calls from three cancelled RSC streams before the patch.
+Patched RSC and HTML cancellation pass, with real render errors reported before
+and after cancellation. The installed-byte check covers all ten artifacts.
+`test:runtime:observability` now includes these tests and the fixture build in
+Storefront CI. The fixture has no commerce/provider integration. Remove this
+backport only when a reviewed, cooled release includes the fix and passes the
+same regression plus production deployment/browser acceptance.

@@ -55,7 +55,17 @@ const args = [
   endpointSha,
 ]
 const inventory = {
-  schemaVersion: 1,
+  schemaVersion: 2,
+  serverStartedAtMs: 1234,
+  ioCounters: {
+    reads: 1,
+    writes: 2,
+    fsyncs: 3,
+    readMs: 0.1,
+    writeMs: 0.2,
+    fsyncMs: 0.3,
+    statsResetAtMs: 1234,
+  },
   serverMajor: 16,
   pgStatStatementsPreloaded: false,
   pgStatStatementsInstalled: false,
@@ -65,6 +75,13 @@ const inventory = {
   computeQueryId: "auto",
   databaseCounters: {
     connections: 3,
+    commits: 1,
+    rollbacks: 0,
+    blocksRead: 2,
+    cacheHits: 3,
+    tempBytes: 0,
+    databaseBytes: 8192,
+    statsResetAtMs: null,
     deadlocks: 0,
     tempFiles: 0,
     blockReadMs: 0,
@@ -84,6 +101,21 @@ test("accepts only fixed observability fields and bounded counters", () => {
   }
   mutate((value) => {
     value.queryText = "SELECT private_customer_data"
+  })
+  mutate((value) => {
+    value.ioCounters.query = "private-sql"
+  })
+  mutate((value) => {
+    value.ioCounters.reads = -1
+  })
+  mutate((value) => {
+    value.ioCounters.readMs = "0"
+  })
+  mutate((value) => {
+    value.ioCounters.statsResetAtMs = "private-value"
+  })
+  mutate((value) => {
+    value.databaseCounters.databaseBytes = Number.MAX_SAFE_INTEGER + 1
   })
   mutate((value) => {
     value.databaseCounters.roleName = "private_role"

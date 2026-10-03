@@ -19,6 +19,7 @@ import {
   attachRequestCorrelation,
   sendApiProblem,
 } from "../lib/http/correlation"
+import { ensureDatabaseDiagnostics } from "../lib/observability/database-diagnostics"
 import { resolveClientIp } from "../lib/security/client-ip"
 import {
   buildBackendSecurityHeaders,
@@ -62,6 +63,7 @@ export const applyRequestObservability = (
   next: MedusaNextFunction
 ): void => {
   attachRequestCorrelation(req, res)
+  ensureDatabaseDiagnostics(req.scope)
   next()
 }
 

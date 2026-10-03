@@ -157,6 +157,7 @@ patchedDependencies:
   '@radix-ui/react-select@2.1.5': patches/@radix-ui__react-select@2.1.5.patch
   '@radix-ui/react-dialog@1.1.5': patches/@radix-ui__react-dialog@1.1.5.patch
   braces@3.0.3: patches/braces@3.0.3.patch
+  next@16.3.8: patches/next@16.3.8.patch
 
 minimumReleaseAge: 10080
 minimumReleaseAgeStrict: true

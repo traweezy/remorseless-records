@@ -435,7 +435,7 @@ Run the application boundary against fresh, local-only services:
 pnpm run qa:disposable-integration
 ```
 
-The orchestrator starts PostgreSQL 18.6 and Redis 8.10.1 from version- and
+The orchestrator starts PostgreSQL 18.6 and Redis 8.10.2 from version- and
 digest-pinned official images. Host ports bind only to loopback and default to
 `55432` and `56379`; set `RR_INTEGRATION_POSTGRES_PORT` and
 `RR_INTEGRATION_REDIS_PORT` to distinct non-privileged ports when those values
@@ -1113,3 +1113,21 @@ without changing role capabilities. Repeat the real role/grant integration
 suite and live three-profile audits for an authority cutover. Provider-level
 and ancestor-process access to service variables remains outside this process
 scrub; see the infrastructure runbook before claiming credential isolation.
+
+### Batch 4 telemetry and stream cancellation
+
+For database diagnostics changes, run Backend coverage and the complete
+disposable service suite. The real pool/query test must observe connection
+waiting independently of SQL execution, attribute indexing work, retain genuine
+failures and reject private data in emitted windows. Run
+`RR_POSTGRES_TEST_BIN=/usr/lib/postgresql/16/bin pnpm run
+qa:postgres-observability-preflight` where the reviewed PostgreSQL 16 binaries
+are available; otherwise report those two local-fixture skips explicitly.
+
+For the Next cancellation backport, run the normal Storefront webpack build and
+`pnpm --filter remorseless-records-storefront run test:runtime:observability`.
+This includes the installed-byte manifest and an isolated production fixture
+that cancels RSC/HTML streams and verifies genuine render errors before and
+after cancellation. Keep the existing image-optimizer security regressions and
+all deployed browser/correlation checks. Stream errors after this fix require
+investigation rather than the historical digest allowance.

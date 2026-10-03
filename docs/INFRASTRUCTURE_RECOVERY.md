@@ -10,9 +10,10 @@ reviewed operations.
 
 ## Redis and payment reconciliation — October 3 batch 3
 
-This candidate awaits its own staging CI and deployed acceptance; `7352a3b`
-remains the accepted baseline. The user selected **Remorseless Records Staging**
-sandbox `acct_1Rkv3jIM4tTeFQ3W` in the signed-in Stripe dashboard. A scoped
+Revision `cf1c05cef000558055e6cc8e33260b7f8424f7ae` passed all four
+workflows and 23 checks. Redis runtime acceptance is recorded below; application
+acceptance is recorded in the opening handoff. The user selected
+**Remorseless Records Staging** sandbox `acct_1Rkv3jIM4tTeFQ3W` in the signed-in Stripe dashboard. A scoped
 Backend test-key handoff matched that independent account reference. All seven
 PaymentIntent amount/currency comparisons passed against Medusa and archived
 provider data; both linked tax-evidence comparisons also passed. Five payments
@@ -59,13 +60,52 @@ Capture and live-queue probes accept only the reviewed version/directory pairs:
 exercise both and reject unknown versions or mismatched directories. This keeps
 fresh captures bound to the active server's files after migration.
 
-Retained Redis deployment `f75e3583-3d71-4787-9ada-12852e976fa0` currently reports
-`canRollback: true`, snapshot `b084f97c-813d-4dd9-81f7-a6f2f5dc96b9`. Before
-rollout, refresh its scoped backup and queue observation and stop application
-writers. Prove retained-deployment rollback while writers remain stopped,
-then redeploy the accepted candidate and resume applications. After new writes,
-rollback requires preserving the new directory and reconciling durable state;
-never downgrade rewritten data or silently discard accepted work.
+The accepted Redis candidate is deployment
+`9c6c5a05-390d-4530-bcab-824cf8b05181`, built from that exact revision.
+The provider limit is one CPU and 1,000,000,000 bytes; its cgroup rounds down
+to 999,997,440 bytes. Authenticated inspection verified Redis 8.10.2, UID 1000,
+the complete persistence policy above, zero evictions/rejected connections,
+and the installed server SHA-256
+`df1291685ab15c4708c5556298146a93f498387aa6265aa0988da88d9952e41d`.
+The post-resume capacity audit at `18:26:39.912Z` was healthy: 7,030,912 bytes
+used, 15,687,680 RSS, 984,312,320 bytes RSS headroom, 1,925,120 bytes last fork
+copy-on-write, zero delayed fsyncs, evictions or rejected connections. The exact
+CI synthetic fork/restart drill reached 367,951,872 bytes cgroup peak with
+32,769 keys; its restart took 1,183 ms. These are bounded staging/workload
+measurements, not a production capacity guarantee.
+
+Direct `/proc` executable/environment reads were unavailable in this runtime:
+the hash is of the installed executable, and environment-secret removal is
+supported by the reviewed startup code, not a claimed live environment read.
+
+Keep `RAILWAY_RUN_UID=1000` and **remove `RAILWAY_RUN_AS_ROOT` entirely**.
+The legacy flag forced UID 0 even when its value was `false`; the startup guard
+rejected two attempted deployments without starting Redis. The final provider
+start command is `/usr/local/bin/remorseless-redis`, matching the image entrypoint.
+A `null` API update did not clear the diagnostic start override, so the explicit
+path replaced it. Credentials, private endpoint, mount and daily snapshot
+schedule were preserved. The temporary diagnostic command is removed.
+
+Native pre-maintenance snapshot `70ac7db3-d1be-4be2-9f0b-2fc977c39012` was
+confirmed before stopping both application writers. The retained-deployment
+rollback did recover the original AOF and queue counts, but unexpectedly ran
+**8.2.1**, not the original live 8.0.3. Its historical floating source did
+not preserve the prior runtime version. Do not use that old deployment as an exact-binary rollback. The original
+files remain retained, but after applications resume they are stale. Preserve
+current runtime data and reconcile durable business state before any downgrade
+or restore; do not discard later writes or assume the provider snapshot alone
+proves a native restore. The new image is digest-pinned.
+
+Fresh capture from the final runtime at `18:22:28.656Z` retained 59,043,542
+bytes in three files; receipt SHA-256
+`fe6457208a18f5a78ca43422df7e4ef88eb8740c5a1de8adb2a3920d78f7353a`.
+The guarded capture restored rewrite percentage 100. An isolated, worker-free,
+network-disabled load and restart preserved all 1,278 keys and 238 terminal
+failures, with the original captured bytes unchanged. This proves current AOF
+replay on the reviewed runtime, not native volume restoration or complete
+business reconciliation. Private final evidence is in
+`/tmp/remorseless-batch3-final-capture-result.json` and
+`/tmp/remorseless-batch3-runtime-final-aof.json`.
 
 Redis stays outside the `applications` IaC partial: its reviewed preview tried
 to create a duplicate service, so it was not applied and the experimental
@@ -2734,3 +2774,69 @@ production approval items below.
 - [Historical Redis persistence configuration](https://github.com/bitnami/containers/blob/7cae83c281089791e24905d6a05e7d66e91c24ac/bitnami/redis/8.0/debian-12/rootfs/opt/bitnami/scripts/redis-env.sh#L70)
 - [Meilisearch backup methods](https://www.meilisearch.com/docs/resources/self_hosting/data_backup/overview)
 - [MinIO `mc mirror`](https://min.io/docs/minio/linux/reference/minio-mc/mc-mirror.html)
+
+## PostgreSQL telemetry activation — October 3, 2026
+
+Batch 4 enabled native `pg_stat_statements` on the existing staging PostgreSQL
+16.11 deployment `50c57d73-0457-4bdc-8765-99fa22a6c084`. The source system ID
+remains `7527124368992473123`, volume
+`1f219ae4-1659-4d3f-972f-8a8020441293`, mounted at
+`/var/lib/postgresql/data`. No image update, PITR activation, role escalation,
+collation refresh or data migration was performed.
+
+The requested native snapshot was rejected with “Plan limit of 10 backups per
+volume exceeded.” Existing snapshots were preserved. Before restarting, the
+restricted logical snapshot passed (archive SHA-256
+`e3186ab02b520385d5a00e075fef1b31b7ab24531bcc2d0b77268d53fda3dec5`), and the
+Railway RecoveryBackups runner published/verified snapshot
+`f708bba5-f157-4dbd-984c-386dc22e1fa2` at `18:50:17.069Z`, with four database
+files and 1,168 media objects. Receipt SHA-256:
+`925f08141cde8a813a9e9879770f5ab5637440f0a3cf80334e81de737b528e0d`.
+Execution `fdcfa552-4f8a-4425-8b5c-0442b98d406c` exited successfully. This is
+fresh archive evidence, not a new full restore or native-volume restore proof.
+
+The guarded runtime inspection verified the installed extension library and
+measured `pg_test_timing --duration=3`: 39.21 ns per loop, below the 1,000 ns
+budget. The volume reported 101,368 KiB used and 47,628,020 KiB available.
+[Railway restart](https://docs.railway.com/cli/restart) reuses the existing image;
+`deploymentRestart` was requested for the exact running deployment at
+`18:54:42.942Z`, without resolving the floating image source again. Source and
+system identity were checked around every connection.
+
+Apply configuration in two phases: preload the installed module and enable I/O
+timing, restart the same deployment, then set the module's registered settings
+and install its extension. An initial attempt to set module parameters before
+preloading was rejected after persisting the preload setting; it was completed
+through this sequence, not treated as atomic success. Final scoped preflight at
+`18:54:53.919Z` verified preload/extension installed, `track_io_timing=on`,
+`track_wal_io_timing=on`, `compute_query_id=auto`, top-level tracking, a 5,000-entry
+cap, planning/utility tracking off and no pending restart. The application
+schema's existing owner and least-privilege roles remain authoritative.
+
+Raw slow-statement logging remains disabled (`log_min_duration_statement=-1`)
+to avoid emitting SQL/literals. Backend bounded timing windows provide slow
+query/acquisition counts at the unchanged 1,000 ms threshold. The schema-2
+source-bound preflight exposes transaction/cache/temp/database-size and
+aggregate I/O counters, with server-start/statistics-reset timestamps for valid
+deltas. Do not project `pg_stat_statements.query`, query IDs, database/role
+names, bindings or raw errors into reports. Native statement statistics retain
+normalized SQL inside PostgreSQL; the public health surface does not expose it.
+This enables collection, not a new external collector or durable metrics store.
+
+Rollback requires the same scope/system/volume checks and current recovery
+receipt. Reset only these batch-owned settings (`pg_stat_statements.track`,
+`track_utility`, `track_planning`, `max`, `shared_preload_libraries`,
+`track_io_timing`, `track_wal_io_timing`), reload, then restart the same verified
+image. If removing the extension, use `DROP EXTENSION pg_stat_statements`
+without `CASCADE` only after checking dependencies. Re-run runtime-role,
+preflight and application acceptance. A floating-source redeploy is not this
+rollback procedure. Native PITR, a maintained clean PostgreSQL image, backup
+quota management and native-volume restore remain separate open work.
+
+Post-restart verification at `18:56:26.601Z` retained PostgreSQL 16.11 and binary
+SHA-256 `693d6e08323ffc83e4474333903386cf3d6e832381675b2ad4688a5998fdc1c5`.
+The second clock sample was 53.01 ns, still below budget. A fixed count-only
+statement read at `18:56:34.868Z` found 19 entries / 24 calls, 115.83 ms total
+execution and zero entry evictions. Named shared-memory allocation totals are
+not a complete measurement of extension memory. All four application live/ready
+probes passed after the restart; full exact-batch release acceptance is separate.

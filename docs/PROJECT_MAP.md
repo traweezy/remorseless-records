@@ -38,7 +38,7 @@ framework scaffolding rather than project-specific operational instructions.
 | Storefront pages and server routes | `storefront/src/app/`, including `api/`, `checkout/`, `catalog/`, `products/`, `news/`, and `order/` |
 | Storefront interactions and state | `storefront/src/components/`, `storefront/src/features/`, `storefront/src/lib/cart/`, `store/`, `query/`, and `storefront/src/providers/` |
 | Storefront provider decoding, search, security | `storefront/src/lib/data/`, `medusa/`, `search/`, `security/`, `http/`; `storefront/src/config/`; `storefront/next.config.ts` |
-| Health, telemetry, request correlation | Both applications' `src/lib/health/` and `src/lib/observability/`; Backend `src/api/health/`; `scripts/observe-*-health.mjs`, `scripts/verify-railway-runtime-log.mjs` |
+| Health, telemetry, request correlation | Both applications' `src/lib/health/` and `src/lib/observability/` (including Backend continuous database windows); `backend/src/lib/meilisearch/transform-budget.ts`;  Backend `src/api/health/`; `scripts/observe-*-health.mjs`, `scripts/verify-railway-runtime-log.mjs` |
 | Data maintenance and recovery | `backend/src/scripts/`, `backend/src/cli/`, root `scripts/postgres-*.mjs`, `railway-recovery-*.mjs`, `railway-scheduled-backup.mjs`, `staging-recovery-audit.mjs`, `operations/Dockerfile`, `media-backup.mjs`, `media-restore-drill.mjs`, `redis-capacity-audit.mjs`, `redis-aof-capture.mjs`, `redis-aof-recovery.mjs`, `redis-aof-isolated-replay.mjs`, `backend-isolated-startup-smoke.mjs` |
 | Unit, service, browser, accessibility, performance QA | Application test/config files; `scripts/*.test.mjs`; `storefront/e2e/`; `storefront/playwright*.ts`; `qa/`; `lighthouse/` |
 | Disposable service tests | `scripts/run-disposable-integration.mjs`, `scripts/scan-disposable-integration-images.mjs`, `docker/integration/` |
@@ -103,12 +103,14 @@ contracts before applying generic framework examples from those files.
 
 ## Verified continuation boundary
 
-Latest acceptance is October 3 UTC at revision
-`849abea47c0a6a3b86b67896796136d1bed0b555`: all four workflows/23 checks,
-both Railway app deployments, the isolated migration job and live acceptance
-passed. Batch 1 closes service-level migration isolation and restricted backup
-integration. Batch 2 is next and has not started. Read the opening handoff for
-exact acceptance evidence and the six remaining separate batches.
+Latest accepted release is October 3 UTC at revision
+`cf1c05cef000558055e6cc8e33260b7f8424f7ae`: four workflows/23 checks,
+Backend/Storefront/Redis, Migrations, RecoveryBackups and live/browser acceptance
+passed. Batch 3 delivers payment reconciliation and pinned Redis capacity/AOF
+recovery; supporting-service and earlier recovery carryovers remain open.
+Batch 4, telemetry and diagnostics, is the next separate group and has not
+started. Read the opening handoff and carryover register before continuing.
+Client staging remains batch 6 in the same Railway project.
 The snapshots below are historical.
 
 At the 07:54 UTC acceptance, the application pair was Backend `33de0ec` and

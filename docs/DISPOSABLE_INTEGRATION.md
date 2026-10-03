@@ -210,3 +210,20 @@ database and finding; remediate the pinned recipe and repeat the entire
 build/scan/test chain. A passing functional run alone is not image-security
 acceptance. Changes to staging Redis or PostgreSQL remain separately reviewed
 operations under `INFRASTRUCTURE_RECOVERY.md`.
+
+## October 3: continuous database diagnostics
+
+The Backend disposable suite now verifies an occupied one-slot pool followed
+by `pg_sleep`, a genuine query failure, fixed search/application attribution,
+private-value exclusion and cleanup against real PostgreSQL. This caught an
+initial observer bug: Tarn announces an acquire before enqueuing it, so direct
+sampling alone missed short queue pressure. The coalesced post-enqueue sample
+now passes that regression. The full suite passed through the documented local
+Docker exec relay on the same reviewed PostgreSQL 18.6 and Redis 8.10.2 image
+IDs; all 167 PostgreSQL and 22 Redis relay connections closed without failures.
+
+The observability preflight report is schema 2. Its fixed projection adds
+transaction/cache/temp/database-size counters, aggregate `pg_stat_io` counters
+and statistics-reset/server-start timestamps, without SQL or role/database
+names. The PostgreSQL 16 local fixtures exercise both supported library path
+forms; all 15 cases pass with no skips when `RR_POSTGRES_TEST_BIN` is set.

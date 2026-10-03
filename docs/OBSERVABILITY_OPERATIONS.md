@@ -422,3 +422,50 @@ are 200 and nonempty; both external monitors are healthy; a manual forced-alert
 exercise creates/updates the intended issue; and the next healthy run closes
 it. Never exercise a provider mutation, payment, refund, tax-mode transition,
 or production environment as part of alert acceptance.
+
+## Batch 4 continuous database diagnostics — October 3, 2026
+
+`database.diagnostics.window` is a private structured Backend log emitted every
+60 seconds for the registered application Knex pool. It attaches once at the
+first HTTP request or product transformation and detaches on pool destruction.
+It does not claim to observe separate module-owned pools or time before
+attachment. Two fixed workload groups (`application`, `search_index`) report
+completed/failed/slow counts and maximum duration independently for pool
+acquisition and SQL execution. The slow threshold remains **1,000 ms**.
+`used_peak`, `pending_acquires_peak`, in-flight counts and `unobserved` distinguish
+pressure, outstanding work and missing evidence; unobserved events are not
+reported as successful zero-duration operations.
+
+Acquisition/query events plus a five-second sampler collect peaks. Tarn emits
+acquisition requests before enqueueing, so a coalesced microtask samples after
+the synchronous enqueue and catches bursts shorter than five seconds. Starts
+survive window boundaries, cap at 2,048 per event type and expire after five
+minutes. Timers are unreferenced. Logging failures cannot interrupt commerce.
+No SQL, bindings, rows, resource objects, exception messages, query identifiers,
+customer/order identifiers or dynamic workload labels enter these events.
+There is still no verified external collector or new exporter.
+
+The search plugin invokes all product transforms through `Promise.all`; each
+product then fans out over up to six catalog reads plus inventory. A process-wide
+FIFO budget now admits one product transformation at a time, across overlapping
+index operations, and rejects more than 10,000 admitted/waiting transforms.
+Failures release the slot and retain the original rejection. This trades rebuild
+throughput for bounded pressure without increasing database pool capacity or
+relaxing readiness/operations thresholds. The 461-product regression preserves
+input order and limits catalog concurrency to six. This verifies a concrete
+flooding mechanism; it does not retroactively prove the cause of the historical
+2,856-waiter sample.
+
+Overhead budget: fewer than 10 microseconds per acquire/query lifecycle in the
+synthetic event benchmark, one structured window per pool per minute, and the
+fixed memory caps above. Re-measure after instrumentation/library changes; this
+microbenchmark does not replace live query latency and resource observation.
+The disposable PostgreSQL test holds a one-slot pool, performs a slow statement
+and a genuine SQL failure, verifies separate timings/workload attribution and
+privacy, and destroys the pool with listener/timer cleanup.
+
+Storefront stream cancellation is fixed in the pinned Next runtime, rather than
+suppressed in `onRequestError`. See the dependency audit's October 3 backport
+record and `pnpm --filter remorseless-records-storefront run
+test:runtime:observability`. A new stream-close error after deployment remains
+an error to investigate; historical digest `3072950123` is not a blanket waiver.
