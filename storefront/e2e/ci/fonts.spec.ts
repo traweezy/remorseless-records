@@ -9,9 +9,8 @@ test("UI runtime local fonts resolve all brand tokens without external requests"
 }, testInfo) => {
   const externalFonts: string[] = []
   page.on("request", (request) => {
-    if (
-      /fonts\.(googleapis|gstatic)\.com/u.test(new URL(request.url()).hostname)
-    ) {
+    const hostname = new URL(request.url()).hostname
+    if (["fonts.googleapis.com", "fonts.gstatic.com"].includes(hostname)) {
       externalFonts.push(request.url())
     }
   })

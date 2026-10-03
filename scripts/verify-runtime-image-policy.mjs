@@ -381,7 +381,15 @@ export const validateRuntimeWorkflowSource = (source) => {
     2
   )
   assert.doesNotMatch(source, /build-args:[^\n]*secrets\./u)
-  assert.doesNotMatch(source, /fonts\.(?:googleapis|gstatic)\.com:443/u)
+  for (const endpoint of [
+    "fonts.googleapis.com:443",
+    "fonts.gstatic.com:443",
+  ]) {
+    assert.equal(
+      sourceLines.some((line) => line.trim() === endpoint),
+      false
+    )
+  }
   for (const endpoint of [
     "get.trivy.dev:443",
     "production.cloudfront.docker.com:443",

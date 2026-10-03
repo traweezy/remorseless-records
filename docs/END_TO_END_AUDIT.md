@@ -49,6 +49,12 @@ loading screenshots/navigation failures remain retained. One subsequent matrix
 overlapped a local Backend rebuild and is invalid; run builds and their browser
 acceptance sequentially against a stable artifact.
 
+The first pushed repair revision, `2e93d66`, was held by both CodeQL jobs for
+two missing-anchor findings in font verification code. Exact hostname/endpoint
+comparisons replace those regular expressions; 130 policy tests and all three
+rendered font cases pass. No finding suppression or CI policy exception was
+added. Corrective revision CI and Railway acceptance remain required.
+
 A further live copy finding remains open: Home/About promise worldwide shipping
 and international rates. Reconcile those claims against the configured checkout
 destinations and shipping policy during the continuing audit before acceptance.
