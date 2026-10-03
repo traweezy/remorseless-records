@@ -57,12 +57,20 @@ describe("ContactForm", () => {
         "aria-invalid",
         "true"
       )
+      expect(screen.getByLabelText("Name")).toHaveFocus()
     })
     expect(screen.getByText("Name is required")).toBeInTheDocument()
     expect(screen.getByText("Valid email required")).toBeInTheDocument()
     expect(
       screen.getByText("Message must be at least 10 characters")
     ).toBeInTheDocument()
+    expect(fetchMock).not.toHaveBeenCalled()
+
+    fireEvent.change(screen.getByLabelText("Name"), {
+      target: { value: validValues.name },
+    })
+    fireEvent.click(screen.getByRole("button", { name: "Send message" }))
+    await waitFor(() => expect(screen.getByLabelText("Email")).toHaveFocus())
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
@@ -76,9 +84,9 @@ describe("ContactForm", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Send message" }))
 
-    expect(
-      await screen.findByText("Message sent. We’ll reply soon.")
-    ).toBeInTheDocument()
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      "Message sent. We’ll reply soon."
+    )
     expect(fetchMock).toHaveBeenCalledTimes(1)
     expect(fetchMock).toHaveBeenCalledWith("/api/contact", {
       method: "POST",
@@ -142,11 +150,9 @@ describe("ContactForm", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Send message" }))
 
-    expect(
-      await screen.findByText(
-        /Something went wrong\. Please try again or email/
-      )
-    ).toBeInTheDocument()
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      /Something went wrong\. Please try again or email/
+    )
     expect(screen.queryByText("private-provider-diagnostic")).toBeNull()
     expect(screen.getByLabelText("Name")).toHaveValue(validValues.name)
     expect(screen.getByLabelText("Email")).toHaveValue(validValues.email)

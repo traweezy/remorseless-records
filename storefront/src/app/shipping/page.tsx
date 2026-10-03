@@ -45,6 +45,11 @@ const ShippingPolicyPage = () => (
       </>
     }
   >
+    <LegalSection title="Delivery Destinations and Rates">
+      <p>{legalConfig.shipping.destinationSummary}</p>
+      <p>{legalConfig.shipping.internationalAvailability}</p>
+      <p>{legalConfig.shipping.rateSummary}</p>
+    </LegalSection>
     <LegalSection title="Processing and Transit Windows">
       <p>
         Orders are typically packed and handed to carriers within{" "}
@@ -55,14 +60,10 @@ const ShippingPolicyPage = () => (
           Domestic transit estimate:{" "}
           {legalConfig.shipping.domesticTransitWindow}
         </li>
-        <li>
-          International transit estimate:{" "}
-          {legalConfig.shipping.internationalTransitWindow}
-        </li>
       </ul>
       <p>
-        Transit windows are estimates and do not include carrier disruptions,
-        customs processing, or weather events.
+        Transit windows are estimates and do not include carrier disruptions or
+        weather events.
       </p>
     </LegalSection>
 

@@ -18,9 +18,14 @@ export const legalConfig = {
   mailingAddress: formatAddress(),
   governingLaw: "Arizona, United States",
   shipping: {
+    destinationSummary:
+      "Online checkout currently supports United States delivery addresses only.",
+    rateSummary:
+      "Available shipping methods and charges are shown at checkout before payment.",
+    internationalAvailability:
+      "International shipping is not available through this store.",
     processingWindow: "1-3 business days",
     domesticTransitWindow: "3-7 business days",
-    internationalTransitWindow: "7-21 business days",
     preorders: "Preorders ship by the date listed on the product page.",
     backorders:
       "Backorders ship as inventory becomes available and may ship separately.",

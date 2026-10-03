@@ -8,8 +8,9 @@ Batch 5 release acceptance is complete at `960fe7b`. Run
 `artifacts/end-to-end-audit-2026-10-03/`. The source inventory has 44 page routes
 and 493 control candidates in 187 files; it is a starting inventory, not a
 coverage claim. The user has signed into Admin and the Stripe Dashboard confirms
-the expected sandbox. No fresh payment/refund has run. The owned shelf creation
-failed and rolled back; the product wizard currently holds a browser-only draft.
+the expected sandbox. No fresh payment/refund has run. The initial shelf failure
+was repaired; the owned shelf now exists and is archived. Product creation still
+needs the final-save correction and live retest described below.
 
 ## Initial repair group — deployment and live retests pending
 
@@ -53,11 +54,61 @@ The first pushed repair revision, `2e93d66`, was held by both CodeQL jobs for
 two missing-anchor findings in font verification code. Exact hostname/endpoint
 comparisons replace those regular expressions; 130 policy tests and all three
 rendered font cases pass. No finding suppression or CI policy exception was
-added. Corrective revision CI and Railway acceptance remain required.
+added. The corrected revision's CI and live results are recorded below.
 
-A further live copy finding remains open: Home/About promise worldwide shipping
-and international rates. Reconcile those claims against the configured checkout
-destinations and shipping policy during the continuing audit before acceptance.
+### Live retests and further corrective work — October 3, 23:00 UTC
+
+Revision `20ba1af7ed08913e3d8df7d3769a099839f90239` passed all four workflows
+and 23 required checks: Root `37158889600`, Backend `37158889560`, Storefront
+`37158889567`, Runtime Images `37158889597`. Both runtime-image artifact
+records/SBOM/scans verified. Backend deployment
+`62265a27-9848-4693-bce9-fb276c2cc1d6` and Storefront deployment
+`ba7cf054-327d-4e73-85c3-8c593fe1b9fa` reached exact-revision success.
+Migration `681f4e41-5dac-407c-b191-766a5103b0dd` completed before Backend
+dispatch. All 462 active catalog profiles now pass their strict reader.
+Runtime packages, application database role, migration receipt, restricted
+notification key and Next backport checks passed. Deployed responsive browsers
+passed 84 cases, with eight documented skips and zero retries.
+
+Post-migration backup deployment `2a436c25-e334-420a-8f7b-e5b75afc9146`, execution
+`9f1b2eca-a00d-4f98-bf38-8ab98545d935`, completed and published encrypted archive
+`924de7ef-8273-4bc9-ad7f-89348abdc311` at 22:47 UTC: four database files and 1,168
+media objects. All nine services/jobs were observed. Redis retained its process
+identity at 5,899 seconds uptime, healthy persistence and zero OOM, evictions or
+rejected connections. The 237 scheduled plus one event failed jobs are preserved.
+
+**This revision is not release-accepted.** Live authoring found additional
+boundary failures, and scheduler health retains a 24-hour incident from the
+previous `960fe7b` worker. Its 22:32 run started 61,717 ms late, examined 60 carts,
+attempted no completions, reported zero failures/held carts and released its
+lock. The current worker completed normally at 22:52 with 56 ms schedule delay.
+Preserve the latch and investigate; do not delete it or describe a subsequent
+heartbeat as clearing the observation window. These corrections remain batch 6.
+
+| Finding | Live evidence and correction | Retest status |
+| --- | --- | --- |
+| `B6-MEDIA-FILE-KEY` | S3 returns an object key containing `.webp`; the upload/replay decoder incorrectly required a database identifier. Validate bounded provider keys separately and retain the verified key for compensation before validating the returned URL. | Local boundary cases pass, including UTF-8 byte limits and invalid-URL compensation. Native persistence now uses a realistic prefixed key. Live upload retest pending. |
+| `B6-CREATE-AGGREGATE` | Final product creation rejected `catalog-product-create:<UUID>` in the shared operation reader and compensated the workflow. Accept only that command's exact namespace bound to its idempotency key. | Full native product workflow creates two priced, stocked variants and replays without duplication; live draft retest pending. |
+| `B6-ADMIN-204` | Archiving the owned shelf succeeded, but the pinned SDK parsed the empty 204 as JSON and falsely showed failure. Request and validate a raw 204 for shelf archive and bundle removal. | Native SDK regression passes; live archive/restore feedback retest pending. |
+| `B6-CONTACT-FEEDBACK` | Empty Contact submission kept focus on Send; result feedback lacked announcement roles. Focus the first invalid field and expose status/alert feedback. | Four component cases and three rendered browser cases pass; the first test's route-announcer locator ambiguity is retained. Live corrected submission pending. |
+| `B6-SHIPPING-COPY` | Home/About promised global delivery, Help promised free shipping above $50, and FAQ/Help contradicted the published 30-day return window. | Shared US-only delivery/rate copy and summaries of the existing return policy are corrected locally. No shipping fees or return policy changed. |
+
+The failed upload left one audit-owned 18,586-byte object with no catalog asset.
+Its operation, exact key, SHA-256 and lack of references were verified before
+conditional deletion; authenticated HEAD confirms 404. Its compensated operation
+history remains intact. The audit shelf was created/edited and then archived;
+the failed archive UI must not be mistaken for a failed database mutation.
+Private receipts are in the audit evidence directory, including
+`owned-media-orphan-cleanup.json`. No fresh payment/refund has run yet.
+
+The final local corrective gates pass: 288 Backend suites / 2,316 tests,
+both production builds, 70 native service cases plus 44 payment cases and the
+complete disposable recovery aggregate, 93 Storefront responsive browser cases
+(two documented skips, zero retries), and all 13 Admin accessibility cases.
+The 200-percent Admin validation screenshot also shows the heading partially
+beneath the fixed header after focus movement; retain this visual finding for
+live inspection. These local results do not replace staging retests, payment
+execution, or the outstanding scheduler observation window.
 
 This is **batch 6**, after credential/dependency maintenance and before the
 client environment clone in batch 7. Audit the complete shopping and operator

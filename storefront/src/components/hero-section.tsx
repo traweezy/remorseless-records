@@ -10,7 +10,7 @@ export const HeroSection = () => (
     <ParallaxSection className="relative z-10 w-full">
       <div className="flex w-full flex-col items-center gap-8 px-4 text-center sm:gap-10 sm:px-8 lg:gap-12 lg:px-12">
         <span className="text-sm font-medium uppercase tracking-[0.4rem] text-muted-foreground">
-          Remorseless Records Worldwide
+          Remorseless Records
         </span>
 
         <div className="relative inline-block w-full max-w-[320px] sm:max-w-xl lg:max-w-3xl">
@@ -36,7 +36,7 @@ export const HeroSection = () => (
             ...Death...Doom...and everything in between
           </p>
           <p className="font-teko text-xl font-semibold uppercase tracking-[0.35rem] text-muted-foreground sm:text-2xl sm:tracking-[0.4rem] md:text-3xl md:tracking-[0.5rem]">
-            We ship the underground worldwide.
+            Underground records. Packed with care.
           </p>
         </div>
 

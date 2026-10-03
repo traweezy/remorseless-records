@@ -12,7 +12,7 @@ export const siteMetadata = {
   shortName: "Remorseless",
   tagline: "Death, doom, sludge, and subterranean rituals.",
   description:
-    "Remorseless Records is an underground metal label curating limited-run doom, sludge, death, and stoner releases with archival-grade packaging and global fulfillment.",
+    "Remorseless Records is an underground metal label curating limited-run doom, sludge, death, and stoner releases with archival-grade packaging.",
   siteUrl: runtimeEnv.siteUrl ?? FALLBACK_SITE_URL,
   defaultLocale: "en-US",
   keywords: [

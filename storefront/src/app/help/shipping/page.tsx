@@ -9,12 +9,12 @@ import {
 } from "@/components/ui/page-shell"
 import { siteMetadata } from "@/config/site"
 import SmartLink from "@/components/ui/smart-link"
-import { legalRoutes } from "@/config/legal"
+import { legalConfig, legalRoutes } from "@/config/legal"
 
 export const metadata: Metadata = {
   title: "Shipping & Returns",
   description:
-    "Learn about Remorseless Records shipping rates, international delivery, and return/refund policies.",
+    "Learn about Remorseless Records US delivery, shipping rates, and return/refund policies.",
 }
 
 const ShippingPage = () => (
@@ -35,12 +35,14 @@ const ShippingPage = () => (
             variant="accent"
             className="font-semibold uppercase tracking-[0.2rem]"
           >
-            Free domestic shipping on all orders over $50
+            Shipping rates shown before payment
           </Alert>
           <p className="text-sm leading-relaxed text-muted-foreground">
-            International shipping rates are calculated against current USPS
-            rates and reflect an average cost per zone. If something looks off,
-            contact us and we’ll recalc against your exact location.
+            {legalConfig.shipping.destinationSummary}{" "}
+            {legalConfig.shipping.internationalAvailability}
+          </p>
+          <p className="text-sm leading-relaxed text-muted-foreground">
+            {legalConfig.shipping.rateSummary}
           </p>
           <p className="text-sm leading-relaxed text-muted-foreground">
             Orders go out in small batches with heavy packaging and hand
@@ -63,9 +65,10 @@ const ShippingPage = () => (
             Returns & Refunds
           </h2>
           <p className="text-sm leading-relaxed text-muted-foreground">
-            Refunds are granted for damaged or unplayable items. Returns and
-            exchanges for unopened products are considered case-by-case; return
-            shipping is covered by the customer.
+            Eligible returns must be requested within{" "}
+            {legalConfig.returns.windowDays} days of delivery.{" "}
+            {legalConfig.returns.condition} Return shipping is the customer’s
+            responsibility unless an item arrives damaged or incorrect.
           </p>
           <p className="text-sm leading-relaxed text-muted-foreground">
             To start a return or refund, reach out via the{" "}

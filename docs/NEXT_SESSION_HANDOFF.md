@@ -51,15 +51,29 @@ warnings/errors in the final bounded window. Failed attempts remain documented.
 Durable private receipts, traces/screenshots and checksum manifest:
 `artifacts/staging-2026-10-03/batch5-960fe7b/`. Closing notes join batch 6's push.
 
-Batch 6 has begun reconnaissance and a substantial repair group, not acceptance.
+Batch 6 is in live testing and corrective work, not acceptance. Revision
+`20ba1af` passed all four workflows/23 checks and reached both Railway apps,
+with completed migration/backup jobs. Its deployed browsers passed 84 cases
+with eight skips and zero retries; all 462 catalog profiles now decode. Live
+uploads, final draft save and archive feedback exposed further provider-key,
+namespaced operation-ID and empty-204 response bugs. Their fixes and native
+regressions are the next corrective group within batch 6, alongside Contact
+feedback and consistent delivery/returns copy. The earlier worker's 22:32
+schedule delay also leaves a preserved 24-hour scheduler alert; acceptance is
+still open. See [live retest evidence](END_TO_END_AUDIT.md#live-retests-and-further-corrective-work--october-3-2300-utc).
+
+The initial repair group remains documented below.
 The [audit repair table](END_TO_END_AUDIT.md#initial-repair-group--deployment-and-live-retests-pending)
 tracks cold quick shop, local fonts/root typography, Admin media CSP, 17 legacy
 descriptions, native catalog creation/transaction ordering, form focus and tax
 link contrast. Local gates include 2,300 Backend tests, both Storefront coverage
 groups, 69 native Medusa integration cases/full recovery aggregate, 167
 Storefront browser passes plus two skips, and 13 Admin accessibility cases.
-These need exact staging deployment and live retests; the remaining exhaustive
-coverage and actual purchases/refunds are still open. Its ignored private source
+The initial group reached staging at `20ba1af`; its further live failures are
+listed above. The corrective group passes 2,316 Backend tests, full native
+creation/replay and recovery integration, both builds, 93 responsive Storefront
+cases plus two skips, and 13 Admin cases. The remaining exhaustive coverage and
+actual purchases/refunds are still open. Its ignored private source
 inventory contains 44 page routes and 493 control candidates across 187 source
 files; these are not completed tests. Reconcile native Admin navigation and
 rendered states into the [audit checklist](END_TO_END_AUDIT.md). Current run ID:

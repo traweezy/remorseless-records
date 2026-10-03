@@ -13,6 +13,7 @@ import {
   PageShell,
 } from "@/components/ui/page-shell"
 import { siteMetadata } from "@/config/site"
+import { legalConfig } from "@/config/legal"
 import SmartLink from "@/components/ui/smart-link"
 
 export const metadata: Metadata = {
@@ -24,15 +25,15 @@ export const metadata: Metadata = {
 const faqs = [
   {
     q: "Do you ship internationally?",
-    a: "Yes. Rates are based on current USPS pricing and averaged per zone. If a rate seems high, contact us and we'll recalc against your exact address.",
+    a: `${legalConfig.shipping.destinationSummary} ${legalConfig.shipping.internationalAvailability}`,
   },
   {
     q: "When will my order ship?",
-    a: "Orders leave in small batches with heavy packaging. You’ll receive tracking as soon as your parcel scans. Expect 1–3 business days to depart.",
+    a: `Orders leave in small batches with heavy packaging. You’ll receive tracking as soon as your parcel scans. Allow ${legalConfig.shipping.processingWindow} for processing.`,
   },
   {
     q: "What’s your return policy?",
-    a: "Refunds are granted for damaged or unplayable items. Returns/exchanges for unopened products are case-by-case; return shipping is covered by the customer.",
+    a: `Eligible returns must be requested within ${legalConfig.returns.windowDays} days of delivery. ${legalConfig.returns.condition} Return shipping is the customer’s responsibility unless an item arrives damaged or incorrect. See the Returns & Refunds Policy for exclusions and full terms.`,
   },
   {
     q: "Do you press limited variants?",

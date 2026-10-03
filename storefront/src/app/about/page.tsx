@@ -7,6 +7,7 @@ import {
   PageShell,
 } from "@/components/ui/page-shell"
 import { siteMetadata } from "@/config/site"
+import { legalConfig } from "@/config/legal"
 import SmartLink from "@/components/ui/smart-link"
 
 export const metadata: Metadata = {
@@ -18,7 +19,7 @@ export const metadata: Metadata = {
 const ABOUT_PARAGRAPHS = [
   "Remorseless Records was founded in 2024 in Stamford, Connecticut with a singular goal: release and distribute the best in underground death and doom metal. Every release is personally vetted, mastered for maximum impact, and packed in small batches to keep quality brutal and uncompromised.",
   "If you want to be considered for a release or want to carry Remorseless titles in your distro, reach out via the Contact page. All messages get answered as quickly as possible.",
-  "International shipping rates are calculated against current USPS rates and reflect an average cost per zone. If a rate looks off, reach out and we’ll recalc against your exact location.",
+  `${legalConfig.shipping.destinationSummary} ${legalConfig.shipping.rateSummary}`,
   "Refunds are granted for damaged or unplayable items. Returns and exchanges for unopened products are considered case-by-case; return shipping is covered by the customer. Contact us to request a return or refund.",
 ]
 

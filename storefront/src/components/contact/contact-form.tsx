@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { type FormEvent, useMemo, useState } from "react"
 import { useForm } from "@tanstack/react-form"
 import { z } from "zod"
 
@@ -93,16 +93,24 @@ const ContactForm = () => {
 
   const disabled = useMemo(() => status === "submitting", [status])
 
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    const element = event.currentTarget
+    await form.handleSubmit()
+    window.requestAnimationFrame(() => {
+      if (element.isConnected) {
+        element.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus()
+      }
+    })
+  }
+
   return (
     <Card
       as="form"
       variant="panel"
       className="space-y-4 p-4 sm:p-6"
       noValidate
-      onSubmit={(event) => {
-        event.preventDefault()
-        void form.handleSubmit()
-      }}
+      onSubmit={(event) => void handleSubmit(event)}
     >
       <HoneypotField
         value={form.state.values.honeypot ?? ""}
@@ -244,12 +252,12 @@ const ContactForm = () => {
           {status === "submitting" ? "Sending..." : "Send message"}
         </Button>
         {status === "success" ? (
-          <span className="text-sm text-foreground">
+          <span role="status" className="text-sm text-foreground">
             Message sent. We’ll reply soon.
           </span>
         ) : null}
         {status === "error" && errorMessage ? (
-          <span className="text-sm text-destructive">
+          <span role="alert" className="text-sm text-destructive">
             Something went wrong. Please try again or email{" "}
             {siteMetadata.contact.email}.
           </span>
