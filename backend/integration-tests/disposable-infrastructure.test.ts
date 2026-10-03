@@ -52,6 +52,25 @@ const assertDatabaseReadinessTiming = (checks: unknown): void => {
     expect(phase).toBeGreaterThanOrEqual(0)
     expect(phase).toBeLessThanOrEqual(duration)
   }
+  const pool = recordFrom(database?.pool_observation, "Pool observation")
+  expect(["created", "reused", "unknown"]).toContain(pool.connection_source)
+  for (const field of [
+    "free_before",
+    "used_before",
+    "pending_acquires_before",
+    "pending_creates_before",
+  ]) {
+    expect(Number.isSafeInteger(pool[field])).toBe(true)
+    expect(pool[field]).toBeGreaterThanOrEqual(0)
+  }
+  if (pool.connection_create_ms !== null) {
+    if (typeof database?.pool_acquire_ms !== "number")
+      throw new TypeError("Database acquisition duration must be numeric.")
+    expect(pool.connection_source).toBe("created")
+    expect(pool.connection_create_ms).toBeLessThanOrEqual(
+      database?.pool_acquire_ms
+    )
+  }
 }
 
 medusaIntegrationTestRunner({
@@ -65,6 +84,46 @@ medusaIntegrationTestRunner({
   moduleName: "RemorselessDisposableInfrastructure",
   testSuite: ({ api, dbConfig, getContainer }) => {
     describe("disposable PostgreSQL and Redis integration", () => {
+      it("distinguishes cold creation from waiting for an occupied connection", async () => {
+        const database = knex({
+          client: "pg",
+          connection: dbConfig.clientUrl,
+          pool: { min: 0, max: 1 },
+        })
+        let held: unknown
+        try {
+          const probes = createBackendReadinessProbes({
+            database,
+            environment: { NODE_ENV: "test" },
+          })
+          const cold = await runReadinessChecks(probes)
+          assertDatabaseReadinessTiming(cold)
+          expect(cold[0]?.pool_observation).toMatchObject({
+            connection_source: "created",
+            connection_create_ms: expect.any(Number),
+            used_before: 0,
+            free_before: 0,
+          })
+          held = await database.client.acquireConnection()
+          const waiting = runReadinessChecks(probes)
+          await new Promise<void>((resolve) => setImmediate(resolve))
+          expect(database.client.pool?.numPendingAcquires()).toBe(1)
+          await database.client.releaseConnection(held)
+          held = undefined
+          const warm = await waiting
+          assertDatabaseReadinessTiming(warm)
+          expect(warm[0]?.pool_observation).toMatchObject({
+            connection_source: "reused",
+            connection_create_ms: null,
+            used_before: 1,
+            free_before: 0,
+          })
+        } finally {
+          if (held) await database.client.releaseConnection(held)
+          await database.destroy()
+        }
+      })
+
       it("boots the real API with healthy disposable dependencies", async () => {
         const responses: unknown[] = await Promise.all([
           api.get("/live"),

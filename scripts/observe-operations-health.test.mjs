@@ -102,6 +102,125 @@ const evaluate = (overrides = {}) =>
   })
 
 describe("external operations observation", () => {
+  it("retains connection creation and contention without driver attributes", () => {
+    const observed = {
+      connection_source: "created",
+      connection_create_ms: 2,
+      free_before: 0,
+      used_before: 1,
+      pending_acquires_before: 2,
+      pending_creates_before: 0,
+      driver: "private-host-canary",
+    }
+    const report = evaluate({
+      body: JSON.stringify(
+        payload({
+          dependencies: [
+            {
+              name: "database",
+              duration_ms: 10,
+              status: "ok",
+              pool_acquire_ms: 3,
+              query_ms: 7,
+              pool_observation: observed,
+            },
+          ],
+        })
+      ),
+    })
+    assert.deepEqual(report.endpoint.dependencies[0].pool, {
+      connectionSource: "created",
+      connectionCreateMs: 2,
+      freeBefore: 0,
+      usedBefore: 1,
+      pendingAcquiresBefore: 2,
+      pendingCreatesBefore: 0,
+    })
+    assert.equal(JSON.stringify(report).includes("private-host-canary"), false)
+    const markdown = renderOperationsObservationMarkdown(report)
+    assert.match(markdown, /connection created, creation 2 ms/u)
+    assert.match(markdown, /1 used, 0 free, 2 waiting, 0 creating/u)
+    observed.connection_create_ms = null
+    const unknown = evaluate({
+      body: JSON.stringify(
+        payload({
+          dependencies: [
+            {
+              name: "database",
+              duration_ms: 10,
+              status: "ok",
+              pool_acquire_ms: 3,
+              query_ms: 7,
+              pool_observation: observed,
+            },
+          ],
+        })
+      ),
+    })
+    assert.match(
+      renderOperationsObservationMarkdown(unknown),
+      /creation unobserved/u
+    )
+  })
+
+  it("rejects incomplete or inconsistent pool observations", () => {
+    const valid = {
+      connection_source: "created",
+      connection_create_ms: 2,
+      free_before: 0,
+      used_before: 1,
+      pending_acquires_before: 2,
+      pending_creates_before: 0,
+    }
+    for (const invalid of [
+      null,
+      [],
+      {},
+      { ...valid, used_before: -1 },
+      { ...valid, free_before: 100_001 },
+      { ...valid, pending_creates_before: 1.5 },
+      { ...valid, connection_source: "other" },
+      { ...valid, connection_create_ms: 4 },
+      { ...valid, connection_create_ms: -1 },
+      { ...valid, connection_create_ms: "2" },
+      { ...valid, connection_source: "reused" },
+    ]) {
+      const report = evaluate({
+        body: JSON.stringify(
+          payload({
+            dependencies: [
+              {
+                name: "database",
+                duration_ms: 10,
+                status: "ok",
+                pool_acquire_ms: 3,
+                query_ms: 7,
+                pool_observation: invalid,
+              },
+            ],
+          })
+        ),
+      })
+      assert.equal(report.endpoint, null)
+      assert.ok(report.reasons.includes("health_payload_invalid"))
+    }
+    const absentTimings = evaluate({
+      body: JSON.stringify(
+        payload({
+          dependencies: [
+            {
+              name: "database",
+              duration_ms: 10,
+              status: "ok",
+              pool_observation: valid,
+            },
+          ],
+        })
+      ),
+    })
+    assert.equal(absentTimings.endpoint, null)
+  })
+
   it("accepts and sanitizes a healthy operations response", () => {
     const report = evaluate()
 

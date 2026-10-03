@@ -236,6 +236,46 @@ const sanitizeDependencies = (value) => {
     ) {
       return null
     }
+    let pool
+    if (Object.hasOwn(dependency, "pool_observation")) {
+      const observed = dependency.pool_observation
+      const counts = [
+        "free_before",
+        "used_before",
+        "pending_acquires_before",
+        "pending_creates_before",
+      ]
+      if (
+        !hasPoolAcquire ||
+        !isRecord(observed) ||
+        !counts.every(
+          (key) =>
+            Object.hasOwn(observed, key) &&
+            Number.isSafeInteger(observed[key]) &&
+            observed[key] >= 0 &&
+            observed[key] <= 100_000
+        ) ||
+        !Object.hasOwn(observed, "connection_source") ||
+        !["created", "reused", "unknown"].includes(
+          observed.connection_source
+        ) ||
+        !Object.hasOwn(observed, "connection_create_ms") ||
+        (observed.connection_create_ms !== null &&
+          (observed.connection_source !== "created" ||
+            !Number.isSafeInteger(observed.connection_create_ms) ||
+            observed.connection_create_ms < 0 ||
+            observed.connection_create_ms > dependency.pool_acquire_ms))
+      )
+        return null
+      pool = {
+        connectionSource: observed.connection_source,
+        connectionCreateMs: observed.connection_create_ms,
+        freeBefore: observed.free_before,
+        usedBefore: observed.used_before,
+        pendingAcquiresBefore: observed.pending_acquires_before,
+        pendingCreatesBefore: observed.pending_creates_before,
+      }
+    }
     dependencies.push({
       durationMs: dependency.duration_ms,
       name: dependency.name,
@@ -243,6 +283,7 @@ const sanitizeDependencies = (value) => {
       ...(hasPoolAcquire && {
         poolAcquireMs: dependency.pool_acquire_ms,
         queryMs: dependency.query_ms,
+        ...(pool && { pool }),
       }),
     })
   }
@@ -524,10 +565,13 @@ export const renderOperationsObservationMarkdown = (report) => {
   ]
   lines.push(
     ...(endpoint?.dependencies.length
-      ? endpoint.dependencies.map(
-          (dependency) =>
-            `- \`${dependency.name}\`: \`${dependency.status}\` (${dependency.durationMs} ms${dependency.name === "database" && dependency.poolAcquireMs !== undefined ? `; pool acquire ${dependency.poolAcquireMs} ms, query ${dependency.queryMs} ms` : ""})`
-        )
+      ? endpoint.dependencies.map((dependency) => {
+          const pool = dependency.pool
+          const poolDetail = pool
+            ? `; connection ${pool.connectionSource}, creation ${pool.connectionCreateMs === null ? "unobserved" : `${pool.connectionCreateMs} ms`}; pool before: ${pool.usedBefore} used, ${pool.freeBefore} free, ${pool.pendingAcquiresBefore} waiting, ${pool.pendingCreatesBefore} creating`
+            : ""
+          return `- \`${dependency.name}\`: \`${dependency.status}\` (${dependency.durationMs} ms${dependency.name === "database" && dependency.poolAcquireMs !== undefined ? `; pool acquire ${dependency.poolAcquireMs} ms, query ${dependency.queryMs} ms${poolDetail}` : ""})`
+        })
       : ["- None reported"])
   )
   lines.push("", "## Alert reasons", "")

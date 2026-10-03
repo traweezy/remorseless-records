@@ -1,3 +1,4 @@
+import { EventEmitter } from "node:events"
 import { knex, type Knex } from "@mikro-orm/knex"
 
 import {
@@ -18,8 +19,20 @@ const createDatabaseFixture = () => {
     promise: Promise.resolve(connection),
   })
   const releaseConnection = jest.fn().mockResolvedValue(undefined)
+  const events = new EventEmitter()
   const database = {
-    client: { pool: { acquire: poolAcquire }, releaseConnection },
+    client: {
+      pool: {
+        acquire: poolAcquire,
+        numFree: () => 0,
+        numUsed: () => 0,
+        numPendingAcquires: () => 0,
+        numPendingCreates: () => 0,
+        on: events.on.bind(events),
+        removeListener: events.removeListener.bind(events),
+      },
+      releaseConnection,
+    },
     raw,
     select,
   } as unknown as Knex
@@ -31,6 +44,7 @@ const createDatabaseFixture = () => {
     abort,
     connection,
     database,
+    events,
     poolAcquire,
     probes,
     raw,
@@ -118,6 +132,14 @@ describe("runReadinessChecks", () => {
       duration_ms: expect.any(Number),
       name: "database",
       pool_acquire_ms: expect.any(Number),
+      pool_observation: {
+        connection_create_ms: null,
+        connection_source: "reused",
+        free_before: 0,
+        pending_acquires_before: 0,
+        pending_creates_before: 0,
+        used_before: 0,
+      },
       query_ms: expect.any(Number),
       status: "ok",
     })
@@ -136,6 +158,7 @@ describe("runReadinessChecks", () => {
     expect(fixture.useConnection).toHaveBeenCalledWith(fixture.connection)
     expect(fixture.timeout).toHaveBeenCalledWith(2_000, { cancel: true })
     expect(fixture.poolAcquire).toHaveBeenCalledTimes(1)
+    expect(fixture.events.eventNames()).toEqual([])
     expect(fixture.abort).not.toHaveBeenCalled()
     expect(fixture.releaseConnection).toHaveBeenCalledTimes(1)
     expect(fixture.releaseConnection).toHaveBeenCalledWith(fixture.connection)
@@ -186,6 +209,7 @@ describe("runReadinessChecks", () => {
     ])
     expect(fixture.select).not.toHaveBeenCalled()
     expect(fixture.releaseConnection).not.toHaveBeenCalled()
+    expect(fixture.events.eventNames()).toEqual([])
   })
 
   it("fails closed when the shared database pool is unavailable", async () => {

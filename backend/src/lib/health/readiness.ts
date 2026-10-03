@@ -8,6 +8,11 @@ import {
   type ObservedOperation,
 } from "../observability/operation-telemetry"
 import { resolveOperationalCapabilities } from "./capabilities"
+import {
+  type DatabasePoolObservation,
+  observeDatabasePool,
+  sanitizeDatabasePoolObservation,
+} from "./database-pool-observation"
 
 const DEPENDENCY_TIMEOUT_MS = 2_000
 // Cold pool creation can exceed 2s; do not let a health probe queue for Knex's 60s default.
@@ -18,12 +23,14 @@ export type ReadinessCheck = {
   duration_ms: number
   name: string
   pool_acquire_ms?: number
+  pool_observation?: DatabasePoolObservation
   query_ms?: number
   status: "error" | "ok"
 }
 
 type DatabaseProbeTimings = {
   pool_acquire_ms: number
+  pool_observation?: unknown
   query_ms: number
 }
 
@@ -106,13 +113,24 @@ const runProbe = async (probe: ReadinessProbe): Promise<ReadinessCheck> => {
     const timings = observation
       ? await observeOperation(observation, probe.check)
       : await probe.check()
+    const databaseTimings =
+      probe.name === "database" && isDatabaseProbeTimings(timings)
+        ? timings
+        : undefined
+    const poolObservation = databaseTimings
+      ? sanitizeDatabasePoolObservation(
+          databaseTimings.pool_observation,
+          databaseTimings.pool_acquire_ms
+        )
+      : undefined
     return {
       duration_ms: Math.round(performance.now() - startedAt),
       name: probe.name,
-      ...(probe.name === "database" && isDatabaseProbeTimings(timings)
+      ...(databaseTimings
         ? {
-            pool_acquire_ms: timings.pool_acquire_ms,
-            query_ms: timings.query_ms,
+            pool_acquire_ms: databaseTimings.pool_acquire_ms,
+            ...(poolObservation && { pool_observation: poolObservation }),
+            query_ms: databaseTimings.query_ms,
           }
         : {}),
       status: "ok",
@@ -138,18 +156,25 @@ const databaseProbe = (database: Knex): ReadinessProbe => ({
       throw new Error("Database pool is unavailable.")
     }
     const acquisitionStartedAt = performance.now()
+    const observation = observeDatabasePool(pool)
     // Tarn abort removes this probe from the shared queue without changing
     // application-wide pool deadlines. Knex does not expose a per-call limit.
-    const pending = pool.acquire()
-    const acquireTimer = setTimeout(
-      () => pending.abort(),
-      DATABASE_ACQUIRE_TIMEOUT_MS
-    )
     let connection: unknown
+    let poolObservation: DatabasePoolObservation
     try {
-      connection = await pending.promise
+      const pending = pool.acquire()
+      const acquireTimer = setTimeout(
+        () => pending.abort(),
+        DATABASE_ACQUIRE_TIMEOUT_MS
+      )
+      try {
+        connection = await pending.promise
+        poolObservation = observation.finish(connection)
+      } finally {
+        clearTimeout(acquireTimer)
+      }
     } finally {
-      clearTimeout(acquireTimer)
+      observation.close()
     }
     const poolAcquireMs = Math.round(performance.now() - acquisitionStartedAt)
     try {
@@ -163,6 +188,7 @@ const databaseProbe = (database: Knex): ReadinessProbe => ({
         .timeout(DEPENDENCY_TIMEOUT_MS, { cancel: true })
       return {
         pool_acquire_ms: poolAcquireMs,
+        pool_observation: poolObservation,
         query_ms: Math.round(performance.now() - queryStartedAt),
       }
     } finally {

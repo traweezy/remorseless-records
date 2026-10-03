@@ -31,8 +31,15 @@ text.
   error makes the endpoint fail closed with `503`.
 - A successful database readiness check reports rounded `pool_acquire_ms` and
   `query_ms` beside its total duration. The external operations monitor retains
-  only these bounded timings and fixed dependency status; it never records SQL,
-  connection details, or query values. The existing 1,000 ms database
+  these bounded timings and fixed dependency status. A successful probe also
+  reports `pool_observation`: free/used connections and pending acquisitions/
+  creations at the start, whether its acquired connection was created or reused,
+  and the full connection creation duration when observed within that probe.
+  Unknown creation duration stays null. Shared listeners attribute creation to
+  the actual acquired connection and are removed after the last overlapping
+  probe; another request's connection creation is not used as this probe's
+  timing. The monitor validates and retains only these fixed fields, never SQL,
+  connection details, resource objects or query values. The existing 1,000 ms database
   operations threshold is unchanged. Its pending pool acquisition is aborted
   after five seconds, independently of the two-second SQL cancellation budget;
   application queries retain their own pool settings.
