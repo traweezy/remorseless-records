@@ -16,8 +16,16 @@ versus read-only export connections. The fresh restricted archive restored all
 The new service shell is `129d6f7a-13f1-49d4-9828-0d02911a3326`, in the existing
 staging environment. At this commit's preparation, its source remains
 unconnected and the live credential cutover/release gates remain pending.
-Do not infer acceptance from this implementation record; append exact CI,
-deployment, credential-revocation and live evidence after the cutover.
+The first push `90d0e15` exposed a mock Redis state-file race, corrected in
+`ed7facf`; all four workflows and 23 checks passed on that correction. Both apps
+deployed it before the credential cutover. The migration password was rotated
+and its old value rejected over Backend's private network; Backend's migration
+variable is removed and external mode is applied. The first isolated job build
+then failed because Medusa requires signing values at configuration load time.
+The follow-up adds a provider-free `build:migrations` wrapper with temporary
+signing values and a non-live database URL. Deployment and final acceptance of
+that correction remain pending. Do not infer acceptance from this record;
+append exact CI, deployment and live evidence after the corrected rollout.
 
 ### Next session: seven separate batch pushes
 

@@ -114,7 +114,10 @@ pnpm run railway:apply:staging
 - Use `group("Name", [resources])` to keep large projects organized on the Railway canvas.
 - Secrets imported from Railway are rendered as `preserve()` so existing values are retained without writing secret values to source. Use `railway config pull --omit-preserved-variables` for a smaller import.
 
-- Migrations uses the Backend build/watch inputs, `checkSuites: true`, no health
+- Migrations uses the Backend watch inputs and `build:migrations`, which compiles
+  with temporary signing values, a non-live database URL and no Admin bundle
+  or provider integrations. No application signing secrets are stored on the job.
+  It uses `checkSuites: true`, no health
   endpoint and `restartPolicyType: NEVER`. Its only preserved credential is
   `DATABASE_URL` for `app_migrator`; the service ID uses Railway's own reference.
   Backend keeps only `app_runtime`, enforces external migration mode and waits

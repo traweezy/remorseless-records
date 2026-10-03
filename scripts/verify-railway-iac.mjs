@@ -157,7 +157,10 @@ const backend = getService("Backend")
 const migrations = getService("Migrations")
 const storefront = getService("Storefront")
 
-assert.deepEqual(migrations.build, backend.build)
+assert.deepEqual(migrations.build, {
+  ...backend.build,
+  buildCommand: "pnpm --filter backend run build:migrations",
+})
 assert.deepEqual(migrations.variables, {
   DATABASE_URL: { type: "preserve" },
   DATABASE_MIGRATION_SERVICE_ID: {

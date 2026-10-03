@@ -15,6 +15,10 @@ import {
   migrationJobEnvironment,
   runMigrationJob,
 } from "../backend/scripts/migration-job.mjs"
+import {
+  migrationBuildEnvironment,
+  runMigrationBuild,
+} from "../backend/scripts/migration-build.mjs"
 
 const environment = {
   RAILWAY_PROJECT_ID: "11111111-1111-4111-8111-111111111111",
@@ -27,6 +31,38 @@ const environment = {
     "postgresql://app_migrator:fixture@postgres.railway.internal:5432/railway",
 }
 const context = migrationContext(environment)
+
+test("migration compilation needs no stored application or database credentials", () => {
+  const input = {
+    ...environment,
+    JWT_SECRET: "live-jwt",
+    COOKIE_SECRET: "live-cookie",
+    RESEND_API_KEY: "live-provider",
+    NODE_OPTIONS: "--require untrusted",
+  }
+  const build = migrationBuildEnvironment(input)
+  assert.equal(new URL(build.DATABASE_URL).hostname, "127.0.0.1")
+  assert.notEqual(build.DATABASE_URL, input.DATABASE_URL)
+  assert.notEqual(build.JWT_SECRET, input.JWT_SECRET)
+  assert.notEqual(build.COOKIE_SECRET, input.COOKIE_SECRET)
+  assert.notEqual(build.JWT_SECRET, migrationBuildEnvironment(input).JWT_SECRET)
+  assert.equal(build.RESEND_API_KEY, "")
+  assert.equal(build.NODE_OPTIONS, undefined)
+  assert.equal(build.MEDUSA_DISABLE_ADMIN, "1")
+  runMigrationBuild({
+    environment: input,
+    run(_file, args, options) {
+      assert.match(args[0], /scripts\/build\.mjs$/u)
+      assert.equal(options.env.DATABASE_URL, build.DATABASE_URL)
+      assert.equal(options.shell, false)
+      return { status: 0 }
+    },
+  })
+  assert.throws(() => runMigrationBuild({ run: () => ({ status: 1 }) }))
+  assert.throws(() =>
+    runMigrationBuild({ run: () => ({ status: null, signal: "SIGKILL" }) })
+  )
+})
 
 test("Medusa dotenv cannot enable integrations in a migration child", async (t) => {
   const directory = await mkdtemp(join(tmpdir(), "rr-migration-env-"))

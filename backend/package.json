@@ -14,6 +14,7 @@
   ],
   "scripts": {
     "build": "node scripts/build.mjs",
+    "build:migrations": "node scripts/migration-build.mjs",
     "seed": "node ./scripts/run-medusa.js ./src/scripts/seed.ts",
     "start": "cd .medusa/server && node ./runtime-start.mjs",
     "dev": "medusa develop",

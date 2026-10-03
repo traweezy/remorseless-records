@@ -391,6 +391,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Build migration service without stored application credentials
+        run: env -i PATH="$PATH" HOME="$HOME" pnpm --filter backend run build:migrations
+
       - name: Build backend
         run: pnpm --filter backend run build
 

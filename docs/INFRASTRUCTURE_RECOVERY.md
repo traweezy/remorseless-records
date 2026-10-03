@@ -235,7 +235,10 @@ timeouts and signals fail closed with fixed, credential-free output.
 
 The `applications` IaC partial now includes a one-shot `Migrations` service in
 `store` / `staging` (service `129d6f7a-13f1-49d4-9828-0d02911a3326`). It builds
-the Backend and runs `release:migrate` against the compiled server. Its only
+the Backend with `build:migrations` and runs `release:migrate` against the
+compiled server. The build uses temporary signing values and a non-live database
+URL, with Admin and provider integrations disabled; it needs no stored JWT or
+cookie secret. Its only
 provider credential is `DATABASE_URL` for `app_migrator`; it has no domain,
 HTTP listener, application worker, shared Redis connection or provider API key.
 Restart policy is `NEVER`. The child environment explicitly disables provider

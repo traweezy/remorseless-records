@@ -103,7 +103,7 @@ export default defineRailway(() => {
     source: remorselessRecords,
     build: {
       builder: "RAILPACK",
-      buildCommand: "pnpm --filter backend run build",
+      buildCommand: "pnpm --filter backend run build:migrations",
       buildEnvironment: "V3",
       watchPatterns: ["/backend/**", ...SHARED_BUILD_WATCH_PATTERNS],
     },
