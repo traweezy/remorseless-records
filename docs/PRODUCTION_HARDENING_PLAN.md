@@ -24,7 +24,8 @@ Per the user's latest instruction, local work on the next batch may begin
 once CI passes, while Railway rollout
 and acceptance continue. Hold its push until both services deploy the previous
 exact revision and all required live acceptance checks pass. Keep Conventional
-Commits, required candidate checks, and direct staging delivery.
+Commits, normal local gates, and direct staging delivery. GitHub CI runs after
+the staging push; do not add candidate tags or a separate pre-push CI cycle.
 The separate review of other historically exposed credentials remains open.
 Existing production, business/tax, recovery, and dormant-client boundaries
 remain unchanged.
@@ -657,7 +658,7 @@ restore drills. Exact-SHA CI acceptance remains to be recorded in the handoff.
 
 - `staging` is the protected default integration branch and the only branch
   connected to automatic Railway staging deploys. Normal work is delivered
-  by a protected direct fast-forward push after candidate-tag CI passes.
+  by a direct owner fast-forward push, followed by exact-revision CI.
 - `master` is the production-candidate branch and advances only through a
   reviewed pull request from an exact, accepted `staging` commit.
 - Production deploys are manual from an approved exact `master` SHA. A merge to
@@ -675,9 +676,9 @@ restore drills. Exact-SHA CI acceptance remains to be recorded in the handoff.
   complete its focused checks and docs, then run the combined full local
   gates before one grouped staging push. Do not push each logical commit or
   routine documentation-only acceptance checkpoint separately.
-- Validate the complete batch on its exact candidate tag, then push the same
-  commit directly to staging and watch all four workflows. Once CI passes,
-  begin the next batch locally while monitoring Railway. Hold its push until
+- Run the local gates, push the complete batch directly to staging, then
+  watch all four workflows. Do not introduce candidate-tag validation. Once
+  CI passes, begin the next batch locally while monitoring Railway. Hold its push until
   both previous exact-SHA deployments and health, route, API, log, and browser
   acceptance pass. Batching does not waive compatibility reviews.
 - Do not change production traffic, paid services, credentials, domains,

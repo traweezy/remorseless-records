@@ -1,7 +1,5 @@
 import assert from "node:assert/strict"
 
-import { candidateReference } from "../dependency-review-range.mjs"
-
 export const STAGING = Object.freeze({
   repository: "traweezy/remorseless-records",
   projectId: "1f39263a-25e4-4d69-abc2-f0287b331d1e",
@@ -88,7 +86,7 @@ export const verifyStagingProtection = (protection) => {
       .sort(),
     [...REQUIRED_CHECKS].sort()
   )
-  assert.equal(protection.enforce_admins.enabled, true)
+  assert.equal(protection.enforce_admins.enabled, false)
   assert.equal(protection.allow_force_pushes.enabled, false)
   assert.equal(protection.allow_deletions.enabled, false)
   assert.ok(!protection.required_pull_request_reviews)
@@ -96,24 +94,16 @@ export const verifyStagingProtection = (protection) => {
 
 export const evaluateReleaseCi = ({
   sha,
-  base,
   branch,
   protection,
   checks,
   workflows,
-  tag,
 }) => {
   assertRevision(sha)
-  if (base) assertRevision(base)
   assert.equal(branch.name, "staging")
-  assert.equal(branch.commit.sha, base ?? sha)
+  assert.equal(branch.commit.sha, sha)
   verifyStagingProtection(protection)
-  const ref = base ? candidateReference(base, sha) : "refs/heads/staging"
-  if (base) {
-    assert.equal(tag.ref, ref)
-    assert.equal(tag.object.type, "commit")
-    assert.equal(tag.object.sha, sha)
-  }
+  const ref = "refs/heads/staging"
   assert.ok(
     Array.isArray(checks.check_runs) &&
       checks.total_count === checks.check_runs.length &&
@@ -166,7 +156,6 @@ export const evaluateReleaseCi = ({
   })
   return {
     sha,
-    base: base ?? null,
     ref,
     requiredChecks: required,
     workflows: runs,
@@ -240,6 +229,19 @@ export const evaluateStagingDeployments = (data, sha) => {
     return {
       service: service.name,
       active,
+      latest: {
+        id: safeId(latest?.id),
+        status: safeEnum(latest?.status, [
+          "SUCCESS",
+          "BUILDING",
+          "DEPLOYING",
+          "WAITING",
+          "FAILED",
+          "CRASHED",
+          "SKIPPED",
+        ]),
+        exact: latest?.meta?.commitHash === sha,
+      },
       passed:
         active.length === 1 &&
         active[0].id !== null &&

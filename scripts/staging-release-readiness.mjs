@@ -5,7 +5,6 @@ import { dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import { promisify } from "node:util"
 
-import { candidateReference } from "./dependency-review-range.mjs"
 import { normalizeScriptArguments } from "./lib/cli-arguments.mjs"
 import {
   assertRevision,
@@ -19,7 +18,7 @@ import {
 const root = fileURLToPath(new URL("..", import.meta.url))
 const require = createRequire(import.meta.url)
 const usage =
-  "Usage: node scripts/staging-release-readiness.mjs --sha <40-hex> [--candidate-base <40-hex>] [--ci-only]"
+  "Usage: node scripts/staging-release-readiness.mjs --sha <40-hex> [--ci-only]"
 const ensure = (condition) => {
   if (!condition)
     throw new Error("Release identity or response could not be verified")
@@ -32,7 +31,6 @@ export const parseArguments = (input) => {
   for (let index = 0; index < args.length; index++) {
     const key = {
       "--sha": "sha",
-      "--candidate-base": "base",
       "--ci-only": "ciOnly",
     }[args[index]]
     ensure(key && !Object.hasOwn(options, key))
@@ -40,7 +38,6 @@ export const parseArguments = (input) => {
     if (key !== "ciOnly") assertRevision(options[key])
   }
   assertRevision(options.sha)
-  if (options.base !== undefined) candidateReference(options.base, options.sha)
   return options
 }
 
@@ -104,13 +101,12 @@ export const collectReleaseReadiness = async (
   { capture = captureCommand, health = readPublicHealth } = {}
 ) => {
   assertRevision(options.sha)
-  if (options.base) candidateReference(options.base, options.sha)
-  const { sha, base, ciOnly } = options
+  const { sha, ciOnly } = options
   const api = async (path) =>
     JSON.parse(
       await capture("gh", ["api", `repos/${STAGING.repository}/${path}`])
     )
-  const [branch, protection, checks, workflowEntries, tag] = await Promise.all([
+  const [branch, protection, checks, workflowEntries] = await Promise.all([
     api("branches/staging"),
     api("branches/staging/protection"),
     api(`commits/${sha}/check-runs?per_page=100`),
@@ -122,43 +118,27 @@ export const collectReleaseReadiness = async (
         ),
       ])
     ),
-    base
-      ? api(`git/ref/${candidateReference(base, sha).slice(5)}`)
-      : Promise.resolve(null),
   ])
   const ci = evaluateReleaseCi({
     sha,
-    base,
     branch,
     protection,
     checks,
     workflows: Object.fromEntries(workflowEntries),
-    tag,
   })
   const report = {
     schemaVersion: 1,
     checkedAt: new Date().toISOString(),
     readOnly: true,
     sha,
-    base: base ?? null,
     ci,
-    readyForLocalWork: !base && ci.passed,
+    readyForLocalWork: ci.passed,
     readyForAcceptance: false,
     releaseAccepted: false,
   }
   if (ciOnly) {
     const finalBranch = await api("branches/staging")
-    ensure(finalBranch.commit.sha === (base ?? sha))
-    if (base) {
-      const finalTag = await api(
-        `git/ref/${candidateReference(base, sha).slice(5)}`
-      )
-      ensure(
-        finalTag.ref === tag.ref &&
-          finalTag.object?.type === "commit" &&
-          finalTag.object.sha === sha
-      )
-    }
+    ensure(finalBranch.commit.sha === sha)
     return { ...report, passed: ci.passed }
   }
   const binary = join(
@@ -206,7 +186,7 @@ export const collectReleaseReadiness = async (
       "--compact",
     ])
     ensure(!response.errors)
-    return evaluateStagingDeployments(response.data ?? response, base ?? sha)
+    return evaluateStagingDeployments(response.data ?? response, sha)
   }
   const deployments = await deploymentSnapshot()
   const probes = await Promise.all(
@@ -216,7 +196,7 @@ export const collectReleaseReadiness = async (
           return evaluateReleaseHealth(
             service,
             path,
-            base ?? sha,
+            sha,
             await health(new URL(path, `https://${service.domain}`))
           )
         } catch {
@@ -230,19 +210,9 @@ export const collectReleaseReadiness = async (
     api("branches/staging"),
   ])
   ensure(
-    finalBranch.commit.sha === (base ?? sha) &&
+    finalBranch.commit.sha === sha &&
       JSON.stringify(after) === JSON.stringify(deployments)
   )
-  if (base) {
-    const finalTag = await api(
-      `git/ref/${candidateReference(base, sha).slice(5)}`
-    )
-    ensure(
-      finalTag.ref === tag.ref &&
-        finalTag.object?.type === "commit" &&
-        finalTag.object.sha === sha
-    )
-  }
   const passed =
     ci.passed &&
     deployments.every((service) => service.passed) &&
@@ -251,8 +221,7 @@ export const collectReleaseReadiness = async (
     ...report,
     deployments,
     health: probes,
-    readyForAcceptance: !base && passed,
-    candidateChecksPassed: Boolean(base) && passed,
+    readyForAcceptance: passed,
     passed,
     remainingAcceptance: [
       "authenticated_catalog_and_operations",

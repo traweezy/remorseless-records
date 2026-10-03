@@ -62,6 +62,7 @@
     "qa:observability-bootstrap": "node scripts/verify-observability-bootstrap.mjs",
     "qa:railway-runtime-logs": "node --test scripts/verify-railway-runtime-log.test.mjs",
     "qa:react-router-security": "node scripts/verify-react-router-security.mjs",
+    "qa:release-readiness": "node --test scripts/dependency-review-range.test.mjs scripts/staging-release-readiness.test.mjs",
     "release:staging:readiness": "node scripts/staging-release-readiness.mjs",
     "railway:plan:staging": "node scripts/railway-config.mjs plan",
     "railway:apply:staging": "node scripts/railway-config.mjs apply",

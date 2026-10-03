@@ -397,11 +397,11 @@ export const validateReleaseBranches = (source, workflowPath) => {
     [expectedBranches, expectedBranches],
     `${workflowPath} must run pushes and pull requests for staging and master`
   )
-  assert.match(
+  assert.doesNotMatch(
     source,
-    /^  push:\n    branches: \[staging, master\]\n    tags: \["staging-candidate\/\*\*"\]$/mu
+    /^    tags:/mu,
+    `${workflowPath} must not add a separate candidate-tag CI cycle`
   )
-  assert.equal(source.match(/^    tags:/gmu)?.length, 1)
   assert.doesNotMatch(
     source,
     /^\s*environment:\s*production\s*$/mu,

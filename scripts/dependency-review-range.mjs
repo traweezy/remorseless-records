@@ -15,18 +15,12 @@ const requireValue = (condition) => {
   if (!condition) throw new Error("Invalid dependency review range")
 }
 
-export const candidateReference = (base, head) => {
-  requireValue(validSha(base) && validSha(head) && base !== head)
-  return `refs/tags/staging-candidate/${base}/${head}`
-}
-
 export const dependencyReviewRange = ({
   eventName,
   ref,
   sha,
   event,
   parentSha,
-  stagingSha,
 }) => {
   requireValue(validSha(sha) && event?.repository?.full_name === repository)
   if (eventName === "pull_request") {
@@ -37,27 +31,13 @@ export const dependencyReviewRange = ({
         validSha(pr.base.sha) &&
         validSha(pr.head?.sha)
     )
-    return { base: pr.base.sha, head: pr.head.sha, candidate: false }
+    return { base: pr.base.sha, head: pr.head.sha }
   }
   requireValue(["push", "workflow_dispatch"].includes(eventName))
-  if (ref?.startsWith("refs/tags/")) {
-    const match =
-      /^refs\/tags\/staging-candidate\/([a-f0-9]{40})\/([a-f0-9]{40})$/u.exec(
-        ref
-      )
-    requireValue(
-      match &&
-        match[1] === stagingSha &&
-        match[2] === sha &&
-        candidateReference(match[1], match[2]) === ref &&
-        event.deleted !== true
-    )
-    return { base: match[1], head: sha, candidate: true }
-  }
   requireValue(["refs/heads/staging", "refs/heads/master"].includes(ref))
   const base = eventName === "push" ? event.before : parentSha
   requireValue(validSha(base) && base !== sha && event.deleted !== true)
-  return { base, head: sha, candidate: false }
+  return { base, head: sha }
 }
 
 export const runDependencyReviewRange = async (
@@ -92,9 +72,6 @@ export const runDependencyReviewRange = async (
       env.GITHUB_REF?.startsWith("refs/heads/")
         ? git(["rev-parse", "--verify", "HEAD^"])
         : undefined,
-    stagingSha: env.GITHUB_REF?.startsWith("refs/tags/")
-      ? git(["rev-parse", "--verify", "refs/remotes/origin/staging"])
-      : undefined,
   })
   requireValue(git(["rev-parse", "HEAD"]) === env.GITHUB_SHA)
   if (env.GITHUB_EVENT_NAME !== "pull_request")

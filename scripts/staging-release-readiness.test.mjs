@@ -2,7 +2,6 @@ import assert from "node:assert/strict"
 import { spawnSync } from "node:child_process"
 import test from "node:test"
 
-import { candidateReference } from "./dependency-review-range.mjs"
 import {
   assertRevision,
   evaluateReleaseCi,
@@ -27,14 +26,13 @@ const protection = () => ({
     strict: true,
     checks: REQUIRED_CHECKS.map((context) => ({ context, app_id: 15368 })),
   },
-  enforce_admins: { enabled: true },
+  enforce_admins: { enabled: false },
   allow_force_pushes: { enabled: false },
   allow_deletions: { enabled: false },
 })
-const ciFixture = (candidate = false) => ({
+const ciFixture = () => ({
   sha,
-  ...(candidate ? { base } : {}),
-  branch: { name: "staging", commit: { sha: candidate ? base : sha } },
+  branch: { name: "staging", commit: { sha } },
   protection: protection(),
   checks: {
     total_count: REQUIRED_CHECKS.length,
@@ -57,9 +55,7 @@ const ciFixture = (candidate = false) => ({
             id: 100 + index,
             path: `.github/workflows/${name}.yml`,
             head_sha: sha,
-            head_branch: candidate
-              ? candidateReference(base, sha).slice(10)
-              : "staging",
+            head_branch: "staging",
             head_repository: { full_name: STAGING.repository },
             event: "push",
             status: "completed",
@@ -69,7 +65,6 @@ const ciFixture = (candidate = false) => ({
       },
     ])
   ),
-  tag: { ref: candidateReference(base, sha), object: { type: "commit", sha } },
 })
 const deploymentFixture = (revision = sha) => ({
   environment: {
@@ -141,10 +136,10 @@ const healthFixture = (service, revision = sha) => ({
 })
 
 test("arguments require a full exact revision and reject duplicate, unknown and injected options", () => {
-  assert.deepEqual(
-    parseArguments(["--", "--sha", sha, "--candidate-base", base, "--ci-only"]),
-    { sha, base, ciOnly: true }
-  )
+  assert.deepEqual(parseArguments(["--", "--sha", sha, "--ci-only"]), {
+    sha,
+    ciOnly: true,
+  })
   assert.deepEqual(parseArguments(["--help"]), { help: true })
   for (const input of [
     [],
@@ -176,7 +171,7 @@ test("protection requires every exact app-bound check, administrators and direct
       p.required_status_checks.checks[0].context = "other"
     },
     (p) => {
-      p.enforce_admins.enabled = false
+      p.enforce_admins.enabled = true
     },
     (p) => {
       p.allow_force_pushes.enabled = true
@@ -195,8 +190,7 @@ test("protection requires every exact app-bound check, administrators and direct
 })
 
 test("CI binds workflows and check runs to the same repository, event, ref and revision", () => {
-  for (const candidate of [false, true])
-    assert.equal(evaluateReleaseCi(ciFixture(candidate)).passed, true)
+  assert.equal(evaluateReleaseCi(ciFixture()).passed, true)
   for (const mutate of [
     (f) => {
       f.checks.check_runs[0].head_sha = base
@@ -258,17 +252,8 @@ test("CI binds workflows and check runs to the same repository, event, ref and r
     (f) => {
       f.workflows.root.total_count++
     },
-    (f) => {
-      f.tag.object.sha = base
-    },
-    (f) => {
-      f.tag.object.type = "tag"
-    },
-    (f) => {
-      f.tag.ref = "refs/tags/other"
-    },
   ]) {
-    const f = ciFixture(true)
+    const f = ciFixture()
     mutate(f)
     assert.throws(() => evaluateReleaseCi(f))
   }
@@ -278,6 +263,15 @@ test("Railway verifies source triggers, target domains and stable single active 
   const result = evaluateStagingDeployments(deploymentFixture(), sha)
   assert.ok(result.every((service) => service.passed))
   assert.ok(!JSON.stringify(result).includes("must-never-be-emitted"))
+  const failed = deploymentFixture()
+  failed.backend.latestDeployment.status = "FAILED"
+  const failedReport = evaluateStagingDeployments(failed, sha)[0]
+  assert.equal(failedReport.passed, false)
+  assert.deepEqual(failedReport.latest, {
+    id,
+    status: "FAILED",
+    exact: true,
+  })
   for (const mutate of [
     (f) => {
       f.backend.activeDeployments[0].meta.commitHash = base
@@ -372,8 +366,8 @@ test("health requires uncached exact-revision success and every named dependency
   }
 })
 
-const transportFixture = (candidate = false, mutate = () => {}) => {
-  const ci = ciFixture(candidate)
+const transportFixture = (mutate = () => {}) => {
+  const ci = ciFixture()
   let deploymentReads = 0
   let branchReads = 0
   const commands = []
@@ -391,7 +385,6 @@ const transportFixture = (candidate = false, mutate = () => {}) => {
           result = structuredClone(ci.protection)
         else if (path.startsWith("commits/"))
           result = structuredClone(ci.checks)
-        else if (path.startsWith("git/ref/")) result = structuredClone(ci.tag)
         else {
           const name = path.match(
             /^actions\/workflows\/(.*)\.yml\/runs\?/u
@@ -410,7 +403,7 @@ const transportFixture = (candidate = false, mutate = () => {}) => {
         }
       else {
         assert.equal(args[0], "api")
-        result = deploymentFixture(candidate ? base : sha)
+        result = deploymentFixture(sha)
         deploymentReads++
       }
       mutate(result, { command, args, deploymentReads, branchReads })
@@ -421,31 +414,25 @@ const transportFixture = (candidate = false, mutate = () => {}) => {
         (value) => value.domain === url.hostname
       )
       assert.ok(service)
-      return healthFixture(service, candidate ? base : sha)
+      return healthFixture(service, sha)
     },
   }
 }
 
 test("collector rechecks deployments and branch after probing; health never claims complete acceptance", async () => {
-  for (const candidate of [false, true]) {
-    const io = transportFixture(candidate)
-    const result = await collectReleaseReadiness(
-      { sha, ...(candidate ? { base } : {}) },
-      io
-    )
-    assert.equal(result.passed, true)
-    assert.equal(result.releaseAccepted, false)
-    assert.equal(result.readyForLocalWork, !candidate)
-    assert.equal(result.readyForAcceptance, !candidate)
-    assert.equal(result.candidateChecksPassed, candidate)
-    assert.equal(
-      io.commands.filter(
-        ([, args]) => args[0] === "api" && args[1].startsWith("query ")
-      ).length,
-      2
-    )
-    assert.ok(!JSON.stringify(result).includes("must-never-be-emitted"))
-  }
+  const full = transportFixture()
+  const result = await collectReleaseReadiness({ sha }, full)
+  assert.equal(result.passed, true)
+  assert.equal(result.releaseAccepted, false)
+  assert.equal(result.readyForLocalWork, true)
+  assert.equal(result.readyForAcceptance, true)
+  assert.equal(
+    full.commands.filter(
+      ([, args]) => args[0] === "api" && args[1].startsWith("query ")
+    ).length,
+    2
+  )
+  assert.ok(!JSON.stringify(result).includes("must-never-be-emitted"))
   const ciOnly = transportFixture()
   assert.equal(
     (await collectReleaseReadiness({ sha, ciOnly: true }, ciOnly)).passed,
@@ -474,7 +461,7 @@ test("collector rechecks deployments and branch after probing; health never clai
     },
   ])
     await assert.rejects(
-      collectReleaseReadiness({ sha }, transportFixture(false, mutate))
+      collectReleaseReadiness({ sha }, transportFixture(mutate))
     )
   const io = transportFixture()
   io.health = async () => {

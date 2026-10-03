@@ -5,7 +5,6 @@ import { join } from "node:path"
 import test from "node:test"
 
 import {
-  candidateReference,
   dependencyReviewRange,
   runDependencyReviewRange,
 } from "./dependency-review-range.mjs"
@@ -13,53 +12,33 @@ import {
 const base = "a".repeat(40)
 const head = "b".repeat(40)
 const repository = { full_name: "traweezy/remorseless-records" }
-const candidate = {
+const push = {
   eventName: "push",
-  ref: candidateReference(base, head),
+  ref: "refs/heads/staging",
   sha: head,
-  stagingSha: base,
-  event: { repository, before: "0".repeat(40), deleted: false },
+  event: { repository, before: base, deleted: false },
 }
 
-test("candidate tags bind the whole batch to the current staging base", () => {
-  assert.deepEqual(dependencyReviewRange(candidate), {
-    base,
-    head,
-    candidate: true,
-  })
-  assert.deepEqual(
-    dependencyReviewRange({ ...candidate, eventName: "workflow_dispatch" }),
-    { base, head, candidate: true }
-  )
+test("dependency review rejects tag cycles and invalid event or revision identities", () => {
   for (const change of [
-    { sha: base },
-    { stagingSha: head },
-    { ref: `refs/tags/staging-candidate/${base}/${head}/extra` },
-    { ref: `refs/tags/staging-candidate/${base}/${base}` },
+    { ref: `refs/tags/staging-candidate/${base}/${head}` },
     { ref: `refs/tags/release/${head}` },
     { eventName: "pull_request_target" },
     { eventName: "schedule" },
     { event: { repository: { full_name: "other/repository" } } },
-    { event: { repository, deleted: true } },
+    { event: { repository, before: base, deleted: true } },
   ])
-    assert.throws(() => dependencyReviewRange({ ...candidate, ...change }))
-  for (const invalid of [
-    "",
-    "0".repeat(40),
-    "a".repeat(39),
-    `${base}\nhead=${head}`,
-    "--help",
-  ])
-    assert.throws(() => candidateReference(invalid, head))
+    assert.throws(() => dependencyReviewRange({ ...push, ...change }))
+  for (const sha of ["", "0".repeat(40), "a".repeat(39), `${head}\n`, "--help"])
+    assert.throws(() => dependencyReviewRange({ ...push, sha }))
 })
 
 test("branch pushes compare the previous remote revision, not only the last commit", () => {
   for (const ref of ["refs/heads/staging", "refs/heads/master"]) {
-    const input = { ...candidate, ref, event: { repository, before: base } }
+    const input = { ...push, ref, event: { repository, before: base } }
     assert.deepEqual(dependencyReviewRange(input), {
       base,
       head,
-      candidate: false,
     })
     for (const before of [undefined, head, "0".repeat(40), `${base};exit`])
       assert.throws(() =>
@@ -67,22 +46,22 @@ test("branch pushes compare the previous remote revision, not only the last comm
       )
   }
   assert.throws(() =>
-    dependencyReviewRange({ ...candidate, ref: "refs/heads/main" })
+    dependencyReviewRange({ ...push, ref: "refs/heads/main" })
   )
   assert.deepEqual(
     dependencyReviewRange({
-      ...candidate,
+      ...push,
       ref: "refs/heads/staging",
       eventName: "workflow_dispatch",
       parentSha: base,
     }),
-    { base, head, candidate: false }
+    { base, head }
   )
 })
 
 test("PRs retain the actual base and head, never the synthetic merge SHA", () => {
   const input = {
-    ...candidate,
+    ...push,
     eventName: "pull_request",
     sha: "c".repeat(40),
     event: {
@@ -96,7 +75,6 @@ test("PRs retain the actual base and head, never the synthetic merge SHA", () =>
   assert.deepEqual(dependencyReviewRange(input), {
     base,
     head,
-    candidate: false,
   })
   input.event.pull_request.base.repo = { full_name: "other/repository" }
   assert.throws(() => dependencyReviewRange(input))
@@ -107,11 +85,11 @@ test("CLI validates checkout and ancestry before publishing outputs, without ech
   try {
     const eventPath = join(directory, "event.json")
     const outputPath = join(directory, "output")
-    await writeFile(eventPath, JSON.stringify(candidate.event))
+    await writeFile(eventPath, JSON.stringify(push.event))
     const env = {
       GITHUB_REPOSITORY: repository.full_name,
       GITHUB_EVENT_NAME: "push",
-      GITHUB_REF: candidate.ref,
+      GITHUB_REF: push.ref,
       GITHUB_SHA: head,
       GITHUB_EVENT_PATH: eventPath,
       GITHUB_OUTPUT: outputPath,
@@ -124,13 +102,12 @@ test("CLI validates checkout and ancestry before publishing outputs, without ech
       assert.equal(options.timeout, 15000)
       return {
         status: 0,
-        stdout: args.includes("refs/remotes/origin/staging") ? base : head,
+        stdout: head,
       }
     }
     assert.deepEqual(await runDependencyReviewRange(env, spawn), {
       base,
       head,
-      candidate: true,
     })
     assert.equal(
       await readFile(outputPath, "utf8"),

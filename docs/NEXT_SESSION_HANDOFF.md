@@ -2,24 +2,43 @@
 
 Last updated: 2026-10-02 (America/New_York)
 
-## Current local release-tooling batch
+## Current continuation — direct staging only
 
-The next cohesive batch adds candidate-tag validation with genuine dependency
-review on the whole base/head range, read-only exact-revision GitHub/Railway
-readiness inspection, and native request-completion log acceptance. The
-workflow guards preserve all security jobs, protected check names and
-master-only image publication. The release runbook now describes candidate
-tags followed by direct staging pushes; no PR merge is required.
+The user explicitly rejected candidate tags and an extra pre-push GitHub CI
+cycle. Use normal local gates and logical Conventional Commits, push the
+whole batch directly to `staging`, then watch all four exact-revision CI
+workflows. Start the next local batch only after CI passes and hold its push
+until both Railway deployments and live acceptance pass.
 
-Focused tests cover stale bases, wrong check identities, skipped/failed checks,
-deployment and branch drift, dependency readiness, bounded/redacted output,
-and conflicting log identities. The combined focused suite passed 176 tests;
-the release-policy coverage gate and both production builds passed locally.
-The Storefront build used an owned loopback Medusa fixture and the CI search
-fallback configuration; its client-bundle secret scan passed and the owned
-fixture stopped afterward. Full candidate CI and deployed acceptance
-must still be recorded before this batch is accepted. The accepted security
-revision below remains the baseline while this batch is validated.
+The correction removes candidate-tag triggers and parsing, retains whole-batch
+dependency review on ordinary pushes, and makes the read-only release checker
+inspect staging directly. The owner push exception was applied at 00:11:44 UTC on October 3: staging
+administrator enforcement is disabled, all 23 strict app-bound check
+definitions and force/deletion definitions are preserved, and master
+protection was independently unchanged. See the current release runbook.
+
+Revision `1f06391d7b1103689d761bb295701f4cce39329f` is pushed to staging.
+Its Root CI `37079762235`, Backend CI `37079762185`, Storefront CI
+`37079762172`, and Runtime Images `37079762158` all passed. Storefront
+`9c054de5-cdfb-4591-a62c-f63132d87007` succeeded, but Backend
+`b7604cae-f096-4e23-9329-f2da84262719` failed during search preparation.
+The previous Backend remains active; this mixed pair is not accepted.
+
+The installed Meilisearch SDK places API error codes in `error.cause.code`.
+The rebuild only recognized `error.code`, so it failed before the plugin's
+asynchronous settings task finished creating the new index. Bounded provider
+reads confirmed that task `17348` finished at `00:05:48.381Z`, after the
+`00:05:46Z` release failure, and the candidate then existed with zero documents.
+The correction recognizes both error shapes, waits for creation, handles only
+an exact concurrent `index_already_exists` task failure, and requires read-back
+before continuing. Other failures remain fatal. No live-index swap occurred
+in the failed release. Search regression tests passed 35 cases; full Backend coverage passed 283
+suites / 2,248 tests and the Backend production build passed.
+
+Deliver the search fix and direct-push correction together as a corrective
+staging push; do not retry the known race or call `1f06391` accepted. Full
+exact-revision CI and deployed acceptance are still required on the correction.
+The accepted security revision below remains the previous complete baseline.
 
 ## October 2 security acceptance and continuation
 

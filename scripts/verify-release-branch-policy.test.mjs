@@ -557,12 +557,11 @@ test("release branch triggers and manual production remain enforced", () => {
     )
     for (const tags of [
       '    tags: ["**"]',
-      "",
-      '    tags: ["staging-candidate/**"]\n    tags: ["other/**"]',
+      '    tags: ["staging-candidate/**"]',
     ])
       assert.throws(() =>
         validateReleaseBranches(
-          source.replace('    tags: ["staging-candidate/**"]', tags),
+          source.replace("  push:\n", `  push:\n${tags}\n`),
           "fixture"
         )
       )

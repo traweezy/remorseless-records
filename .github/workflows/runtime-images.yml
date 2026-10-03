@@ -3,7 +3,6 @@ name: Runtime Images
 on:
   push:
     branches: [staging, master]
-    tags: ["staging-candidate/**"]
   pull_request:
     branches: [staging, master]
   workflow_dispatch:
