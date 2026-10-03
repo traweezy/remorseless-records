@@ -1,6 +1,10 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 import { buildPostgresRoleSplitPlan } from "./lib/postgres-role-split.mjs"
+import {
+  recordMigration,
+  waitForMigrationReceipt,
+} from "../backend/scripts/migration-receipt.mjs"
 
 const input = {
   database: "railway",
@@ -44,6 +48,21 @@ test("reviewed plan identity is stable across catalog ordering", () => {
     plan.sha256,
     buildPostgresRoleSplitPlan({ ...input, tables: [...input.tables, "cart"] })
       .sha256
+  )
+})
+
+test("role plan never grants runtime writes to an existing release receipt", () => {
+  const plan = buildPostgresRoleSplitPlan({
+    ...input,
+    tables: [...input.tables, "remorseless_migration_receipt"],
+  })
+  assert.match(
+    plan.sql,
+    /grant select on table public\."remorseless_migration_receipt" to app_runtime/u
+  )
+  assert.doesNotMatch(
+    plan.sql,
+    /grant select, insert, update, delete on table public\."remorseless_migration_receipt"/u
   )
 })
 
@@ -146,6 +165,7 @@ test("real PostgreSQL enforces split grants and migration ownership defaults", {
     await denied(backup, "delete from product")
     await denied(backup, "select nextval('product_id_seq')")
     await denied(backup, "set role app_owner")
+    await denied(backup, "create table public.backup_denied (id int)")
     await migration.query(
       "alter type public.order_status_enum add value 'completed'"
     )
@@ -172,6 +192,72 @@ test("real PostgreSQL enforces split grants and migration ownership defaults", {
     )
     await denied(runtime, "select public.role_fixture()")
     await denied(backup, "select public.role_fixture()")
+    const context = {
+      project: randomUUID(),
+      environment: randomUUID(),
+      service: randomUUID(),
+      revision: "a".repeat(40),
+    }
+    const receiptClient = (role) => {
+      const connection = new URL(url)
+      connection.username = role
+      connection.password = "local_role_split_only"
+      return new Client({
+        connectionString: connection.toString(),
+        connectionTimeoutMillis: 5000,
+        query_timeout: 5000,
+      })
+    }
+    const writeReceipt = (migrate = async () => {}) =>
+      recordMigration({
+        client: receiptClient("app_migrator"),
+        context,
+        deployment: randomUUID(),
+        migrate,
+      })
+    const readReceipt = (override = {}, timeoutMs = 5000) =>
+      waitForMigrationReceipt({
+        client: receiptClient("app_runtime"),
+        context: { ...context, ...override },
+        timeoutMs,
+        intervalMs: 10,
+      })
+    await writeReceipt()
+    assert.equal((await readReceipt()).migrationCompleted, true)
+    for (const query of [
+      "update public.remorseless_migration_receipt set revision = repeat('b',40)",
+      "delete from public.remorseless_migration_receipt",
+      "truncate public.remorseless_migration_receipt",
+      "alter table public.remorseless_migration_receipt add column forged text",
+    ])
+      await denied(runtime, query)
+    await assert.rejects(
+      readReceipt({ revision: "b".repeat(40) }, 750),
+      /migration_receipt_timeout/u
+    )
+    await assert.rejects(
+      readReceipt({ environment: randomUUID() }, 750),
+      /migration_receipt_timeout/u
+    )
+    await migration.query(
+      "grant update on public.remorseless_migration_receipt to app_runtime"
+    )
+    await assert.rejects(readReceipt(), /migration_boundary_rejected/u)
+    await migration.query(
+      "revoke update on public.remorseless_migration_receipt from app_runtime"
+    )
+    await migration.query("select pg_advisory_lock(1835361377, 1919251315)")
+    await assert.rejects(writeReceipt(), /migration_boundary_rejected/u)
+    await migration.query("select pg_advisory_unlock(1835361377, 1919251315)")
+    await assert.rejects(
+      writeReceipt(async () => {
+        throw new Error("fixture migration failure")
+      }),
+      /fixture migration failure/u
+    )
+    await assert.rejects(readReceipt({}, 750), /migration_receipt_timeout/u)
+    await writeReceipt()
+    assert.equal((await readReceipt()).migrationCompleted, true)
     await runtime.query("delete from product")
   } finally {
     for (const client of clients.slice(1).reverse()) await client.end()

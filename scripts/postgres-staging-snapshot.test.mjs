@@ -23,6 +23,7 @@ import {
   runPrivateCommand,
   runStagingSnapshot,
   selectSourceUrl,
+  selectSourceConnections,
   stagingFailureRecord,
   startScopeTunnel,
 } from "./postgres-staging-snapshot.mjs"
@@ -65,6 +66,35 @@ const flags = Object.fromEntries(
     return pairs
   }, [])
 )
+
+test("restricted exports require distinct identity login on the same endpoint and database", () => {
+  const backup = privateUrl.replace("railway:fake", "app_backup:fake")
+  const identity = privateUrl.replace("railway:fake", "postgres:fake")
+  assert.deepEqual(
+    selectSourceConnections(
+      { DATABASE_BACKUP_URL: backup, DATABASE_SOURCE_IDENTITY_URL: identity },
+      flags
+    ),
+    { backupUrl: backup, identityUrl: identity }
+  )
+  for (const candidate of [
+    "",
+    backup,
+    identity.replace("/railway", "/other"),
+    identity.replace(":5432", ":5433"),
+    identity.replace("postgres.railway.internal", "other.railway.internal"),
+  ]) {
+    assert.throws(() =>
+      selectSourceConnections(
+        {
+          DATABASE_BACKUP_URL: backup,
+          DATABASE_SOURCE_IDENTITY_URL: candidate,
+        },
+        flags
+      )
+    )
+  }
+})
 const apiScope = () => ({
   data: {
     serviceInstance: {
@@ -260,6 +290,57 @@ const createFake = ({
     },
   }
 }
+
+test("privileged identity connection never reaches export, provider or tunnel processes", async () => {
+  await fixture(async ({ output, environment }) => {
+    const identity = originalUrl.replace(
+      "railway:fake-private-password@",
+      "postgres:identity-only-password@"
+    )
+    const fake = createFake()
+    let identities = 0
+    let exports = 0
+    await runStagingSnapshot(args(output), {
+      environment: { ...environment, DATABASE_SOURCE_IDENTITY_URL: identity },
+      tunnelFactory: async (options) => {
+        assert.equal(
+          JSON.stringify(options).includes("identity-only-password"),
+          false
+        )
+        return fake.tunnelFactory(options)
+      },
+      command: async (executable, commandArgs, options) => {
+        assert.equal(
+          options.environment.DATABASE_SOURCE_IDENTITY_URL,
+          undefined
+        )
+        if (executable === "psql") {
+          identities++
+          assert.equal(options.environment.PGUSER, "postgres")
+          assert.equal(options.environment.PGPASSWORD, "identity-only-password")
+          assert.match(commandArgs.at(-1), /pg_control_system\(\)/u)
+          return systemId
+        }
+        assert.equal(
+          JSON.stringify([commandArgs, options.environment]).includes(
+            "identity-only-password"
+          ),
+          false
+        )
+        if (executable === process.execPath) {
+          exports++
+          assert.equal(
+            new URL(options.environment.DATABASE_BACKUP_URL).username,
+            "railway"
+          )
+        }
+        return fake.command(executable, commandArgs, options)
+      },
+    })
+    assert.equal(identities, 2)
+    assert.equal(exports, 1)
+  })
+})
 
 test("binds a private published bundle to exact source and system identity", async () => {
   await fixture(async ({ output, environment }) => {

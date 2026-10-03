@@ -1,15 +1,152 @@
 # Next-session handoff
 
-Last updated: 2026-10-02 (America/New_York)
+Last updated: 2026-10-03 (America/New_York)
 
 ## Current continuation — direct staging only
 
-Latest accepted staging is `1092e8107bec93667bfb3eec0a9bfaefc9db1143`.
-The next local batch adds the Backend startup credential/role boundary and
-corrects TLS detection when a PostgreSQL migration login assumes its owner role.
-Live application-object ownership has moved to `app_owner`; credential and
-application cutover are in progress. Follow the newest entry below before any
-further provider change.
+The user resumed with **batch 1 only**: isolate migration credentials at the
+service level and integrate the restricted backup login. Complete its staging
+push, all CI and Railway/live acceptance; leave the other six batches separate.
+The preceding accepted revision is `2ab44fc69cc8995a54d88e7c38e8d0e1502c778e`.
+
+Batch-1 implementation adds a one-shot `Migrations` service, protected exact-SHA
+migration receipts, strict Backend external mode and separate source-identity
+versus read-only export connections. The fresh restricted archive restored all
+171 tables; the migration rehearsal passed with unchanged existing row counts.
+The new service shell is `129d6f7a-13f1-49d4-9828-0d02911a3326`, in the existing
+staging environment. At this commit's preparation, its source remains
+unconnected and the live credential cutover/release gates remain pending.
+Do not infer acceptance from this implementation record; append exact CI,
+deployment, credential-revocation and live evidence after the cutover.
+
+### Next session: seven separate batch pushes
+
+The user requires each remaining group to be its own substantial batch.
+Their follow-up added the missing client testing environment: retain the
+original six groups and insert a separate client-staging batch before
+production/launch acceptance, giving seven planned pushes in this order:
+
+1. Service-level migration credential isolation and restricted backup login
+   integration.
+2. PITR, off-site database/media backups, and timed recovery drills.
+3. Queue/payment reconciliation, Redis capacity, and supporting-service image
+   pinning/upgrades.
+4. Database telemetry, pool-contention investigation, and Storefront
+   stream-close diagnostics.
+5. Remaining credential rotations and replacement of the braces mitigation
+   before its November 2 exception expires.
+6. Client staging: directly clone the existing `staging` environment into a
+   different environment in the same Railway `store` project, then configure
+   the client's provider API keys and verify the cloned services/data.
+7. Production infrastructure, tax/financial testing, and business/legal/support
+   approvals.
+
+Each numbered group gets one planned batch push directly to `staging`, with
+logical Conventional Commits and the normal local gates. Do not combine groups
+into one push or split their routine implementation into smaller pushes.
+Required corrections to failed CI/deployment stay with the affected batch,
+under the existing corrective-release rule.
+
+Watch all four exact-revision workflows and 23 required checks. The next batch
+may start locally once CI passes, but its push must wait for both Railway
+deployments and live acceptance of the preceding batch. Continue through the
+remaining groups only within the current user request; this request selects
+batch 1.
+Keep external prerequisites and outstanding approvals explicit rather than
+claiming an incomplete group is finished. The detailed scope and acceptance
+remain in the production hardening plan and affected runbooks.
+
+Batch 6 must deliver working client Storefront/Admin access and verified
+client-only sandbox checkout, provider integrations and environment isolation.
+The user's latest correction selects the existing `store` project
+(`1f39263a-25e4-4d69-abc2-f0287b331d1e`) and direct environment duplication
+from `staging` (`799a2f98-f819-495d-b8b6-12e71af86568`). The destination is a
+different environment, planned as `client-staging`; record its actual ID when
+created. This supersedes the earlier separate-project/workspace, transfer and
+empty-environment plan. No client Railway workspace or project is needed.
+Leave the old `store-client-staging` holding project untouched; it is not this
+batch's target. Retrieve the client's provider credentials through the secure
+handoff, override inherited owner values in the clone before application/job
+activation, and verify environment references and independent storage.
+
+The existing client preflight still enforces the superseded separate-workspace,
+empty-creation contract. Updating it and its tests to verify the selected
+same-project clone is part of batch 6; its current rejection is not grounds
+to revert the user's topology choice. Use the detailed
+[client staging plan](PRODUCTION_HARDENING_PLAN.md#planned-initiative--client-isolated-staging-clone)
+and [preflight](CLIENT_STAGING_PREFLIGHT.md). Keep this separate from production
+launch approval; first accept the batch SHA on the owner's staging, then deploy
+and accept that exact revision on client staging before the next batch push.
+
+### Accepted database/startup batch and overnight stop — October 3 UTC
+
+Both Conventional Commits, `2d33aaf` and corrective `2ab44fc`, were pushed
+directly to `staging` with normal hooks. All four final-revision workflows and
+23 required checks passed: Root `37090973386`, Backend `37090973373`,
+Storefront `37090973364`, Runtime Images `37090973362`. CodeQL alert 61 was
+fixed without suppression at `02:50:04Z`; the loopback TLS fixture validates
+its explicitly trusted certificate and IP SAN.
+
+Storefront deployment `3722b5cf-845b-4406-8b36-4f702c76d379` and initial
+Backend `383320a0-a9a8-4333-81bf-8abc0511e817` reached SUCCESS on the final
+SHA. The initial phase verified the actual Medusa process used `app_runtime`,
+passed its role audit, and omitted migration/backup credentials and all libpq
+`PG*` overrides from `/proc/<pid>/environ`. Catalog, operations and an ordinary
+same-SHA scheduler heartbeat passed before enforcement was enabled.
+
+At `02:58:57.415Z`, only `DATABASE_ROLE_SPLIT_REQUIRED` changed to `true` with
+`--skip-deploys`; both URLs were independently unchanged. Backend was then
+explicitly deployed on the same SHA as
+`9db62fe2-4345-41d2-b55f-82eaef640f76`. Both final services reached SUCCESS;
+final readiness, including all three volumes' backup freshness, passed with
+`checkedAt=2026-10-03T03:07:41.683Z`. Live acceptance also passed:
+
+- The actual Medusa process uses `app_runtime`, enforcement is `true`, the
+  read-only runtime role audit passes, and release/backup credentials and
+  libpq overrides are absent. All six pre-deploy steps completed, including
+  both role audits, migrations, link sync, storage and search preparation.
+  Local/CI regressions prove missing or reused migration credentials fail
+  closed; no deliberately broken configuration was deployed.
+- Both health pairs, all 11 Backend dependencies and authenticated catalog
+  reads passed: 461 products, 442 Discography records, one handle, three
+  shelves and 25 memberships. The ordinary scheduler heartbeat at
+  `03:06:00.104Z` followed the final deployment's verified healthy switch at
+  `03:04:05.441Z`, not merely its dispatch or an earlier same-SHA instance.
+- Both processes retain Node 26.9.0, OpenSSL `3.5.7-1~deb13u3`, PCRE2
+  `10.46-1~deb13u2` and all five disabled protocol flags. The actual Backend
+  has the valid sending-only replacement Resend key; no email was sent.
+- Responsive browsers passed 69 cases/eight expected skips, and Firefox/
+  WebKit passed 16 cases, with zero failures, retries or flakiness. Desktop
+  and mobile Quick Shop and resized catalog screenshots were inspected.
+- The bounded `02:59:04Z`–`03:06:15.915Z` log window passed exact-deployment
+  runtime/HTTP correlation and had zero HTTP 5xx or truncated results. Initial
+  review stopped on two stderr command echoes labeled `error` by Railway:
+  `$ ts-node --swc ./src/cli/audit-database-role.ts`. Exact bytes/count and
+  both completed audits classified them; the initial failure is retained.
+  No unclassified warning/error remained. Storefront retained eight known
+  stream-close groups with digest `3072950123`; that diagnostic remains open.
+
+Local verification included shared lint/type/policy checks, both production
+builds, Backend coverage (285 suites/2,282 tests), 58 focused role-audit tests,
+149 startup/image/smoke checks with one expected skip, and disposable service
+integration. All owned integration fixtures and relay connections were removed.
+Exact final runtime images also passed CI under the existing byte-verified,
+time-limited braces exception; alert 56 remains visible.
+
+Private evidence uses `/tmp/remorseless-runtime-role-{final,reviewed}-*` and
+`/tmp/remorseless-release-batch-browsers-L2WgK9`; these temporary files are not
+durable backup retention. The earlier live-role entry retains the source
+identity, ownership-plan digest and verified 171-table backup hash.
+
+Remaining work: isolate migration credentials at the service/process-tree
+boundary; integrate the narrow backup role without granting privileged source
+identity access; complete PITR/off-site database and media recovery; reconcile
+queues/payment state; set Redis capacity policy; pin/upgrade support services;
+finish database telemetry and pool/stream-close diagnosis; complete remaining
+credential rotations, tax/financial acceptance and production/business/legal
+sign-offs. Replace the braces backport when upstream ships a fix, before its
+November 2 exception expires. Production is not launch-approved. See the
+production hardening plan for the full backlog and separate client-clone work.
 
 ### Initial startup-batch CI correction — October 3 UTC
 

@@ -1,5 +1,30 @@
 # Client staging preflight
 
+## Current plan: same-project direct clone
+
+The user selected a direct clone of `store/staging` into a different
+environment in the same Railway project. This supersedes the separate client
+workspace/project and empty-creation plan described by the current tool below.
+Use project `1f39263a-25e4-4d69-abc2-f0287b331d1e` and source environment
+`799a2f98-f819-495d-b8b6-12e71af86568`; record the distinct destination ID
+when created. The old dormant project is not the selected target.
+
+Batch 6 must update `scripts/client-staging-preflight.mjs`, its library,
+manifest contract and tests before using them for this clone. Verify the
+same project, distinct environment IDs, actual duplication provenance,
+destination references/storage, activation controls and client provider
+identity. Do not claim `creationMode: empty` or `noSyncSinceCreation` for a
+duplicate. Preserve bounded reads and exact target checks while replacing
+the obsolete topology requirements. The current code has not yet been
+adapted or validated for the corrected plan.
+
+## Legacy implementation contract — superseded topology
+
+The following documents the tool as currently implemented, not the topology
+to provision next session. Its separate-workspace and empty-creation failures
+must be resolved by the planned implementation/test update, not by changing
+the user's selected target.
+
 The current [dormant shell](CLIENT_STAGING_DORMANT.md) has seven source-free
 services and **no variables or credentials**. Use its separate read-only
 dormant check while the no-spend hold is active. This later-stage preflight is

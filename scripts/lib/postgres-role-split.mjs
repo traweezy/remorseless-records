@@ -10,6 +10,10 @@ const migrationTables = new Set([
   "mikro_orm_migrations",
   "script_migrations",
 ])
+const runtimeReadOnlyTables = new Set([
+  ...migrationTables,
+  "remorseless_migration_receipt",
+])
 
 // A plan only handles the reviewed public-schema, ordinary-table topology.
 // The caller must bind it to a fresh backup, exact source identity and a
@@ -61,7 +65,7 @@ export const buildPostgresRoleSplitPlan = ({
     ),
     ...sortedTables.map(
       (name) =>
-        `grant ${migrationTables.has(name) ? "select" : "select, insert, update, delete"} on table public.${identifier(name)} to app_runtime`
+        `grant ${runtimeReadOnlyTables.has(name) ? "select" : "select, insert, update, delete"} on table public.${identifier(name)} to app_runtime`
     ),
     ...sortedSequences
       .filter(

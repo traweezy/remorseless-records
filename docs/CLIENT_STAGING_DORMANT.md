@@ -1,5 +1,12 @@
 # Dormant client staging shell
 
+**Historical target, superseded October 3 UTC:** the user selected a direct
+clone into a different environment in the existing `store` project. This
+holding project is not the client-staging batch's target. Leave it untouched;
+the historical transfer/provisioning instructions below no longer apply to
+the current plan. No new client workspace, project or subscription is needed.
+See the current [client staging plan](PRODUCTION_HARDENING_PLAN.md#planned-initiative--client-isolated-staging-clone).
+
 On September 20, 2026, a private, source-free shell was created through the
 Railway CLI. It is intentionally **off**. Its seven service entries reserve the
 application topology without starting a container or copying an owner secret.

@@ -103,6 +103,14 @@ contracts before applying generic framework examples from those files.
 
 ## Verified continuation boundary
 
+Latest acceptance is October 3 UTC at revision
+`2ab44fc69cc8995a54d88e7c38e8d0e1502c778e`: all four workflows/23 checks,
+both Railway deployments, enforced staging database roles and live acceptance
+passed. The user has now resumed batch 1: service-level migration isolation and
+restricted backup integration. Read the opening handoff for current cutover
+status, exact acceptance evidence and the six subsequent separate batches.
+The snapshots below are historical.
+
 At the 07:54 UTC acceptance, the application pair was Backend `33de0ec` and
 Storefront `7e743bf`; the exact CI runs, deployments, health probes, scheduler
 heartbeat, and cold database timings are in

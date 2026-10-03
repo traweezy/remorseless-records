@@ -87,6 +87,19 @@ choices, retain their evidence and keep the direct staging/CI/Railway sequence.
 The exact braces mitigation is documented in the QA runbook; do not infer a
 blanket suppression or production authorization from this operating preference.
 
+For the next resumed hardening session, the user requires seven separate batch
+pushes matching the numbered groups at the start of
+[the production hardening plan](PRODUCTION_HARDENING_PLAN.md#next-session-delivery-seven-separate-staging-batches).
+Each group is one substantial direct staging push; preserve the CI/local-work
+and Railway/next-push timing above. Required corrective releases stay within
+their affected batch. Do not combine groups or make routine smaller pushes.
+The added client-staging batch precedes production/launch acceptance. After
+the owner's staging accepts its exact SHA, use a direct clone into a different
+environment in the same existing `store` project, configure the client's
+provider keys, and deploy that same SHA there. Complete its independent
+acceptance before the next batch push. This does not change the owner's
+staging target or the reviewed production release path.
+
 ### Read-only release inspection
 
 Use the pinned root toolchain after the direct staging push:
@@ -421,20 +434,30 @@ test/live credential boundaries, deploy manually, observe health and migrations,
 run the production smoke matrix, and record immutable deployment identifiers.
 Never use a moving branch head as the release evidence.
 
-Database release preparation supports separate runtime and migration URLs.
-Keep `DATABASE_ROLE_SPLIT_REQUIRED=false` only during the documented staged
-role rollout. Once the distinct roles pass their audits, set it to `true` so a
-missing or reused migration URL stops the release before migration. Enforced
-release preparation requires different PostgreSQL login names on the same host,
-port, and database; it allows only `application_name`, `sslmode`, and
-`uselibpqcompat` URL parameters and rejects encoded database path separators.
-It runs the read-only migration and runtime role audits before any
-database migration or link synchronization. A failed audit stops that release;
-the staged rollout flag must not be used to bypass a failed audit.
-The two roles must currently use the same private endpoint. A public-proxy
-migration URL paired with a private runtime URL requires a separately reviewed
-same-cluster attestation before changing this guard; different URL hosts alone
-cannot establish that both roles target one PostgreSQL instance.
+Database release preparation uses the service isolation contract in
+`INFRASTRUCTURE_RECOVERY.md`. The staging `Migrations` job must complete the
+same full SHA before Backend can pass its protected receipt gate. Keep
+`DATABASE_MIGRATION_MODE=external` and `DATABASE_ROLE_SPLIT_REQUIRED=true` on
+Backend. Its variables and every startup ancestor must omit migration,
+backup, source-identity and libpq credentials. Only the one-shot job receives
+`app_migrator`; only the guarded backup process receives `app_backup`.
+
+After all four workflows pass, verify the migration service's exact-SHA
+successful job completion. If watch paths skipped that SHA, deploy the job
+explicitly using `serviceInstanceDeployV2` with the verified staging environment,
+service `129d6f7a-13f1-49d4-9828-0d02911a3326` and exact `commitSha`, then wait for
+`migration.completed` and the database receipt. Deploy Backend/Storefront as
+needed and complete the existing acceptance matrix. The two applications
+remain subject to all health/browser/log gates. Migration service variables,
+source/check-suite settings, receipt ACLs and old credential rejection are
+additional acceptance evidence for the first isolation cutover.
+
+The inline two-URL implementation remains available only for compatibility
+with the previous rollout and explicitly reviewed environments. Do not use it
+as a fallback for staging failures. Its prior distinct-login/same-endpoint and
+role-audit guards remain intact. Production still requires its own approved
+service topology and acceptance; staging isolation does not authorize a
+production change.
 
 ## Rollback
 

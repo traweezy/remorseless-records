@@ -277,6 +277,7 @@ WORKDIR ${service.workdir}
 ${common}COPY --chown=1000:1000 backend/.medusa/server/ ./
 COPY --chown=1000:1000 backend/scripts/runtime-release-prepare.mjs ./scripts/runtime-release-prepare.mjs
 COPY --chown=1000:1000 backend/scripts/lib/release-prepare.mjs ./scripts/lib/release-prepare.mjs
+COPY --chown=1000:1000 backend/scripts/migration-receipt.mjs ./scripts/migration-receipt.mjs
 
 USER 1000:1000
 
@@ -498,7 +499,7 @@ export const validateRuntimeWorkflowSource = (source) => {
   )
   assert.equal(
     source.match(
-      /"\.\/node_modules\/@medusajs\/cli\/cli\.js","\.\/scripts\/runtime-release-prepare\.mjs","\.\/runtime-start\.mjs"/gu
+      /"\.\/node_modules\/@medusajs\/cli\/cli\.js","\.\/scripts\/runtime-release-prepare\.mjs","\.\/runtime-start\.mjs","\.\/migration-receipt\.mjs","\.\/wait-migration\.mjs","\.\/scripts\/migration-receipt\.mjs"/gu
     )?.length,
     2
   )

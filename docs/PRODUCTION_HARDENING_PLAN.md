@@ -7,27 +7,74 @@ supersedes the local `tmp/HARDENING_NEXT_STEPS.md` working note. Detailed
 operating procedures remain in the linked runbooks and ADRs; this document
 tracks what is still required before production traffic is approved.
 
+## Next-session delivery: seven separate staging batches
+
+The user specified that each remaining group in the closing report must have
+its own substantial batch push, then identified client staging as missing from
+that summary. Preserve the original six groups and insert client staging
+before production/launch acceptance: seven planned batches in this order.
+
+1. **Credential isolation and backup access:** isolate migration credentials
+   at the service level and integrate the restricted backup login.
+2. **Backup and recovery:** complete PITR, off-site database/media backups,
+   and timed recovery drills.
+3. **Queues and supporting services:** reconcile queues/payments, configure
+   Redis capacity, and pin/upgrade supporting services.
+4. **Telemetry and diagnostics:** finish database telemetry, investigate pool
+   contention, and address existing Storefront stream-close diagnostics.
+5. **Credential and dependency maintenance:** finish remaining credential
+   rotations and replace the braces mitigation before its November 2 expiry.
+6. **Client testing environment:** directly clone `staging` into a different
+   environment in the existing Railway `store` project. Configure the client's
+   provider API keys and verify the cloned services/data, Storefront/Admin
+   access and sandbox integrations.
+7. **Production and launch acceptance:** complete production infrastructure,
+   tax/financial testing, and business/legal/support approvals.
+
+Use one planned direct-to-`staging` push per numbered group. Collect its
+logical Conventional Commits and complete local verification before pushing;
+do not combine groups or fragment routine work into smaller pushes. A required
+CI/deployment correction remains part of that group's batch. All four
+exact-revision workflows and 23 checks must pass before local work on the next
+batch begins. Both Railway deployments and live acceptance must pass before
+the next batch's push. The release runbook retains the detailed gates.
+
+For batch 6, first accept its exact revision on the owner's staging, then
+deploy and independently accept that same revision on client staging before
+batch 7's push. The detailed client-clone checklist below defines ownership,
+provider identity, data, rollback and testing requirements. Client testing
+readiness is a separate outcome from production launch approval.
+
+This is the next-session batch structure, not an instruction to resume tonight
+or evidence that external prerequisites are available. Preserve the detailed
+acceptance requirements, upstream-fix dependency and production approval path;
+report any outstanding item accurately instead of marking a partial batch
+complete. Fold the current local closing notes into batch 1.
+
 ## Current staging acceptance — October 3 UTC
 
-The latest accepted revision is `1092e8107bec93667bfb3eec0a9bfaefc9db1143`.
+The latest accepted revision is `2ab44fc69cc8995a54d88e7c38e8d0e1502c778e`.
 All four workflows/23 checks, both exact Railway deployments and live
-acceptance passed by `02:25:55Z`. The parser backport and exact time-limited
-exception, recovery-image correction, restored role rehearsal and read-only
-migration-directory support are delivered. CodeQL's manifest-race finding was
-fixed without suppression. Health, ordinary scheduler, catalog/runtime checks,
-85 browser cases, screenshots and bounded correlated logs passed. See the
-handoff for exact identities and limits.
+acceptance passed; final readiness was collected at `03:07:41.683Z`. The live
+staging database role split and mandatory runtime startup audit are accepted.
+Health, ordinary scheduler after the final switch, catalog/runtime checks,
+85 browser cases, screenshots and bounded correlated logs passed. The earlier
+parser backport, recovery-image correction and migration-directory support
+remain delivered. Both new CodeQL findings were fixed without suppression.
+See the handoff for exact identities and limits. The user asked to stop after
+this batch; these closing notes stay local for the next substantive push.
 
-### Database credential and startup batch in progress
+### Accepted staging database credential and startup batch
 
-The next batch removes release/backup credentials and libpq overrides from the
-Backend application process using process replacement, and audits the runtime
-role before Medusa starts when enforcement is enabled. Service-level variables
-and ancestor processes remain a separate credential boundary. Live PostgreSQL
-ownership and role creation have begun following a fresh verified backup and
-exact source/inventory guards. Application credential cutover is not yet
-accepted. The migration audit exposed PostgreSQL's masked TLS statistics under
-its default owner role; the correction inspects the completed native TLS
+The deployed launcher removes release/backup credentials and libpq overrides
+from the Backend application process using process replacement, and audits the
+runtime role before Medusa starts. Enforcement is now enabled and the actual
+process uses `app_runtime`. Service-level variables and ancestor processes remain a
+separate credential boundary. Live PostgreSQL ownership and role creation
+followed a fresh verified backup and exact source/inventory guards. Runtime,
+migration and backup authority checks passed. The migration audit exposed
+PostgreSQL's masked TLS statistics under its default owner role; the correction
+inspects the completed native TLS
 handshake without resetting that role or granting monitoring authority.
 
 The braces exception still retains the raw High finding, exact all-copy byte
@@ -309,29 +356,37 @@ provider evidence and legal/business requirements remain open as recorded.
 
 ## Planned initiative — client-isolated staging clone
 
-**Outcome:** run the same approved application revision and seven-service
-topology for the client, with client-owned provider accounts and domains,
-independently generated internal credentials, and isolated data. “Clone” means
-configuration and behavior parity, not a copy of our customers, orders, media,
-secrets, or historical deployments. The dormant shell below has no running
-services or credentials and sends no client traffic.
+**Next-session batch 6 — corrected target:** the user explicitly selected a
+direct clone of `staging` into another environment in the existing Railway
+`store` project (`1f39263a-25e4-4d69-abc2-f0287b331d1e`), using the client's
+API keys. Source environment ID is `799a2f98-f819-495d-b8b6-12e71af86568`;
+the planned destination name is `client-staging`, with its ID to be recorded
+when created. This replaces the earlier separate-project/workspace, transfer
+and empty-environment approach. No new client Railway workspace/project is
+required. It remains its own batch before production/launch acceptance. No
+provisioning was started during the overnight planning update.
 
-Railway's [Duplicate Environment](https://docs.railway.com/environments)
-copies ordinary variables as well as services and configuration; sealed
-variables are excluded. A read-only variable-metadata inventory found **zero
-sealed variables across the current seven staging services**. A direct
-duplicate would therefore copy our Stripe, Resend, TaxRate.io, database,
-storage, and application secrets into the new environment before replacement.
-Use a new **Empty Environment** with a sanitized configuration manifest, or a
-sanitized private template in a separate project, as the default. Review the
-provenance and preview of every ordinary template variable and reference
-before sharing or deploying it; a template derived from the live project is
-not sanitized by default. Do not run a
-one-click duplicate of the present secret-bearing environment. Reconsider
-duplication only after a reviewed source-secret sealing and access plan proves
-that no original credential can cross the boundary.
+**Outcome:** run the same accepted application revision, features and
+seven-service setup as the owner's staging in the cloned environment, with
+the client's provider accounts/API keys, environment-specific URLs and
+independent service storage. Copy the required test catalog, content and media
+into that storage and verify parity. Review the database/media copy scope and
+provider-bound records before activating jobs or client testing.
 
-**Dormant shell (September 20, 2026):** a private `store-client-staging`
+Use Railway's direct environment duplication workflow. At execution, verify
+its current preview, variable/reference handling, volume/data behavior and
+deployment controls. Keep the cloned applications, jobs and outbound actions
+inactive while inherited provider values are replaced with the client's keys.
+Use destination environment overrides for shared references; never change the
+owner's values while configuring the clone. Generate destination internal
+credentials, rebind service references and URLs, and make a fresh Storefront
+build before enabling client traffic. Verify and copy persistent data through
+the appropriate guarded tooling where environment duplication does not copy
+it. Do not substitute a separate project or an empty-environment template for
+the user's direct-clone choice.
+
+**Historical dormant shell — not the selected target:** on September 20,
+2026, a private `store-client-staging`
 project (`42d7b49a-3379-4a99-8464-02f678fb7936`) now exists in the
 pre-existing `Trawspace` Hobby workspace
 (`54d68ca0-e718-42e7-977d-7075facc36e5`), separate from the owner's
@@ -344,48 +399,38 @@ Railway usage readout was `$0.00`. No new subscription was opened. This is a
 holding shell owned only by the current operator, **not yet a client-owned or
 configured clone**. Do not attach a repository, image, database shortcut,
 volume, domain, or credential, or deploy it while the no-spend hold applies.
-See the [dormant target record](CLIENT_STAGING_DORMANT.md) and repeat its
-read-only verification before any handoff.
+See the [dormant target record](CLIENT_STAGING_DORMANT.md). Leave this unused
+holding project untouched; no transfer, provisioning or deletion is part of
+the selected same-project clone batch.
 
 No client workspace, domain, or client-specific provider credential entries
 were discoverable by name in the available Railway, GitHub, local-environment,
 or CLI metadata. The Stripe CLI default profile is not authenticated. These
 names-only checks do not establish that credentials cannot exist elsewhere.
-Transfer the empty project to a client-owned workspace once its access and
-billing are established; [Railway workspaces](https://docs.railway.com/projects/workspaces)
-may require a separate Pro or Enterprise subscription, and its
-[base fee](https://docs.railway.com/pricing/plans) applies even with zero
-resource use. Never substitute owner credentials or deploy a client
-environment that could send to owner provider accounts.
+Those historical checks do not establish current credential availability.
+Use the owner's existing Railway project/access and obtain the client's
+provider keys through the secure handoff. Do not require a client Railway
+subscription or workspace transfer. Verify client provider identity before
+enabling cloned applications or outbound actions.
 
-The [read-only client staging preflight](CLIENT_STAGING_PREFLIGHT.md) now checks
-an explicitly selected client project/workspace, seven-service topology,
-absence of autodeploy triggers, never-deployed application services, and exact
-live variable-name and sealed-name parity with a reviewed inventory. A recent
-names-only audit attestation records empty creation and no later sync; the
-Railway nullable source link alone cannot prove either. Reference targets
-remain attested rather than validated against effective values. The query
-requests no variable values and does not prove provider-key ownership. The
-service and workspace shell now exists, but there is no client identity or
-credential inventory. This later-stage gate has only synthetic and current
-owner-staging query-shape validation; it has not passed for a client and is
-expected to fail while all variables remain absent.
+The [read-only client staging preflight](CLIENT_STAGING_PREFLIGHT.md) currently
+implements the superseded separate-workspace/empty-creation contract. Batch 6
+must update the preflight, manifest and tests to bind the existing project,
+distinct source/destination environment IDs and direct-clone provenance.
+Retain exact identity, bounded reads, provider-account checks, destination-only
+references and deployment controls. Do not falsify an empty-creation attestation
+or skip the guard. Effective provider credentials and data isolation still
+require independent verification beyond variable-name metadata.
 
 ### Ownership and isolation decision
 
-- [ ] Record who owns Railway billing, needs console/API access, operates the
-      client environment, and may view its variables, logs, data, and backups.
-      Prefer a **client-owned workspace and project** when the client needs
-      access or separate billing. A persistent `client-staging` environment in
-      the current project is acceptable only for internally operated testing
-      after auditing every project/workspace member. Railway isolates private
-      networks, variables, deployments, databases, volumes, and buckets by
-      environment, but project membership is shared and Environment RBAC is an
-      Enterprise feature. A separate project in the same workspace may still
-      expose it to workspace members. See Railway's
-      [isolation guide](https://docs.railway.com/guides/isolate-staging-production),
-      [project roles](https://docs.railway.com/projects/project-members), and
-      [Environment RBAC](https://docs.railway.com/enterprise/environment-rbac).
+- [x] Select the existing owner `store` project with a distinct cloned client
+      environment, per the user's explicit correction. Keep existing Railway
+      ownership/billing; no new workspace/project or transfer is required.
+- [ ] Record client Storefront/Admin access and operator responsibilities.
+      Review existing project membership and effective environment access;
+      application testing access does not require inviting the client to
+      Railway or expanding project permissions.
 - [ ] Agree on region, client domain/DNS ownership, test-data rights, log and
       backup retention, support ownership, and a monthly cost ceiling before
       provisioning. Estimate seven running services, separate storage and
@@ -393,7 +438,7 @@ expected to fail while all variables remain absent.
       soft usage alert. A hard limit on a shared Railway workspace can stop
       unrelated workloads. See [Railway cost control](https://docs.railway.com/pricing/cost-control).
 
-### Reproducible topology without copied secrets
+### Direct clone and destination configuration
 
 - [ ] Capture a **names-and-settings-only** baseline for Backend, Storefront,
       Postgres, Redis, Bucket/MinIO, Console, and MeiliSearch: source commit,
@@ -402,8 +447,10 @@ expected to fail while all variables remain absent.
       healthchecks, watch paths, deployment triggers, and variable names and
       references. Never export variable values to a repo, plan artifact, CI
       log, shell history, or client-accessible workspace.
-- [ ] Provision new Postgres, Redis, MinIO, and MeiliSearch instances and their
-      volumes before the applications. Recreate private-network
+- [ ] Directly duplicate the source environment into the selected destination
+      in the same project, with cloned application/job activation held. Verify
+      Postgres, Redis, MinIO and MeiliSearch instances and independent volumes
+      before enabling applications. Rebind private-network
       references to the **client** instances, including the Storefront Redis
       URL. Keep support-service public endpoints disabled unless a documented
       use requires one. Railway
@@ -417,8 +464,9 @@ expected to fail while all variables remain absent.
       environment IDs before managing the client target. Their current guard
       accepts only `store/staging`, and the stable partial owns only Backend
       and Storefront; the five support services are dashboard-managed. The
-      current `preserve()` configuration assumes existing variables, so it is
-      not an empty-environment provisioning template. Review
+      current `preserve()` configuration assumes existing variables. Add an
+      explicit destination environment guard and direct-clone provenance,
+      retaining the original staging guard. Review
       the complete client plan for unexpected deletes, source changes, and
       owner-environment references before any apply.
 
@@ -3468,8 +3516,15 @@ Both commands explicitly reported that no files or database records changed.
 
 - [ ] Design and obtain approval for the Railway production environment,
       domains, services, capacity, and cost before provisioning it.
-- [ ] Replace the Backend PostgreSQL superuser connection with a least-privilege
-      runtime role and a separate migration/DDL role.
+- [x] Replace the staging Backend PostgreSQL superuser connection with a
+      least-privilege runtime role and a separate migration/DDL role. Exact
+      revision `2ab44fc` passed both rollout phases with enforcement enabled;
+      production must apply and independently accept the same role contract.
+- [ ] Isolate migration credentials from the Backend service's variables and
+      ancestor processes using a separate migration service or credential
+      broker. The accepted launcher removes them from the Medusa process but
+      does not isolate a fully compromised service. Wire portable backups to
+      `app_backup` while keeping privileged source-identity reads separate.
 - [x] Require TLS for every non-private database connection.
 - [x] Move Storefront Redis to the Railway private service reference and prove
       exact-deployment port-6379 service flows complete without drops.
@@ -3598,12 +3653,13 @@ creation, replication, RLS bypass, and read/write-all membership outside the
 reviewed backup profile; it also verifies actual TLS negotiation for public
 transport.
 
-Release preparation now isolates `db:migrate` and `db:sync-links` behind the
-optional `DATABASE_MIGRATION_URL` before returning to `DATABASE_URL` for
-runtime storage and search readiness. `DATABASE_ROLE_SPLIT_REQUIRED=true`
-fails closed unless the two URLs are distinct. Enforcement remains off until
-staging roles and grants are created and accepted; the superuser-removal item
-therefore remains open.
+The original role split and startup enforcement passed staging at `2ab44fc`.
+Batch 1 moves `db:migrate` and `db:sync-links` into a separate one-shot Railway
+service, makes Backend require its protected exact-SHA receipt, revokes the old
+shared migration credential, and uses `app_backup` for portable exports while
+isolating privileged source-identity reads. Local restore/migration rehearsal
+passed; consult the handoff for live cutover acceptance before closing this
+item. Production requires independent approval and verification.
 
 Portable PostgreSQL protection now has credential-safe, no-shell tooling. The
 backup command emits a custom-format `0600` archive plus SHA-256 manifest after

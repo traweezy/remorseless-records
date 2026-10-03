@@ -16,6 +16,60 @@ const environment = {
   DATABASE_URL: "postgresql://runtime:fixture@db.invalid/app",
   DATABASE_ROLE_SPLIT_REQUIRED: "true",
 }
+
+test("external runtime refuses release credentials before any process replacement", () => {
+  for (const override of [
+    { DATABASE_MIGRATION_URL: "unexpected" },
+    { DATABASE_BACKUP_URL: "unexpected" },
+    { DATABASE_SOURCE_IDENTITY_URL: "unexpected" },
+    { PGOPTIONS: "unexpected" },
+    { DATABASE_ROLE_SPLIT_REQUIRED: "false" },
+  ])
+    assert.throws(
+      () =>
+        startRuntime({
+          environment: {
+            ...environment,
+            DATABASE_MIGRATION_MODE: "external",
+            ...override,
+          },
+          execve: () => assert.fail("must reject before replacement"),
+          run: () => assert.fail("must reject before audit"),
+        }),
+      /external_runtime_credentials_rejected/u
+    )
+})
+
+test("external runtime audits and waits for a receipt before loading the application", () => {
+  for (const status of [0, 1]) {
+    const calls = []
+    const done = new Error("replacement")
+    assert.throws(
+      () =>
+        startRuntime({
+          environment: { ...environment, DATABASE_MIGRATION_MODE: "external" },
+          script: "/server/runtime-start.mjs",
+          chdir() {},
+          run(_file, args) {
+            calls.push(args[0])
+            return { status: calls.length === 1 ? 0 : status }
+          },
+          execve() {
+            assert.equal(status, 0)
+            assert.equal(calls.length, 2)
+            throw done
+          },
+        }),
+      status === 0
+        ? (error) => error === done
+        : /runtime_migration_receipt_rejected/u
+    )
+    assert.deepEqual(calls, [
+      "/server/src/cli/audit-database-role.js",
+      "/server/wait-migration.mjs",
+    ])
+  }
+})
 const fixture = async (t, { audit = "process.exit(0)", wait = false } = {}) => {
   const root = await mkdtemp(join(tmpdir(), "rr-runtime-start-"))
   t.after(() => rm(root, { recursive: true, force: true }))

@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url"
 const releaseOnlyVariables = new Set([
   "DATABASE_MIGRATION_URL",
   "DATABASE_BACKUP_URL",
+  "DATABASE_SOURCE_IDENTITY_URL",
   "DATABASE_ROLE_PROFILE",
 ])
 
@@ -31,6 +32,18 @@ export const startRuntime = ({
   chdir = process.chdir,
 } = {}) => {
   if (typeof execve !== "function") throw new Error("execve_unavailable")
+  const mode = environment.DATABASE_MIGRATION_MODE ?? "inline"
+  if (!["inline", "external"].includes(mode))
+    throw new Error("invalid_migration_mode")
+  if (
+    mode === "external" &&
+    (environment.DATABASE_MIGRATION_URL ||
+      environment.DATABASE_BACKUP_URL ||
+      environment.DATABASE_SOURCE_IDENTITY_URL ||
+      Object.keys(environment).some((name) => name.startsWith("PG")) ||
+      !runtimeRoleAuditRequired(environment.DATABASE_ROLE_SPLIT_REQUIRED))
+  )
+    throw new Error("external_runtime_credentials_rejected")
   const clean = runtimeEnvironment(environment)
   if (Object.keys(clean).length !== Object.keys(environment).length) {
     // Replacing the process also removes its original /proc/self/environ.
@@ -60,6 +73,19 @@ export const startRuntime = ({
     if (audit.error || audit.signal || audit.status !== 0) {
       throw new Error("runtime_database_role_rejected")
     }
+  }
+  if (mode === "external") {
+    const receipt = run(executable, [join(root, "wait-migration.mjs")], {
+      cwd: root,
+      env: clean,
+      shell: false,
+      timeout: 920_000,
+      killSignal: "SIGKILL",
+      maxBuffer: 65_536,
+      stdio: ["ignore", "pipe", "pipe"],
+    })
+    if (receipt.error || receipt.signal || receipt.status !== 0)
+      throw new Error("runtime_migration_receipt_rejected")
   }
   execve(
     executable,

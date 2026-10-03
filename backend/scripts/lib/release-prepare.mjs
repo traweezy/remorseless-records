@@ -1,3 +1,5 @@
+import { migrationContext, migrationMode } from "../migration-receipt.mjs"
+
 const trueValues = new Set(["1", "true"])
 const falseValues = new Set(["", "0", "false"])
 const databaseProtocols = new Set(["postgres:", "postgresql:"])
@@ -59,6 +61,25 @@ const buildDatabaseEnvironments = (environment) => {
   const splitRequired = parseRequiredSplit(
     environment.DATABASE_ROLE_SPLIT_REQUIRED
   )
+  if (migrationMode(environment) === "external") {
+    migrationContext(environment)
+    if (
+      !splitRequired ||
+      environment.DATABASE_MIGRATION_URL ||
+      environment.DATABASE_BACKUP_URL ||
+      environment.DATABASE_SOURCE_IDENTITY_URL ||
+      Object.keys(environment).some((name) => name.startsWith("PG")) ||
+      parseDatabaseIdentity(runtimeUrl, "DATABASE_URL").user !== "app_runtime"
+    )
+      throw new Error(
+        "External migrations require an isolated runtime environment."
+      )
+    return {
+      runtimeEnvironment: { ...environment },
+      splitRequired,
+      external: true,
+    }
+  }
   if (
     splitRequired &&
     (!configuredMigrationUrl || configuredMigrationUrl === runtimeUrl)
@@ -134,21 +155,36 @@ export const buildReleasePreparePlan = ({
   nodePath,
   pnpmPath = "pnpm",
 }) => {
-  const { migrationEnvironment, runtimeEnvironment, splitRequired } =
+  const { migrationEnvironment, runtimeEnvironment, splitRequired, external } =
     buildDatabaseEnvironments(environment)
 
   return [
-    ...(splitRequired
-      ? [
-          {
-            args: ["run", "database:role:audit"],
-            command: pnpmPath,
-            environment: {
-              ...migrationEnvironment,
-              DATABASE_ROLE_PROFILE: "migration",
+    ...(external
+      ? []
+      : splitRequired
+        ? [
+            {
+              args: ["run", "database:role:audit"],
+              command: pnpmPath,
+              environment: {
+                ...migrationEnvironment,
+                DATABASE_ROLE_PROFILE: "migration",
+              },
+              label: "migration database role audit",
             },
-            label: "migration database role audit",
-          },
+            {
+              args: ["run", "database:role:audit"],
+              command: pnpmPath,
+              environment: {
+                ...runtimeEnvironment,
+                DATABASE_ROLE_PROFILE: "runtime",
+              },
+              label: "runtime database role audit",
+            },
+          ]
+        : []),
+    ...(external
+      ? [
           {
             args: ["run", "database:role:audit"],
             command: pnpmPath,
@@ -158,20 +194,27 @@ export const buildReleasePreparePlan = ({
             },
             label: "runtime database role audit",
           },
+          {
+            args: ["./scripts/wait-migration.mjs"],
+            command: nodePath,
+            environment: runtimeEnvironment,
+            label: "external migration receipt",
+          },
         ]
-      : []),
-    {
-      args: ["exec", "medusa", "db:migrate"],
-      command: pnpmPath,
-      environment: migrationEnvironment,
-      label: "database migrations",
-    },
-    {
-      args: ["exec", "medusa", "db:sync-links"],
-      command: pnpmPath,
-      environment: migrationEnvironment,
-      label: "database link synchronization",
-    },
+      : [
+          {
+            args: ["exec", "medusa", "db:migrate"],
+            command: pnpmPath,
+            environment: migrationEnvironment,
+            label: "database migrations",
+          },
+          {
+            args: ["exec", "medusa", "db:sync-links"],
+            command: pnpmPath,
+            environment: migrationEnvironment,
+            label: "database link synchronization",
+          },
+        ]),
     {
       args: [
         "./scripts/run-medusa.js",
@@ -196,24 +239,39 @@ export const buildRuntimeReleasePreparePlan = ({
   now,
   serverRoot,
 }) => {
-  const { migrationEnvironment, runtimeEnvironment, splitRequired } =
+  const { migrationEnvironment, runtimeEnvironment, splitRequired, external } =
     buildDatabaseEnvironments(environment)
   const cliPath = `${serverRoot}/node_modules/@medusajs/cli/cli.js`
   const auditPath = `${serverRoot}/src/cli/audit-database-role.js`
   const candidateIndex = buildCandidateIndex({ environment, now })
 
   return [
-    ...(splitRequired
-      ? [
-          {
-            args: [auditPath],
-            command: nodePath,
-            environment: {
-              ...migrationEnvironment,
-              DATABASE_ROLE_PROFILE: "migration",
+    ...(external
+      ? []
+      : splitRequired
+        ? [
+            {
+              args: [auditPath],
+              command: nodePath,
+              environment: {
+                ...migrationEnvironment,
+                DATABASE_ROLE_PROFILE: "migration",
+              },
+              label: "migration database role audit",
             },
-            label: "migration database role audit",
-          },
+            {
+              args: [auditPath],
+              command: nodePath,
+              environment: {
+                ...runtimeEnvironment,
+                DATABASE_ROLE_PROFILE: "runtime",
+              },
+              label: "runtime database role audit",
+            },
+          ]
+        : []),
+    ...(external
+      ? [
           {
             args: [auditPath],
             command: nodePath,
@@ -223,20 +281,27 @@ export const buildRuntimeReleasePreparePlan = ({
             },
             label: "runtime database role audit",
           },
+          {
+            args: [`${serverRoot}/wait-migration.mjs`],
+            command: nodePath,
+            environment: runtimeEnvironment,
+            label: "external migration receipt",
+          },
         ]
-      : []),
-    {
-      args: [cliPath, "db:migrate"],
-      command: nodePath,
-      environment: migrationEnvironment,
-      label: "database migrations",
-    },
-    {
-      args: [cliPath, "db:sync-links"],
-      command: nodePath,
-      environment: migrationEnvironment,
-      label: "database link synchronization",
-    },
+      : [
+          {
+            args: [cliPath, "db:migrate"],
+            command: nodePath,
+            environment: migrationEnvironment,
+            label: "database migrations",
+          },
+          {
+            args: [cliPath, "db:sync-links"],
+            command: nodePath,
+            environment: migrationEnvironment,
+            label: "database link synchronization",
+          },
+        ]),
     {
       args: [cliPath, "exec", "./src/scripts/check-object-storage.js"],
       command: nodePath,

@@ -58,8 +58,9 @@ export default defineRailway(() => {
       CHECKOUT_RECONCILIATION_MAX_ATTEMPTS: preserve(),
       CHECKOUT_RECONCILIATION_MIN_AGE_SECONDS: preserve(),
       COOKIE_SECRET: preserve(),
-      DATABASE_MIGRATION_URL: preserve(),
-      DATABASE_ROLE_SPLIT_REQUIRED: preserve(),
+      DATABASE_MIGRATION_MODE: "external",
+      DATABASE_MIGRATION_SERVICE_ID: "${{Migrations.RAILWAY_SERVICE_ID}}",
+      DATABASE_ROLE_SPLIT_REQUIRED: "true",
       DATABASE_URL: preserve(),
       JWT_SECRET: preserve(),
       MEDUSA_FF_RBAC: preserve(),
@@ -96,6 +97,24 @@ export default defineRailway(() => {
       TAX_RATE_LOOKUP_MODE: preserve(),
       TAX_RATE_LOOKUP_PROVIDER: preserve(),
       TEMPLATE_REPORTER_URL: preserve(),
+    },
+  })
+  const Migrations = service("Migrations", {
+    source: remorselessRecords,
+    build: {
+      builder: "RAILPACK",
+      buildCommand: "pnpm --filter backend run build",
+      buildEnvironment: "V3",
+      watchPatterns: ["/backend/**", ...SHARED_BUILD_WATCH_PATTERNS],
+    },
+    replicas: { "us-east4-eqdc4a": 1 },
+    deploy: { preDeployCommand: [], restartPolicyType: "NEVER" },
+    start: "pnpm --filter backend --silent run release:migrate",
+    networking: { privateNetworkEndpoint: "migrations" },
+    env: {
+      DATABASE_URL: preserve(),
+      DATABASE_MIGRATION_SERVICE_ID: "${{RAILWAY_SERVICE_ID}}",
+      NODE_ENV: "development",
     },
   })
   const Storefront = service("Storefront", {
@@ -148,6 +167,6 @@ export default defineRailway(() => {
     },
   })
   return project("store", {
-    resources: [Backend, Storefront],
+    resources: [Backend, Migrations, Storefront],
   })
 })

@@ -50,8 +50,8 @@ pnpm run railway:apply:staging
 - Run `pnpm run qa:railway-iac` before every plan. It checks the complete
   application partial, preserved variables, exact SDK version, pnpm-only
   commands, dependency-aware readiness gates, and the staging-only boundary.
-- The stable `applications` partial intentionally owns only Backend and
-  Storefront. Railway's beta importer currently plans non-idempotent source and
+- The stable `applications` partial intentionally owns Backend, Storefront and the one-shot
+  Migrations job. Railway's beta importer currently plans non-idempotent source and
   builder changes for imported database and support services; those resources
   remain dashboard-managed until a clean whole-project import is possible.
 - Apply only a plan with zero unexpected deletes. After an apply, wait for all
@@ -113,3 +113,12 @@ pnpm run railway:apply:staging
 - Use `replicas` for scaling; advanced placement can still specify region names.
 - Use `group("Name", [resources])` to keep large projects organized on the Railway canvas.
 - Secrets imported from Railway are rendered as `preserve()` so existing values are retained without writing secret values to source. Use `railway config pull --omit-preserved-variables` for a smaller import.
+
+- Migrations uses the Backend build/watch inputs, `checkSuites: true`, no health
+  endpoint and `restartPolicyType: NEVER`. Its only preserved credential is
+  `DATABASE_URL` for `app_migrator`; the service ID uses Railway's own reference.
+  Backend keeps only `app_runtime`, enforces external migration mode and waits
+  for a protected receipt matching the project, environment, job service and
+  exact SHA. Successful job exit and a runtime-readable receipt are required
+  release evidence. See the service isolation section in
+  `docs/INFRASTRUCTURE_RECOVERY.md`; inspect the scoped plan before applying.

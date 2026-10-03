@@ -140,7 +140,7 @@ assert.equal(
 )
 assert.deepEqual(
   definition.resources.map(({ name }) => name).sort(),
-  ["Backend", "Storefront"],
+  ["Backend", "Migrations", "Storefront"],
   "The application partial must not take ownership of data or support resources"
 )
 
@@ -154,7 +154,34 @@ const getService = (name) => {
 }
 
 const backend = getService("Backend")
+const migrations = getService("Migrations")
 const storefront = getService("Storefront")
+
+assert.deepEqual(migrations.build, backend.build)
+assert.deepEqual(migrations.variables, {
+  DATABASE_URL: { type: "preserve" },
+  DATABASE_MIGRATION_SERVICE_ID: {
+    type: "literal",
+    value: "${{RAILWAY_SERVICE_ID}}",
+  },
+  NODE_ENV: { type: "literal", value: "development" },
+})
+assert.equal(
+  migrations.deploy.startCommand,
+  "pnpm --filter backend --silent run release:migrate"
+)
+assert.equal(migrations.deploy.restartPolicyType, "NEVER")
+assert.deepEqual(migrations.deploy.preDeployCommand, [])
+assert.ok(!migrations.deploy.healthcheckPath)
+for (const name of ["DATABASE_MIGRATION_URL", "DATABASE_BACKUP_URL"])
+  assert.equal(Object.hasOwn(backend.variables, name), false)
+const backendMigrationVariables = {
+  DATABASE_MIGRATION_MODE: "external",
+  DATABASE_MIGRATION_SERVICE_ID: "${{Migrations.RAILWAY_SERVICE_ID}}",
+  DATABASE_ROLE_SPLIT_REQUIRED: "true",
+}
+for (const [name, value] of Object.entries(backendMigrationVariables))
+  assert.deepEqual(backend.variables[name], { type: "literal", value })
 
 assert.deepEqual(
   storefront.variables.REDIS_URL,
@@ -181,7 +208,7 @@ for (const name of ["MEDUSA_ADMIN_EMAIL", "MEDUSA_ADMIN_PASSWORD"]) {
   )
 }
 
-for (const service of [backend, storefront]) {
+for (const service of [backend, storefront, migrations]) {
   assert.deepEqual(service.source, {
     type: "github",
     repo: "traweezy/remorseless-records",
@@ -200,6 +227,13 @@ for (const service of [backend, storefront]) {
   )
 
   for (const [name, value] of Object.entries(service.variables)) {
+    // The migration job's complete, minimal variable map is asserted above.
+    if (service.name === "Migrations") continue
+    if (
+      service.name === "Backend" &&
+      Object.hasOwn(backendMigrationVariables, name)
+    )
+      continue
     if (
       service.name === "Storefront" &&
       ["MEILISEARCH_HOST", "REDIS_URL"].includes(name)
@@ -276,6 +310,8 @@ assert.deepEqual(
 )
 
 const applicationCommands = [
+  migrations.build.buildCommand,
+  migrations.deploy.startCommand,
   backend.build.buildCommand,
   backend.deploy.startCommand,
   ...backend.deploy.preDeployCommand,

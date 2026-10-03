@@ -69,6 +69,8 @@ const help = `Usage: postgres-staging-snapshot --project-id <uuid> --environment
   --volume-instance-id <uuid> --volume-id <uuid> --output-dir <absolute-private-dir>
 Requires DATABASE_PRIVATE_URL (preferred) or DATABASE_URL from a matching
 Postgres Railway-run context, or a separate process-only DATABASE_BACKUP_URL.
+For restricted exports, supply DATABASE_BACKUP_URL plus a distinct
+DATABASE_SOURCE_IDENTITY_URL for the fixed source-system identity reads only.
 Private source URLs must use postgres.railway.internal:5432.
 Uses a strict, existing Railway SSH host key and a single exact running instance.
 Captures one snapshot-bound archive/receipt through a loopback-only TLS tunnel.
@@ -185,6 +187,23 @@ export const selectSourceUrl = (environment, args) => {
     }
   }
   return hasBackup ? environment.DATABASE_BACKUP_URL : railwaySourceUrl
+}
+
+export const selectSourceConnections = (environment, args) => {
+  const backupUrl = selectSourceUrl(environment, args)
+  const identityUrl = environment.DATABASE_SOURCE_IDENTITY_URL
+  if (identityUrl === undefined) return { backupUrl, identityUrl: backupUrl }
+  assert.ok(identityUrl)
+  assert.ok(environment.DATABASE_BACKUP_URL)
+  const backup = parseSourceConnection(backupUrl, 5432)
+  const identity = parseSourceConnection(identityUrl, 5432)
+  assert.equal(backup.originalFingerprint, identity.originalFingerprint)
+  assert.ok(
+    decodeURIComponent(new URL(backupUrl).username) !==
+      decodeURIComponent(new URL(identityUrl).username),
+    "Backup and source identity connections must use distinct logins."
+  )
+  return { backupUrl, identityUrl }
 }
 
 export const normalizeRailwayScope = (raw, args) => {
@@ -613,7 +632,10 @@ export const runStagingSnapshot = async (
   let evidence
   try {
     onPhase("source_url")
-    const rawSourceUrl = selectSourceUrl(environment, args)
+    const { backupUrl: rawSourceUrl, identityUrl } = selectSourceConnections(
+      environment,
+      args
+    )
     const original = parseSourceConnection(rawSourceUrl, 5432)
     const knownHosts = join(environment.HOME, ".ssh", "known_hosts")
     const knownHostsMetadata = await lstat(knownHosts)
@@ -656,6 +678,7 @@ export const runStagingSnapshot = async (
     const preflight = await readScope()
     const localPort = await portAllocator()
     const connection = parseSourceConnection(rawSourceUrl, localPort)
+    const identityConnection = parseSourceConnection(identityUrl, localPort)
     onPhase("tunnel")
     tunnel = await tunnelFactory({
       args: buildSshArguments({ scope: preflight, localPort, knownHosts }),
@@ -667,7 +690,7 @@ export const runStagingSnapshot = async (
     onPhase("source_system_id")
     const sourceSystemId = await readSourceSystemId(
       command,
-      connection,
+      identityConnection,
       AbortSignal.any([signal, tunnel.exitSignal]),
       environment.PATH
     )
@@ -720,7 +743,7 @@ export const runStagingSnapshot = async (
     assert.equal(
       await readSourceSystemId(
         command,
-        connection,
+        identityConnection,
         AbortSignal.any([signal, tunnel.exitSignal]),
         environment.PATH
       ),

@@ -15,6 +15,56 @@ const environment = {
   NODE_ENV: "production",
 }
 
+test("external release preparation has only runtime authority and waits before storage or search", () => {
+  const external = {
+    DATABASE_URL:
+      "postgresql://app_runtime:fixture@postgres.railway.internal:5432/railway",
+    DATABASE_ROLE_SPLIT_REQUIRED: "true",
+    DATABASE_MIGRATION_MODE: "external",
+    RAILWAY_PROJECT_ID: "11111111-1111-4111-8111-111111111111",
+    RAILWAY_ENVIRONMENT_ID: "22222222-2222-4222-8222-222222222222",
+    DATABASE_MIGRATION_SERVICE_ID: "33333333-3333-4333-8333-333333333333",
+    RAILWAY_GIT_COMMIT_SHA: "a".repeat(40),
+  }
+  for (const build of [
+    buildReleasePreparePlan,
+    buildRuntimeReleasePreparePlan,
+  ]) {
+    const options = {
+      environment: external,
+      nodePath: "/node",
+      serverRoot: "/server",
+      cliPath: "/cli",
+      now: new Date("2026-10-03T12:00:00Z"),
+    }
+    const plan = build(options)
+    assert.equal(plan.length, 4)
+    assert.equal(plan[0].environment.DATABASE_ROLE_PROFILE, "runtime")
+    assert.match(plan[1].args[0], /wait-migration\.mjs$/u)
+    for (const step of plan) {
+      assert.equal(step.environment.DATABASE_URL, external.DATABASE_URL)
+      assert.equal(step.environment.DATABASE_MIGRATION_URL, undefined)
+      assert.ok(
+        !step.args.some((arg) => ["db:migrate", "db:sync-links"].includes(arg))
+      )
+    }
+    for (const override of [
+      { DATABASE_MIGRATION_URL: environment.DATABASE_MIGRATION_URL },
+      { DATABASE_BACKUP_URL: "unexpected" },
+      { DATABASE_SOURCE_IDENTITY_URL: "unexpected" },
+      { PGOPTIONS: "unexpected" },
+      { DATABASE_ROLE_SPLIT_REQUIRED: "false" },
+      { DATABASE_MIGRATION_SERVICE_ID: undefined },
+      { RAILWAY_GIT_COMMIT_SHA: "short" },
+      { DATABASE_MIGRATION_MODE: "externl" },
+      { DATABASE_URL: environment.DATABASE_MIGRATION_URL },
+    ])
+      assert.throws(() =>
+        build({ ...options, environment: { ...external, ...override } })
+      )
+  }
+})
+
 test("audits separate database authorities before release mutations", () => {
   const plan = buildReleasePreparePlan({
     environment,

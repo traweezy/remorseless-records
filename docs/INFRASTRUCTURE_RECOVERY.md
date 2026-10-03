@@ -198,6 +198,10 @@ every existing schema, relation, sequence, function, type, extension, and owner
 before changing ownership. Transfer application objects individually to
 `app_owner`; never run an unreviewed cluster-wide `REASSIGN OWNED`.
 
+The initial role rollout below was accepted on October 3 at `2ab44fc`. It is
+retained as historical procedure; the service-isolated release contract below
+supersedes its shared Backend migration variable.
+
 `DATABASE_URL` belongs to `app_runtime`. `DATABASE_MIGRATION_URL` belongs to
 `app_migrator`. Release preparation uses the migration URL only for
 `db:migrate` and `db:sync-links`, then returns to the runtime URL for storage
@@ -217,7 +221,8 @@ and search readiness. Roll out in this order:
 8. only then revoke the old superuser URL from Backend.
 
 Backend startup replaces its process with an environment that omits
-`DATABASE_MIGRATION_URL`, `DATABASE_BACKUP_URL`, `DATABASE_ROLE_PROFILE` and
+`DATABASE_MIGRATION_URL`, `DATABASE_BACKUP_URL`, `DATABASE_SOURCE_IDENTITY_URL`,
+`DATABASE_ROLE_PROFILE` and
 libpq `PG*` overrides. Replacement removes the original environment from that
 process's Linux `/proc` record; a JavaScript deletion alone does not. Both
 Railpack and the candidate runtime image use this launcher. When enforcement
@@ -226,15 +231,61 @@ preload and Medusa start. The isolated runtime-role smoke follows that same
 launcher and audit. Unsupported replacement, invalid settings, failed audits,
 timeouts and signals fail closed with fixed, credential-free output.
 
-This improves the application process boundary and limits ordinary runtime
-database access. It does **not** isolate a migration credential from a fully
-compromised Railway service: provider variables, ancestor processes and
-operator access can still expose it. Railway uses the same service variables
-for pre-deploy and runtime. A separate migration service or credential broker
-remains necessary before claiming isolation against arbitrary service code
-execution. Keep that residual requirement separate from SQL role acceptance.
-See [Railway variables](https://docs.railway.com/variables) and
-[pre-deploy execution](https://docs.railway.com/deployments/pre-deploy-command).
+### Separate migration service and restricted export
+
+The `applications` IaC partial now includes a one-shot `Migrations` service in
+`store` / `staging` (service `129d6f7a-13f1-49d4-9828-0d02911a3326`). It builds
+the Backend and runs `release:migrate` against the compiled server. Its only
+provider credential is `DATABASE_URL` for `app_migrator`; it has no domain,
+HTTP listener, application worker, shared Redis connection or provider API key.
+Restart policy is `NEVER`. The child environment explicitly disables provider
+integrations, including values Medusa could otherwise load from `.env` files.
+
+The job audits migration authority, acquires a PostgreSQL session advisory
+lock, invalidates the environment's prior receipt, and runs `db:migrate` and
+`db:sync-links`. Only successful completion records project, environment,
+migration service, deployment and full Git SHA in
+`public.remorseless_migration_receipt`. Its non-login owner is `app_owner`;
+`app_runtime` has SELECT only. DML, ownership changes, RLS and user triggers
+cannot provide an accepted runtime receipt. Loss of the lock connection
+cancels the child command; failed or concurrent jobs cannot certify success.
+
+Backend uses `DATABASE_MIGRATION_MODE=external`,
+`DATABASE_ROLE_SPLIT_REQUIRED=true`, and the migration service ID reference.
+Its provider variables must contain no migration, backup or source-identity
+credential and no libpq overrides. Both pre-deploy preparation and actual
+startup audit runtime authority and require the exact scoped receipt before
+continuing. Waiting is bounded to 15 minutes. Migrations must also run for an
+exact-SHA manual release when watch paths skipped that commit. Railway does
+not order independent GitHub deployments merely because variables reference
+another service; the receipt provides the gate. See
+[Railway deployment ordering](https://docs.railway.com/deployments/deployment-actions).
+
+During the first cutover, rotate `app_migrator` so credentials retained in old
+Backend deployment snapshots no longer authenticate. Store the new URL only
+on `Migrations`, review the guarded IaC plan, remove Backend's old variable and
+apply external mode. Preserve the `postgres` break-glass login. Do not restore
+shared credentials or disable enforcement to recover a failed release: repair
+and rerun the exact-SHA migration job, then redeploy Backend. A receipt for a
+newer SHA cannot accept an older runtime; schema-compatible rollback requires
+an explicitly reviewed migration/receipt run for the rollback revision.
+
+Portable snapshots use `Postgres.DATABASE_BACKUP_URL` (`app_backup`) supplied
+only to the export process. `postgres-staging-snapshot.mjs` additionally accepts
+a process-only `DATABASE_SOURCE_IDENTITY_URL` for its two fixed
+`pg_control_system()` reads, before and after export. The connections must use
+different logins but the same endpoint/database fingerprint and verified SSH
+tunnel. The privileged URL never reaches the dump/export child, Railway CLI,
+SSH process, archive or receipt. Do not persist that identity URL on Backend
+or Migrations. Existing administrator-only operator captures remain compatible,
+but restricted captures must explicitly supply both connections.
+
+Local batch-1 rehearsal on October 3 used a fresh `app_backup` archive, verified
+all 171 restored tables, then ran the actual migration job without network
+access, Redis or provider keys. All 171 existing row counts remained unchanged;
+only the receipt table was added. This proves the restricted logical backup
+path and migration boundary, not PITR or off-site backup acceptance. Live
+cutover and exact-revision release acceptance are recorded in the handoff.
 
 The auditor never prints role/database names, connection strings, or raw
 driver errors. Its single read-only catalog query checks the original session
@@ -280,6 +331,21 @@ fixtures on the explicitly guarded disposable service. Passing them does not
 perform the staging role cutover or satisfy its operational evidence.
 
 ### Staging role provisioning — October 3, 2026 UTC
+
+The two-phase application cutover subsequently passed on exact revision
+`2ab44fc69cc8995a54d88e7c38e8d0e1502c778e`. Initial Backend deployment
+`383320a0-a9a8-4333-81bf-8abc0511e817` proved the actual runtime login and
+clean application environment with enforcement off. After enabling only
+`DATABASE_ROLE_SPLIT_REQUIRED=true`, deployment
+`9db62fe2-4345-41d2-b55f-82eaef640f76` passed both release role audits,
+migrations/link sync and enforced startup. Its actual Medusa process has the
+runtime URL, no migration/backup URL or libpq overrides, and an accepted
+runtime role audit. Health, catalog, an ordinary post-switch scheduler
+heartbeat, all 85 browser cases and bounded logs passed; final readiness was
+collected at `03:07:41.683Z`. See the handoff for complete acceptance evidence.
+The historical prepared-state notes below precede that accepted cutover.
+Administrator recovery access remains in Postgres. Service-level migration
+credential isolation and narrow-role portable backup integration remain open.
 
 After the source-bound snapshot at `02:25:54Z`, exact identity and transaction
 inventory guards applied the reviewed role plan at `02:27:53.999Z`. All 171

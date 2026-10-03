@@ -39,6 +39,7 @@ WORKDIR /app
 COPY --chown=1000:1000 backend/.medusa/server/ ./
 COPY --chown=1000:1000 backend/scripts/runtime-release-prepare.mjs ./scripts/runtime-release-prepare.mjs
 COPY --chown=1000:1000 backend/scripts/lib/release-prepare.mjs ./scripts/lib/release-prepare.mjs
+COPY --chown=1000:1000 backend/scripts/migration-receipt.mjs ./scripts/migration-receipt.mjs
 
 USER 1000:1000
 

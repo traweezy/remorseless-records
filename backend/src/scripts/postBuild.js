@@ -84,6 +84,13 @@ copyNewRegularFile(
   path.join(MEDUSA_SERVER_PATH, "runtime-start.mjs"),
   0o644
 )
+for (const name of ["migration-receipt.mjs", "wait-migration.mjs"]) {
+  copyNewRegularFile(
+    path.join(process.cwd(), "scripts", name),
+    path.join(MEDUSA_SERVER_PATH, name),
+    0o644
+  )
+}
 
 const rewrittenAliases = rewriteRuntimeAliases(MEDUSA_SERVER_PATH)
 if (rewrittenAliases.aliases === 0) {
