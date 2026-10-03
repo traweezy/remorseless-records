@@ -8,6 +8,71 @@ Railway production environment, changing credentials, enabling paid backup
 features, removing public endpoints, or restoring data. Those are separate
 reviewed operations.
 
+## Redis and payment reconciliation — October 3 batch 3
+
+This candidate awaits its own staging CI and deployed acceptance; `7352a3b`
+remains the accepted baseline. The user selected **Remorseless Records Staging**
+sandbox `acct_1Rkv3jIM4tTeFQ3W` in the signed-in Stripe dashboard. A scoped
+Backend test-key handoff matched that independent account reference. All seven
+PaymentIntent amount/currency comparisons passed against Medusa and archived
+provider data; both linked tax-evidence comparisons also passed. Five payments
+predate the earliest tax-evidence row. No provider/database records changed.
+
+The audit had rejected valid five-decimal Medusa amounts and compared exact
+sub-cent multiplication with integer provider cents. Descriptors now retain
+up to 20 decimal places under the same byte, row, account and USD bounds. SQL
+uses the provider reader's positive USD rounding boundary; regressions retain
+detection of one-cent differences and negative amounts. Refreshed internal
+relationships have zero mismatches apart from the five historical missing
+evidence rows. Do not fabricate backfills or certify complete business history.
+
+Fresh AOF receipt SHA-256:
+`7c0f5809f5282977000edc7023125ff2d048c2f14559c005a3c3bcd16728ed1b`.
+All 58,608,506 bytes replayed and restarted without workers/network access on
+Redis 8.10.2. Queue checks found no missing hashes, duplicate state membership,
+stalled jobs or delayed jobs overdue at capture. Live and isolated observations
+retain 238 terminal failures: 164 checkout-reconciliation schedules, 73 quota
+sync schedules and one native `payment.webhook_received` event. Private review
+found an empty parsed object and a two-byte raw Buffer in the latter. Retain
+these failures without blanket retries, deletion, external messages or replay
+workers. Current recurring jobs continue against durable business state.
+
+`docker/redis/Dockerfile` pins official Redis 8.10.2 amd64 manifest
+`sha256:2d3814be5e9b06a30a0be54770b7e12052e7e79ec85271aefd34875c1f393b23`.
+UID/GID 1000 matches the observed data owner. The existing private endpoint,
+default user, password and `/bitnami` volume are retained. Startup hashes the
+password into a private config and removes it from the server environment.
+Empty, misplaced or symlinked data fails startup. The first start validates
+and copies the old AOF into `/bitnami/redis/data/runtime`; new writes stay there.
+Restart reuses that directory. The original server files remain untouched.
+
+The policy is 512 MiB maxmemory, `noeviction`, AOF `everysec`, rewrite fsync
+enabled, truncated-AOF rejection and RDB rules `900 1 300 10 60 10000`. The
+workload drill uses 32,769 synthetic keys and concurrent writes during RDB/AOF
+forks. It verifies authentication, unchanged original AOF bytes, zero evictions
+and rejected connections, cgroup peak and restart data. Backend CI runs the
+same drill and a strict image scan binding revision, user, startup path and
+inventory. Existing guarded recovery/queue probes retain Perl and their legacy
+CLI path, using the checksum-pinned fixture packages.
+
+Retained Redis deployment `f75e3583-3d71-4787-9ada-12852e976fa0` currently reports
+`canRollback: true`, snapshot `b084f97c-813d-4dd9-81f7-a6f2f5dc96b9`. Before
+rollout, refresh its scoped backup and queue observation and stop application
+writers. Prove retained-deployment rollback while writers remain stopped,
+then redeploy the accepted candidate and resume applications. After new writes,
+rollback requires preserving the new directory and reconciling durable state;
+never downgrade rewritten data or silently discard accepted work.
+
+Redis stays outside the `applications` IaC partial: its reviewed preview tried
+to create a duplicate service, so it was not applied and the experimental
+edits were removed. Use scoped provider operations against the existing ID,
+preserving the volume and backup schedule. Supporting PostgreSQL, MinIO and
+Meilisearch blockers remain in the carryover register.
+
+Private evidence is under `/tmp/remorseless-batch3-payment/` and the
+`/tmp/remorseless-batch3-*` reports. Never commit private descriptors, payloads,
+credentials, dumps or AOF bytes.
+
 ## Railway recovery archives — October 3 batch 2
 
 The user explicitly selected **all storage inside Railway**, replacing the
@@ -22,10 +87,11 @@ Resources in project `store` (`1f39263a-25e4-4d69-abc2-f0287b331d1e`), staging
 - `RecoveryArchives`: bucket `e48fdf14-924d-4edd-a80a-d05ba17847fc`, region `iad`,
   separate from the MinIO source. Destination fingerprint
   `dcd9d375e6bdcc6e039d2153baa37dd000a5c62d9ab5ce3bb1a008d77498b03d`.
-- `RecoveryBackups`: service `913ddfd6-2b39-4188-bd73-6787bc80a313`. Desired
+- `RecoveryBackups`: service `913ddfd6-2b39-4188-bd73-6787bc80a313`. Accepted
   configuration is daily at 04:00 UTC, restart `NEVER`, no public domain, pinned
-  Dockerfile inputs, staging branch and `checkSuites: true`. Initial deployment
-  and exact-revision runtime acceptance are pending this batch's release.
+  Dockerfile inputs, staging branch and `checkSuites: true`. Deployment
+  `ca4baafb-6f0e-443d-a6de-92a1fbc11491` matches accepted revision
+  `7352a3bfe0a4ad3030d1b9f97fb07aaafcf0bc50`.
 - The encryption key exists only as `BACKUP_ENCRYPTION_KEY` in that service.
   Preserve it: losing/replacing it makes old archives unreadable. Do not copy it
   into logs, source, reports or application variables. Recovery requires access
@@ -55,6 +121,15 @@ object-path authentication. Every ciphertext is downloaded and hashed before
 the final receipt is published. Source files and media are never overwritten.
 The operator receipt's SHA-256 is required for a restore; retain the sanitized
 `recovery.backup.completed` record outside the job's transient filesystem.
+
+Railway registers a cron deployment before its first execution. Verify the
+separate execution history and completed log receipt; `SUCCESS` alone is not
+backup evidence. The first run was invoked with the schema-verified
+`deploymentInstanceExecutionCreate` mutation after checking the exact staging
+service instance, SHA, image configuration and empty execution history. It
+completed in 62.361 seconds and execution
+`23030606-7edc-4129-be10-0791d90f0213` exited at `16:31:23.840Z`. Its daily
+schedule's first calendar run is due October 4 at 04:00 UTC, still unobserved.
 
 Railway managed buckets currently have no native versioning, object lock or
 lifecycle rules. Format 2 therefore authenticates its creation timestamp inside
@@ -111,8 +186,21 @@ database table counts matched, with 5.743 seconds in the database phase. This
 initial archive is format 1 and remains exempt from automatic expiration.
 Private evidence is under `/tmp/remorseless-batch2-recovery-evidence` and
 `/tmp/remorseless-batch2-downloaded-restore`. The owned temporary Railway bucket
-`RecoveryDrill-20261003` (`d850da9d-0e8e-4e9a-8f77-dc40a83d7a35`) contains only
-verified drill output and should be deleted after retaining the result.
+`RecoveryDrill-20261003` (`d850da9d-0e8e-4e9a-8f77-dc40a83d7a35`) was deleted
+through scoped cleanup at `16:02:58Z` after retaining the result.
+
+The deployed runner's format-2 snapshot
+`87bafc63-f4b9-4b9e-98a9-7c64218bee09` also passed a complete restore. Receipt
+SHA-256: `28053e4b33b3e7c3dda345b639ea97a81511eb0aa72b06b9ef9a123ac9af4349`.
+From `16:32:41.748Z` to `16:36:07.334Z`, download/decryption and restore took
+**205.587 seconds**. All 1,168 media objects (436,743,909 bytes) and all 172
+database table counts matched. Database recovery took 6.220 seconds, including
+verification, and its isolated target was removed. The owned second drill
+bucket `2197e73c-a773-46f3-a634-2d70567172e6` was removed at `16:36:23Z`.
+Evidence is in `/tmp/remorseless-batch2-runtime-restore/railway-restore-result.json`
+and `/tmp/remorseless-batch2-release-acceptance.json`. Retention reported no
+eligible removals and preserved the initial legacy snapshot. Live expiration
+of an aged snapshot was not exercised; its guards have automated coverage.
 
 **Native PITR is not enabled.** Fresh provider evidence reports no archive
 bucket/WAL coverage. The official PostgreSQL 16 image candidate (amd64 digest

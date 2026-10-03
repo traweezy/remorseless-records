@@ -16,7 +16,7 @@ const composeArguments = [
 ]
 const imageTags = {
   postgres: "remorseless-records-integration-postgres:18.6-hardened",
-  redis: "remorseless-records-integration-redis:8.10.1-hardened",
+  redis: "remorseless-records-integration-redis:8.10.2-hardened",
 }
 const imageIdPattern = /^sha256:[a-f0-9]{64}$/u
 

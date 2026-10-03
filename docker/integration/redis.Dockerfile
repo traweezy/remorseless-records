@@ -1,4 +1,4 @@
-FROM redis:8.10.1-alpine3.23@sha256:becdda6c7f4b3fb42e42fd7f120bbf5c54c4caaaf16f26da24e4563d2c1f0576
+FROM redis:8.10.2-alpine3.23@sha256:2d3814be5e9b06a30a0be54770b7e12052e7e79ec85271aefd34875c1f393b23
 
 LABEL org.opencontainers.image.description="Disposable Redis integration fixture; not a deployment image"
 LABEL org.opencontainers.image.source="https://github.com/traweezy/remorseless-records"

@@ -64,7 +64,7 @@ const fixture = async () => {
 
 const successRunner = async (_checker, argumentsList) => {
   if (argumentsList[0] === "--version")
-    return "redis-check-aof v=8.10.1 sha=00000000:1 malloc=jemalloc-5.3.0 bits=64 build=102f0f73631d93c4"
+    return "redis-check-aof v=8.10.2 sha=00000000:1 malloc=jemalloc-5.3.0 bits=64 build=102f0f73631d93c4"
   assert.equal(argumentsList.length, 1)
   assert.match(argumentsList[0], /\/appendonly\.aof\.manifest$/u)
   return (
@@ -172,7 +172,7 @@ test("rejects ambiguity, unsafe files, oversized data and checker mutation", asy
         ...options,
         runCommand: async (_checker, args) => {
           if (args[0] === "--version")
-            return "redis-check-aof v=8.10.1 sha=00000000:1 malloc=jemalloc-5.3.0 bits=64 build=102f0f73631d93c4"
+            return "redis-check-aof v=8.10.2 sha=00000000:1 malloc=jemalloc-5.3.0 bits=64 build=102f0f73631d93c4"
           const snapshotDirectory = args[0].slice(
             0,
             -"/appendonly.aof.manifest".length

@@ -347,12 +347,22 @@ jobs:
       - name: Run disposable integration and API contracts
         run: pnpm run qa:disposable-integration --no-build
 
+      - name: Verify persistent Redis runtime security and recovery
+        run: |
+          docker build --build-arg REVISION="$GITHUB_SHA" -f docker/redis/Dockerfile -t remorseless-staging-redis:8.10.2 .
+          export RR_REDIS_RUNTIME_IMAGE_ID="$(docker image inspect remorseless-staging-redis:8.10.2 --format '{{.Id}}')"
+          mkdir -p artifacts/redis-runtime
+          node scripts/scan-recovery-image.mjs "$RR_REDIS_RUNTIME_IMAGE_ID" "$GITHUB_SHA" artifacts/redis-runtime redis
+          INTEGRATION_TESTS_ENABLED=1 node --test scripts/redis-runtime.integration.test.mjs
+
       - name: Retain disposable image security evidence
         if: ${{ always() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: disposable-integration-images
-          path: artifacts/disposable-integration
+          path: |
+            artifacts/disposable-integration
+            artifacts/redis-runtime
           if-no-files-found: error
           retention-days: 14
 

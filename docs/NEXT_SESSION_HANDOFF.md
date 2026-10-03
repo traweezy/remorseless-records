@@ -4,23 +4,66 @@ Last updated: 2026-10-03 (America/New_York)
 
 ## Current continuation — direct staging only
 
-**Batch 2 is in progress: Railway recovery archives and scheduled runner.**
-The user selected the next batch and explicitly requested that all storage stay
-in Railway. This supersedes the outside-provider account prerequisite. Source
-MinIO and PostgreSQL remain unchanged. `RecoveryArchives` is a separate managed
-bucket in the same staging environment; `RecoveryBackups` holds its credentials
-and the client-side encryption key. The new daily runner, retention guards,
-image scan and recovery commands are implemented locally; their direct staging
-push, exact CI, Railway job and application acceptance are still pending.
+**Batch 3 is now selected:** queue/payment reconciliation, Redis capacity and
+supporting-service image pinning/upgrades. Keep leftover work in the
+[carryover register](PRODUCTION_HARDENING_PLAN.md#carryovers-between-batches),
+including the native PITR blocker and first calendar-triggered backup check.
+The accepted batch-2 evidence below remains the release baseline until batch 3
+passes its own direct staging push, exact CI and Railway acceptance.
 
-A real restricted snapshot restored 172 tables and all 172 saved table row
-counts in 6.545 seconds. The full encrypted archive contains four database
-files plus all 1,168 media objects. Download, plaintext checksum verification,
-media restore into a separate Railway bucket and an isolated database restore
-completed in 202.880 seconds. Database-only restore took 5.743 seconds; its owned
-target was removed. These are current-state, same-provider recovery proofs.
-The temporary `RecoveryDrill-20261003` bucket is owned drill output; remove it
-through the scoped cleanup after retaining the evidence.
+**Batch 2's recovery archive release is accepted at `7352a3b`; native PITR
+remains open.** Full revision:
+`7352a3bfe0a4ad3030d1b9f97fb07aaafcf0bc50`. The user explicitly requested all
+storage stay in Railway, superseding the outside-provider prerequisite.
+`RecoveryArchives` is a separate managed bucket in the same staging environment;
+`RecoveryBackups` holds its credentials and the client-side encryption key.
+Source MinIO and PostgreSQL were not reconfigured. Preserve the encryption key.
+
+The daily runner is configured for 04:00 UTC with 30-day authenticated retention,
+at least two recent snapshots, restart `NEVER` and no public domain. Its first
+execution was invoked through Railway's scoped job API after CI/deployment
+acceptance; deployment `SUCCESS` alone does not prove a cron execution. The job
+completed in 62.361 seconds and exited cleanly at `16:31:23.840Z`. The first
+calendar-triggered run is due October 4 at 04:00 UTC and has not yet been observed.
+
+Runtime snapshot `87bafc63-f4b9-4b9e-98a9-7c64218bee09` contains four database
+files and all 1,168 media objects. Independently retained receipt SHA-256:
+`28053e4b33b3e7c3dda345b639ea97a81511eb0aa72b06b9ef9a123ac9af4349`.
+Full download/decryption, media readback and isolated PostgreSQL restore passed
+from `16:32:41.748Z` to `16:36:07.334Z`, taking **205.587 seconds**. All 172
+database table counts and 436,743,909 media bytes matched. Database recovery
+took 6.220 seconds; its owned target was removed. Both owned Railway drill
+buckets were deleted after their successful restores, the last at `16:36:23Z`.
+The earlier format-1 snapshot and its 202.880-second proof remain valid and are
+exempt from automatic retention. These are current-state, same-provider proofs.
+
+All four workflows and 23 required checks passed: Root `37136046749`, Backend
+`37136046754`, Storefront `37136046735`, Runtime Images `37136046762`. The new
+backup runtime passed the strict image scan without a security exception.
+Exact successful Railway deployments:
+
+- Backend: `bd67f359-80d6-4085-8cd4-eb69880c1bd2`.
+- Storefront: `3b045b0a-d887-42ca-8b04-34ebc9da0ff6`.
+- Migrations: `4182f7a4-a55b-4126-a6b6-1e19380a01c4`.
+- RecoveryBackups: `ca4baafb-6f0e-443d-a6de-92a1fbc11491`; completed execution
+  `23030606-7edc-4129-be10-0791d90f0213`.
+
+The ordinary scheduler heartbeat at `16:28:00.107Z` followed the final app
+switch. Runtime package/role/migration-receipt checks and authenticated catalog
+health passed (461 products, 442 discography entries, three shelves). All 85
+deployed browser cases passed without retries/flakes, with eight documented
+skips; desktop/mobile screenshots were inspected. Correlated logs from
+`16:29:30Z` to `16:30:01.690Z` had zero HTTP 5xx, no truncation and no unknown
+warnings/errors. No stream-close group appeared in this window; the previously
+observed digest `3072950123` remains batch 4 work. Final readiness passed at
+`16:35:25.918Z`; an earlier incomplete GitHub workflow identity response failed
+closed and passed on a fresh recheck against the same successful runs.
+
+Conventional Commits `bb038799` and `7352a3b` were pushed directly to staging
+with normal hooks. The initial CI detected a file-system race in the new runner;
+the correction reads through one verified descriptor and fixes graceful child
+cancellation. Final CodeQL and all other gates passed without suppression.
+The post-apply IaC plan has only the known app restart-policy readback differences.
 
 Native PITR is still blocked. PostgreSQL remains 16.11 on its existing floating
 source, and native PITR is disabled. The official PostgreSQL 16 candidate had
@@ -30,8 +73,17 @@ PITR image and perform a timestamp restore before closing this remaining gate.
 Do not claim batch 2 fully complete while this blocker remains.
 
 See the opening recovery section in `docs/INFRASTRUCTURE_RECOVERY.md` for exact
-resources, receipt hashes, encryption/retention behavior and operations. The
-last accepted release is still batch 1 below until fresh batch 2 acceptance.
+resources, encryption/retention behavior and operations. Private evidence:
+`/tmp/remorseless-batch2-release-acceptance.json`,
+`/tmp/remorseless-batch2-accepted-readiness.json`,
+`/tmp/remorseless-batch2-backup-acceptance.json`,
+`/tmp/remorseless-batch2-runtime-restore/railway-restore-result.json`,
+the migration/runtime/observation/log records with the batch-2 prefix, and
+browser artifacts under `/tmp/remorseless-release-batch-browsers-Z1AU9E`.
+Closing notes remain local for the next substantive batch, without a routine
+documentation-only push. Refresh live evidence before that release. Batch 3
+remains the next separate substantive group; do not hide the unresolved batch-2
+PITR dependency by marking the entire recovery group complete.
 
 ### Previous accepted batch 1
 
@@ -96,7 +148,7 @@ application's private connection, not inferred from the SSH loopback tunnel.
 Refresh this evidence before a new release. These closing notes remain local
 for the next substantive batch, without a routine documentation-only push.
 
-### Batch plan: one accepted, six separate pushes remaining
+### Batch plan: recovery release accepted, PITR still open
 
 The user requires each remaining group to be its own substantial batch.
 Their follow-up added the missing client testing environment: retain the
@@ -105,8 +157,9 @@ production/launch acceptance, giving seven planned pushes in this order:
 
 1. **Accepted:** service-level migration credential isolation and restricted
    backup login integration at `849abea`.
-2. PITR, Railway database/media recovery archives, and timed recovery drills.
-   The user explicitly selected Railway-only storage on October 3.
+2. **Recovery archives accepted at `7352a3b`; PITR open:** daily Railway
+   database/media archives and timed recovery drills passed. Native PITR needs
+   a supported clean PostgreSQL 16 image and an accepted timestamp restore.
 3. Queue/payment reconciliation, Redis capacity, and supporting-service image
    pinning/upgrades.
 4. Database telemetry, pool-contention investigation, and Storefront

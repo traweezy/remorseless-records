@@ -32,9 +32,9 @@ const checker = fileURLToPath(
 // A reviewed, committed wrapper: this hash does not replace the image and
 // checker-binary SHA pins enforced inside the wrapper.
 const checkerSha256 =
-  "0b251dce0e7a0db2ecafb64626d30763d5ea6bfb6ec8f7086978676ac52fcc98"
+  "797bc7549b4dbf676aab120ba2b1047a7b56ec72ef1017290138cc4e5982767d"
 const redisCheckerBinarySha256 =
-  "c9ed119a46bfe87ace4048eb22479da7d3ca4857f0ea5b1d1729e212bc5aabca"
+  "df1291685ab15c4708c5556298146a93f498387aa6265aa0988da88d9952e41d"
 const manifestName = "appendonly.aof.manifest"
 const sha256Pattern = /^[a-f0-9]{64}$/u
 const imageIdPattern = /^sha256:[a-f0-9]{64}$/u
@@ -62,8 +62,8 @@ const help = `Usage: node scripts/redis-aof-isolated-replay.mjs \\
   [--classify-failed-jobs] [--inspect-queue-integrity]
 
 Copy a capture into private storage, bind every AOF file to the receipt,
-verify the copy with a digest-pinned Redis 8.10.1 checker, then replay it in
-a disposable worker-free Redis 8.10.1 container. The target has no network,
+verify the copy with a digest-pinned Redis 8.10.2 checker, then replay it in
+a disposable worker-free Redis 8.10.2 container. The target has no network,
 published port, provider credentials, or live-service connection. It is
 removed after bounded startup and restart evidence. This does not reconcile
 BullMQ queues or business state and does not authorize a cutover.
@@ -507,7 +507,7 @@ const observeTarget = async (
   const keyspace = infoFields(await cli(["INFO", "keyspace"]))
   const dbsize = await cli(["DBSIZE"], 64)
   if (
-    server.get("redis_version") !== "8.10.1" ||
+    server.get("redis_version") !== "8.10.2" ||
     !/^[a-f0-9]{40}$/u.test(server.get("run_id") ?? "") ||
     persistence.get("aof_enabled") !== "1" ||
     persistence.get("aof_last_write_status") !== "ok" ||

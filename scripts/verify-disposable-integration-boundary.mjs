@@ -60,7 +60,7 @@ export const validateHardenedFixtureWiring = ({
     ],
     [
       redisDockerfile,
-      "redis:8.10.1-alpine3.23@sha256:becdda6c7f4b3fb42e42fd7f120bbf5c54c4caaaf16f26da24e4563d2c1f0576",
+      "redis:8.10.2-alpine3.23@sha256:2d3814be5e9b06a30a0be54770b7e12052e7e79ec85271aefd34875c1f393b23",
     ],
   ]
   for (const [recipe, pin] of pins) {
@@ -169,7 +169,7 @@ export const validateHardenedFixtureWiring = ({
     composeLines.filter((line) => /^    image:/u.test(line)),
     [
       "    image: remorseless-records-integration-postgres:18.6-hardened",
-      "    image: remorseless-records-integration-redis:8.10.1-hardened",
+      "    image: remorseless-records-integration-redis:8.10.2-hardened",
     ]
   )
   assert.equal(composeLines.filter((line) => line === "    build:").length, 2)

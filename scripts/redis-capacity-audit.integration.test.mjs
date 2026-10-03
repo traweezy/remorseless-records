@@ -116,8 +116,8 @@ before(async () => {
     createClient: trackedFactory(commands),
   })
   assert.ok(
-    /^redis_version:8\.10\.1\r?$/mu.test(observation.info.server),
-    "Redis integration requires the pinned 8.10.1 fixture."
+    /^redis_version:8\.10\.2\r?$/mu.test(observation.info.server),
+    "Redis integration requires the pinned 8.10.2 fixture."
   )
   report = evaluateRedisCapacity({
     ...observation,

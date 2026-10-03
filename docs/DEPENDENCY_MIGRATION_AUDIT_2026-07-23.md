@@ -1,5 +1,23 @@
 # Dependency Migration Audit — 2026-07-23
 
+## Redis security runtime — October 3, 2026
+
+The fixture, AOF checker and persistent staging candidate use
+[Redis 8.10.2](https://github.com/redis/redis/releases/tag/8.10.2), published
+September 17 at 15:06 UTC, beyond seven-day cooling. The official amd64 image
+is pinned to `sha256:2d3814be5e9b06a30a0be54770b7e12052e7e79ec85271aefd34875c1f393b23`.
+Checker binary/wrapper hashes change together. This release fixes transaction
+ACL revalidation and module crash cases. No suppression or cooling exception
+was added. Fresh strict scans and real recovery tests remain required; package
+scans do not establish coverage of every compiled Redis/module vulnerability.
+
+This private commerce deployment uses unmodified Redis binaries under RSALv2,
+retains notices and does not offer a Redis service to third parties. Redis 8's
+other license choices are SSPLv1 and AGPLv3; see the
+[vendor terms](https://redis.io/legal/licenses/). Perl/libbz2 recovery support
+retains the existing checksum-pinned signed APKs. No npm dependency, lockfile,
+React boundary or Next.js exception changed.
+
 ## Braces nesting backport — October 3, 2026 UTC
 
 GitHub added the package mapping for High

@@ -9,7 +9,7 @@ import {
 const help = `Usage: pnpm run data:redis:aof:verify -- --archive-dir <absolute-private-directory> --checker <absolute-path>
 
 Verify an OFFLINE multipart-AOF copy. The command reads the source only, copies
-it to an owned private temporary directory, runs trusted Redis 8.10.1
+it to an owned private temporary directory, runs trusted Redis 8.10.2
 redis-check-aof without --fix on that copy, and checks the copy again afterward.
 It never connects to Redis or starts a server. A successful check is not a
 startup replay, backup-freshness, write quiescence, retention, or RPO proof.

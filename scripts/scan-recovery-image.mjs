@@ -13,29 +13,52 @@ import {
   validateRuntimeDatabase,
 } from "./verify-runtime-image-artifacts.mjs"
 
-export const verifyRecoveryImageReport = (report, imageId, revision) => {
+export const verifyRecoveryImageReport = (
+  report,
+  imageId,
+  revision,
+  kind = "recovery"
+) => {
+  assert.ok(["recovery", "redis"].includes(kind))
   assert.equal(report.SchemaVersion, 2)
   assert.equal(report.ArtifactType, "container_image")
   assert.equal(report.Metadata.ImageID, imageId)
-  assert.equal(report.Metadata.OS.Family, "debian")
+  assert.equal(
+    report.Metadata.OS.Family,
+    kind === "redis" ? "alpine" : "debian"
+  )
   const config = report.Metadata.ImageConfig
   assert.equal(config.architecture, "amd64")
   assert.equal(config.os, "linux")
-  assert.equal(config.config.User, "65532:65532")
+  assert.equal(
+    config.config.User,
+    kind === "redis" ? "1000:1000" : "65532:65532"
+  )
   assert.equal(
     config.config.Labels["org.opencontainers.image.revision"],
     revision
   )
   assert.equal(
-    config.config.Labels["com.remorseless.postgresql.version"],
-    "16.15"
+    config.config.Labels[
+      kind === "redis"
+        ? "com.remorseless.redis.version"
+        : "com.remorseless.postgresql.version"
+    ],
+    kind === "redis" ? "8.10.2" : "16.15"
   )
   assert.ok(
     report.Results.some((r) => r.Class === "os-pkgs" && r.Packages.length > 0)
   )
-  assert.ok(
-    report.Results.some((r) => r.Type === "node-pkg" && r.Packages.length > 0)
-  )
+  if (kind === "recovery")
+    assert.ok(
+      report.Results.some((r) => r.Type === "node-pkg" && r.Packages.length > 0)
+    )
+  else {
+    assert.deepEqual(config.config.Entrypoint, [
+      "/usr/local/bin/remorseless-redis",
+    ])
+    assert.equal(config.config.WorkingDir, "/bitnami/redis/data")
+  }
   const counts = { UNKNOWN: 0, LOW: 0, MEDIUM: 0, HIGH: 0, CRITICAL: 0 }
   for (const result of report.Results)
     for (const finding of result.Vulnerabilities ?? []) {
@@ -47,7 +70,13 @@ export const verifyRecoveryImageReport = (report, imageId, revision) => {
   return counts
 }
 
-export const scanRecoveryImage = async (imageId, revision, output) => {
+export const scanRecoveryImage = async (
+  imageId,
+  revision,
+  output,
+  kind = "recovery"
+) => {
+  assert.ok(["recovery", "redis"].includes(kind))
   assert.match(imageId, /^sha256:[a-f0-9]{64}$/u)
   assert.match(revision, /^[a-f0-9]{40}$/u)
   const cache = await mkdtemp(join(tmpdir(), "rr-recovery-scan-"))
@@ -139,13 +168,14 @@ export const scanRecoveryImage = async (imageId, revision, output) => {
     const counts = verifyRecoveryImageReport(
       JSON.parse(bytes),
       imageId,
-      revision
+      revision,
+      kind
     )
     database.after = await sample()
     assert.deepEqual(await resolveRuntimeScanner(environment.PATH), scanner)
     const completedAt = new Date().toISOString()
     validateRuntimeDatabase(database, startedAt, completedAt)
-    await writeFile(join(output, "recovery.vuln.json"), bytes, {
+    await writeFile(join(output, `${kind}.vuln.json`), bytes, {
       flag: "wx",
       mode: 0o600,
     })
@@ -160,7 +190,7 @@ export const scanRecoveryImage = async (imageId, revision, output) => {
       passed: true,
     }
     await writeFile(
-      join(output, "recovery.image.json"),
+      join(output, `${kind}.image.json`),
       JSON.stringify(report),
       { flag: "wx", mode: 0o600 }
     )
@@ -175,7 +205,7 @@ if (
   resolve(process.argv[1]) === fileURLToPath(import.meta.url)
 ) {
   try {
-    assert.equal(process.argv.length, 5)
+    assert.ok([5, 6].includes(process.argv.length))
     console.log(
       JSON.stringify(await scanRecoveryImage(...process.argv.slice(2)))
     )

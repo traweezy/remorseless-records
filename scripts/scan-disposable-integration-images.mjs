@@ -39,7 +39,7 @@ export const INTEGRATION_IMAGES = Object.freeze([
   }),
   Object.freeze({
     service: "redis",
-    tag: "remorseless-records-integration-redis:8.10.1-hardened",
+    tag: "remorseless-records-integration-redis:8.10.2-hardened",
     variable: "RR_INTEGRATION_REDIS_IMAGE_ID",
   }),
 ])

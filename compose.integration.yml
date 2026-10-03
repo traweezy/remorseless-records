@@ -22,7 +22,7 @@ services:
       - /var/lib/postgresql
 
   redis:
-    image: remorseless-records-integration-redis:8.10.1-hardened
+    image: remorseless-records-integration-redis:8.10.2-hardened
     build:
       context: ./docker/integration
       dockerfile: redis.Dockerfile

@@ -17,9 +17,11 @@ before production/launch acceptance: seven planned batches in this order.
 1. **Accepted at `849abea`: credential isolation and backup access.** Migration
    authority is isolated in a one-shot service, and restricted backup export is
    integrated. The remaining six numbered groups each retain their own push.
-2. **Backup and recovery:** configure Railway database/media recovery archives,
-   native PITR and timed recovery drills. The user selected Railway-only storage
-   on October 3; an outside-provider account is no longer a prerequisite.
+2. **Recovery archives accepted at `7352a3b`; native PITR open:** daily Railway
+   database/media archives and full timed recovery passed. A supported clean
+   PostgreSQL 16 image and timestamp restore are still required for PITR. The
+   user selected Railway-only storage; an outside-provider account is no longer
+   a prerequisite.
 3. **Queues and supporting services:** reconcile queues/payments, configure
    Redis capacity, and pin/upgrade supporting services.
 4. **Telemetry and diagnostics:** finish database telemetry, investigate pool
@@ -47,9 +49,11 @@ batch 7's push. The detailed client-clone checklist below defines ownership,
 provider identity, data, rollback and testing requirements. Client testing
 readiness is a separate outcome from production launch approval.
 
-The current request selects batch 2. Its complete encrypted database/media
-backup and timed restore passed; the scheduled runner is awaiting release
-acceptance. Native PITR remains blocked by the official image vulnerability
+The current request selects batch 2. Its recovery archive release is accepted
+at `7352a3b`: the deployed runner completed, exited cleanly, and its encrypted
+database/media archive passed a full 205.587-second restore. The configured
+daily schedule's first calendar-triggered run is still due October 4 at 04:00
+UTC. Native PITR remains blocked by the official image vulnerability
 scan (2 Critical, 84 High, 7 Unknown). No database redeploy or PITR enablement
 has been performed. Preserve the detailed acceptance requirements, external
 prerequisites, upstream-fix dependency and production approval path. Carry
@@ -57,18 +61,43 @@ post-acceptance closing notes into the next substantive batch.
 
 ## Current staging acceptance — October 3 UTC
 
-The latest accepted revision is `849abea47c0a6a3b86b67896796136d1bed0b555`.
-All four workflows/23 checks, both exact Railway app deployments and the
-one-shot Migrations job passed. Backend has no migration credential at service
-or startup-ancestor level, uses the enforced runtime role, and reads a protected
-receipt for the exact job/SHA. The old migration password is rejected on the
-application's private network. Restricted backup export and a 171-table isolated
-restore/migration rehearsal passed. Health, the ordinary scheduler after the
-final switch, runtime/catalog checks, 85 browser cases and screenshots passed.
-The bounded correlated log review had zero HTTP 5xx and no unclassified errors;
-19 existing stream-close groups remain explicitly open under batch 4. See the
-handoff for exact identities, CI corrections and evidence. These closing notes
-are carried into batch 2; its release has not yet been accepted.
+### Carryovers between batches
+
+Keep unfinished work here when accepting a release or moving to another batch.
+Retain its originating batch, evidence gap and closure condition; moving forward
+does not mark it complete. The user explicitly requested this register on
+October 3 and selected batch 3 while the following batch-2 items remain open.
+
+| ID | Origin / status | Remaining work and closure evidence |
+| --- | --- | --- |
+| B2-PITR | Batch 2 / blocked by image scan | Obtain a supported PostgreSQL 16 image that passes security policy, enable native PITR with verified WAL coverage, and complete a timestamp restore. Current official candidate has 2 Critical, 84 High and 7 Unknown findings. |
+| B2-SCHEDULE | Batch 2 / awaiting scheduled execution | Confirm the first calendar-triggered `RecoveryBackups` run due October 4 at 04:00 UTC completes, exits, and publishes a fresh authenticated receipt. The manually triggered deployed run and full restore already passed. |
+| B2-VOLUME | Recovery / unverified | Complete an isolated native Railway volume restore with verified source/target identity and cleanup. Volume snapshot freshness and the separate logical/media restore do not prove this path. |
+| B2-FRESHNESS | Recovery / operational follow-up | Archive freshness has a guarded manual audit, but no automatic stale-archive alert. Keep daily/release checks explicit until that alert is implemented and tested. |
+| B3-MINIO | Batch 3 / maintained replacement needed | Community MinIO is archived and the current release is affected by High GHSA-3rh2-v3gr-35p9. A digest pin alone does not fix it. Complete a Railway-hosted media replacement/migration with public URL compatibility, object checksums and rollback before closing this risk. |
+| B3-MEILI | Batch 3 / release cooling and migration | Review the October 1 stability fixes after seven-day cooling, then prove dump/import, index settings, search parity and rollback from 1.11.3 before changing its persistent image. Do not deploy an older candidate merely to avoid the cooling gate. |
+| B3-HISTORY | Batch 3 / retained historical evidence | Seven payments and both tax-evidence rows match the independently verified Stripe test account. Five payments predate tax evidence. Keep 238 terminal failed jobs retained, including the malformed native payment envelope; no automatic retry, deletion or invented backfill is authorized by count-only reports. |
+
+The archive restore covers current data, not native object-version history or
+provider-outage survival; Railway-only storage is the user's accepted scope.
+Retention's aged-deletion guards have automated coverage, but no live aged
+snapshot was expired during batch 2. These limits remain recorded in the
+infrastructure runbook; do not silently turn them into successful live tests.
+
+### Latest accepted release
+
+The latest accepted revision is `7352a3bfe0a4ad3030d1b9f97fb07aaafcf0bc50`.
+All four workflows/23 checks, both exact Railway app deployments, the one-shot
+Migrations job and the new RecoveryBackups execution passed. Runtime role and
+credential boundaries, the exact migration receipt, ordinary scheduler,
+authenticated catalog, 85 browser cases and screenshots passed. The correlated
+log window had zero HTTP 5xx, no truncation and no unclassified warnings/errors.
+The earlier Storefront stream-close digest remains open under batch 4 despite
+not appearing in this window. The deployed archive restored all 172 database
+table counts and 1,168 media objects in 205.587 seconds; all owned recovery
+targets were removed. Native PITR remains open, so batch 2 is not fully complete.
+See the handoff for exact identities, CI corrections and private evidence.
+Carry these closing notes into the next substantive batch.
 
 ### Accepted staging database credential and startup batch
 
@@ -3567,9 +3596,13 @@ Both commands explicitly reported that no files or database records changed.
       restored in 202.880 seconds. The user selected Railway-only storage;
       this supersedes the outside-provider prerequisite, without claiming
       provider-outage resilience or object-version history.
-- [ ] Accept the daily `RecoveryBackups` runner and 30-day retention on the
-      exact batch 2 revision. Source and tests are implemented; CI, Railway
-      completion and a restore of its runtime-produced archive remain required.
+- [x] Accept the daily `RecoveryBackups` runner and 30-day retention on the
+      exact batch 2 revision `7352a3b`. All CI passed; its first manually invoked
+      Railway execution completed and exited cleanly. Its runtime-produced
+      archive restored all media and 172 database table counts in 205.587
+      seconds, with both owned targets removed. Retention preserved both
+      snapshots; aged deletion has automated coverage but no live expiration
+      was exercised. The first calendar-triggered run remains due October 4.
 - [x] Document Redis recovery semantics and Meilisearch rebuild/snapshot
       recovery.
 - [x] Capture the pinned staging Redis multipart AOF under a bounded rewrite

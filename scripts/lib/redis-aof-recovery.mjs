@@ -13,7 +13,7 @@ const MAX_CHECKER_PATH_BYTES = 1024
 const MAX_CHECKER_MANIFEST_PATH_BYTES = 240
 const BUFFER_BYTES = 64 * 1024
 const CHECKER_VERSION_PATTERN =
-  /^redis-check-aof v=8\.10\.1 sha=[a-f0-9]{8}:[01] malloc=[a-z0-9.-]{1,40} bits=64 build=[a-f0-9]{16}$/u
+  /^redis-check-aof v=8\.10\.2 sha=[a-f0-9]{8}:[01] malloc=[a-z0-9.-]{1,40} bits=64 build=[a-f0-9]{16}$/u
 const failure = () => new Error("Redis AOF verification unavailable.")
 
 export const parseAofManifest = (source) => {

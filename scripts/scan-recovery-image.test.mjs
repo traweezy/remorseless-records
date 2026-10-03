@@ -26,6 +26,52 @@ const fixture = () => ({
     { Type: "node-pkg", Packages: [{}] },
   ],
 })
+
+test("Redis runtime scan binds its non-root layout and rejects findings", () => {
+  const report = fixture()
+  report.Metadata.OS.Family = "alpine"
+  report.Metadata.ImageConfig.config = {
+    User: "1000:1000",
+    Entrypoint: ["/usr/local/bin/remorseless-redis"],
+    WorkingDir: "/bitnami/redis/data",
+    Labels: {
+      "org.opencontainers.image.revision": revision,
+      "com.remorseless.redis.version": "8.10.2",
+    },
+  }
+  report.Results.pop()
+  assert.equal(
+    verifyRecoveryImageReport(report, imageId, revision, "redis").HIGH,
+    0
+  )
+  for (const change of [
+    (r) => {
+      r.Metadata.ImageConfig.config.User = "0"
+    },
+    (r) => {
+      r.Metadata.ImageConfig.config.WorkingDir = "/data"
+    },
+    (r) => {
+      r.Metadata.ImageConfig.config.Entrypoint = ["redis-server"]
+    },
+    (r) => {
+      r.Results[0].Vulnerabilities = [{ Severity: "HIGH" }]
+    },
+    (r) => {
+      r.Metadata.ImageConfig.config.Labels["com.remorseless.redis.version"] =
+        "8.0.3"
+    },
+  ]) {
+    const changed = structuredClone(report)
+    change(changed)
+    assert.throws(() =>
+      verifyRecoveryImageReport(changed, imageId, revision, "redis")
+    )
+  }
+  assert.throws(() =>
+    verifyRecoveryImageReport(report, imageId, revision, "unknown")
+  )
+})
 test("recovery image scan binds revision, runtime user, inventory and all blocking severities", () => {
   assert.equal(verifyRecoveryImageReport(fixture(), imageId, revision).HIGH, 0)
   for (const severity of ["UNKNOWN", "HIGH", "CRITICAL", "unexpected"]) {

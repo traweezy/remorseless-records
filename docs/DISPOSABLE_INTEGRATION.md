@@ -144,7 +144,7 @@ release acceptance.
 
 ## Image security and identity
 
-The recipes retain immutable official PostgreSQL 18.6 and Redis 8.10.1 bases.
+The recipes retain immutable official PostgreSQL 18.6 and Redis 8.10.2 bases.
 Only documented, exact-version security corrections are applied. Redis keeps
 its server, CLI, modules and privilege-dropping entrypoint. PostgreSQL keeps
 its server and entrypoint; its `gosu` helper is rebuilt from checksum-pinned

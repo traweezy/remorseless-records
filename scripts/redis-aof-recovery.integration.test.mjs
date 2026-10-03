@@ -27,7 +27,7 @@ import { collectRedisQueueAggregate } from "./lib/redis-queue-aggregate.mjs"
 import { classifyIsolatedFailedJobs } from "./lib/redis-failed-job-classifier.mjs"
 import { inspectRedisQueueIntegrity } from "./lib/redis-queue-integrity.mjs"
 
-const imageTag = "remorseless-records-integration-redis:8.10.1-hardened"
+const imageTag = "remorseless-records-integration-redis:8.10.2-hardened"
 const imageIdPattern = /^(?:sha256:)?[a-f0-9]{64}$/u
 const containerIdPattern = /^[a-f0-9]{64}$/u
 const fixtureEnvironment = process.env
@@ -190,7 +190,7 @@ chmod 600 /artifact/*
       maxBytes: 32 * 1024 * 1024,
     })
     assert.equal(report.status, "verified")
-    assert.match(report.checkerVersion, /^redis-check-aof v=8\.10\.1 /u)
+    assert.match(report.checkerVersion, /^redis-check-aof v=8\.10\.2 /u)
     assert.equal(report.replayProven, false)
     assert.ok(report.totalBytes > 0)
     assert.ok(report.fileCount >= 3)
@@ -492,7 +492,7 @@ const queueSnapshot = async (queue, jobIds) => {
   }
 }
 
-test("an isolated Redis 8.10.1 startup replays synthetic BullMQ states from multipart AOF", {
+test("an isolated Redis 8.10.2 startup replays synthetic BullMQ states from multipart AOF", {
   timeout: 120_000,
 }, async () => {
   assert.equal(fixtureEnvironment.INTEGRATION_TESTS_ENABLED, "1")
@@ -874,7 +874,7 @@ test("an isolated Redis 8.10.1 startup replays synthetic BullMQ states from mult
     )
     assert.match(
       await fixtureRedisCli(targetId, ["INFO", "server"]),
-      /redis_version:8\.10\.1/u
+      /redis_version:8\.10\.2/u
     )
     assert.equal(
       await fixtureRedisCli(targetId, [

@@ -418,7 +418,7 @@ test("tampered receipt and AOF fail before checker or target startup without raw
     if (args.includes("context")) return '"unix:///var/run/docker.sock"'
     if (args.includes("image")) return `${imageId}|amd64|linux`
     if (args.includes("sha256sum"))
-      return "c9ed119a46bfe87ace4048eb22479da7d3ca4857f0ea5b1d1729e212bc5aabca  /usr/local/bin/redis-check-aof"
+      return "df1291685ab15c4708c5556298146a93f498387aa6265aa0988da88d9952e41d  /usr/local/bin/redis-check-aof"
     assert.fail(`unexpected Docker command: ${args[2]}`)
   }
   const options = {
@@ -507,7 +507,7 @@ test("unsafe source files and inventory never reach the checker", async () => {
             if (args.includes("context")) return '"unix:///var/run/docker.sock"'
             if (args.includes("image")) return `${imageId}|amd64|linux`
             if (args.includes("sha256sum"))
-              return "c9ed119a46bfe87ace4048eb22479da7d3ca4857f0ea5b1d1729e212bc5aabca  /usr/local/bin/redis-check-aof"
+              return "df1291685ab15c4708c5556298146a93f498387aa6265aa0988da88d9952e41d  /usr/local/bin/redis-check-aof"
             startup = true
             assert.fail("unsafe source reached Docker startup")
           },
@@ -555,7 +555,7 @@ test("failed target creation cleans only owned private copies", async () => {
           if (args.includes("context")) return '"unix:///var/run/docker.sock"'
           if (args.includes("image")) return `${imageId}|amd64|linux`
           if (args.includes("sha256sum"))
-            return "c9ed119a46bfe87ace4048eb22479da7d3ca4857f0ea5b1d1729e212bc5aabca  /usr/local/bin/redis-check-aof"
+            return "df1291685ab15c4708c5556298146a93f498387aa6265aa0988da88d9952e41d  /usr/local/bin/redis-check-aof"
           if (args.includes("--detach"))
             throw new Error("private target failure")
           if (args.includes("inspect")) throw new Error("no owned container")
@@ -601,7 +601,7 @@ test("help and malformed receipt never contact Docker", async () => {
       }),
       0
     )
-    assert.match(output[0], /worker-free Redis 8\.10\.1/u)
+    assert.match(output[0], /worker-free Redis 8\.10\.2/u)
     await writeFile(f.receiptPath, "{private malformed receipt", {
       mode: 0o600,
     })
@@ -668,7 +668,7 @@ test("remote Docker context, image identity and checker drift fail before copyin
             if (args.includes("image")) return value.image
             if (args.includes("sha256sum"))
               return value.checker === "valid"
-                ? "c9ed119a46bfe87ace4048eb22479da7d3ca4857f0ea5b1d1729e212bc5aabca  /usr/local/bin/redis-check-aof"
+                ? "df1291685ab15c4708c5556298146a93f498387aa6265aa0988da88d9952e41d  /usr/local/bin/redis-check-aof"
                 : "0".repeat(64)
             detached = true
             assert.fail("untrusted Docker source reached target startup")
@@ -704,7 +704,7 @@ test("cleanup refuses an unowned container label and reports an incident", async
           if (args.includes("context")) return '"unix:///var/run/docker.sock"'
           if (args.includes("image")) return `${imageId}|amd64|linux`
           if (args.includes("sha256sum"))
-            return "c9ed119a46bfe87ace4048eb22479da7d3ca4857f0ea5b1d1729e212bc5aabca  /usr/local/bin/redis-check-aof"
+            return "df1291685ab15c4708c5556298146a93f498387aa6265aa0988da88d9952e41d  /usr/local/bin/redis-check-aof"
           if (args.includes("--detach")) return id
           if (args.includes("inspect") && args.includes("--format"))
             return "different-owner"

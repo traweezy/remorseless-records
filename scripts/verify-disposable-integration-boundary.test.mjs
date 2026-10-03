@@ -301,7 +301,7 @@ test("rejects comment-only PostgreSQL checksums and runtime privilege overrides"
 test("rejects external fallback images or repository-wide build context", () => {
   for (const [from, to] of [
     [
-      "image: remorseless-records-integration-redis:8.10.1-hardened",
+      "image: remorseless-records-integration-redis:8.10.2-hardened",
       "image: redis:latest",
     ],
     ["context: ./docker/integration", "context: ."],
