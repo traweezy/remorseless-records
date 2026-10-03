@@ -288,18 +288,36 @@ export const validateTrivyFilesystemGate = (source, rootWorkflow = false) => {
     [
       "- name: Trivy FS scan (repo)",
       "uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0",
+      "env:",
       ...(rootWorkflow
-        ? ["env:", "TRIVY_DB_REPOSITORY: ghcr.io/aquasecurity/trivy-db"]
+        ? ["TRIVY_DB_REPOSITORY: ghcr.io/aquasecurity/trivy-db"]
         : []),
+      "TRIVY_IGNOREFILE: /dev/null",
       "with:",
       "scan-type: fs",
       "ignore-unfixed: false",
-      "format: table",
-      "exit-code: 1",
-      "severity: CRITICAL,HIGH",
-      "skip-dirs: node_modules",
+      "format: json",
+      "exit-code: 0",
+      "severity: UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL",
+      "skip-dirs: node_modules,Default",
+      "scanners: vuln,secret",
+      "trivy-config: /dev/null",
+      "output: artifacts/filesystem.vuln.json",
     ],
-    "Filesystem HIGH/CRITICAL findings must fail even without a listed fix"
+    "Raw filesystem findings must reach the exact installed-byte exception gate"
+  )
+  const gate =
+    "      - name: Verify filesystem findings against installed backport\n        run: node scripts/verify-dependency-findings.mjs filesystem artifacts/filesystem.vuln.json\n"
+  assert.equal(source.split(gate).length, 2)
+  const scanPosition = source.indexOf("      - name: Trivy FS scan (repo)")
+  const gatePosition = source.indexOf(gate)
+  assert.ok(scanPosition < gatePosition)
+  assert.ok(
+    source.lastIndexOf("run: pnpm install --frozen-lockfile", scanPosition) >= 0
+  )
+  assert.equal(
+    source.slice(scanPosition, gatePosition).match(/- name:/gu)?.length,
+    1
   )
 }
 

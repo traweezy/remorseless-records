@@ -81,6 +81,12 @@ acceptance. Apply the same sequence to every direct staging push. During an
 ongoing hardening request, continue the next substantive batch after these
 gates; an accepted release is a checkpoint, not a reason to end the task.
 
+The user also authorized routine hardening and implementation decisions on
+October 3 without stopping for repeated permission. Make bounded, reviewable
+choices, retain their evidence and keep the direct staging/CI/Railway sequence.
+The exact braces mitigation is documented in the QA runbook; do not infer a
+blanket suppression or production authorization from this operating preference.
+
 ### Read-only release inspection
 
 Use the pinned root toolchain after the direct staging push:

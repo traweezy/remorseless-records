@@ -2,6 +2,7 @@ import assert from "node:assert/strict"
 import fs from "node:fs"
 import { resolve } from "node:path"
 import { fileURLToPath } from "node:url"
+import { validateTrivyFilesystemGate } from "./verify-ci-runtime-security-policy.mjs"
 
 const workflowPaths = [
   ".github/workflows/root.yml",
@@ -241,7 +242,7 @@ export const validateApplicationReleaseGraph = (source, application) => {
   const filter = storefront ? "remorseless-records-storefront" : "backend"
   run("security", "pnpm run qa:dependency-supply-chain")
   run("security", "pnpm run qa:ci-runtime-security")
-  run("security", "pnpm audit --prod --audit-level=moderate")
+  run("security", "node scripts/verify-dependency-findings.mjs audit --prod")
   run("security", "pnpm run qa:react-router-security")
   requireGateStep(
     jobs.get("secrets"),
@@ -268,7 +269,16 @@ export const validateApplicationReleaseGraph = (source, application) => {
       ?.includes("          output: codeql-results"),
     "CodeQL must save the results inspected by the local gate"
   )
-  requireGateStep(jobs.get("typecheck"), "          severity: CRITICAL,HIGH")
+  requireGateStep(
+    jobs.get("typecheck"),
+    "          severity: UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL",
+    true
+  )
+  validateTrivyFilesystemGate(source)
+  run(
+    "typecheck",
+    "node scripts/verify-dependency-findings.mjs filesystem artifacts/filesystem.vuln.json"
+  )
   run("lint", `pnpm --filter ${filter} run lint`)
   run(
     "typecheck",

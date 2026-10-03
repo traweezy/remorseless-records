@@ -67,19 +67,35 @@ jobs:
         uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
         with:
           run_install: false
+      - name: Prepare security reports
+        run: mkdir -p artifacts
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
       - name: Trivy FS scan (repo)
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         env:
           TRIVY_DB_REPOSITORY: ghcr.io/aquasecurity/trivy-db
+          TRIVY_IGNOREFILE: /dev/null
         with:
           scan-type: fs
           ignore-unfixed: false
-          format: table
-          exit-code: 1
-          severity: CRITICAL,HIGH
-          skip-dirs: node_modules
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+          format: json
+          exit-code: 0
+          severity: UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL
+          skip-dirs: node_modules,Default
+          scanners: vuln,secret
+          trivy-config: /dev/null
+          output: artifacts/filesystem.vuln.json
+      - name: Verify filesystem findings against installed backport
+        run: node scripts/verify-dependency-findings.mjs filesystem artifacts/filesystem.vuln.json
+      - name: Retain raw filesystem findings
+        if: ${{ always() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: filesystem-root-${{ github.run_id }}
+          path: artifacts/*.json
+          if-no-files-found: error
+          retention-days: 30
       - name: Verify shared contract CI parity
         run: pnpm run qa:ci-shared-contracts-boundary
       - name: Verify shared repository contracts
@@ -111,7 +127,15 @@ jobs:
       - name: Verify read-only Admin acceptance boundary
         run: pnpm run qa:admin-accessibility-boundary
       - name: Dependency audit
-        run: pnpm audit --audit-level=moderate
+        run: node scripts/verify-dependency-findings.mjs audit
+      - name: Retain raw dependency audit
+        if: ${{ always() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: dependency-audit-root-${{ github.run_id }}
+          path: artifacts/*.json
+          if-no-files-found: error
+          retention-days: 30
       - name: Verify browser QA dependency boundary
         run: pnpm run qa:browser-toolchain-security
       - name: Verify Medusa build compiler boundary

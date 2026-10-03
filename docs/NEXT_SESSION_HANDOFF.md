@@ -6,10 +6,11 @@ Last updated: 2026-10-02 (America/New_York)
 
 Latest accepted staging remains `214a27f5b9a652093491be2b6fa5efc4ef515392`;
 its completed acceptance is recorded below. The next local hardening batch is
-implemented, with the release-policy decision below pending. No live PostgreSQL
+implemented; the user approved the exact backport exception on October 3 UTC.
+Its implementation and final-revision delivery checks are in progress. No live PostgreSQL
 role, credential or Railway variable has been changed for this batch.
 
-### Prepared batch and current release blocker — October 3 UTC
+### Prepared batch and approved exception — October 3 UTC
 
 - Braces 3.0.3 has an exact upstream-derived depth-limit backport, bounded
   consumer regressions and eight-file integrity verification, including the
@@ -17,10 +18,17 @@ role, credential or Railway variable has been changed for this batch.
   GitHub alert 56/CVE-2026-93687 remains visible and has no upstream fixed
   release. The fresh final candidate image scan reports 25 MEDIUM, eight LOW
   and exactly one HIGH: this same braces finding by version. The existing
-  zero-High gate rejected the image. No ignore, VEX or acceptance-policy change
-  has been applied. The user was asked asynchronously to approve an exact,
-  temporary exception bound to patched bytes and regressions; no answer has
-  arrived. **Do not infer that approval from earlier Next.js cooling approval.**
+  zero-High gate rejected the image. The user subsequently explicitly approved
+  the recommended exact exception and autonomous routine hardening decisions.
+  The new gate preserves raw findings, requires all-copy byte and behavioral
+  proof, and expires November 2 UTC. No blanket ignore, VEX or alert dismissal
+  is used. Npm audit now also includes this High; its raw report is retained.
+  Source Trivy and npm production audit both passed with one raw High and one
+  verified exception. The complete image inventory/regression check passed;
+  82 focused tests and both production builds passed. One native TypeScript
+  compiler crash was followed by a successful isolated retry; normal hooks
+  still require the complete local gates. Final-revision CI and Railway
+  acceptance remain required.
 - Corrected PostgreSQL 16.15 recovery image, signed OpenSSL package hashes,
   complete filesystem comparison, fresh scan and a new 171-table source-bound
   restore passed. The target runner now rejects overlong Unix-socket paths
@@ -52,8 +60,8 @@ The local Backend image used for rehearsal is
 `sha256:839be49ab1f61203e37c90e301be6f0b935e22a123058e6e7ad866347bdf0b74`.
 Its label names the 214a27f base, but it includes this working batch; it is not
 an exact committed release artifact and is not accepted by the current scan
-policy. Repeat final-revision image/CI/Railway acceptance when the policy
-blocker is resolved. Hold live role/credential cutover until that delivery can
+policy at the time of that scan. Repeat final-revision image/CI/Railway
+acceptance with the approved, byte-bound policy. Hold live role/credential cutover until that delivery can
 complete. Direct staging remains the authorized destination.
 
 

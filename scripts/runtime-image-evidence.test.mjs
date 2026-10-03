@@ -32,25 +32,26 @@ import {
   validateRuntimeImageSbom,
   verifyRuntimeImageArtifacts,
 } from "./verify-runtime-image-artifacts.mjs"
+import { bracesBackport } from "./lib/braces-backport.mjs"
 import { buildRuntimeImageRecord } from "./write-runtime-image-record.mjs"
 
 const revision = "a".repeat(40)
 const imageId = `sha256:${"b".repeat(64)}`
 const identity = { service: "backend", revision, imageId }
-const startedAt = "2026-09-14T12:00:00.125Z"
-const completedAt = "2026-09-14T12:00:05.125Z"
+const startedAt = "2026-10-03T12:00:00.125Z"
+const completedAt = "2026-10-03T12:00:05.125Z"
 const metadata = {
   Version: 2,
-  NextUpdate: "2026-09-15T00:00:00Z",
-  UpdatedAt: "2026-09-14T00:00:00Z",
-  DownloadedAt: "2026-09-14T11:59:00Z",
+  NextUpdate: "2026-10-04T00:00:00Z",
+  UpdatedAt: "2026-10-03T00:00:00Z",
+  DownloadedAt: "2026-10-03T11:59:00Z",
 }
 const encode = (value) => Buffer.from(`${JSON.stringify(value)}\n`)
 const binary = { bytes: 1024, sha256: policy.trivy.binarySha256 }
 const fixture = () => {
   const report = {
     SchemaVersion: 2,
-    CreatedAt: "2026-09-14T12:00:01Z",
+    CreatedAt: "2026-10-03T12:00:01Z",
     ArtifactName: imageId,
     ArtifactType: "container_image",
     Metadata: {
@@ -98,7 +99,7 @@ const fixture = () => {
     specVersion: "1.7",
     serialNumber: "urn:uuid:11111111-2222-3333-4444-555555555555",
     metadata: {
-      timestamp: "2026-09-14T12:00:00Z",
+      timestamp: "2026-10-03T12:00:00Z",
       component: {
         type: "container",
         name: imageId,
@@ -328,13 +329,13 @@ const recordMutations = [
   [
     "reversed interval",
     (r) => {
-      r.scan.startedAt = "2026-09-14T12:01:00Z"
+      r.scan.startedAt = "2026-10-03T12:01:00Z"
     },
   ],
   [
     "long interval",
     (r) => {
-      r.scan.completedAt = "2026-09-14T12:11:00Z"
+      r.scan.completedAt = "2026-10-03T12:11:00Z"
     },
   ],
   [
@@ -468,7 +469,7 @@ for (const [name, mutate] of [
   [
     "old SBOM",
     (f) => {
-      f.sbom.metadata.timestamp = "2026-09-14T11:59:59Z"
+      f.sbom.metadata.timestamp = "2026-10-03T11:59:59Z"
     },
   ],
 ])
@@ -728,7 +729,7 @@ test("rejects a runtime image that changes its non-root identity", async (t) => 
 test("reports bounded expired DB details and still rejects the scan", async (t) => {
   const expired = {
     ...metadata,
-    NextUpdate: "2026-09-14T07:03:12Z",
+    NextUpdate: "2026-10-03T07:03:12Z",
   }
   const setup = await fakeSession(t, { databaseMetadata: expired })
   await assert.rejects(scanRuntimeImage(setup.options, setup.dependencies), {
@@ -746,7 +747,7 @@ test("reports bounded expired DB details and still rejects the scan", async (t) 
       database: {
         repository: "ghcr.io/aquasecurity/trivy-db:2",
         updatedAt: metadata.UpdatedAt.replace("Z", ".000Z"),
-        nextUpdate: "2026-09-14T07:03:12.000Z",
+        nextUpdate: "2026-10-03T07:03:12.000Z",
       },
     }
   )
@@ -1150,4 +1151,81 @@ test("cleanup failure invalidates a completed scan and preserves owned cache evi
     await fs.rm(setup.cache(), { recursive: true })
     if (quarantine) await fs.rmdir(quarantine)
   }
+})
+
+test("runtime backport acceptance binds raw finding, image identity and proof", async (t) => {
+  const candidate = fixture()
+  const path = `app/node_modules/braces/package.json`
+  candidate.report.Results[1].Vulnerabilities = [
+    {
+      VulnerabilityID: bracesBackport.advisory,
+      PkgName: "braces",
+      InstalledVersion: "3.0.3",
+      Severity: "HIGH",
+      PkgPath: path,
+      PkgIdentifier: { PURL: "pkg:npm/braces@3.0.3" },
+    },
+  ]
+  candidate.record.reports.vulnerabilities = evidenceDigest(
+    "backend.vuln.json",
+    encode(candidate.report)
+  )
+  candidate.record.scan.counts.HIGH = 1
+  candidate.record.scan.backport = {
+    imageId,
+    revision,
+    findings: 1,
+    proof: {
+      advisory: bracesBackport.advisory,
+      version: bracesBackport.version,
+      patchSha256: bracesBackport.patchSha256,
+      expiresAt: bracesBackport.expiresAt,
+      startedAt,
+      completedAt,
+      packages: [
+        { path, files: bracesBackport.files, regression: "bounded-nesting-v1" },
+      ],
+    },
+  }
+  const directory = await privateRoot(t)
+  const verified = await verifyRuntimeImageArtifacts(
+    await writeFixture(directory, candidate)
+  )
+  assert.equal(verified.scan.counts.HIGH, 1)
+  assert.equal(verified.scan.accepted, true)
+  for (const mutate of [
+    (r) => {
+      r.scan.backport.imageId = `sha256:${"c".repeat(64)}`
+    },
+    (r) => {
+      r.scan.backport.revision = "c".repeat(40)
+    },
+    (r) => {
+      r.scan.backport.findings = 2
+    },
+    (r) => {
+      r.scan.backport = null
+    },
+  ]) {
+    const record = structuredClone(candidate.record)
+    mutate(record)
+    assert.throws(() => validateRuntimeImageRecord(record))
+  }
+  const altered = structuredClone(candidate)
+  altered.report.Results[1].Vulnerabilities[0].VulnerabilityID = "CVE-other"
+  altered.record.reports.vulnerabilities = evidenceDigest(
+    "backend.vuln.json",
+    encode(altered.report)
+  )
+  await assert.rejects(
+    verifyRuntimeImageArtifacts(
+      await writeFixture(await privateRoot(t), altered)
+    )
+  )
+  assert.throws(() =>
+    validateCurrentRuntimeImageRecord(
+      candidate.record,
+      Date.parse(bracesBackport.expiresAt)
+    )
+  )
 })

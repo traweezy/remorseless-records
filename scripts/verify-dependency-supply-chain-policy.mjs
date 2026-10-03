@@ -322,7 +322,7 @@ export const verifyDependencySupplyChainPolicy = () => {
   )
   assert.equal(
     packageJson.scripts?.["qa:network-dependency-security"],
-    "node --test scripts/network-dependency-security.test.mjs scripts/glob-dependency-security.test.mjs scripts/braces-dependency-security.test.mjs scripts/transport-dependency-security.test.mjs scripts/ftp-dependency-security.test.mjs"
+    "node --test scripts/network-dependency-security.test.mjs scripts/glob-dependency-security.test.mjs scripts/braces-dependency-security.test.mjs scripts/braces-backport-policy.test.mjs scripts/transport-dependency-security.test.mjs scripts/ftp-dependency-security.test.mjs"
   )
   assert.equal(packageJson.scripts?.["qa:qs-security"], undefined)
   assert.doesNotMatch(packageJson.scripts?.["qa:lint"] ?? "", /qs-security/u)

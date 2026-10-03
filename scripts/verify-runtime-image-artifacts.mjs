@@ -3,6 +3,11 @@ import { readFileSync } from "node:fs"
 import { dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import {
+  countBracesExceptions,
+  validateBracesProof,
+  assertBackportWindow,
+} from "./lib/braces-backport-proof.mjs"
+import {
   assertEvidenceFileAbsent,
   decodeEvidence,
   evidenceDigest,
@@ -27,8 +32,12 @@ export const runtimeFindingPolicy = Object.freeze({
   scanners: ["vuln"],
   vex: false,
 })
-export const runtimeScanAccepted = (counts) =>
-  runtimeFindingPolicy.severities.every((severity) => counts[severity] === 0)
+export const runtimeScanAccepted = (counts, mitigatedHigh = 0) =>
+  Number.isSafeInteger(mitigatedHigh) &&
+  mitigatedHigh >= 0 &&
+  counts.UNKNOWN === 0 &&
+  counts.CRITICAL === 0 &&
+  counts.HIGH === mitigatedHigh
 const object = (value) =>
   value !== null && typeof value === "object" && !Array.isArray(value)
 const scalar = (value) =>
@@ -116,7 +125,7 @@ export const validateRuntimeImageRecord = (
     "reports",
     "publication",
   ])
-  assert.equal(record.schemaVersion, 2)
+  assert.equal(record.schemaVersion, 3)
   assert.ok(Object.hasOwn(policy.services, record.service))
   const service = policy.services[record.service]
   assert.equal(record.subject, service.image)
@@ -138,6 +147,7 @@ export const validateRuntimeImageRecord = (
     "fixedHighCritical",
     "coverage",
     "accepted",
+    "backport",
   ])
   keys(record.scan.scanner, ["version", "binary"])
   assert.equal(
@@ -161,7 +171,26 @@ export const validateRuntimeImageRecord = (
       record.scan.fixedHighCritical <=
         record.scan.counts.HIGH + record.scan.counts.CRITICAL
   )
-  assert.equal(record.scan.accepted, runtimeScanAccepted(record.scan.counts))
+  const backport = record.scan.backport
+  if (backport !== null) {
+    keys(backport, ["imageId", "revision", "proof", "findings"])
+    assert.equal(backport.imageId, record.imageId)
+    assert.equal(backport.revision, record.revision)
+    validateBracesProof(
+      backport.proof,
+      record.scan.startedAt,
+      record.scan.completedAt
+    )
+    assert.ok(
+      Number.isSafeInteger(backport.findings) &&
+        backport.findings > 0 &&
+        backport.findings <= record.scan.counts.HIGH
+    )
+  }
+  assert.equal(
+    record.scan.accepted,
+    runtimeScanAccepted(record.scan.counts, backport?.findings ?? 0)
+  )
   if (requireAccepted)
     assert.equal(
       record.scan.accepted,
@@ -223,6 +252,7 @@ export const validateRuntimeImageRecord = (
 
 export const validateCurrentRuntimeImageRecord = (record, currentTime) => {
   assert.ok(Number.isSafeInteger(currentTime) && currentTime >= 0)
+  if (record.scan.backport !== null) assertBackportWindow(currentTime)
   const completed = timestamp(record.scan.completedAt)
   const updated = timestamp(record.scan.database.updatedAt)
   const next = timestamp(record.scan.database.nextUpdate)
@@ -455,6 +485,16 @@ export const verifyRuntimeImageArtifacts = async (
     sources[name] = source
   }
   const report = decodeEvidence(sources.vulnerabilities)
+  assert.equal(
+    countBracesExceptions(
+      report,
+      record.scan.backport?.proof ?? null,
+      record.scan.startedAt,
+      record.scan.completedAt,
+      true
+    ),
+    record.scan.backport?.findings ?? 0
+  )
   const { inventory, ...summary } = summarizeRuntimeVulnerabilities(
     report,
     record

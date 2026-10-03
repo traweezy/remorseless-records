@@ -25,10 +25,11 @@ read-only migration-directory support are locally implemented and tested. A
 fresh 171-table restore passed role/grant/enum-owner checks and both migration
 commands. Live PostgreSQL credentials and ownership remain unchanged. A new
 version-based High braces finding blocks the strict image gate despite verified
-backported bytes. An exact temporary mitigation exception is awaiting the user's
-decision; no scanner or audit suppression has been added. The previous Next.js
-cooling exception does not authorize this change. See the handoff and dependency
-audit for evidence and remaining delivery gates.
+backported bytes. The user approved the exact temporary mitigation exception
+on October 3; its gate requires all installed copies, exact hashes and bounded
+regressions while preserving the raw High report. It expires November 2 UTC.
+Final-revision delivery and acceptance remain pending. See the handoff and
+dependency audit for evidence.
 
 ### Previous accepted direct-push correction
 

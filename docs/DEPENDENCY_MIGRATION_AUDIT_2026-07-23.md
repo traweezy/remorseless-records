@@ -29,8 +29,14 @@ version-only scanners cannot verify installed backported bytes.
 The subsequent fresh Trivy database does include this advisory: the final
 working Backend candidate has one High finding and the current image gate
 rejects it. `scripts/lib/braces-backport.mjs` verifies eight exact package files
-and is integrity evidence only; it does not suppress that finding or authorize
-release. The exact mitigation exception is pending the user's decision.
+and initially provided integrity evidence only. On October 3 the user approved
+the recommended exact mitigation exception. The separate acceptance gate now
+requires every installed copy, those eight hashes and bounded regressions;
+raw counts and GitHub alert 56 remain visible. The exception expires November 2
+at 00:00 UTC. Npm audit subsequently began returning this same High finding;
+its wrapper retains the raw response and enforces the same proof. No new audit
+ignore or VEX was added. See the QA runbook for the complete removal and expiry
+contract.
 
 `qa:network-dependency-security` exercises the real Medusa Admin watcher and
 Awilix/fast-glob dependency paths in bounded 64-MiB child processes. It covers

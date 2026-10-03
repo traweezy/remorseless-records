@@ -14,7 +14,7 @@ export const buildRuntimeImageRecord = ({
 }) => {
   const servicePolicy = policy.services[service]
   const record = {
-    schemaVersion: 2,
+    schemaVersion: 3,
     service,
     subject: servicePolicy?.image,
     image: `${servicePolicy?.image}:${revision}`,
@@ -25,7 +25,7 @@ export const buildRuntimeImageRecord = ({
     baseImage: policy.runtimeBaseImage,
     dockerfile: servicePolicy?.dockerfile,
     source: policy.repository,
-    scan,
+    scan: { backport: null, ...scan },
     reports,
     publication: null,
   }

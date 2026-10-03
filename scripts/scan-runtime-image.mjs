@@ -3,6 +3,11 @@ import { mkdtemp } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { isAbsolute, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
+import {
+  countBracesExceptions,
+  exactBracesFinding,
+} from "./lib/braces-backport-proof.mjs"
+import { collectBracesImageProof } from "./lib/braces-image-proof.mjs"
 import { normalizeScriptArguments } from "./lib/cli-arguments.mjs"
 import { createRecoveryScope } from "./lib/recovery-process.mjs"
 import {
@@ -285,6 +290,24 @@ export const scanRuntimeImage = async (
       `${options.service}.cdx.json`,
       sbomSource
     )
+    phase = "verify_backport"
+    const report = decodeEvidence(reportSource)
+    const proof = report.Results.some((result) =>
+      result.Vulnerabilities?.some((finding) =>
+        exactBracesFinding(result, finding)
+      )
+    )
+      ? await collectBracesImageProof(
+          execute,
+          host,
+          options.imageId,
+          (command, args, timeout) =>
+            run(command, args, {
+              environment: childEnvironment,
+              signal: AbortSignal.timeout(timeout),
+            })
+        )
+      : null
     phase = "verify_session"
     database.after = await databaseSnapshot(cache)
     assert.deepEqual(await version(), scannerBefore)
@@ -292,6 +315,13 @@ export const scanRuntimeImage = async (
     assert.deepEqual(imageIdentity(await inspect(), options), beforeImage)
     const completedAt = new Date(now()).toISOString()
     validateDatabase(completedAt)
+    const mitigatedHigh = countBracesExceptions(
+      report,
+      proof,
+      startedAt,
+      completedAt,
+      true
+    )
     const record = buildRuntimeImageRecord({
       ...options,
       scan: {
@@ -304,7 +334,16 @@ export const scanRuntimeImage = async (
         completedAt,
         policy: runtimeFindingPolicy,
         ...summary,
-        accepted: runtimeScanAccepted(summary.counts),
+        backport:
+          proof === null
+            ? null
+            : {
+                imageId: options.imageId,
+                revision: options.revision,
+                proof,
+                findings: mitigatedHigh,
+              },
+        accepted: runtimeScanAccepted(summary.counts, mitigatedHigh),
       },
       reports: { vulnerabilities, sbom, databaseMetadata },
     })
@@ -324,6 +363,7 @@ export const scanRuntimeImage = async (
       imageId: options.imageId,
       revision: options.revision,
       counts: record.scan.counts,
+      verifiedBackportHigh: mitigatedHigh,
       fixedHighCritical: record.scan.fixedHighCritical,
     }
   } catch {

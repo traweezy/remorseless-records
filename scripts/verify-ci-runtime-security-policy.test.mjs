@@ -317,7 +317,7 @@ describe("CI runtime security policy", () => {
     }
   })
 
-  it("fails filesystem scans on every HIGH/CRITICAL finding", () => {
+  it("requires raw filesystem reports and an unskipped byte-bound acceptance gate", () => {
     for (const name of ["root", "backend", "storefront"]) {
       const source = readFileSync(
         new URL(`../.github/workflows/${name}.yml`, import.meta.url),
@@ -327,7 +327,11 @@ describe("CI runtime security policy", () => {
       assert.doesNotThrow(() => validateTrivyFilesystemGate(source, isRoot))
       for (const changed of [
         source.replace("ignore-unfixed: false", "ignore-unfixed: true"),
-        source.replace("exit-code: 1", "exit-code: 0"),
+        source.replace(
+          "        run: node scripts/verify-dependency-findings.mjs filesystem",
+          "        continue-on-error: true\n        run: node scripts/verify-dependency-findings.mjs filesystem"
+        ),
+        source.replace("exit-code: 0", "exit-code: 1"),
         source.replace(
           "- name: Trivy FS scan (repo)",
           "- name: Trivy FS scan (repo)\n        continue-on-error: true"

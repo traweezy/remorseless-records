@@ -6,6 +6,9 @@ import { join, resolve } from "node:path"
 
 export const bracesBackport = Object.freeze({
   advisory: "CVE-2026-93687",
+  ghsa: "GHSA-vfj7-8cjw-p6xm",
+  approvedAt: "2026-10-03T01:43:00.000Z",
+  expiresAt: "2026-11-02T00:00:00.000Z",
   package: "braces",
   version: "3.0.3",
   patchSha256:
@@ -30,8 +33,8 @@ export const bracesBackport = Object.freeze({
   }),
 })
 
-// Integrity evidence only. This does not alter vulnerability counts, suppress
-// a finding, or accept a release under the current zero-High image policy.
+// Raw findings remain unchanged. Only the separate, expiring exception gate
+// can accept this exact backport after integrity AND behavioral verification.
 export const verifyBracesBackport = async (packageRoot) => {
   assert.equal(await realpath(packageRoot), resolve(packageRoot))
   for (const directory of [packageRoot, join(packageRoot, "lib")]) {

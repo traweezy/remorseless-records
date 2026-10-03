@@ -366,21 +366,24 @@ labels. Backend must contain Medusa CLI, the observability preload, and
 `.next/static`, and `public`.
 
 Scan each exact image with Trivy 0.70.0 and the reviewed GHCR database.
-The image gate rejects every UNKNOWN, HIGH, and CRITICAL vulnerability,
-including findings without a listed fix. Generate CycloneDX output and
+The image gate rejects UNKNOWN, HIGH, and CRITICAL vulnerabilities, including
+findings without a listed fix, except the exact verified backport below. Raw
+counts remain unchanged. Generate CycloneDX output and
 validate it against the exact image record with:
 
 ```bash
-node scripts/write-runtime-image-record.mjs \
+candidate_image_id="$(docker image inspect --format '{{.Id}}' remorseless-records-backend:runtime-local)"
+node scripts/scan-runtime-image.mjs \
   --service backend \
   --revision "${candidate_revision}" \
-  --digest 'sha256:<64 lowercase hex characters>' \
-  --output /tmp/backend.image.json
+  --image-id "${candidate_image_id}" \
+  --output /tmp/rr-backend-scan-unique
 node scripts/verify-runtime-image-artifacts.mjs \
-  /tmp/backend.image.json /tmp/backend.cdx.json
+  /tmp/rr-backend-scan-unique/backend.image.json
 ```
 
-Use a fresh private `/tmp` directory for each run. Do not commit SBOMs, image
+Choose a new, absent output path under `/tmp` for each run; the scanner creates
+it privately and refuses to reuse it. Do not commit SBOMs, image
 records, Trivy caches, or image archives. The same contract applies to
 Storefront with `--service storefront`.
 
@@ -389,6 +392,40 @@ For Storefront container smoke, inject only the documented non-production
 must return 503 if no Backend is available; use the deterministic Medusa
 fixture when a 200 readiness assertion is required. No visual UI changed in
 this image-only slice, so a screenshot is not required.
+
+### Exact braces backport exception — approved October 3, 2026 UTC
+
+The user approved the verified mitigation for `braces@3.0.3`, exclusively
+CVE-2026-93687 / GHSA-vfj7-8cjw-p6xm, and authorized routine hardening
+implementation decisions without repeated permission requests. This is not a
+blanket package, severity, or advisory ignore. GitHub alert 56 stays open.
+
+The exception expires November 2, 2026 at 00:00 UTC. The patch SHA is
+`37f95f7d660c05bfd44d4b429ca49ceeede99dcff68389f81ee9b995a8ea24d2`.
+Every installed copy must match eight reviewed file hashes and pass bounded
+64-MiB nesting, AST, limit-bypass and ordinary-pattern regressions. Filesystem
+and npm audit gates inventory the frozen workspace dependency trees; runtime
+scans inventory every physical package manifest under `/app` in the exact image
+with no network, a read-only root and restricted resources. Braces links must
+resolve to an inventoried package. Missing or altered bytes, additional copies
+without the fix, missing behavioral proof, expired exceptions and unrelated
+blocking findings fail the gate. A listed Trivy fixed version also stops this
+exception, requiring review of the released correction.
+
+The Trivy action records all severities to JSON; the following unskipped Node
+gate decides acceptance. Both the raw report and separate mitigation proof are
+retained even on failure. Npm audit retains its raw response and gates every
+returned Moderate-or-higher advisory, with this single byte-verified exception;
+existing reviewed Router ignores are unchanged. Runtime schema 3 binds the proof,
+package paths, original High count and mitigated count to image ID and revision.
+Re-verification recomputes the exact findings from the raw report. Publication
+also checks expiry against the current time. No VEX, general scanner ignore,
+new pnpm audit ignore or GitHub alert dismissal is used.
+
+Remove this exception and patch once an upstream fixed release is reviewed,
+cooled (or separately justified), installed, tested and verified in the final
+image. If no release exists by expiry, reassess the actual upstream state and
+risk before a reviewed extension; never silently extend the date.
 
 ### 1.6 Disposable PostgreSQL and Redis integration
 
