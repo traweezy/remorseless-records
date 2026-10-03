@@ -10,6 +10,26 @@ implemented; the user approved the exact backport exception on October 3 UTC.
 Its implementation and final-revision delivery checks are in progress. No live PostgreSQL
 role, credential or Railway variable has been changed for this batch.
 
+### First delivery and file-read correction — October 3 UTC
+
+Revision `93bf849597a75658b9e714fcc7204d562be52456` was pushed directly to
+staging. Root CI `37088076122` and Runtime Images `37088076147` passed.
+Backend `37088076149` and Storefront `37088076030` both failed their CodeQL
+gate on the same new High alert 60 (`js/file-system-race`), in the package
+manifest inventory. Railway's exact pending deployments waited for CI and
+were not promoted; the previous accepted application pair remains live.
+Do not call this release accepted or start a separate hardening batch yet.
+
+The correction opens the manifest through an anchored directory descriptor,
+checks size/type on the opened file, bounds reads, then verifies the named
+file and descriptor identities and metadata again. It supports legitimate
+package-manager hard links without relaxing private scan-evidence rules.
+Symlinks, oversized/empty files, replacement, growth, rewriting and parent
+replacement are covered; 87 focused tests pass. Real installed dependency
+and complete container proofs pass. The corrective push must repeat all four
+workflows, both Railway deployments and live acceptance. No CodeQL suppression
+was added, and alert 56's separately approved braces exception is unchanged.
+
 ### Prepared batch and approved exception — October 3 UTC
 
 - Braces 3.0.3 has an exact upstream-derived depth-limit backport, bounded

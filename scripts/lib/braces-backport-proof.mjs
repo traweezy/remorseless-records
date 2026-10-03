@@ -1,9 +1,66 @@
 import assert from "node:assert/strict"
 import { execFileSync } from "node:child_process"
-import { lstat, readdir, readFile, realpath } from "node:fs/promises"
-import { join, relative, resolve } from "node:path"
+import { constants } from "node:fs"
+import { lstat, open, readdir, realpath } from "node:fs/promises"
+import { basename, dirname, join, relative, resolve } from "node:path"
 import { bracesBackport, verifyBracesBackport } from "./braces-backport.mjs"
 import { bracesRegression } from "./braces-backport-regression.mjs"
+import { openEvidenceDirectory } from "./runtime-image-evidence.mjs"
+
+// Package managers legitimately hard-link manifests. Keep the stricter
+// single-link rule for private evidence files; this reader permits stable
+// package hard links while anchoring all IO to opened directory/file handles.
+export const readPackageManifest = async (path) => {
+  const parent = await openEvidenceDirectory(dirname(path))
+  let handle
+  try {
+    const anchored = join(parent.anchor, basename(path))
+    handle = await open(
+      anchored,
+      constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK
+    )
+    const before = await handle.stat({ bigint: true })
+    assert.ok(before.isFile() && before.size > 0n && before.size <= 2097152n)
+    await parent.check()
+    const buffer = Buffer.alloc(Number(before.size) + 1)
+    let offset = 0
+    while (offset < buffer.length) {
+      const { bytesRead } = await handle.read(
+        buffer,
+        offset,
+        buffer.length - offset,
+        offset
+      )
+      if (bytesRead === 0) break
+      offset += bytesRead
+    }
+    assert.equal(offset, Number(before.size))
+    const after = await handle.stat({ bigint: true })
+    const named = await lstat(anchored, { bigint: true })
+    assert.ok(named.isFile())
+    for (const key of [
+      "dev",
+      "ino",
+      "mode",
+      "nlink",
+      "size",
+      "mtimeNs",
+      "ctimeNs",
+    ]) {
+      assert.equal(after[key], before[key])
+      assert.equal(named[key], before[key])
+    }
+    await parent.check()
+    return JSON.parse(
+      new TextDecoder("utf-8", { fatal: true }).decode(
+        buffer.subarray(0, offset)
+      )
+    )
+  } finally {
+    await handle?.close()
+    await parent.handle.close()
+  }
+}
 
 export const assertBackportWindow = (time) => {
   assert.ok(Number.isFinite(time))
@@ -44,10 +101,9 @@ export const collectBracesProof = async (roots, base, now = Date.now) => {
       } else if (entry.isDirectory()) pending.push([path, depth + 1])
       else if (entry.name === "package.json") {
         assert.ok(entry.isFile())
-        const stat = await lstat(path)
-        assert.ok(stat.size > 0 && stat.size <= 2 * 1024 * 1024)
-        const manifest = JSON.parse(await readFile(path, "utf8"))
-        if (manifest.name === "braces") {
+        const manifest = await readPackageManifest(path)
+        if (manifest.name === "braces" || basename(directory) === "braces") {
+          assert.equal(manifest.name, "braces")
           assert.equal(manifest.version, bracesBackport.version)
           inside(directory)
           paths.add(directory)

@@ -1,7 +1,12 @@
 import assert from "node:assert/strict"
 import test from "node:test"
+import fs from "node:fs/promises"
+import { syncBuiltinESMExports } from "node:module"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
 import { bracesBackport } from "./lib/braces-backport.mjs"
 import {
+  readPackageManifest,
   assertBackportWindow,
   countBracesExceptions,
   validateBracesProof,
@@ -258,3 +263,64 @@ test("image verification uses immutable isolated containers and removes them aft
     assert.equal(calls.at(-1).at(-1), "b".repeat(64))
   }
 })
+
+test("manifest inventory accepts package hard links and rejects links, empty and oversized files", async (t) => {
+  const directory = await fs.mkdtemp(join(tmpdir(), "rr-manifest-"))
+  t.after(() => fs.rm(directory, { recursive: true, force: true }))
+  const path = join(directory, "package.json")
+  const data = '{"name":"braces","version":"3.0.3"}'
+  await fs.writeFile(path, data)
+  await fs.link(path, join(directory, "hardlink.json"))
+  assert.deepEqual(await readPackageManifest(path), JSON.parse(data))
+  await fs.symlink(path, join(directory, "linked.json"))
+  await assert.rejects(readPackageManifest(join(directory, "linked.json")))
+  await fs.writeFile(path, "")
+  await assert.rejects(readPackageManifest(path))
+  await fs.writeFile(path, Buffer.alloc(2097153))
+  await assert.rejects(readPackageManifest(path))
+})
+for (const mutation of ["replace", "grow", "rewrite", "parent"]) {
+  test(`manifest inventory rejects ${mutation} during descriptor reading`, async (t) => {
+    const directory = await fs.mkdtemp(join(tmpdir(), "rr-manifest-race-"))
+    t.after(() => fs.rm(directory, { recursive: true, force: true }))
+    const parent = join(directory, "packages")
+    await fs.mkdir(parent)
+    const path = join(parent, "package.json")
+    const data = '{"name":"braces","version":"3.0.3"}'
+    await fs.writeFile(path, data)
+    const realOpen = fs.open
+    let changed = false
+    fs.open = async (...args) => {
+      const handle = await realOpen(...args)
+      if (String(args[0]).endsWith("/package.json")) {
+        const read = handle.read.bind(handle)
+        handle.read = async (...readArgs) => {
+          if (!changed) {
+            changed = true
+            if (mutation === "replace") {
+              await fs.rename(path, join(parent, "old.json"))
+              await fs.writeFile(path, data)
+            } else if (mutation === "grow") await fs.appendFile(path, " ")
+            else if (mutation === "rewrite")
+              await fs.writeFile(path, data.replace("3.0.3", "3.0.2"))
+            else {
+              await fs.rename(parent, join(directory, "original"))
+              await fs.mkdir(parent)
+              await fs.writeFile(path, data)
+            }
+          }
+          return read(...readArgs)
+        }
+      }
+      return handle
+    }
+    syncBuiltinESMExports()
+    try {
+      await assert.rejects(readPackageManifest(path))
+      assert.equal(changed, true)
+    } finally {
+      fs.open = realOpen
+      syncBuiltinESMExports()
+    }
+  })
+}
