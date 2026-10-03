@@ -2232,6 +2232,16 @@ to `products`, and retains the prior index for rollback. Acceptance requires
 published Product count/ID parity, stock invariants, representative query,
 facet, and sort checks. Snapshot restore without those checks is incomplete.
 
+Index creation and plugin settings are asynchronous. The rebuild recognizes
+both legacy API error codes and the installed SDK's `error.cause.code`, waits
+for the creation task, and verifies that the index is readable. Only a failed
+creation task with `index_already_exists` can represent a concurrent creator;
+other task failures, cancellations, authentication errors and failed read-back
+remain fatal. An existing candidate is cleared before rebuilding, while the
+live `products` index is retained until validated atomic swap. See the
+[Meilisearch task contract](https://specs.meilisearch.dev/specifications/text/0060-tasks-api.html)
+and [SDK error shape](https://meilisearch.github.io/meilisearch-js/api/index/classes/MeilisearchApiError.html).
+
 ## Current staging acceptance evidence
 
 The recovery-tooling release at exact source SHA

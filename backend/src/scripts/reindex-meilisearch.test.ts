@@ -2,8 +2,106 @@ import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
 
 import {
   assertTaskSucceeded,
+  ensureIndexExists,
   upsertAllProductDocuments,
 } from "./reindex-meilisearch"
+
+describe("ensureIndexExists", () => {
+  const missing = () =>
+    Object.assign(new Error("Index not found"), {
+      name: "MeiliSearchApiError",
+      cause: { code: "index_not_found" },
+    })
+  const fixture = () => ({
+    indexKey: "products_build_20261003t000542868z_fixture",
+    index: {
+      getStats: jest.fn().mockResolvedValue({ numberOfDocuments: 0 }),
+      getSettings: jest.fn(),
+      updateSettings: jest.fn(),
+      deleteAllDocuments: jest.fn(),
+      deleteDocuments: jest.fn(),
+      tasks: {
+        waitForTask: jest.fn().mockResolvedValue({ status: "succeeded" }),
+      },
+    },
+    meilisearch: {
+      createIndex: jest.fn().mockResolvedValue({ taskUid: 42 }),
+    },
+  })
+
+  it("preserves existing indexes for the caller's retry cleanup", async () => {
+    const input = fixture()
+    await expect(ensureIndexExists(input)).resolves.toBe(true)
+    expect(input.meilisearch.createIndex).not.toHaveBeenCalled()
+  })
+
+  it.each([missing(), { code: "index_not_found" }])(
+    "creates missing indexes using SDK and legacy error shapes",
+    async (error) => {
+      const input = fixture()
+      input.index.getStats.mockRejectedValueOnce(error)
+      await expect(ensureIndexExists(input)).resolves.toBe(false)
+      expect(input.meilisearch.createIndex).toHaveBeenCalledWith(
+        input.indexKey,
+        { primaryKey: "id" }
+      )
+      expect(input.index.tasks.waitForTask).toHaveBeenCalledWith(
+        { taskUid: 42 },
+        { timeout: 120_000, interval: 100 }
+      )
+      expect(input.index.getStats).toHaveBeenCalledTimes(2)
+    }
+  )
+
+  it("accepts a concurrent creator only after the index is readable", async () => {
+    const input = fixture()
+    input.index.getStats.mockRejectedValueOnce(missing())
+    input.index.tasks.waitForTask.mockResolvedValueOnce({
+      status: "failed",
+      error: { code: "index_already_exists" },
+    })
+    await expect(ensureIndexExists(input)).resolves.toBe(true)
+    expect(input.index.getStats).toHaveBeenCalledTimes(2)
+  })
+
+  it.each([
+    new Error("Connection unavailable"),
+    { cause: { code: "invalid_api_key" } },
+    { code: "invalid_api_key", cause: { code: "index_not_found" } },
+    { cause: [{ code: "index_not_found" }] },
+    null,
+  ])("never creates an index for other failures", async (error) => {
+    const input = fixture()
+    input.index.getStats.mockRejectedValueOnce(error)
+    await expect(ensureIndexExists(input)).rejects.toBe(error)
+    expect(input.meilisearch.createIndex).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    { status: "failed", error: { code: "invalid_api_key" } },
+    { status: "canceled", error: { code: "index_already_exists" } },
+    { status: "processing" },
+  ])("rejects unsuccessful creation tasks", async (task) => {
+    const input = fixture()
+    input.index.getStats.mockRejectedValueOnce(missing())
+    input.index.tasks.waitForTask.mockResolvedValueOnce(task)
+    await expect(ensureIndexExists(input)).rejects.toThrow(/create '/)
+    expect(input.index.getStats).toHaveBeenCalledTimes(1)
+  })
+
+  it.each(["succeeded", "failed"])(
+    "requires read-back even after a %s creation result",
+    async (status) => {
+      const input = fixture()
+      input.index.getStats.mockRejectedValue(missing())
+      input.index.tasks.waitForTask.mockResolvedValueOnce({
+        status,
+        error: { code: "index_already_exists" },
+      })
+      await expect(ensureIndexExists(input)).rejects.toThrow("Index not found")
+    }
+  )
+})
 
 describe("assertTaskSucceeded", () => {
   it("accepts a completed Meilisearch task", () => {

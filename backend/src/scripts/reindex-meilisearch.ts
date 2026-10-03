@@ -6,6 +6,7 @@ import {
 import { homedir } from "node:os"
 
 import indexSettings from "../../config/meilisearch-settings.json"
+import { asUnknownRecord } from "../lib/provider-boundary/records"
 import { writePrivateJsonArtifact } from "../lib/security/private-json-artifact"
 import { assertConfiguredIndexSettings } from "./sync-meilisearch-settings"
 import {
@@ -132,16 +133,12 @@ export const upsertAllProductDocuments = async ({
   return totalIndexed
 }
 
-const isIndexNotFound = (error: unknown): boolean => {
-  return Boolean(
-    error &&
-      typeof error === "object" &&
-      "code" in error &&
-      error.code === "index_not_found"
-  )
+const readMeilisearchErrorCode = (error: unknown): unknown => {
+  const record = asUnknownRecord(error)
+  return record?.code ?? asUnknownRecord(record?.cause)?.code
 }
 
-const ensureIndexExists = async ({
+export const ensureIndexExists = async ({
   index,
   indexKey,
   meilisearch,
@@ -159,7 +156,7 @@ const ensureIndexExists = async ({
     await index.getStats()
     return true
   } catch (error) {
-    if (!isIndexNotFound(error)) {
+    if (readMeilisearchErrorCode(error) !== "index_not_found") {
       throw error
     }
   }
@@ -167,8 +164,20 @@ const ensureIndexExists = async ({
   const createTask = await meilisearch.createIndex(indexKey, {
     primaryKey: indexSettings.products.primaryKey,
   })
-  await waitForTask(index, createTask, `create '${indexKey}'`)
-  return false
+  const completed = await index.tasks.waitForTask(createTask, {
+    timeout: TASK_TIMEOUT_MS,
+    interval: 100,
+  })
+  // The plugin loader may have queued settings that create the same index.
+  // Only that exact concurrent-creation result can count as an existing index.
+  const createdConcurrently =
+    completed.status === "failed" &&
+    readMeilisearchErrorCode(completed.error) === "index_already_exists"
+  if (!createdConcurrently) {
+    assertTaskSucceeded(completed, `create '${indexKey}'`)
+  }
+  await index.getStats()
+  return createdConcurrently
 }
 
 type SearchRebuildCompletionReport = {
