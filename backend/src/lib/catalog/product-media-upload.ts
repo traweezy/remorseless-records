@@ -9,6 +9,7 @@ import {
   readCatalogTransactionOperationList,
   readCatalogTransactionOperationMutation,
   readCatalogUploadedFile,
+  readCatalogUploadedFileId,
   type CatalogTransactionOperationExpectation,
 } from "./transaction-persistence-contracts"
 
@@ -163,15 +164,16 @@ export const performCatalogMediaUpload = async (
   const files: CatalogMediaUploadResultFile[] = []
   try {
     for (const file of input.files) {
-      const uploaded = readCatalogUploadedFile(
-        await fileService.createFiles({
-          access: "public",
-          content: file.content,
-          filename: file.remoteFilename,
-          mimeType: file.mimeType,
-        })
-      )
-      compensation.fileIds.push(uploaded.id)
+      const response = await fileService.createFiles({
+        access: "public",
+        content: file.content,
+        filename: file.remoteFilename,
+        mimeType: file.mimeType,
+      })
+      // Retain the validated provider key before decoding the rest of the
+      // response so a malformed URL still compensates the completed upload.
+      compensation.fileIds.push(readCatalogUploadedFileId(response))
+      const uploaded = readCatalogUploadedFile(response)
       const assetPayload = {
         alt_text: null,
         caption: null,

@@ -601,6 +601,7 @@ const CatalogMerchandisingPageContent = memo(() => {
           }),
         },
         method: "DELETE",
+        expectNoContent: true,
         path: `/admin/catalog/shelves/${selectedShelfId}`,
         schema: emptyShelfResponseSchema,
       })

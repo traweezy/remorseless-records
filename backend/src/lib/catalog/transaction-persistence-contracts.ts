@@ -88,6 +88,22 @@ const text = (value: unknown, maximum: number): string =>
 const nullableText = (value: unknown, maximum: number): string | null =>
   value === null ? null : text(value, maximum)
 
+// Medusa's File module returns the provider's object key as its ID, including
+// extensions and optional prefixes. It is not a catalog model identifier.
+const fileKey = (value: unknown): string => {
+  const key = text(value, 1_024)
+  if (
+    Buffer.byteLength(key, "utf8") > 1_024 ||
+    [...key].some((character) => {
+      const code = character.codePointAt(0)!
+      return code < 32 || code === 127
+    })
+  ) {
+    return invalidTransactionPersistence()
+  }
+  return key
+}
+
 const boolean = (value: unknown): boolean =>
   typeof value === "boolean" ? value : invalidTransactionPersistence()
 
@@ -506,8 +522,12 @@ const operationRecord = (value: unknown): CatalogTransactionOperation => {
   const result = jsonRecord(source.result)
   const idempotencyKey = text(source.idempotency_key, 255)
   const requestSha256 = text(source.request_sha256, 64)
+  const command = text(source.command, 255)
+  const creationAggregate = `catalog-product-create:${idempotencyKey}`
   if (
     !UUID.test(idempotencyKey) ||
+    (command === "catalog.product.create" &&
+      source.aggregate_id !== creationAggregate) ||
     !SHA256.test(requestSha256) ||
     (status === "pending" &&
       (completedAt !== null ||
@@ -527,8 +547,11 @@ const operationRecord = (value: unknown): CatalogTransactionOperation => {
   }
   return {
     actorId: source.actor_id === null ? null : text(source.actor_id, 255),
-    aggregateId: identifier(source.aggregate_id),
-    command: text(source.command, 255),
+    aggregateId:
+      command === "catalog.product.create"
+        ? creationAggregate
+        : identifier(source.aggregate_id),
+    command,
     errorCode,
     errorDetail,
     expectedVersion: integer(
@@ -680,7 +703,7 @@ const uploadResultFile = (
   ])
   return {
     filename: text(source.filename, 255),
-    id: identifier(source.id),
+    id: fileKey(source.id),
     mediaAssetId: identifier(source.mediaAssetId, "cmedia_"),
     mimeType: text(source.mimeType, 255),
     size: integer(source.size, 0, 100_000_000),
@@ -734,8 +757,11 @@ export const readCatalogUploadedFile = (
   value: unknown
 ): { id: string; url: string } => {
   const source = record(value)
-  return { id: identifier(source.id), url: httpUrl(source.url) }
+  return { id: fileKey(source.id), url: httpUrl(source.url) }
 }
+
+export const readCatalogUploadedFileId = (value: unknown): string =>
+  fileKey(record(value).id)
 
 const bundleProfileRecord = (value: unknown): CatalogBundleProfileState => {
   const source = record(value)

@@ -1200,6 +1200,7 @@ const ProductAuthoringWorkspaceContent = memo<ProductAuthoringWorkspaceProps>(
               idempotencyKey: crypto.randomUUID(),
             },
             method: "DELETE",
+            expectNoContent: true,
             path: `/admin/catalog/products/${selectedProduct.id}/bundle`,
             schema: emptyAdminResponseSchema,
           })

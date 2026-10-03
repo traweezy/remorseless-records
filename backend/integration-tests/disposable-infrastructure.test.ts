@@ -1,4 +1,12 @@
-import type { FileTypes, ILockingModule } from "@medusajs/framework/types"
+import type {
+  FileTypes,
+  ILockingModule,
+  IFulfillmentModuleService,
+  IStoreModuleService,
+  ISalesChannelModuleService,
+  IStockLocationService,
+  IProductModuleService,
+} from "@medusajs/framework/types"
 import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
 import { medusaIntegrationTestRunner } from "@medusajs/test-utils"
 import { knex, type Knex } from "@mikro-orm/knex"
@@ -21,6 +29,9 @@ import { normalizeLegacyCatalogDescriptions } from "../src/lib/catalog/normalize
 import { performCatalogMediaUpload } from "../src/lib/catalog/product-media-upload"
 import { mutateCatalogProductMedia } from "../src/lib/catalog/product-media-authoring"
 import { readCatalogMediaAsset } from "../src/lib/catalog/transaction-persistence-contracts"
+import { createCatalogProductWorkflow } from "../src/workflows/catalog/create-product"
+import { catalogProductCreateSchema } from "../src/lib/catalog/product-create-contract"
+import { hashCatalogCommand } from "../src/modules/catalog/catalog-command"
 
 import {
   createBackendReadinessProbes,
@@ -106,6 +117,84 @@ medusaIntegrationTestRunner({
   moduleName: "RemorselessDisposableInfrastructure",
   testSuite: ({ api, dbConfig, getContainer }) => {
     describe("disposable PostgreSQL and Redis integration", () => {
+      it("creates and replays a complete native product with priced stocked variants", async () => {
+        const container = getContainer()
+        const fulfillment = container.resolve<IFulfillmentModuleService>(
+          Modules.FULFILLMENT
+        )
+        const stores = container.resolve<IStoreModuleService>(Modules.STORE)
+        const channels = container.resolve<ISalesChannelModuleService>(
+          Modules.SALES_CHANNEL
+        )
+        const locations = container.resolve<IStockLocationService>(
+          Modules.STOCK_LOCATION
+        )
+        const products = container.resolve<IProductModuleService>(
+          Modules.PRODUCT
+        )
+        await fulfillment.createShippingProfiles({
+          name: "Disposable shipping",
+          type: "default",
+        })
+        const channel = await channels.createSalesChannels({
+          name: "Disposable catalog",
+        })
+        const store = (await stores.listStores())[0]
+        expect(store).toBeDefined()
+        await stores.updateStores(store!.id, {
+          default_sales_channel_id: channel.id,
+        })
+        await locations.createStockLocations({ name: "HQ" })
+        const command = catalogProductCreateSchema.parse({
+          idempotencyKey: randomUUID(),
+          kind: "music_release",
+          title: "Disposable native release",
+          handle: "disposable-native-release",
+          description: "Native catalog creation regression.",
+          options: [{ title: "Format", values: ["CD", "Vinyl"] }],
+          variants: ["CD", "Vinyl"].map((format, index) => ({
+            key: format.toLowerCase(),
+            title: format,
+            sku: `DISPOSABLE-${format}`,
+            options: { Format: format },
+            prices: [{ amount: index ? 12.34 : 1.23, currencyCode: "usd" }],
+            stockQuantity: 20,
+            profile: { format: { label: format } },
+          })),
+          profile: {
+            artists: [{ name: "Disposable artist", role: "primary" }],
+            label: { label: "Disposable label" },
+          },
+        })
+        const input = {
+          ...command,
+          actorId: "user_disposable_catalog_audit",
+          requestSha256: hashCatalogCommand(command),
+        }
+        const created = (
+          await createCatalogProductWorkflow(container).run({ input })
+        ).result
+        expect(created).toMatchObject({
+          kind: "music_release",
+          replayed: false,
+        })
+        expect(created.variantIds).toHaveLength(2)
+        expect(await products.retrieveProduct(created.productId)).toMatchObject(
+          {
+            status: "draft",
+            title: command.title,
+            handle: command.handle,
+          }
+        )
+        const replayed = (
+          await createCatalogProductWorkflow(container).run({ input })
+        ).result
+        expect(replayed).toEqual({ ...created, replayed: true })
+        expect(
+          await products.listProducts({ handle: "disposable-native-release" })
+        ).toHaveLength(1)
+      })
+
       it("creates and replays an Admin shelf using native persistence responses", async () => {
         const container = getContainer()
         const catalog = container.resolve<CatalogService>("catalog")
@@ -293,7 +382,7 @@ medusaIntegrationTestRunner({
         // isolated; real object-store uploads are a separate staging check.
         const fileService = {
           createFiles: jest.fn().mockResolvedValue({
-            id: "file_disposable_catalog_audit",
+            id: "catalog/disposable-audit-01M41ZFAY2ZZEZXWSDQMSPE1BX.webp",
             url: "https://media.example.com/disposable.webp",
           }),
         } as unknown as FileTypes.IFileModuleService

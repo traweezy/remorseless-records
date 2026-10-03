@@ -1,4 +1,4 @@
-import { FetchError, type FetchArgs } from "@medusajs/js-sdk"
+import { Client, FetchError, type FetchArgs } from "@medusajs/js-sdk"
 import { z } from "zod"
 
 import {
@@ -21,6 +21,47 @@ const createClient = (
 })
 
 describe("requestAdminJson", () => {
+  it("accepts a native SDK 204 response without attempting JSON parsing", async () => {
+    const fetch = jest
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(new Response(null, { status: 204 }))
+    try {
+      const client = new Client({
+        baseUrl: "https://admin.example.test",
+        auth: { type: "session" },
+      })
+      await expect(
+        requestAdminJson({
+          client,
+          method: "DELETE",
+          path: "/admin/catalog/shelves/cshelf_test",
+          expectNoContent: true,
+          schema: z.undefined(),
+        })
+      ).resolves.toBeUndefined()
+      const options = fetch.mock.calls[0]?.[1]
+      expect(new Headers(options?.headers).get("accept")).toBe("*/*")
+      expect(options?.credentials).toBe("include")
+    } finally {
+      fetch.mockRestore()
+    }
+  })
+
+  it.each([new Response("{}", { status: 200 }), undefined])(
+    "rejects an unexpected no-content acknowledgement %#",
+    async (payload) => {
+      await expect(
+        requestAdminJson({
+          client: createClient(async () => payload),
+          method: "DELETE",
+          path: "/admin/example",
+          expectNoContent: true,
+          schema: z.undefined(),
+        })
+      ).rejects.toMatchObject({ kind: "invalid-response" })
+    }
+  )
+
   it("passes structured request data to the SDK and validates the response", async () => {
     const client = createClient(async () => ({ value: "ok" }))
 

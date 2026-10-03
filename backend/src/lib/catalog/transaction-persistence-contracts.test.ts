@@ -22,6 +22,7 @@ import {
   readExactCatalogBundleComponents,
   readExactCatalogBundleInventoryLinks,
   readExactCatalogProductMediaItems,
+  readCatalogUploadedFile,
 } from "./transaction-persistence-contracts"
 import {
   catalogMediaAssetFixture,
@@ -77,6 +78,44 @@ const inventoryLink = (
 })
 
 describe("catalog media persistence contracts", () => {
+  it.each([
+    "786188ba-a1da-4c5b-a1c5-ef58e3d84c0c-00-01M41ZFAY2ZZEZXWSDQMSPE1BX.webp",
+    "catalog/artwork/Édition spéciale.webp",
+    "a".repeat(1_024),
+  ])("preserves provider file keys across upload and replay: %s", (id) => {
+    const url = `https://media.example/${encodeURIComponent(id)}`
+    expect(readCatalogUploadedFile({ id, url })).toEqual({ id, url })
+    expect(
+      readCatalogMediaUploadOperationResult({
+        files: [
+          {
+            id,
+            url,
+            filename: "cover.png",
+            mediaAssetId: "cmedia_1",
+            mimeType: "image/webp",
+            size: 12,
+          },
+        ],
+      })[0]?.id
+    ).toBe(id)
+  })
+
+  it.each([
+    "",
+    " key.webp",
+    "key.webp ",
+    "key\n.webp",
+    "a".repeat(1_025),
+    "é".repeat(513),
+    null,
+    1,
+  ])("rejects invalid or oversized provider keys %#", (id) => {
+    expect(() =>
+      readCatalogUploadedFile({ id, url: "https://media.example/cover.webp" })
+    ).toThrow("transaction persistence boundary")
+  })
+
   it("accepts a complete active media projection", () => {
     expect(
       readCatalogMediaAsset(catalogMediaAssetFixture(), "cmedia_1")
@@ -163,6 +202,29 @@ describe("catalog media persistence contracts", () => {
 })
 
 describe("catalog authoring operation persistence contracts", () => {
+  it("binds a product creation aggregate to its exact idempotency key", () => {
+    const operation = catalogOperationFixture({
+      command: "catalog.product.create",
+      aggregate_id:
+        "catalog-product-create:00000000-0000-4000-8000-000000000001",
+    })
+    expect(readCatalogTransactionOperationList([operation])?.aggregateId).toBe(
+      operation.aggregate_id
+    )
+    for (const override of [
+      {
+        aggregate_id:
+          "catalog-product-create:00000000-0000-4000-8000-000000000002",
+      },
+      { aggregate_id: "prod_1" },
+      { command: "catalog.product-media.replace" },
+    ]) {
+      expect(() =>
+        readCatalogTransactionOperationList([{ ...operation, ...override }])
+      ).toThrow("transaction persistence boundary")
+    }
+  })
+
   it("accepts pending, succeeded, compensated, and failed operation states", () => {
     expect(
       readCatalogTransactionOperationList([catalogOperationFixture()])

@@ -269,6 +269,30 @@ describe("catalog product media upload", () => {
     })
   })
 
+  it("retains the provider key for compensation when its URL is malformed", async () => {
+    const service = serviceFixture()
+    const fileService = fileServiceFixture()
+    const key = "catalog/audit-01M41ZFAY2ZZEZXWSDQMSPE1BX.webp"
+    fileService.createFiles.mockResolvedValue({
+      id: key,
+      url: "javascript:alert(1)",
+    })
+    await expect(
+      performCatalogMediaUpload(
+        service as never,
+        fileService as never,
+        commandFixture()
+      )
+    ).rejects.toMatchObject({
+      compensation: {
+        fileIds: [key],
+        assetIds: [],
+        operationId: "catop_upload_1",
+      },
+    })
+    expect(service.createCatalogMediaAssets).not.toHaveBeenCalled()
+  })
+
   it("attempts every compensation path and preserves the first error", async () => {
     const service = serviceFixture()
     const fileService = fileServiceFixture()

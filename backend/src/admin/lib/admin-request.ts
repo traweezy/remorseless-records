@@ -38,6 +38,7 @@ export type AdminJsonRequestOptions<T> = {
   path: string
   query?: FetchArgs["query"]
   schema: ZodType<T>
+  expectNoContent?: boolean
   signal?: AbortSignal
   timeoutMs?: number
 }
@@ -55,6 +56,7 @@ export const requestAdminJson = async <T>({
   path,
   query,
   schema,
+  expectNoContent = false,
   signal: externalSignal,
   timeoutMs = DEFAULT_TIMEOUT_MS,
 }: AdminJsonRequestOptions<T>): Promise<T> => {
@@ -83,6 +85,11 @@ export const requestAdminJson = async <T>({
     method,
     signal: controller.signal,
   }
+  // The pinned Medusa SDK parses every application/json response, including
+  // empty 204s. Request its raw Response for endpoints with that contract.
+  if (expectNoContent) {
+    request.headers = { accept: "*/*" }
+  }
   if (body !== undefined) {
     request.body = body
   }
@@ -92,8 +99,20 @@ export const requestAdminJson = async <T>({
 
   try {
     const payload = await client.fetch<unknown>(path, request)
+    if (expectNoContent) {
+      if (!(payload instanceof Response) || payload.status !== 204) {
+        throw new AdminRequestError(
+          "The server returned an unexpected response.",
+          "invalid-response"
+        )
+      }
+      return schema.parse(undefined)
+    }
     return schema.parse(payload)
   } catch (error) {
+    if (error instanceof AdminRequestError) {
+      throw error
+    }
     if (externalSignal?.aborted) {
       throw new AdminRequestError(
         "The request was cancelled.",
