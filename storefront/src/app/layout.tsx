@@ -1,9 +1,10 @@
 import type { Metadata, Viewport } from "next"
-import { Bebas_Neue, Inter, JetBrains_Mono, Teko } from "next/font/google"
 import { cookies, headers } from "next/headers"
 import { Suspense } from "react"
 
 import "@/styles/globals.css"
+import "@/styles/fonts.css"
+import { preloads as fontPreloads } from "../../public/fonts/sources.json"
 import BackToTopButton from "@/components/back-to-top-button"
 import SiteFooter from "@/components/site-footer"
 import SiteHeader from "@/components/site-header"
@@ -21,32 +22,6 @@ import {
   COOKIE_PREFERENCES_COOKIE_NAME,
   parseCookiePreferences,
 } from "@/lib/legal/cookie-consent"
-
-const bebasNeue = Bebas_Neue({
-  weight: "400",
-  subsets: ["latin"],
-  display: "swap",
-  variable: "--font-bebas-neue",
-})
-
-const teko = Teko({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  display: "swap",
-  variable: "--font-teko",
-})
-
-const inter = Inter({
-  subsets: ["latin"],
-  display: "swap",
-  variable: "--font-sans",
-})
-
-const jetBrains = JetBrains_Mono({
-  subsets: ["latin"],
-  display: "swap",
-  variable: "--font-mono",
-})
 
 const siteUrl = new URL(siteMetadata.siteUrl)
 
@@ -138,17 +113,23 @@ const RootLayout = async ({ children }: RootLayoutProps) => {
     <html
       lang="en"
       suppressHydrationWarning
-      className="bg-background text-foreground"
+      className="site-fonts bg-background text-foreground"
     >
       <head>
+        {fontPreloads.map((href) => (
+          <link
+            key={href}
+            rel="preload"
+            href={href}
+            as="font"
+            type="font/woff2"
+            crossOrigin="anonymous"
+          />
+        ))}
         <ZodStrictCspBootstrap {...(nonce ? { nonce } : {})} />
       </head>
       <body
         className={[
-          bebasNeue.variable,
-          teko.variable,
-          inter.variable,
-          jetBrains.variable,
           "min-h-screen bg-background text-foreground antialiased overflow-x-hidden",
         ].join(" ")}
       >

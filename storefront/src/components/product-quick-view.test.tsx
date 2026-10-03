@@ -90,13 +90,13 @@ describe("ProductQuickView", () => {
     vi.clearAllMocks()
   })
 
-  it("matches detail-page pricing and exact low-stock presentation", () => {
+  it("matches detail-page pricing and exact low-stock presentation", async () => {
     render(
       <ProductQuickView handle={product.handle} open onOpenChange={vi.fn()} />
     )
 
     const quickShop = screen.getByRole("dialog", { name: "Quick shop" })
-    const cdFormat = within(quickShop).getByRole("button", {
+    const cdFormat = await within(quickShop).findByRole("button", {
       name: /3CD Bundle/i,
     })
     const lpFormat = within(quickShop).getByRole("button", {
@@ -142,7 +142,7 @@ describe("ProductQuickView", () => {
     ).not.toBeInTheDocument()
 
     fireEvent.click(
-      within(quickShop).getByRole("button", { name: "Add to cart" })
+      await within(quickShop).findByRole("button", { name: "Add to cart" })
     )
 
     expect(

@@ -150,6 +150,20 @@ test("accepts staging and master PR validation with master-only publication", ()
   assert.doesNotThrow(() => validateRuntimeWorkflowSource(workflowSource))
 })
 
+test("rejects restoring unnecessary external font egress", () => {
+  for (const endpoint of [
+    "fonts.googleapis.com:443",
+    "fonts.gstatic.com:443",
+  ]) {
+    const changed = workflowSource.replace(
+      "            get.trivy.dev:443",
+      `            ${endpoint}\n            get.trivy.dev:443`
+    )
+    assert.notEqual(changed, workflowSource)
+    assert.throws(() => validateRuntimeWorkflowSource(changed))
+  }
+})
+
 test("requires staging and master pull requests to run image validation", () => {
   for (const changed of [
     workflowSource.replace(

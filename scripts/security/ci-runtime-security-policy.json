@@ -90,8 +90,6 @@
         "auth.docker.io:443",
         "check.trivy.dev:443",
         "deb.debian.org:443",
-        "fonts.googleapis.com:443",
-        "fonts.gstatic.com:443",
         "ftp.postgresql.org:443",
         "gcr.io:443",
         "get.trivy.dev:443",

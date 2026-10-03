@@ -79,6 +79,15 @@ const nextConfig: NextConfig = {
   async headers() {
     return await Promise.resolve([
       {
+        source: "/fonts/:file([a-z]+-[a-f0-9]{16}\\.woff2)",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
+          },
+        ],
+      },
+      {
         source: "/(.*)",
         headers: [
           {

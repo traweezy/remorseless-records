@@ -1,13 +1,15 @@
 "use client"
 
 import Image from "next/image"
-import dynamic from "next/dynamic"
 import { useRouter } from "next/navigation"
 import { useEffect, useRef, useState, type MouseEvent } from "react"
 
 import type { HttpTypes } from "@medusajs/types"
 import { ShoppingCart } from "lucide-react"
 
+import ProductQuickView, {
+  preloadProductQuickView,
+} from "@/components/product-quick-view"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -34,11 +36,6 @@ import type {
   RelatedProductSummary,
   StockStatus,
 } from "@/types/product"
-
-const loadProductQuickView = () => import("@/components/product-quick-view")
-const ProductQuickView = dynamic(() =>
-  loadProductQuickView().then((module) => module.ProductQuickView)
-)
 
 type StoreProduct = HttpTypes.StoreProduct
 type ProductCardSource = StoreProduct | ProductSearchHit | RelatedProductSummary
@@ -462,7 +459,8 @@ export const ProductCard = ({
 
   const triggerQuickShopPrefetch = () => {
     triggerPrefetch()
-    void loadProductQuickView()
+    // Speculative failures are retried by the drawer with visible feedback.
+    void preloadProductQuickView().catch(() => undefined)
   }
 
   const handleQuickShop = (event: MouseEvent<HTMLButtonElement>) => {

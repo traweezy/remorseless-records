@@ -10,7 +10,7 @@
   },
   "scripts": {
     "dev": "next dev",
-    "build": "next build --webpack && node scripts/verify-client-bundle-secrets.mjs",
+    "build": "node scripts/verify-font-assets.mjs && next build --webpack && node scripts/verify-client-bundle-secrets.mjs",
     "build:runtime": "STOREFRONT_BUILD_OUTPUT=standalone pnpm run build",
     "start": "next start",
     "lint": "pnpm --dir .. exec biome check --error-on-warnings storefront/src",

@@ -1,0 +1,198 @@
+{
+  "fetchedAt": "2026-10-03T21:43:51.601Z",
+  "source": "Google Fonts CSS API; pinned Google fonts OFL licenses",
+  "nextMetricsVersion": "16.3.8",
+  "families": [
+    {
+      "family": "Bebas Neue",
+      "slug": "bebasneue",
+      "cssUrl": "https://fonts.googleapis.com/css2?family=Bebas+Neue:wght@400&display=swap",
+      "cssSha256": "049e06aea9d5a43793af380441ee2214e35acc90be3bc4596f0034ce44c73679",
+      "licenseUrl": "https://raw.githubusercontent.com/google/fonts/61f595f96445e9c2316b50d1ba3d79ef91f72b0a/ofl/bebasneue/OFL.txt",
+      "licenseSha256": "72082f6cb4d04be2ecf7cc7d9e1e7d73787f0af8a5a278a47cade70c16b78341",
+      "sourceCommit": "61f595f96445e9c2316b50d1ba3d79ef91f72b0a",
+      "fallback": {
+        "fallbackFont": "Arial",
+        "ascentOverride": "117.32%",
+        "descentOverride": "39.11%",
+        "lineGapOverride": "0.00%",
+        "sizeAdjust": "76.72%"
+      },
+      "files": [
+        {
+          "file": "bebasneue-a724a4b6a8844a50.woff2",
+          "url": "https://fonts.gstatic.com/s/bebasneue/v16/JTUSjIg69CK48gW7PXoo9WdhyyTh89ZNpQ.woff2",
+          "sha256": "a724a4b6a8844a50c489b60294d308818f43a244213b0d687d2ba72cf6cee746",
+          "bytes": 5664
+        },
+        {
+          "file": "bebasneue-441b026df205d289.woff2",
+          "url": "https://fonts.gstatic.com/s/bebasneue/v16/JTUSjIg69CK48gW7PXoo9WlhyyTh89Y.woff2",
+          "sha256": "441b026df205d28954f61b6989c7bbd228c0adff42f746a266c6a5d89134bc34",
+          "bytes": 8596
+        }
+      ],
+      "licenseFile": "bebasneue-OFL.txt"
+    },
+    {
+      "family": "Teko",
+      "slug": "teko",
+      "cssUrl": "https://fonts.googleapis.com/css2?family=Teko:wght@400;500;600;700&display=swap",
+      "cssSha256": "4baac6758e6a6ca5889719cbe4a1c2e3ccb04f1e04ce7e7211bd567e40ac67b8",
+      "licenseUrl": "https://raw.githubusercontent.com/google/fonts/8b0a1d0f5983c89bc2b93f1b5fb55f9e252744b5/ofl/teko/OFL.txt",
+      "licenseSha256": "4a193c54e911c1e8194d4db657423f2527f54a1239f24cb67ecb09128dc9f065",
+      "sourceCommit": "8b0a1d0f5983c89bc2b93f1b5fb55f9e252744b5",
+      "fallback": {
+        "fallbackFont": "Arial",
+        "ascentOverride": "146.26%",
+        "descentOverride": "72.52%",
+        "lineGapOverride": "0.00%",
+        "sizeAdjust": "65.50%"
+      },
+      "files": [
+        {
+          "file": "teko-f0d8974891b9f500.woff2",
+          "url": "https://fonts.gstatic.com/s/teko/v23/LYjNdG7kmE0gfaJ9pQlCpVoXVQ.woff2",
+          "sha256": "f0d8974891b9f5002a0f2748a66731b5493857bdd86477e2fe042e8aa4a899cc",
+          "bytes": 63548
+        },
+        {
+          "file": "teko-2613e78c802bc151.woff2",
+          "url": "https://fonts.gstatic.com/s/teko/v23/LYjNdG7kmE0gfa19pQlCpVoXVQ.woff2",
+          "sha256": "2613e78c802bc151cd441fd3e2b68b686c178b734a79b4a1790d78be3282e256",
+          "bytes": 7404
+        },
+        {
+          "file": "teko-58eb58732f86b38c.woff2",
+          "url": "https://fonts.gstatic.com/s/teko/v23/LYjNdG7kmE0gfaN9pQlCpVo.woff2",
+          "sha256": "58eb58732f86b38c8d7e3943eff11f189a4bc77094ee77a6c2040a99b6bd2a6a",
+          "bytes": 15256
+        }
+      ],
+      "licenseFile": "teko-OFL.txt"
+    },
+    {
+      "family": "Inter",
+      "slug": "inter",
+      "cssUrl": "https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap",
+      "cssSha256": "10c76c9f37631ed6ffe64ace3b093265da76efa6d7a5e450c0dbf893b3657ec3",
+      "licenseUrl": "https://raw.githubusercontent.com/google/fonts/0b58fb370093f9a9f4ff785d94405710b79de67c/ofl/inter/OFL.txt",
+      "licenseSha256": "5b9321a4298cfeb6b34354164a1c3afc3db114569984c502b9b35d988fd58c57",
+      "sourceCommit": "0b58fb370093f9a9f4ff785d94405710b79de67c",
+      "fallback": {
+        "fallbackFont": "Arial",
+        "ascentOverride": "90.44%",
+        "descentOverride": "22.52%",
+        "lineGapOverride": "0.00%",
+        "sizeAdjust": "107.12%"
+      },
+      "files": [
+        {
+          "file": "inter-fccca918fea40089.woff2",
+          "url": "https://fonts.gstatic.com/s/inter/v20/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa2JL7W0Q5n-wU.woff2",
+          "sha256": "fccca918fea40089dacadc7045861314d1a6bc91f1f323cc1eeb22ebcdb321b5",
+          "bytes": 25844
+        },
+        {
+          "file": "inter-aebf2ab4a4ce6810.woff2",
+          "url": "https://fonts.gstatic.com/s/inter/v20/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa0ZL7W0Q5n-wU.woff2",
+          "sha256": "aebf2ab4a4ce6810d73c1ac7be7cafb4e5ec4cee2d6db5fb3e09691747ec4bd6",
+          "bytes": 18744
+        },
+        {
+          "file": "inter-a2e2c783ca6f9c20.woff2",
+          "url": "https://fonts.gstatic.com/s/inter/v20/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa2ZL7W0Q5n-wU.woff2",
+          "sha256": "a2e2c783ca6f9c20486e81e72a279203e86730bbf8f01ff6a5ee9dbd09e1c271",
+          "bytes": 11272
+        },
+        {
+          "file": "inter-46dd4cdca58c26ae.woff2",
+          "url": "https://fonts.gstatic.com/s/inter/v20/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa1pL7W0Q5n-wU.woff2",
+          "sha256": "46dd4cdca58c26ae87cc6927657bf83b2e8abfc39ffd0ab176e301a8d28d22bf",
+          "bytes": 19044
+        },
+        {
+          "file": "inter-8db00ff46c67b22c.woff2",
+          "url": "https://fonts.gstatic.com/s/inter/v20/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa2pL7W0Q5n-wU.woff2",
+          "sha256": "8db00ff46c67b22cda8bed865acf7077651cac8d2841d5b40980556b48961931",
+          "bytes": 10280
+        },
+        {
+          "file": "inter-a28eb6d3ccb534ae.woff2",
+          "url": "https://fonts.gstatic.com/s/inter/v20/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa25L7W0Q5n-wU.woff2",
+          "sha256": "a28eb6d3ccb534ae0c94ca999371df024aab60b08c3c8a5720ee9e32fa0faaa2",
+          "bytes": 85272
+        },
+        {
+          "file": "inter-c940764593d0fe5d.woff2",
+          "url": "https://fonts.gstatic.com/s/inter/v20/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa1ZL7W0Q5nw.woff2",
+          "sha256": "c940764593d0fe5d596be327ca7558855e018039fb78509aa21921fd3644c3e4",
+          "bytes": 48432
+        }
+      ],
+      "licenseFile": "inter-OFL.txt"
+    },
+    {
+      "family": "JetBrains Mono",
+      "slug": "jetbrainsmono",
+      "cssUrl": "https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@100..800&display=swap",
+      "cssSha256": "96336aa7b758cd4e405056e8394a484fb5ff0f51ae7ba410ca622fe8f9ed1224",
+      "licenseUrl": "https://raw.githubusercontent.com/google/fonts/6e4b84c976cadb3c49a40fd9a1c203e4f7fcf2da/ofl/jetbrainsmono/OFL.txt",
+      "licenseSha256": "b2fe5e8987594e9ffd1d2ca52a2f5d73eb8335243893c5d6254b5ad69269591d",
+      "sourceCommit": "6e4b84c976cadb3c49a40fd9a1c203e4f7fcf2da",
+      "fallback": {
+        "fallbackFont": "Arial",
+        "ascentOverride": "75.79%",
+        "descentOverride": "22.29%",
+        "lineGapOverride": "0.00%",
+        "sizeAdjust": "134.59%"
+      },
+      "files": [
+        {
+          "file": "jetbrainsmono-992eea2f70210457.woff2",
+          "url": "https://fonts.gstatic.com/s/jetbrainsmono/v24/tDbV2o-flEEny0FZhsfKu5WU4xD2OwGtT0rU3BE.woff2",
+          "sha256": "992eea2f70210457ddd1196de4df3240919ffe068ad188c79d985fba4565d3bf",
+          "bytes": 2020
+        },
+        {
+          "file": "jetbrainsmono-af7486955880be1c.woff2",
+          "url": "https://fonts.gstatic.com/s/jetbrainsmono/v24/tDbV2o-flEEny0FZhsfKu5WU4xD_OwGtT0rU3BE.woff2",
+          "sha256": "af7486955880be1c2b972e9c766acffb776768d669b6576ed9a0919ce72e7ca6",
+          "bytes": 12064
+        },
+        {
+          "file": "jetbrainsmono-3edf363dbf9d5fa0.woff2",
+          "url": "https://fonts.gstatic.com/s/jetbrainsmono/v24/tDbV2o-flEEny0FZhsfKu5WU4xD4OwGtT0rU3BE.woff2",
+          "sha256": "3edf363dbf9d5fa0cdc784ae2b431a8a4152f4055a8a8858028c0bd668808273",
+          "bytes": 9084
+        },
+        {
+          "file": "jetbrainsmono-1390e86cc2823e75.woff2",
+          "url": "https://fonts.gstatic.com/s/jetbrainsmono/v24/tDbV2o-flEEny0FZhsfKu5WU4xD0OwGtT0rU3BE.woff2",
+          "sha256": "1390e86cc2823e759358918c01c4fcc1b6e4f01bca915bdbeb6d68eb5c244405",
+          "bytes": 7468
+        },
+        {
+          "file": "jetbrainsmono-7db7affbce1fdee6.woff2",
+          "url": "https://fonts.gstatic.com/s/jetbrainsmono/v24/tDbV2o-flEEny0FZhsfKu5WU4xD1OwGtT0rU3BE.woff2",
+          "sha256": "7db7affbce1fdee69c1ffc2641bbca289b049867f524c9d861fe35ab6670bf29",
+          "bytes": 15204
+        },
+        {
+          "file": "jetbrainsmono-1e06740a02a443fb.woff2",
+          "url": "https://fonts.gstatic.com/s/jetbrainsmono/v24/tDbV2o-flEEny0FZhsfKu5WU4xD7OwGtT0rU.woff2",
+          "sha256": "1e06740a02a443fb7f3eeda8fcaa685a0f6c620e3f01e6666e847295469ce3ad",
+          "bytes": 40480
+        }
+      ],
+      "licenseFile": "jetbrainsmono-OFL.txt"
+    }
+  ],
+  "preloads": [
+    "/fonts/bebasneue-441b026df205d289.woff2",
+    "/fonts/teko-58eb58732f86b38c.woff2",
+    "/fonts/inter-c940764593d0fe5d.woff2",
+    "/fonts/jetbrainsmono-1e06740a02a443fb.woff2"
+  ],
+  "license": "SIL Open Font License 1.1"
+}
