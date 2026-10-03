@@ -173,7 +173,12 @@ if (command === "CONFIG" && verb === "GET") {
   state.rewrite = value
   if (state.mutateManifestOnHold && value === "0")
     fs.appendFileSync(state.manifestPath, "# changed\\n")
-  fs.writeFileSync(file, JSON.stringify(state))
+  const pending = file + "." + process.pid + ".pending"
+  fs.writeFileSync(pending, "", { flag: "wx", mode: 0o600 })
+  if (process.env.RR_TEST_REDIS_SLOW_RESTORE === "1" && value === "100")
+    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 100)
+  fs.writeFileSync(pending, JSON.stringify(state))
+  fs.renameSync(pending, file)
   process.stdout.write("OK\\n")
 } else if (command === "INFO" && verb === "server") {
   process.stdout.write("# Server\\nredis_version:8.0.3\\nrun_id:" + "a".repeat(40) + "\\n")
@@ -1063,6 +1068,8 @@ test("capture rejects an in-place change to an already copied INCR prefix", asyn
 
 test("detached watchdog restores config after parent SIGKILL", async () => {
   const f = await fixture()
+  // Keep polling during a partial write; only complete mock states may publish.
+  f.environment.RR_TEST_REDIS_SLOW_RESTORE = "1"
   try {
     const preflightCall = await invoke(f, {
       mode: "preflight",
