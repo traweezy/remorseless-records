@@ -1097,3 +1097,19 @@ Fill in observed counts in the release checklist.
 - [ ] README/QA runbook updated if new steps discovered.
 
 Document results in PR description or release notes; failing any step is a blocker until resolved.
+
+### Backend startup and PostgreSQL role boundary (October 3, 2026)
+
+`qa:database-release-boundary` includes real process-replacement regressions:
+release/backup credentials and libpq overrides disappear from both JavaScript
+and the replacement process's Linux environment, the role audit precedes
+Medusa/observability startup, audit failures remain private, and SIGTERM reaches
+the application. The packaged entrypoint is also checked in runtime image CI.
+
+Backend role-audit tests establish a real TLS handshake and reject plain,
+lookalike, unfinished and destroyed sockets. Native driver transport proof
+handles PostgreSQL statistics masking under the migrator's default owner role
+without changing role capabilities. Repeat the real role/grant integration
+suite and live three-profile audits for an authority cutover. Provider-level
+and ancestor-process access to service variables remains outside this process
+scrub; see the infrastructure runbook before claiming credential isolation.

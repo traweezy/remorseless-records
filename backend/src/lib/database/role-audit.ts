@@ -1,3 +1,4 @@
+import { TLSSocket } from "node:tls"
 import type { DatabaseConnectionTransport } from "./connection-policy"
 import {
   evaluateDatabaseRole,
@@ -161,7 +162,7 @@ const parseRoleRow = (value: unknown): DatabaseRoleRow => {
 }
 
 export const inspectDatabaseRole = async (
-  client: Pick<PostgreSqlClient, "query">,
+  client: Pick<PostgreSqlClient, "query" | "connection">,
   transport: DatabaseConnectionTransport
 ): Promise<DatabaseRoleFacts> => {
   const result = await client.query<unknown>(DATABASE_ROLE_AUDIT_QUERY)
@@ -187,7 +188,21 @@ export const inspectDatabaseRole = async (
     schemaCreate: row.schema_create,
     securityDefinerExecute: row.security_definer_execute,
     superuser: row.superuser,
-    tls: row.tls,
+    // PostgreSQL masks pg_stat_ssl after SET ROLE to an owner that cannot
+    // inspect the session login's statistics. Keep the narrowed role intact
+    // and inspect pg's actual completed TLS handshake instead. A plain,
+    // disconnected or unfinished native socket must not inherit a catalog
+    // claim. Non-native adapters retain the catalog-only fallback.
+    tls:
+      client.connection?.stream === undefined
+        ? row.tls
+        : client.connection.stream instanceof TLSSocket &&
+          !client.connection.stream.destroyed &&
+          client.connection.stream.encrypted === true &&
+          ["TLSv1.2", "TLSv1.3"].includes(
+            client.connection.stream.getProtocol() ?? ""
+          ) &&
+          Boolean(client.connection.stream.getFinished()?.length),
     transport,
     writeAllData: row.write_all_data,
   }

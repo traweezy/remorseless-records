@@ -45,4 +45,4 @@ USER 1000:1000
 EXPOSE 9000
 
 ENTRYPOINT ["/usr/local/bin/node"]
-CMD ["--require", "./observability-register.cjs", "./node_modules/@medusajs/cli/cli.js", "start", "--verbose"]
+CMD ["./runtime-start.mjs"]

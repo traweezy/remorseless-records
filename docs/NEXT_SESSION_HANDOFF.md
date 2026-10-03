@@ -4,11 +4,88 @@ Last updated: 2026-10-02 (America/New_York)
 
 ## Current continuation — direct staging only
 
-Latest accepted staging remains `214a27f5b9a652093491be2b6fa5efc4ef515392`;
-its completed acceptance is recorded below. The next local hardening batch is
-implemented; the user approved the exact backport exception on October 3 UTC.
-Its implementation and final-revision delivery checks are in progress. No live PostgreSQL
-role, credential or Railway variable has been changed for this batch.
+Latest accepted staging is `1092e8107bec93667bfb3eec0a9bfaefc9db1143`.
+The next local batch adds the Backend startup credential/role boundary and
+corrects TLS detection when a PostgreSQL migration login assumes its owner role.
+Live application-object ownership has moved to `app_owner`; credential and
+application cutover are in progress. Follow the newest entry below before any
+further provider change.
+
+### Live database roles prepared — October 3 UTC
+
+The source remained PostgreSQL 16.11, system ID `7527124368992473123` and the
+same guarded staging service/instance/volume. A new source-bound 171-table
+snapshot completed at `02:25:54Z`, archive SHA-256
+`955c3e19ec59ab20a931372277bbdfae8b6cb87dcefd0f0c5b53627cfd942d9c`.
+The reviewed live `railway` plan digest was
+`2b85e5814351200f1f204b207a1885e34aaa302053675049a6dae8192082d9e1`.
+Transactional inventory and source checks preceded role creation and transfer
+of 171 tables, eight sequences and four enums to `app_owner` at `02:27:53.999Z`.
+The mutation phase took 580 ms; the current administrator-backed deployment
+continued serving. No application rows were changed by the authority checks.
+
+Credential acceptance initially rejected the migrator because its default
+`app_owner` role masks `pg_stat_ssl` visibility. The native TLS-handshake fix
+passed a real TLS unit fixture and live checks without resetting roles or
+adding monitoring privileges. All runtime/migration/backup audits passed by
+`02:32:38.327Z`; runtime DDL/TEMP/owner escalation/migration-ledger writes and
+backup writes were denied, runtime DML was allowed, and product read counts
+matched. Credentials were independently generated, SCRAM verifiers were sent
+to PostgreSQL, and secrets were supplied to Railway through stdin with
+`--skip-deploys`; no live credential was printed or written to local files.
+
+At `02:32:56.708Z`, configured Backend `DATABASE_URL` uses `app_runtime`,
+`DATABASE_MIGRATION_URL` uses `app_migrator`, and
+`DATABASE_ROLE_SPLIT_REQUIRED=false`. Postgres service alone holds the
+`app_backup` URL. Exact provider and source identities remained stable. These
+are saved configuration changes: 1092e81's running Backend still uses its
+previous administrator credential. The next deployment must prove the new
+credentials, then enable enforcement and redeploy under the runbook. Do not
+call the live application cutover complete yet. Keep operator administrator
+access in the Postgres service; do not revoke that break-glass role.
+
+The user asked to finish this batch and stop for the night, then provide a
+report of completed work and remaining work. Do not begin another hardening
+batch after this release's CI, Railway rollout and live acceptance. Backend
+coverage passed 285 suites/2,282 tests, both production builds passed, shared
+lint/type/policy checks passed, and the real disposable service aggregate
+passed with all owned PostgreSQL/Redis fixtures and relay connections removed.
+The startup and image-policy regressions passed as well. Preserve final remote
+acceptance evidence for the closing report.
+
+### Accepted parser/recovery batch — October 3 UTC
+
+All four workflows and 23 required checks passed by `02:16:43.911Z`: Root
+`37088811131`, Backend `37088811141`, Storefront `37088811133`, Runtime Images
+`37088811135`. CodeQL alert 60 was fixed, without suppression, at `02:13:16Z`.
+Railway watch paths skipped the shared-script correction, so exact revision
+1092e81 was explicitly dispatched after CI. Backend
+`5f3027f2-af5c-4adc-b590-471a0c9d5025` and Storefront
+`008669f3-8a32-4cc6-85da-33e065c419eb` both reached SUCCESS. Acceptance finished
+at `02:25:55.117Z`:
+
+- Both health pairs, all 11 Backend dependencies, authenticated catalog reads
+  (461 products, 442 Discography records, one handle, three shelves/25 members)
+  and the ordinary exact-SHA scheduler heartbeat at `02:22:03.488Z` passed.
+- Running Node 26.9.0, OpenSSL `3.5.7-1~deb13u3`, PCRE2
+  `10.46-1~deb13u2` and all five disabled protocol flags passed. The actual
+  Backend retained the valid sending-only replacement Resend key; no email sent.
+- Responsive browsers passed 69 cases/eight expected skips; Firefox/WebKit
+  passed 16. No failures, retries or flakiness. Desktop/mobile Quick Shop and
+  mobile catalog-control screenshots were inspected.
+- Two adjacent bounded log windows, `02:22:00Z`–`02:25:39.843Z`, passed runtime
+  and Railway HTTP correlation for intentional guards, with no HTTP 5xx,
+  unclassified warning/error or truncation. Six known Storefront stream-close
+  groups retained digest `3072950123`. This does not certify other time windows.
+- The exact three-volume backup freshness gate passed before and after checks.
+  Final local images scanned with complete backport proof: Backend
+  `c740fc1353ead4567711154ffc304645d1a038290840ccdfd1093acc529e799b`
+  retained one raw HIGH/one exact approved braces exception; Storefront
+  `2f66a57957c7df7424e7fd2aeda552f8592c9d2ec536cee805129651e470d7e8`
+  had no HIGH/CRITICAL findings. Both had zero CRITICAL findings.
+
+The next batch's push is now permitted after its own local gates. Continue
+substantial hardening under the user's direct-staging cadence.
 
 ### First delivery and file-read correction — October 3 UTC
 

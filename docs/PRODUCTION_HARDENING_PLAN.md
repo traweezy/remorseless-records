@@ -9,27 +9,30 @@ tracks what is still required before production traffic is approved.
 
 ## Current staging acceptance — October 3 UTC
 
-The latest accepted revision is `214a27f5b9a652093491be2b6fa5efc4ef515392`.
-All four workflows/23 checks passed; both exact-SHA Railway services and live
-acceptance completed by `01:11:03Z`. Authority auditing, connection creation/
-reuse diagnostics and fresh-volume-backup release checks are deployed. Health,
-ordinary scheduler, catalog/runtime checks, 85 browser cases, screenshots and
-bounded correlated logs passed. One readiness sample identified transient pool
-contention; 70 subsequent samples were clear, including the next scheduler
-tick. Attribution remains open. See the handoff for exact identities and limits.
+The latest accepted revision is `1092e8107bec93667bfb3eec0a9bfaefc9db1143`.
+All four workflows/23 checks, both exact Railway deployments and live
+acceptance passed by `02:25:55Z`. The parser backport and exact time-limited
+exception, recovery-image correction, restored role rehearsal and read-only
+migration-directory support are delivered. CodeQL's manifest-race finding was
+fixed without suppression. Health, ordinary scheduler, catalog/runtime checks,
+85 browser cases, screenshots and bounded correlated logs passed. See the
+handoff for exact identities and limits.
 
-### Next prepared batch and release gate
+### Database credential and startup batch in progress
 
-The braces nesting backport, corrected recovery image, database role plan and
-read-only migration-directory support are locally implemented and tested. A
-fresh 171-table restore passed role/grant/enum-owner checks and both migration
-commands. Live PostgreSQL credentials and ownership remain unchanged. A new
-version-based High braces finding blocks the strict image gate despite verified
-backported bytes. The user approved the exact temporary mitigation exception
-on October 3; its gate requires all installed copies, exact hashes and bounded
-regressions while preserving the raw High report. It expires November 2 UTC.
-Final-revision delivery and acceptance remain pending. See the handoff and
-dependency audit for evidence.
+The next batch removes release/backup credentials and libpq overrides from the
+Backend application process using process replacement, and audits the runtime
+role before Medusa starts when enforcement is enabled. Service-level variables
+and ancestor processes remain a separate credential boundary. Live PostgreSQL
+ownership and role creation have begun following a fresh verified backup and
+exact source/inventory guards. Application credential cutover is not yet
+accepted. The migration audit exposed PostgreSQL's masked TLS statistics under
+its default owner role; the correction inspects the completed native TLS
+handshake without resetting that role or granting monitoring authority.
+
+The braces exception still retains the raw High finding, exact all-copy byte
+and behavior checks, and November 2 expiry. It is not an upstream fix or a
+blanket scanner exemption.
 
 ### Previous accepted direct-push correction
 

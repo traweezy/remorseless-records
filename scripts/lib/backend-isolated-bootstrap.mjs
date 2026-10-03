@@ -25,6 +25,7 @@ export const backendChildEnvironment = (
     MEDUSA_WORKER_MODE: "server",
     MEDUSA_DISABLE_ADMIN: "1",
     DATABASE_URL: `postgresql://${databaseRole === "runtime" ? "app_runtime" : "postgres"}:${encodeURIComponent(password)}@127.0.0.1:${relayPort}/postgres?sslmode=disable`,
+    DATABASE_ROLE_SPLIT_REQUIRED: databaseRole === "runtime" ? "true" : "false",
     REDIS_URL: "redis://127.0.0.1:6379",
     COMMIT_SHA: revision,
     JWT_SECRET: randomBytes(48).toString("base64url"),
@@ -74,25 +75,15 @@ const runBackend = async () => {
   bootstrapPhase = "relay"
   const closeRelay = await startSocketRelay()
   bootstrapPhase = "application"
-  const child = spawn(
-    process.execPath,
-    [
-      "--require",
-      "./observability-register.cjs",
-      "./node_modules/@medusajs/cli/cli.js",
-      "start",
-      "--verbose",
-    ],
-    {
-      cwd: "/app",
-      env: backendChildEnvironment(
-        password,
-        process.env.COMMIT_SHA,
-        process.env.RECOVERY_DATABASE_ROLE
-      ),
-      stdio: ["ignore", "pipe", "pipe"],
-    }
-  )
+  const child = spawn(process.execPath, ["./runtime-start.mjs"], {
+    cwd: "/app",
+    env: backendChildEnvironment(
+      password,
+      process.env.COMMIT_SHA,
+      process.env.RECOVERY_DATABASE_ROLE
+    ),
+    stdio: ["ignore", "pipe", "pipe"],
+  })
   let diagnostic = "unclassified"
   let missingModule
   let moduleDetail

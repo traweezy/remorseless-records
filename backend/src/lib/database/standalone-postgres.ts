@@ -8,6 +8,7 @@ type QueryResult<Row> = {
 }
 
 export type PostgreSqlClient = {
+  connection?: { stream?: unknown }
   connect: () => Promise<void>
   end: () => Promise<void>
   query: <Row>(query: string, values?: unknown[]) => Promise<QueryResult<Row>>

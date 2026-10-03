@@ -216,6 +216,26 @@ and search readiness. Roll out in this order:
    fails closed if the migration URL is removed or equals the runtime URL; and
 8. only then revoke the old superuser URL from Backend.
 
+Backend startup replaces its process with an environment that omits
+`DATABASE_MIGRATION_URL`, `DATABASE_BACKUP_URL`, `DATABASE_ROLE_PROFILE` and
+libpq `PG*` overrides. Replacement removes the original environment from that
+process's Linux `/proc` record; a JavaScript deletion alone does not. Both
+Railpack and the candidate runtime image use this launcher. When enforcement
+is enabled, a bounded runtime-role audit must pass before the observability
+preload and Medusa start. The isolated runtime-role smoke follows that same
+launcher and audit. Unsupported replacement, invalid settings, failed audits,
+timeouts and signals fail closed with fixed, credential-free output.
+
+This improves the application process boundary and limits ordinary runtime
+database access. It does **not** isolate a migration credential from a fully
+compromised Railway service: provider variables, ancestor processes and
+operator access can still expose it. Railway uses the same service variables
+for pre-deploy and runtime. A separate migration service or credential broker
+remains necessary before claiming isolation against arbitrary service code
+execution. Keep that residual requirement separate from SQL role acceptance.
+See [Railway variables](https://docs.railway.com/variables) and
+[pre-deploy execution](https://docs.railway.com/deployments/pre-deploy-command).
+
 The auditor never prints role/database names, connection strings, or raw
 driver errors. Its single read-only catalog query checks the original session
 login, any narrowed current role, roles reachable through `SET ROLE`, and
@@ -235,6 +255,13 @@ runtime DML and migrator ownership, and prove that an initially narrowed
 remain 30 and 10 seconds. Public connections must prove negotiated TLS, and
 connect/query/close failures cannot produce an accepted result.
 
+PostgreSQL can mask `pg_stat_ssl` after the migrator assumes its non-login
+owner role. For native `pg` clients, the auditor instead verifies a live
+`TLSSocket`, TLS 1.2/1.3 and completed Finished message on the actual connection.
+A plain, destroyed, lookalike or unfinished socket cannot pass. Other adapters
+retain catalog verification. The audit does not reset roles or grant statistics
+privileges to make TLS visible; all original capability checks remain intact.
+
 All three profiles also reject explicit parameter `SET`/`ALTER SYSTEM` ACLs
 and executable `SECURITY DEFINER` routines for the login, current role and
 inherited/SET-reachable principals, including PUBLIC grants. Parameter checks
@@ -251,6 +278,25 @@ ACL check simply to pass a role cutover. The real PostgreSQL tests prove
 parameter changes and definer execution with benign, transactionally rolled-back
 fixtures on the explicitly guarded disposable service. Passing them does not
 perform the staging role cutover or satisfy its operational evidence.
+
+### Staging role provisioning — October 3, 2026 UTC
+
+After the source-bound snapshot at `02:25:54Z`, exact identity and transaction
+inventory guards applied the reviewed role plan at `02:27:53.999Z`. All 171
+application tables, eight sequences and four enum types now belong to
+`app_owner`. Runtime, migrator and backup logins use independent random secrets,
+SCRAM verifiers and connection limits 40/5/3. All three live audits and negative
+privilege checks passed by `02:32:41.302Z`, following the TLS visibility repair.
+Product read parity and runtime DML passed without changing application rows.
+
+At `02:32:56.708Z`, Backend's saved URLs select runtime/migrator and enforcement
+is `false`; only Postgres stores the backup URL. All variable changes used
+`--skip-deploys`. The still-running 1092e81 Backend therefore retains its old
+administrator session. Deployment and enforced-startup acceptance remain the
+next steps, not completed evidence. The Postgres administrator remains available
+for operator recovery and guarded source identity reads. A backup-role URL
+alone cannot perform privileged source-system-ID reads; keep identity verification
+separate rather than granting the backup role monitoring/cluster authority.
 
 ### Staging authority verification — September 15, 2026 UTC
 

@@ -44,6 +44,8 @@ test("smoke child retains the exact runtime loader path without provider secrets
   assert.equal(Object.hasOwn(environment, "STRIPE_API_KEY"), false)
   const runtime = backendChildEnvironment("synthetic", revision, "runtime")
   assert.equal(new URL(runtime.DATABASE_URL).username, "app_runtime")
+  assert.equal(runtime.DATABASE_ROLE_SPLIT_REQUIRED, "true")
+  assert.equal(environment.DATABASE_ROLE_SPLIT_REQUIRED, "false")
   assert.equal(Object.hasOwn(runtime, "DATABASE_MIGRATION_URL"), false)
   assert.throws(() =>
     backendChildEnvironment("synthetic", revision, "arbitrary")

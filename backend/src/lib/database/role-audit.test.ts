@@ -1,3 +1,10 @@
+import { execFileSync } from "node:child_process"
+import { once } from "node:events"
+import { mkdtemp, readFile, rm } from "node:fs/promises"
+import { Socket } from "node:net"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
+import { connect, createServer, TLSSocket } from "node:tls"
 import {
   DATABASE_ROLE_AUDIT_QUERY,
   inspectDatabaseRole,
@@ -33,6 +40,80 @@ const createClient = () => ({
 })
 
 describe("read-only database role inspection", () => {
+  it("proves a completed TLS handshake when SET ROLE masks server statistics", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "rr-role-tls-"))
+    let socket: TLSSocket | undefined
+    const peers = new Set<TLSSocket>()
+    const server = createServer()
+    try {
+      execFileSync(
+        "openssl",
+        [
+          "req",
+          "-x509",
+          "-newkey",
+          "rsa:2048",
+          "-nodes",
+          "-days",
+          "1",
+          "-subj",
+          "/CN=localhost",
+          "-keyout",
+          join(directory, "key.pem"),
+          "-out",
+          join(directory, "cert.pem"),
+        ],
+        { stdio: "ignore", timeout: 10_000 }
+      )
+      server.setSecureContext({
+        key: await readFile(join(directory, "key.pem")),
+        cert: await readFile(join(directory, "cert.pem")),
+      })
+      server.on("secureConnection", (peer) => {
+        peers.add(peer)
+      })
+      server.listen(0, "127.0.0.1")
+      await once(server, "listening")
+      const address = server.address()
+      if (!address || typeof address === "string")
+        throw new Error("missing_test_address")
+      socket = connect({
+        host: "127.0.0.1",
+        port: address.port,
+        rejectUnauthorized: false,
+      })
+      await once(socket, "secureConnect")
+      const client = { ...createClient(), connection: { stream: socket } }
+      expect((await inspectDatabaseRole(client, "tls")).tls).toBe(true)
+      expect(client.query).toHaveBeenCalledTimes(1)
+      expect(client.query).toHaveBeenCalledWith(DATABASE_ROLE_AUDIT_QUERY)
+      socket.destroy()
+      expect((await inspectDatabaseRole(client, "tls")).tls).toBe(false)
+    } finally {
+      socket?.destroy()
+      for (const peer of peers) peer.destroy()
+      await new Promise<void>((resolve) => server.close(() => resolve()))
+      await rm(directory, { recursive: true, force: true })
+    }
+  })
+
+  it("rejects plain, lookalike and unfinished TLS sockets despite catalog TLS", async () => {
+    const sockets = [new Socket(), new TLSSocket(new Socket())]
+    try {
+      for (const stream of [
+        ...sockets,
+        { encrypted: true, getProtocol: () => "TLSv1.3" },
+        null,
+      ]) {
+        const client = { ...createClient(), connection: { stream } }
+        client.query.mockResolvedValue({ rows: [{ ...validRow(), tls: true }] })
+        expect((await inspectDatabaseRole(client, "tls")).tls).toBe(false)
+      }
+    } finally {
+      for (const socket of sockets) socket.destroy()
+    }
+  })
+
   it("maps a complete boolean row through one read-only query", async () => {
     const client = createClient()
     const facts = await inspectDatabaseRole(client, "tls")

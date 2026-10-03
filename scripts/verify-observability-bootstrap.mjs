@@ -14,6 +14,10 @@ const postBuild = await readFile(
   new URL("../backend/src/scripts/postBuild.js", import.meta.url),
   "utf8"
 )
+const runtimeStart = await readFile(
+  new URL("../backend/scripts/runtime-start.mjs", import.meta.url),
+  "utf8"
+)
 
 assert.equal(bootstrap.sanitizeRedisStatement("SET", ["private-key"]), "set")
 assert.equal(bootstrap.sanitizeRedisStatement("invalid command", []), "unknown")
@@ -51,7 +55,11 @@ assert.deepEqual(configuredEnvironment, {
 
 assert.equal(
   backendPackage.scripts.start,
-  "cd .medusa/server && node --require ./observability-register.cjs ./node_modules/@medusajs/cli/cli.js start --verbose"
+  "cd .medusa/server && node ./runtime-start.mjs"
+)
+assert.match(
+  runtimeStart,
+  /"--require",\s*join\(root, "observability-register\.cjs"\),\s*join\(root, "node_modules\/@medusajs\/cli\/cli\.js"\)/u
 )
 assert.match(
   postBuild,

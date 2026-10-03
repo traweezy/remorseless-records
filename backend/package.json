@@ -15,7 +15,7 @@
   "scripts": {
     "build": "node scripts/build.mjs",
     "seed": "node ./scripts/run-medusa.js ./src/scripts/seed.ts",
-    "start": "cd .medusa/server && node --require ./observability-register.cjs ./node_modules/@medusajs/cli/cli.js start --verbose",
+    "start": "cd .medusa/server && node ./runtime-start.mjs",
     "dev": "medusa develop",
     "email:dev": "pnpm dlx react-email@6.6.5 dev --dir=./src/modules/email-notifications/templates --port=3002",
     "search:rebuild": "node ./scripts/run-search-prepare.js",

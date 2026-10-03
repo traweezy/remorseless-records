@@ -283,7 +283,7 @@ USER 1000:1000
 EXPOSE 9000
 
 ENTRYPOINT ["/usr/local/bin/node"]
-CMD ["--require", "./observability-register.cjs", "./node_modules/@medusajs/cli/cli.js", "start", "--verbose"]
+CMD ["./runtime-start.mjs"]
 `
       : `ENV COMMIT_SHA="\${REVISION}" \\
     HOME=/home/node \\
@@ -498,7 +498,7 @@ export const validateRuntimeWorkflowSource = (source) => {
   )
   assert.equal(
     source.match(
-      /"\.\/node_modules\/@medusajs\/cli\/cli\.js","\.\/scripts\/runtime-release-prepare\.mjs"/gu
+      /"\.\/node_modules\/@medusajs\/cli\/cli\.js","\.\/scripts\/runtime-release-prepare\.mjs","\.\/runtime-start\.mjs"/gu
     )?.length,
     2
   )
@@ -572,10 +572,7 @@ export const verifyRuntimeImagePolicy = () => {
     /COPY --chown=1000:1000 backend\/\.medusa\/server\/ \.\//u
   )
   assert.match(backendDockerfile, /runtime-release-prepare\.mjs/u)
-  assert.match(
-    backendDockerfile,
-    /CMD \["--require", "\.\/observability-register\.cjs", "\.\/node_modules\/@medusajs\/cli\/cli\.js", "start", "--verbose"\]/u
-  )
+  assert.match(backendDockerfile, /CMD \["\.\/runtime-start\.mjs"\]/u)
 
   const storefrontDockerfile = readFileSync(
     join(root, policy.services.storefront.dockerfile),
