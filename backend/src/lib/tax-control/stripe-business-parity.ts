@@ -12,7 +12,9 @@ const maxTimeoutMs = 30_000
 const accountIdPattern = /^acct_[A-Za-z0-9]{1,251}$/
 const intentIdPattern = /^pi_[A-Za-z0-9]{1,252}$/
 const currencyPattern = /^[a-z]{3}$/
-const majorAmountPattern = /^(?:0|[1-9]\d{0,9})(?:\.\d{1,4})?$/
+// Medusa keeps sub-cent precision in payment amounts. Preserve the decimal
+// through MathBN and round only at the USD/provider comparison boundary.
+const majorAmountPattern = /^(?:0|[1-9]\d{0,9})(?:\.\d{1,20})?$/
 
 export type StripeBusinessParityRecord = {
   paymentIntentId: string

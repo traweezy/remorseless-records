@@ -66,7 +66,7 @@ test("Stripe descriptor parser rejects unscoped or ambiguous rows without leakin
     descriptor([record], 2),
     descriptor([record, record], 2),
     descriptor([{ ...record, providerId: "pp_other" }]),
-    descriptor([{ ...record, medusaAmountMajor: "6.53251" }]),
+    descriptor([{ ...record, medusaAmountMajor: "6.532510000000000000001" }]),
     descriptor([{ ...record, medusaCurrencyCode: "jpy" }]),
     descriptor([{ ...record, taxMatches: 2 }]),
     descriptor([{ ...record, taxAmountMinor: null }]),
@@ -91,6 +91,16 @@ test("Stripe descriptor parser rejects unscoped or ambiguous rows without leakin
         error.message === "Invalid private PostgreSQL Stripe descriptor." &&
         !error.message.includes("pi_private")
     )
+  }
+})
+
+test("Stripe descriptor retains bounded sub-cent precision without rounding", () => {
+  for (const amount of ["6.53251", "6.53251000000000000001"]) {
+    const rows = parsePostgresStripeDescriptor(
+      descriptor([{ ...record, medusaAmountMajor: amount }]),
+      { payments: 1, taxEvidence: 1 }
+    )
+    assert.equal(rows[0].medusaAmountMajor, amount)
   }
 })
 

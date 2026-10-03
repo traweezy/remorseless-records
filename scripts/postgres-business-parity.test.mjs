@@ -274,6 +274,24 @@ test("bounded PostgreSQL fixture identifies relationships without returning IDs"
     assert.equal(baseline.businessReconciled, false)
     assert.ok(!JSON.stringify(baseline).includes("private_canary"))
 
+    // Sub-cent precision is legitimate in Medusa; compare the rounded USD
+    // provider amount while preserving detection of a genuine one-cent drift.
+    for (const [amount, minor, mismatches] of [
+      ["6.53251", 653, 0],
+      ["6.535", 654, 0],
+      ["6.53499", 654, 1],
+      ["6.53499999999999999999", 654, 0],
+      ["-0.001", 0, 1],
+    ]) {
+      await psql(`UPDATE public.payment SET amount = ${amount};
+UPDATE public.tax_quote_evidences SET amount_minor = ${minor};`)
+      const rounded = parseBusinessParityOutput(await psql(businessParitySql))
+      assert.equal(rounded.mismatches.taxAmountUsd, mismatches)
+      assert.equal(rounded.moneyProvenance.mismatchedUsdPairs, mismatches)
+    }
+    await psql(`UPDATE public.payment SET amount = 25.00;
+UPDATE public.tax_quote_evidences SET amount_minor = 2500;`)
+
     await psql(`
 UPDATE public.payment_collection SET deleted_at = now();
 UPDATE public.tax_quote_evidences SET amount_minor = 2501;

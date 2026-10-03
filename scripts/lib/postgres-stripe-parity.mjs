@@ -88,7 +88,7 @@ export const parsePostgresStripeDescriptor = (raw, expectedCounts) => {
       ids.add(record.paymentIntentId)
       assert.match(
         record.medusaAmountMajor,
-        /^(?:0|[1-9]\d{0,9})(?:\.\d{1,4})?$/
+        /^(?:0|[1-9]\d{0,9})(?:\.\d{1,20})?$/
       )
       assert.equal(record.medusaCurrencyCode, "usd")
       assert.ok(record.taxMatches === 0 || record.taxMatches === 1)

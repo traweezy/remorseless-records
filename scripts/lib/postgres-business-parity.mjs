@@ -3,6 +3,9 @@ import assert from "node:assert/strict"
 // This contract is deliberately narrower than the Medusa ledger. The link
 // columns follow the verified staging archive schema and Medusa link modules;
 // an unknown schema fails before any relationship query runs.
+// USD comparisons round positive major-unit values at the cent boundary,
+// matching Math.round(MathBN.mult(amount, 100).toNumber()) in the provider
+// reader. Exact multiplication incorrectly flags valid sub-cent amounts.
 const requiredColumns = {
   cart: ["id", "deleted_at"],
   order: ["id", "deleted_at"],
@@ -135,7 +138,7 @@ WITH
   mismatched_usd_pairs AS MATERIALIZED (
     SELECT * FROM money_pairs
     WHERE lower(tax_currency) = 'usd' AND lower(payment_currency) = 'usd'
-      AND (payment_amount * 100 <> amount_minor OR payment_amount < 0)
+      AND (floor((payment_amount * 100)::double precision + 0.5) <> amount_minor OR payment_amount < 0)
   ),
   scanned AS (SELECT pg_catalog.json_build_object(
     'carts', (SELECT count(*) FROM carts),
@@ -158,10 +161,10 @@ SELECT pg_catalog.json_build_object(
   'moneyProvenance', pg_catalog.json_build_object(
     'matchedTaxPaymentPairs', (SELECT count(*) FROM money_pairs),
     'mismatchedUsdPairs', (SELECT count(*) FROM mismatched_usd_pairs),
-    'mismatchedCaptureScaledMatch', (SELECT count(*) FROM mismatched_usd_pairs WHERE capture_amount * 100 = amount_minor),
-    'mismatchedCollectionScaledMatch', (SELECT count(*) FROM mismatched_usd_pairs WHERE collection_amount * 100 = amount_minor),
-    'mismatchedAuthorizedScaledMatch', (SELECT count(*) FROM mismatched_usd_pairs WHERE authorized_amount * 100 = amount_minor),
-    'mismatchedCollectionCapturedScaledMatch', (SELECT count(*) FROM mismatched_usd_pairs WHERE captured_amount * 100 = amount_minor),
+    'mismatchedCaptureScaledMatch', (SELECT count(*) FROM mismatched_usd_pairs WHERE floor((capture_amount * 100)::double precision + 0.5) = amount_minor),
+    'mismatchedCollectionScaledMatch', (SELECT count(*) FROM mismatched_usd_pairs WHERE floor((collection_amount * 100)::double precision + 0.5) = amount_minor),
+    'mismatchedAuthorizedScaledMatch', (SELECT count(*) FROM mismatched_usd_pairs WHERE floor((authorized_amount * 100)::double precision + 0.5) = amount_minor),
+    'mismatchedCollectionCapturedScaledMatch', (SELECT count(*) FROM mismatched_usd_pairs WHERE floor((captured_amount * 100)::double precision + 0.5) = amount_minor),
     'mismatchedPaymentCaptureMatch', (SELECT count(*) FROM mismatched_usd_pairs WHERE payment_amount = capture_amount),
     'mismatchedProviderDataAmountValid', (SELECT count(*) FROM mismatched_usd_pairs WHERE payment_data->>'amount' ~ '^[0-9]{1,12}$'),
     'mismatchedProviderDataAmountMatchesTax', (SELECT count(*) FROM mismatched_usd_pairs WHERE CASE WHEN payment_data->>'amount' ~ '^[0-9]{1,12}$' THEN (payment_data->>'amount')::numeric = amount_minor ELSE false END),
@@ -185,7 +188,7 @@ SELECT pg_catalog.json_build_object(
     'taxOrderCart', (SELECT count(*) FROM tax t WHERE t.order_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM order_carts l WHERE l.order_id = t.order_id AND l.cart_id = t.cart_id)),
     'taxOrderLink', (SELECT count(DISTINCT t.id) FROM tax t JOIN stripe_payments p ON p.intent_id = t.payment_intent_id WHERE t.order_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM order_collections l WHERE l.order_id = t.order_id AND l.payment_collection_id = p.payment_collection_id)),
     'taxCurrency', (SELECT count(DISTINCT t.id) FROM tax t JOIN stripe_payments p ON p.intent_id = t.payment_intent_id WHERE lower(t.currency_code) <> lower(p.currency_code)),
-    'taxAmountUsd', (SELECT count(DISTINCT t.id) FROM tax t JOIN stripe_payments p ON p.intent_id = t.payment_intent_id WHERE lower(t.currency_code) = 'usd' AND (p.amount * 100 <> t.amount_minor OR p.amount < 0)),
+    'taxAmountUsd', (SELECT count(DISTINCT t.id) FROM tax t JOIN stripe_payments p ON p.intent_id = t.payment_intent_id WHERE lower(t.currency_code) = 'usd' AND (floor((p.amount * 100)::double precision + 0.5) <> t.amount_minor OR p.amount < 0)),
     'unsupportedTaxCurrency', (SELECT count(*) FROM tax t WHERE lower(t.currency_code) <> 'usd'),
     'capturePaymentOrphan', (SELECT count(*) FROM captures c WHERE NOT EXISTS (SELECT 1 FROM payments p WHERE p.id = c.payment_id)),
     'refundPaymentOrphan', (SELECT count(*) FROM refunds r WHERE NOT EXISTS (SELECT 1 FROM payments p WHERE p.id = r.payment_id)),

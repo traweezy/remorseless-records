@@ -149,13 +149,13 @@ describe("bounded Stripe business parity", () => {
     expect(deps.readIntent).not.toHaveBeenCalled()
   })
 
-  it("uses Medusa's four-decimal USD rounding and counts tax/currency drift", async () => {
+  it("rounds sub-cent Medusa USD amounts and counts tax/currency drift", async () => {
     const deps = dependencies()
     const rounded = await readStripeBusinessParity({
       apiKey: "sk_test_private",
       expectedAccountId: "acct_expected",
       records: [
-        { ...records[0]!, medusaAmountMajor: "6.5325", taxAmountMinor: 654 },
+        { ...records[0]!, medusaAmountMajor: "6.53251", taxAmountMinor: 654 },
       ],
       ...deps,
     })
@@ -347,7 +347,7 @@ describe("bounded Stripe business parity", () => {
       [...records, records[0]!],
       [{ ...records[0]!, paymentIntentId: "bad" }],
       [{ ...records[0]!, taxCurrencyCode: null }],
-      [{ ...records[0]!, medusaAmountMajor: "6.53251" }],
+      [{ ...records[0]!, medusaAmountMajor: "6.532510000000000000001" }],
       [{ ...records[0]!, medusaAmountMajor: "-6.53" }],
       [{ ...records[0]!, medusaAmountMajor: "0" }],
       [{ ...records[0]!, medusaCurrencyCode: "jpy" }],
