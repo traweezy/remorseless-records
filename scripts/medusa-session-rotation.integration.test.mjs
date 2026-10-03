@@ -116,7 +116,7 @@ test("pinned Medusa JWT and stored-session rotation matrix", {
     }
   })
   await redis.connect()
-  assert.match(await redis.info("server"), /^redis_version:8\.10\.1\r?$/mu)
+  assert.match(await redis.info("server"), /^redis_version:8\.10\.2\r?$/mu)
 
   const start = async (jwtSecret, cookieSecret) => {
     const app = express()
