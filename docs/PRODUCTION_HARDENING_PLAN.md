@@ -7,16 +7,17 @@ supersedes the local `tmp/HARDENING_NEXT_STEPS.md` working note. Detailed
 operating procedures remain in the linked runbooks and ADRs; this document
 tracks what is still required before production traffic is approved.
 
-## Next-session delivery: seven separate staging batches
+## Next-session delivery: eight separate staging batches
 
-The user specified that each remaining group in the closing report must have
-its own substantial batch push, then identified client staging as missing from
-that summary. Preserve the original six groups and insert client staging
-before production/launch acceptance: seven planned batches in this order.
+The user specified one substantial batch push per group, added client staging,
+then requested an exhaustive Storefront/Admin/Stripe audit before creating the
+client environment. Preserve accepted batches 1–4 and the next maintenance
+batch. Insert the audit as batch 6, move the client clone to batch 7, and move
+production/launch acceptance to batch 8. This supersedes the seven-batch plan.
 
 1. **Accepted at `849abea`: credential isolation and backup access.** Migration
    authority is isolated in a one-shot service, and restricted backup export is
-   integrated. The remaining six numbered groups each retain their own push.
+   integrated. Each subsequent numbered group retains its own batch push.
 2. **Recovery archives accepted at `7352a3b`; native PITR open:** daily Railway
    database/media archives and full timed recovery passed. A supported clean
    PostgreSQL 16 image and timestamp restore are still required for PITR. The
@@ -25,16 +26,23 @@ before production/launch acceptance: seven planned batches in this order.
 3. **Payment/Redis release accepted at `cf1c05c`; carryovers open:** bounded
    Stripe reconciliation, pinned Redis 8.10.2, capacity and AOF replay passed.
    MinIO, Meilisearch, history and provider-control limits remain below.
-4. **Telemetry and diagnostics — in progress:** continuous pool/query windows,
-   bounded indexing, native database statistics and the Next stream-abort fix
-   pass local tests; exact CI and Railway acceptance remain required.
-5. **Credential and dependency maintenance:** finish remaining credential
+4. **Telemetry release accepted at `9a90adc`:** bounded indexing, native
+   database statistics, private timing windows and the Next stream-abort fix
+   passed all 23 CI checks and live acceptance; history/asset limits remain.
+5. **Credential and dependency maintenance (in progress):** finish remaining credential
    rotations and replace the braces mitigation before its November 2 expiry.
-6. **Client testing environment:** directly clone `staging` into a different
+6. **Exhaustive Storefront, Admin and Stripe audit:** inventory and interact
+   with every reachable page, control and supported workflow; inspect layout,
+   consistency, image proportions, cursors and accessibility across devices.
+   Complete real Stripe test-card purchases and Medusa full/partial refunds,
+   verify orders, payments, tax and inventory in Admin and Stripe, fix findings
+   and retest. Follow [the dedicated audit checklist](END_TO_END_AUDIT.md).
+   Accept this batch before creating the client's environment.
+7. **Client testing environment:** directly clone `staging` into a different
    environment in the existing Railway `store` project. Configure the client's
    provider API keys and verify the cloned services/data, Storefront/Admin
    access and sandbox integrations.
-7. **Production and launch acceptance:** complete production infrastructure,
+8. **Production and launch acceptance:** complete production infrastructure,
    tax/financial testing, and business/legal/support approvals.
 
 Use one planned direct-to-`staging` push per numbered group. Collect its
@@ -42,17 +50,22 @@ logical Conventional Commits and complete local verification before pushing;
 do not combine groups or fragment routine work into smaller pushes. A required
 CI/deployment correction remains part of that group's batch. All four
 exact-revision workflows and 23 checks must pass before local work on the next
-batch begins. Both Railway deployments and live acceptance must pass before
-the next batch's push. The release runbook retains the detailed gates.
+batch begins. Exact application deployments, all staging service/job states
+and live acceptance must pass before the next batch's push. The release runbook
+retains the detailed gates.
 
-For batch 6, first accept its exact revision on the owner's staging, then
+For batch 7, first accept its exact revision on the owner's staging, then
 deploy and independently accept that same revision on client staging before
-batch 7's push. The detailed client-clone checklist below defines ownership,
+batch 8's push. The detailed client-clone checklist below defines ownership,
 provider identity, data, rollback and testing requirements. Client testing
 readiness is a separate outcome from production launch approval.
 
-Batch 3's release is accepted at `cf1c05c`; batch 4 is in progress as its own
-substantive staging push and is not yet release-accepted. Batch 2's recovery archive release is
+Batch 4's telemetry release is accepted at `9a90adc`, after all nine staging
+services, completed jobs, runtime boundaries, 70 pool samples, native metrics,
+85 browser cases and zero-stream-error log acceptance. The first browser attempt
+had a retained cold-chunk timeout; the unchanged full repeat passed without
+retries or flakes. Batch 5 is in progress; see the
+[credential maintenance record](CREDENTIAL_ROTATION.md). Batch 2's recovery archive release is
 accepted at `7352a3b`: the deployed runner completed, exited cleanly, and its
 encrypted database/media archive passed a full 205.587-second restore. The
 configured daily schedule's first calendar-triggered run is still due October 4 at 04:00
@@ -84,6 +97,8 @@ October 3 and selected batch 3 while the following batch-2 items remain open.
 | B3-ROLLBACK | Batch 3 / historical image drift | Railway rollback to the retained floating Redis deployment loaded 8.2.1 instead of the former live 8.0.3. Do not use it as an exact-binary rollback. The new 8.10.2 runtime is pinned and its fresh AOF passed isolated load/restart; a native volume restore and a rollback preserving subsequent writes remain separate evidence. |
 | B4-NATIVE-SNAPSHOT | Recovery / provider capacity | PostgreSQL native snapshot creation hit Railway's ten-backup plan limit. Preserve existing snapshots; review retention/capacity separately. A fresh encrypted Railway archive and guarded logical snapshot preceded the same-image database restart. No native restore or fresh native snapshot is implied. |
 | B4-HISTORY | Telemetry / attribution limit | Unbounded catalog transformation is reproducible and now bounded, but the historical 2,856-waiter spike cannot be conclusively attributed retrospectively. Observe the new workload-specific windows and rollout health without raising thresholds. |
+| B4-ASSETS | Browser / cold-load follow-up | The first deployed quick-shop test waited over five seconds for a code chunk and passed on retry. Subsequent asset reads took 79–307 ms and the unchanged 85-case suite passed without retries/flakes. Retain the trace; investigate cold asset latency and an immediate loading affordance before calling the cold-load experience verified. |
+| B5-BRACES | Batch 5 / upstream release unavailable | October 3 review still finds braces 3.0.3 newest and no fixed release for GHSA-vfj7-8cjw-p6xm. Retain the exact all-copy byte/behavior mitigation, raw High finding and November 2 expiry. Replace it only with a reviewed, cooled fixed release and passing consumer/runtime-image regressions; no extension or alert dismissal is implied. |
 
 The archive restore covers current data, not native object-version history or
 provider-outage survival; Railway-only storage is the user's accepted scope.
@@ -93,7 +108,19 @@ infrastructure runbook; do not silently turn them into successful live tests.
 
 ### Latest accepted release
 
-The latest accepted revision is `cf1c05cef000558055e6cc8e33260b7f8424f7ae`.
+The latest accepted revision is `9a90adc06abdbd4a45eb3204581cdd9b19dbf674`.
+All four workflows/23 checks, all nine staging services, completed migration and
+backup jobs, runtime credentials/package checks, native PostgreSQL statistics,
+70 database probes and 85 deployed browser cases passed. Correlated live logs
+contained zero stream-close errors and zero HTTP 5xx. Redis retained one run
+identity for over an hour, with zero OOM events and healthy persistence.
+The first browser attempt's cold-chunk timeout remains `B4-ASSETS`; the unchanged
+full repeat passed without retries/flakes. Detailed IDs, window limits and
+private evidence are in [the handoff](NEXT_SESSION_HANDOFF.md).
+
+### Previous batch 3 acceptance
+
+Batch 3's accepted revision was `cf1c05cef000558055e6cc8e33260b7f8424f7ae`.
 All four workflows/23 checks, final Backend/Storefront/Redis deployments,
 Migrations and RecoveryBackups passed. Seven Stripe payments and both linked
 tax rows match; historical gaps remain. Redis 8.10.2 is pinned with bounded
@@ -402,7 +429,9 @@ provider evidence and legal/business requirements remain open as recorded.
 
 ## Planned initiative — client-isolated staging clone
 
-**Next-session batch 6 — corrected target:** the user explicitly selected a
+**Next-session batch 7 — corrected target:** accept the preceding
+[exhaustive audit batch](END_TO_END_AUDIT.md) before creating this environment.
+The user explicitly selected a
 direct clone of `staging` into another environment in the existing Railway
 `store` project (`1f39263a-25e4-4d69-abc2-f0287b331d1e`), using the client's
 API keys. Source environment ID is `799a2f98-f819-495d-b8b6-12e71af86568`;
@@ -413,7 +442,7 @@ required. It remains its own batch before production/launch acceptance. No
 provisioning was started during the overnight planning update.
 
 **Outcome:** run the same accepted application revision, features and
-seven-service setup as the owner's staging in the cloned environment, with
+complete service/job setup as the owner's staging in the cloned environment, with
 the client's provider accounts/API keys, environment-specific URLs and
 independent service storage. Copy the required test catalog, content and media
 into that storage and verify parity. Review the database/media copy scope and
@@ -460,7 +489,7 @@ subscription or workspace transfer. Verify client provider identity before
 enabling cloned applications or outbound actions.
 
 The [read-only client staging preflight](CLIENT_STAGING_PREFLIGHT.md) currently
-implements the superseded separate-workspace/empty-creation contract. Batch 6
+implements the superseded separate-workspace/empty-creation contract. Batch 7
 must update the preflight, manifest and tests to bind the existing project,
 distinct source/destination environment IDs and direct-clone provenance.
 Retain exact identity, bounded reads, provider-account checks, destination-only
@@ -3572,7 +3601,7 @@ Both commands explicitly reported that no files or database records changed.
       startup processes omit privileged database credentials, and Backend reads
       the protected exact-job/SHA receipt. Portable exports use `app_backup`
       with source-identity reads kept separate. Production acceptance remains
-      part of batch 7.
+      part of batch 8.
 - [x] Require TLS for every non-private database connection.
 - [x] Move Storefront Redis to the Railway private service reference and prove
       exact-deployment port-6379 service flows complete without drops.
@@ -3643,14 +3672,16 @@ Both commands explicitly reported that no files or database records changed.
       off-site backup, isolated restore, and rollback checks before a
       same-digest Quay source cutover;
       the other support images lack equal live-digest proof.
-- [ ] Enable `pg_stat_statements`, slow-query logging, I/O timing, and relevant
+- [x] Enable `pg_stat_statements`, privacy-safe slow-query timing, I/O timing, and relevant
       database/volume metrics with an overhead budget. October 3 batch 4 enabled
       native statement statistics and I/O timing with a 5,000-entry cap and
       planning/utility tracking off, using a same-image restart after a fresh
       Railway recovery archive. Schema-2 preflight adds bounded native counters;
       Backend adds 60-second private timing/pool windows and bounded indexing.
-      Raw SQL logging stays off for privacy. Local fixture/overhead checks pass;
-      exact CI, deployed collection and rollout acceptance remain pending.
+      Raw SQL logging stays off for privacy. Local fixture/overhead checks,
+      all 23 CI checks, deployed windows/native counters and all-service rollout
+      acceptance passed at `9a90adc`. The named native allocation is not proof
+      of total extension memory; no external metrics collector is claimed.
       The native snapshot quota and historical attribution limits remain in
       the carryover register. A September 20 scoped,
       read-only staging inventory found no `pg_stat_statements` preload or
@@ -3676,6 +3707,10 @@ Both commands explicitly reported that no files or database records changed.
       separate pool acquisition from SQL round-trip time. Preserve the single
       HTTP 5xx; measure those two phases and correlate them with indexing on a
       later deploy before changing the 1,000 ms threshold or rollout behavior.
+      Batch 4 bounded product transforms and collected 70 passing rollout
+      samples (maximum acquisition 40 ms, SQL 14 ms, pending zero), plus two
+      private windows with no failed/slow operations. Historical causality and
+      module-owned pools remain outside that evidence (`B4-HISTORY`).
       The readiness probe and sanitized external monitor now expose both phase
       timings, with a real PostgreSQL contract in disposable CI. At the
       `33de0ec` cold deploy, first `/ready` spent 1,859 of 1,866 ms acquiring

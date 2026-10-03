@@ -68,7 +68,8 @@ supports explicit base/head inputs outside PR events.
 6. Wait for Root, Backend, Storefront, and Runtime Images CI to succeed on the
    exact pushed SHA. Once all four pass, local implementation, review, testing,
    and commits for the next batch may begin while Railway finishes deploying.
-7. Wait for both Railway staging services to deploy that exact SHA, then run
+7. Wait for both applications to deploy that exact SHA and verify every
+   staging service and migration/backup job as described below, then run
    health, readiness, route/API, log, and applicable browser acceptance.
    Continue monitoring this release while working on the next batch. Keep the
    next batch local until both deployments and these acceptance checks pass;
@@ -87,18 +88,38 @@ choices, retain their evidence and keep the direct staging/CI/Railway sequence.
 The exact braces mitigation is documented in the QA runbook; do not infer a
 blanket suppression or production authorization from this operating preference.
 
-For the next resumed hardening session, the user requires seven separate batch
+For the next resumed hardening session, the user requires eight separate batch
 pushes matching the numbered groups at the start of
-[the production hardening plan](PRODUCTION_HARDENING_PLAN.md#next-session-delivery-seven-separate-staging-batches).
+[the production hardening plan](PRODUCTION_HARDENING_PLAN.md#next-session-delivery-eight-separate-staging-batches).
 Each group is one substantial direct staging push; preserve the CI/local-work
 and Railway/next-push timing above. Required corrective releases stay within
 their affected batch. Do not combine groups or make routine smaller pushes.
-The added client-staging batch precedes production/launch acceptance. After
-the owner's staging accepts its exact SHA, use a direct clone into a different
+Batch 6 is the [exhaustive Storefront/Admin/Stripe audit](END_TO_END_AUDIT.md),
+including fixes and retests. Its coverage and real sandbox payment/refund
+evidence must be accepted before creating the client environment in batch 7.
+Batch 7 precedes production/launch acceptance in batch 8. After the owner's
+staging accepts batch 7's exact SHA, use a direct clone into a different
 environment in the same existing `store` project, configure the client's
 provider keys, and deploy that same SHA there. Complete its independent
 acceptance before the next batch push. This does not change the owner's
 staging target or the reviewed production release path.
+
+### Monitor every staging deployment
+
+The user's October 3 instruction applies to all staging services, including
+Backend, Storefront, Redis, Postgres, MeiliSearch, Bucket, Console, Migrations
+and RecoveryBackups. Inventory the actual environment again on each release;
+do not assume this list remains exhaustive. Watch deployment and instance
+states throughout rollout, inspect any new crash/restart or failed execution,
+and verify supporting-service logs and application dependency health before
+acceptance. A successful Backend/Storefront pair alone is insufficient.
+
+Unchanged persistent services retain their verified deployment/image identity;
+do not redeploy a database solely to match the application commit. Distinguish
+expected exited one-shot jobs and idle scheduled jobs from crashes. Verify the
+migration completion receipt and the backup execution/archive separately.
+Redis acceptance also requires process uptime/run identity and memory/persistence
+counters, so a successful deployment label cannot hide a restarting process.
 
 ### Read-only release inspection
 

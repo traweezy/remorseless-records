@@ -60,9 +60,11 @@ user data and is excluded from project work.
 | --- | --- |
 | [Next session handoff](NEXT_SESSION_HANDOFF.md) | Current continuation point and exact acceptance evidence |
 | [October 2 security follow-up](SECURITY_FOLLOWUP_2026-10-02.md) | Historical credential revocation, dependency repair, and pending release gates |
+| [Credential rotation](CREDENTIAL_ROTATION.md) | Batch 5 historical exposure audit, reference cleanup, recovery checkpoint and coordinated retirement evidence |
 | [Production hardening plan](PRODUCTION_HARDENING_PLAN.md) | Completed engineering work, open launch blockers, and approval requirements |
 | [Dependency migration audit](DEPENDENCY_MIGRATION_AUDIT_2026-07-23.md) | Package families, cooling, compatibility, exceptions, and migration holds |
 | [QA runbook](QA_RUNBOOK.md) | Local gates, browser scenarios, screenshots, and acceptance procedures |
+| [End-to-end audit](END_TO_END_AUDIT.md) | Batch 6: exhaustive Storefront/Admin interactions, visual review, real Stripe sandbox purchases/refunds, fixes and acceptance before the client clone |
 | [Disposable integration](DISPOSABLE_INTEGRATION.md) | Isolated PostgreSQL/Redis fixtures, scanned image identity, and cleanup |
 | [Release operations](RELEASE_OPERATIONS.md) | Branch authority, grouped staging releases, CI hold, and rollback |
 | [Infrastructure recovery](INFRASTRUCTURE_RECOVERY.md) | Data roles, networking, backups, restores, support images, and production topology |
@@ -104,13 +106,14 @@ contracts before applying generic framework examples from those files.
 ## Verified continuation boundary
 
 Latest accepted release is October 3 UTC at revision
-`cf1c05cef000558055e6cc8e33260b7f8424f7ae`: four workflows/23 checks,
-Backend/Storefront/Redis, Migrations, RecoveryBackups and live/browser acceptance
-passed. Batch 3 delivers payment reconciliation and pinned Redis capacity/AOF
-recovery; supporting-service and earlier recovery carryovers remain open.
-Batch 4, telemetry and diagnostics, is the next separate group and has not
-started. Read the opening handoff and carryover register before continuing.
-Client staging remains batch 6 in the same Railway project.
+`9a90adc06abdbd4a45eb3204581cdd9b19dbf674`: four workflows/23 checks,
+all nine staging services and completed jobs, runtime/telemetry checks and
+live/browser acceptance passed. Batch 4 delivers bounded indexing, database
+telemetry and the Next stream-abort correction. Earlier recovery/support-service
+limits and the cold-asset finding remain in the carryover register.
+Batch 5 (credential/dependency maintenance) is next. The added exhaustive audit
+is batch 6, followed by the client clone in batch 7 and production acceptance
+in batch 8. Read the opening handoff and carryover register before continuing.
 The snapshots below are historical.
 
 At the 07:54 UTC acceptance, the application pair was Backend `33de0ec` and

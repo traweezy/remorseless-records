@@ -2,6 +2,20 @@
 
 This document outlines repeatable steps for validating Remorseless Records before shipping. It covers accessibility & performance, payments, and search consistency. Follow the sections sequentially; each can be run independently when relevant functionality changes.
 
+The user's October 3 exhaustive audit is a separate **batch 6**, after
+credential/dependency maintenance and before the client environment clone.
+Use [END_TO_END_AUDIT.md](END_TO_END_AUDIT.md) for its route/control inventory,
+visual review, actual sandbox purchases/refunds, Admin/Stripe reconciliation,
+findings and completion gate. Existing fixture and smoke suites are inputs to
+that audit; their passing counts do not establish exhaustive live coverage.
+
+Historical credential maintenance uses
+`pnpm run data:staging:credentials:audit -- --require-retired` and the
+[coordinated rotation runbook](CREDENTIAL_ROTATION.md). The command checks
+configuration only; old-key rejection, running-process replacement and native
+session invalidation require separate live evidence. Its offline fixtures are
+part of `qa:secure-artifacts` and the shared CI/lint gate.
+
 ---
 
 ## 1. Accessibility & Performance Sweep

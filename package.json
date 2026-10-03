@@ -40,7 +40,7 @@
     "qa:redis-failed-job-classifier": "node --test --experimental-test-coverage --test-coverage-include=scripts/lib/redis-failed-job-classifier.mjs --test-coverage-lines=80 --test-coverage-branches=80 --test-coverage-functions=80 scripts/redis-failed-job-classifier.test.mjs",
     "qa:redis-pg-evidence-triage": "node --test --experimental-test-coverage --test-coverage-include=scripts/lib/redis-pg-evidence-triage.mjs --test-coverage-lines=80 --test-coverage-branches=80 --test-coverage-functions=80 scripts/redis-pg-evidence-triage.test.mjs",
     "qa:redis-live-aggregate:integration": "node --test scripts/redis-live-queue-aggregate.integration.test.mjs",
-    "qa:secure-artifacts": "node --test scripts/export-category-map.test.mjs",
+    "qa:secure-artifacts": "node --test scripts/export-category-map.test.mjs scripts/staging-credential-audit.test.mjs",
     "qa:browser-toolchain-security": "node scripts/verify-browser-toolchain-security.mjs",
     "qa:storefront-provider-fixture": "node --test storefront/scripts/ci-medusa-fixture.test.mjs",
     "qa:medusa-build-toolchain": "node scripts/verify-medusa-build-toolchain.mjs",
@@ -98,7 +98,8 @@
     "qa:recovery-vault": "node --test --experimental-test-coverage --test-coverage-include=scripts/lib/recovery-vault.mjs --test-coverage-include=scripts/lib/recovery-s3.mjs --test-coverage-lines=80 --test-coverage-branches=80 --test-coverage-functions=80 scripts/recovery-vault.test.mjs scripts/railway-recovery-cli.test.mjs && node --test scripts/recovery-retention.test.mjs scripts/railway-scheduled-backup.test.mjs scripts/scan-recovery-image.test.mjs",
     "data:railway:backup": "node scripts/railway-recovery-backup.mjs",
     "data:railway:restore-drill": "node scripts/railway-recovery-restore.mjs",
-    "data:railway:backup-audit": "node scripts/staging-recovery-audit.mjs"
+    "data:railway:backup-audit": "node scripts/staging-recovery-audit.mjs",
+    "data:staging:credentials:audit": "node scripts/staging-credential-audit.mjs"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.13.0",

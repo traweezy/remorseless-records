@@ -1,5 +1,27 @@
 # Dependency Migration Audit — 2026-07-23
 
+## Batch 5 maintenance — October 3, 2026 UTC
+
+Removed matured cooling exceptions for `@railway/cli@5.45.0` (August 27),
+`multer@2.4.0` (September 14) and `morgan@1.12.1` (September 11) from the root
+and applicable mirrored policies. Their exact versions, security regressions,
+Railway downloader patch and lockfile remain unchanged. The reviewed Next
+16.3.8 / env / SWC exception remains until seven days after the September 30
+16:07 UTC release. The frozen install and 1,797-entry supply-chain check passed.
+
+The [braces advisory](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm) still
+lists no fixed version, and the
+[published package](https://www.npmjs.com/package/braces?activeTab=versions)
+remains 3.0.3. Replacing the mitigation is therefore an explicit `B5-BRACES`
+carryover, not completed maintenance. Preserve the exact existing backport,
+raw scanner finding and November 2 expiry; no exception was extended.
+
+Fresh disposable PostgreSQL/Redis scans used the policy-reviewed Trivy 0.74.0
+binary with an October 3 19:02 UTC database. Both exact images passed. The
+workstation's 0.75.0 scanner was rejected before testing; a separately verified
+official 0.74.0 download was used only for this task, without changing global
+tools or weakening the version gate.
+
 ## Redis security runtime — October 3, 2026
 
 The fixture, AOF checker and persistent staging candidate use

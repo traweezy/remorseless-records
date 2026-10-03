@@ -9,7 +9,11 @@ Use project `1f39263a-25e4-4d69-abc2-f0287b331d1e` and source environment
 `799a2f98-f819-495d-b8b6-12e71af86568`; record the distinct destination ID
 when created. The old dormant project is not the selected target.
 
-Batch 6 must update `scripts/client-staging-preflight.mjs`, its library,
+The clone is now **batch 7**, after the newly requested
+[exhaustive Storefront/Admin/Stripe audit](END_TO_END_AUDIT.md) in batch 6.
+Accept that audit before creating the client environment.
+
+Batch 7 must update `scripts/client-staging-preflight.mjs`, its library,
 manifest contract and tests before using them for this clone. Verify the
 same project, distinct environment IDs, actual duplication provenance,
 destination references/storage, activation controls and client provider

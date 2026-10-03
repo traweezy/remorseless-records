@@ -469,3 +469,14 @@ suppressed in `onRequestError`. See the dependency audit's October 3 backport
 record and `pnpm --filter remorseless-records-storefront run
 test:runtime:observability`. A new stream-close error after deployment remains
 an error to investigate; historical digest `3072950123` is not a blanket waiver.
+
+Batch 4 live acceptance at `9a90adc` observed all nine staging deployments,
+completed migration/backup jobs, and 70 passing database probes (maximum
+acquisition 40 ms, query 14 ms, pending zero). Two full private timing windows
+passed the fixed schema/privacy contract. The first had two unobserved events;
+the next had none. Both contained only application-group activity, so they do
+not prove search/module-owned pool coverage. Native counts and settings passed
+separately. Correlated browser-window logs contained zero stream-close groups
+and zero HTTP 5xx. The final unchanged 85-case browser run had no retries/flakes;
+the retained first attempt had one cold JavaScript-chunk timeout. See the handoff
+and `B4-ASSETS` rather than treating a warm repeat as cold-load latency proof.

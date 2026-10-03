@@ -4,28 +4,111 @@ Last updated: 2026-10-03 (America/New_York)
 
 ## Current continuation — direct staging only
 
-**Batch 3's payment/Redis release is accepted at `cf1c05c`.** Full revision:
-`cf1c05cef000558055e6cc8e33260b7f8424f7ae`. **Batch 4 (telemetry and
-diagnostics) is in progress; its release is not yet accepted.** Batch 3 is not
-fully complete: retain the supporting-service and historical evidence limits in
+**Batch 4 is release-accepted at `9a90adc`.** Full revision:
+`9a90adc06abdbd4a45eb3204581cdd9b19dbf674`. The next planned substantive
+push is **batch 5 (credential/dependency maintenance), now in progress**, followed by **batch 6
+(exhaustive Storefront/Admin/Stripe audit)**, **batch 7 (the client's cloned
+Railway environment)** and **batch 8 (production approval)**. The user added
+the audit before the client clone on October 3. The audit is planned, not executed. Its
+[checklist and completion gate](END_TO_END_AUDIT.md) require every reachable
+control/workflow, visual and image/cursor checks, fresh Stripe test-card
+purchases, native Medusa refunds, independent Admin/Stripe verification,
+fixes and retests. Accept the audit before creating the client environment.
+Keep earlier recovery/support-service limits in
 [the carryover register](PRODUCTION_HARDENING_PLAN.md#carryovers-between-batches).
 
-Batch 4 adds continuous private database timing/pool windows, a process-wide
-search transformation budget, native PostgreSQL statistics/I/O timing, and an
-exact Next 16.3.8 backport for client-aborted RSC streams. Both application
-builds, 287 Backend suites / 2,290 tests, Storefront coverage, the runtime
-cancellation/real-error tests, shared lint/types and the complete disposable
-service suite pass locally. The PostgreSQL 16 preflight fixtures pass all 15
-cases without skips. Preserve the all-four-workflow/23-check gate and exact
-Railway/browser/log acceptance before marking this batch complete.
+Batch 5's [credential maintenance record](CREDENTIAL_ROTATION.md) identifies
+five still-configured historical credential families, the completed private
+Redis-reference cleanup, fresh encrypted backup and coordinated cutover gates.
+The repeatable redacted audit is implemented and its baseline correctly exits
+2 until retirement. No rotation or release acceptance is claimed by this
+pre-push record. Matured Railway CLI, multer and morgan cooling exceptions are
+removed; exact package versions and patches are unchanged. Next 16.3.8 keeps
+its approved exception until October 7. Braces still has no upstream fixed
+release; retain the exact mitigation and November 2 expiry (`B5-BRACES`).
 
-The native PostgreSQL snapshot request hit Railway's ten-backup plan limit;
-no old backups were deleted. A fresh encrypted Railway archive instead completed
-at `2026-10-03T18:50:17.069Z`, snapshot
-`f708bba5-f157-4dbd-984c-386dc22e1fa2`, receipt SHA-256
-`925f08141cde8a813a9e9879770f5ab5637440f0a3cf80334e81de737b528e0d`.
-The guarded logical snapshot also passed. Native snapshot capacity remains a
-carryover; the new archive was not fully restored again.
+Accepted batch 4 bounds catalog transformation concurrency, emits privacy-safe
+60-second database pool/query windows, enables native PostgreSQL statement and
+I/O statistics, and backports the upstream Next 16.3.8 client-abort fix. The
+pinned framework version, health thresholds and database pool size are unchanged.
+Both builds, lint/types, 287 Backend suites / 2,290 tests, Storefront coverage,
+stream cancellation/real-error tests, complete disposable integration, and all
+15 native PostgreSQL 16 preflight fixtures passed locally.
+
+All four exact-revision workflows and all 23 checks passed: Root `37146369901`,
+Backend `37146369880`, Storefront `37146369870`, Runtime Images `37146369931`.
+Successful exact-revision Railway deployments:
+
+- Backend: `74b06e20-9ee8-4b3a-abbf-bc29c910f038`.
+- Storefront: `21ef5230-2df4-40f1-aa21-a252aa930593`.
+- Migrations: `776dfc2c-565b-4903-897e-dd595061c86a`, completed and exited.
+- RecoveryBackups: `6c1031b1-f3b7-45ec-83a9-6170810fe46a`, execution
+  `3fc71ecc-3e91-4b0a-bf4a-9dbb40cd9fbe` completed and exited.
+
+**Watch every staging service**, as the user explicitly required October 3:
+Backend, Storefront, Redis, Postgres, MeiliSearch, Bucket, Console, Migrations
+and RecoveryBackups. All nine were observed through this rollout. The five
+unchanged supporting services remained running; one-shot job exits were verified
+separately. Storefront passed its health check at 19:13:53 UTC but Railway did
+not finish its traffic switch until approximately 19:19 UTC. No blind restart
+or extra deployment was used to bypass that wait. This requirement is now in
+[the release runbook](RELEASE_OPERATIONS.md#monitor-every-staging-deployment).
+
+The reported Redis crash loop belonged to the superseded root-override deployment
+at 18:19–18:21 UTC. The current 8.10.2 process retained the same run identity
+through final inspection, with 3,827 seconds uptime, UID 1000, zero cgroup
+OOM/high/max events, zero evictions/rejected connections and healthy AOF/RDB.
+Its peak cgroup memory was 149,463,040 bytes against the 1 GB service limit.
+The root override remains absent. Keep checking process identity/uptime and
+persistence; a successful deployment label alone cannot prove stability.
+
+All 70 exact-revision database readiness samples passed: the first acquisition
+was 4 ms, maximum acquisition 40 ms, maximum SQL round-trip 14 ms and maximum
+pending acquisitions zero. Two accepted 60-second diagnostics windows recorded
+no failed/slow queries or acquisitions. The first contained two unobserved
+events; the next contained zero. These windows cover the registered application
+pool and had no `search_index` samples; they do not prove all module-owned pool
+activity or retrospectively identify the old 2,856-waiter spike. Native
+statistics had 374 entries / 20,637 calls with no entry evictions; preflight
+confirmed zero deadlocks/temp files and enabled I/O timing. Synthetic observer
+overhead was 0.225 microseconds per lifecycle against the 10-microsecond budget.
+
+Runtime packages, actual `app_runtime`/ancestor credential boundaries, the exact
+migration receipt, restricted notification key, and installed Next patch hash
+passed. The ordinary 19:20 UTC scheduler heartbeat and authenticated catalog
+passed (461 products, 442 discography entries, three shelves). The final browser
+run passed all 85 cases with eight documented skips, zero retries/flakes, and
+inspected desktop/mobile screenshots. Retain the first attempt: one desktop
+quick-shop assertion exceeded five seconds while a JavaScript chunk was still
+in flight; its retry passed. Subsequent fixed-asset fetches returned 200 in
+79–307 ms, then the unchanged full suite passed. Cold asset latency remains
+`B4-ASSETS`; do not describe all attempts as retry-free.
+
+Correlated application log windows from 19:19:50 UTC through
+`2026-10-03T19:26:03.162Z` contained zero HTTP 5xx, zero stream-close groups, no unknown warnings/errors
+and no truncation. Supporting logs were reviewed separately: native PostgreSQL
+checkpoints and MeiliSearch HTTP-200 INFO messages can be labelled `error` by
+Railway's stderr ingestion. The backup's read-only snapshot exporter closes via
+SIGKILL; the matching 19:11:22 client-reset/open-transaction EOF pair is retained,
+with successful archive completion, rather than classified as a server crash.
+
+The new deployed runner published encrypted Railway archive
+`917ecba8-af5a-4df6-83eb-4e7ea7ae81cf` at 19:12:10 UTC with four database files
+and 1,168 media objects; receipt SHA-256
+`26b1a1affb5b2bf41040a438f5592473afd80cb8cc1e45ec9bf5486462a0914d`.
+Archive/retention checks passed; it was not fully restored again. Batch 2's
+205.587-second restore remains the full restore proof. The first calendar run
+remains due October 4 at 04:00 UTC. Native snapshot quota, PITR, supporting-image
+maintenance and historical evidence limits remain open.
+
+Private acceptance: `/tmp/remorseless-batch4-release-acceptance.json`, the
+batch-4 runtime/observe/log/native/Redis records, all-service state history,
+and `/tmp/remorseless-release-batch-browsers-tPqLpL`. The initial browser failure
+is retained in `/tmp/remorseless-release-batch-browsers-T3qRL7`. Closing evidence
+and the expanded monitoring rule are local documentation changes for the next
+substantive push, not a separate routine documentation-only release.
+
+### Previous batch 3 acceptance and carryovers
 
 The user-selected Stripe sandbox **Remorseless Records Staging**
 (`acct_1Rkv3jIM4tTeFQ3W`) independently matched the Backend test key. All seven
@@ -102,7 +185,8 @@ and `/proc` executable inspection were unavailable; its recorded hash is the
 installed server file, with running version/UID/configuration verified separately.
 Closing documentation remains local for the next substantive batch, without a
 routine documentation-only push. Preserve all carryovers and refresh evidence
-before the next release. Client cloning remains batch 6 in this same project.
+before the next release. Client cloning is now batch 7 in this same project,
+after the added audit batch 6.
 
 ### Previous accepted batch 2
 
@@ -243,28 +327,30 @@ application's private connection, not inferred from the SSH loopback tunnel.
 Refresh this evidence before a new release. These closing notes remain local
 for the next substantive batch, without a routine documentation-only push.
 
-### Batch plan: recovery release accepted, PITR still open
+### Current eight-batch delivery plan
 
-The user requires each remaining group to be its own substantial batch.
-Their follow-up added the missing client testing environment: retain the
-original six groups and insert a separate client-staging batch before
-production/launch acceptance, giving seven planned pushes in this order:
+The user requires each group to be its own substantial batch. Their latest
+follow-up adds an exhaustive browser/commerce audit before client staging.
+The resulting eight-batch order supersedes the earlier seven-batch plan:
 
 1. **Accepted:** service-level migration credential isolation and restricted
    backup login integration at `849abea`.
 2. **Recovery archives accepted at `7352a3b`; PITR open:** daily Railway
    database/media archives and timed recovery drills passed. Native PITR needs
    a supported clean PostgreSQL 16 image and an accepted timestamp restore.
-3. Queue/payment reconciliation, Redis capacity, and supporting-service image
-   pinning/upgrades.
-4. Database telemetry, pool-contention investigation, and Storefront
-   stream-close diagnostics.
+3. **Release accepted at `cf1c05c`; carryovers open:** payment reconciliation,
+   Redis capacity/persistence and supporting-service images.
+4. **Release accepted at `9a90adc`; carryovers open:** database telemetry,
+   bounded indexing and the Storefront stream-abort correction.
 5. Remaining credential rotations and replacement of the braces mitigation
    before its November 2 exception expires.
-6. Client staging: directly clone the existing `staging` environment into a
+6. Exhaustive Storefront, Admin and Stripe sandbox audit, fixes and retests.
+   Follow [END_TO_END_AUDIT.md](END_TO_END_AUDIT.md); existing smoke/fixture
+   passes do not complete this batch. Include the `B4-ASSETS` cold-load issue.
+7. Client staging: directly clone the existing `staging` environment into a
    different environment in the same Railway `store` project, then configure
    the client's provider API keys and verify the cloned services/data.
-7. Production infrastructure, tax/financial testing, and business/legal/support
+8. Production infrastructure, tax/financial testing, and business/legal/support
    approvals.
 
 Each numbered group gets one planned batch push directly to `staging`, with
@@ -274,15 +360,16 @@ Required corrections to failed CI/deployment stay with the affected batch,
 under the existing corrective-release rule.
 
 Watch all four exact-revision workflows and 23 required checks. The next batch
-may start locally once CI passes, but its push must wait for both Railway
-deployments and live acceptance of the preceding batch. Continue through the
-remaining groups only within the current user request; this request selects
-batch 2.
+may start locally once CI passes, but its push must wait for exact application
+deployments, every staging service/job and live acceptance of the preceding
+batch. Do not create the client environment until batch 6's audit is accepted.
+Continue only within the current user request; this update records the new
+batch without starting its execution or the next maintenance batch.
 Keep external prerequisites and outstanding approvals explicit rather than
 claiming an incomplete group is finished. The detailed scope and acceptance
 remain in the production hardening plan and affected runbooks.
 
-Batch 6 must deliver working client Storefront/Admin access and verified
+Batch 7 must deliver working client Storefront/Admin access and verified
 client-only sandbox checkout, provider integrations and environment isolation.
 The user's latest correction selects the existing `store` project
 (`1f39263a-25e4-4d69-abc2-f0287b331d1e`) and direct environment duplication
@@ -297,7 +384,7 @@ activation, and verify environment references and independent storage.
 
 The existing client preflight still enforces the superseded separate-workspace,
 empty-creation contract. Updating it and its tests to verify the selected
-same-project clone is part of batch 6; its current rejection is not grounds
+same-project clone is part of batch 7; its current rejection is not grounds
 to revert the user's topology choice. Use the detailed
 [client staging plan](PRODUCTION_HARDENING_PLAN.md#planned-initiative--client-isolated-staging-clone)
 and [preflight](CLIENT_STAGING_PREFLIGHT.md). Keep this separate from production

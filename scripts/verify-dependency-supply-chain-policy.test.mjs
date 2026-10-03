@@ -227,9 +227,9 @@ describe("dependency supply-chain policy", () => {
         "utf8"
       )
     )
-    policy.coolingWindowExceptions[0].selector = "@railway/cli@^5.45.0"
+    policy.coolingWindowExceptions[0].selector = "next@^16.3.8"
     assert.throws(() => validatePolicyManifest(policy))
-    policy.coolingWindowExceptions[0].selector = "@railway/cli@5.45.0"
+    policy.coolingWindowExceptions[0].selector = "next@16.3.8"
     policy.auditIgnores[0].evidence = []
     assert.throws(() => validatePolicyManifest(policy))
   })

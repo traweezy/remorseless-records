@@ -24,12 +24,7 @@ const approvedNextCoolingSelectors = [
   "@next/swc-linux-arm64-musl@16.3.8",
   "@next/swc-win32-arm64-msvc@16.3.8",
 ]
-const approvedCoolingSelectors = [
-  "@railway/cli@5.45.0",
-  "multer@2.4.0",
-  "morgan@1.12.1",
-  ...approvedNextCoolingSelectors,
-]
+const approvedCoolingSelectors = approvedNextCoolingSelectors
 
 const parseYamlScalar = (source) => {
   const value = source.trim()
@@ -271,11 +266,7 @@ export const verifyDependencySupplyChainPolicy = () => {
     "utf8"
   )
   validateWorkspacePolicy(rootWorkspace, selectors, "root workspace")
-  const applicationCoolingExceptions = [
-    "multer@2.4.0",
-    "morgan@1.12.1",
-    ...approvedNextCoolingSelectors,
-  ]
+  const applicationCoolingExceptions = approvedNextCoolingSelectors
   validateWorkspacePolicy(
     backendWorkspace,
     applicationCoolingExceptions,
