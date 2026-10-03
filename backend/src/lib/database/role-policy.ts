@@ -12,11 +12,13 @@ export type DatabaseRoleFacts = {
   effectiveReadAllData: boolean
   membershipAdmin: boolean
   ownsObjects: boolean
+  parameterPrivileges: boolean
   privilegedMembership: boolean
   readAllData: boolean
   reachablePrivilegedRole: boolean
   replication: boolean
   schemaCreate: boolean
+  securityDefinerExecute: boolean
   superuser: boolean
   tls: boolean
   transport: DatabaseConnectionTransport
@@ -33,6 +35,8 @@ const privilegedAttributeErrors = (facts: DatabaseRoleFacts): string[] => [
   ...(facts.reachablePrivilegedRole ? ["reachable_privileged_role"] : []),
   ...(facts.privilegedMembership ? ["privileged_membership"] : []),
   ...(facts.membershipAdmin ? ["membership_admin"] : []),
+  ...(facts.parameterPrivileges ? ["parameter_privileges"] : []),
+  ...(facts.securityDefinerExecute ? ["security_definer_execute"] : []),
 ]
 
 export const evaluateDatabaseRole = (

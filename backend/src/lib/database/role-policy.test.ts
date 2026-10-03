@@ -16,11 +16,13 @@ const safeFacts = (
   effectiveReadAllData: false,
   membershipAdmin: false,
   ownsObjects: false,
+  parameterPrivileges: false,
   privilegedMembership: false,
   readAllData: false,
   replication: false,
   reachablePrivilegedRole: false,
   schemaCreate: false,
+  securityDefinerExecute: false,
   superuser: false,
   tls: false,
   transport: "railway_private",
@@ -183,4 +185,21 @@ describe("database role policy", () => {
       })
     ).toEqual(["backup_has_write_privileges"])
   })
+
+  it.each(["runtime", "migration", "backup"] as const)(
+    "rejects configuration and definer authority for %s",
+    (profile) => {
+      expect(
+        evaluateDatabaseRole(
+          profile,
+          safeFacts({
+            parameterPrivileges: true,
+            securityDefinerExecute: true,
+            readAllData: profile === "backup",
+            effectiveReadAllData: profile === "backup",
+          })
+        )
+      ).toEqual(["parameter_privileges", "security_definer_execute"])
+    }
+  )
 })

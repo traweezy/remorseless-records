@@ -9,7 +9,8 @@ import type { PostgreSqlClient } from "./standalone-postgres"
 // SET follows SET-enabled membership chains; USAGE checks inherited privileges.
 // Checking MEMBER alone misses NOINHERIT escalation and can accept an unusable
 // backup identity. Each reachable principal can also inherit object privileges.
-// This is a bounded capability inventory, not a SECURITY DEFINER/function audit.
+// Executable SECURITY DEFINER routines require review before any narrow role
+// is accepted; checking login flags alone cannot prove their effective power.
 // https://www.postgresql.org/docs/18/functions-info.html#FUNCTIONS-INFO-ACCESS-TABLE
 // has_largeobject_privilege was added in PostgreSQL 18; inspect the same ACL
 // semantics directly so the live PostgreSQL 16 source remains auditable.
@@ -73,6 +74,19 @@ select
     where pg_catalog.pg_has_role(principals.oid, administrable.oid, 'MEMBER WITH ADMIN OPTION')
   ) as membership_admin,
   exists (
+    select 1 from principals cross join pg_catalog.pg_parameter_acl as parameter
+    cross join lateral pg_catalog.aclexplode(parameter.paracl) as privilege
+    where privilege.privilege_type in ('SET', 'ALTER SYSTEM')
+      and case when privilege.grantee = 0 then true
+        else pg_catalog.pg_has_role(principals.oid, privilege.grantee, 'USAGE')
+      end
+  ) as parameter_privileges,
+  exists (
+    select 1 from principals cross join pg_catalog.pg_proc as routine
+    where routine.prosecdef
+      and pg_catalog.has_function_privilege(principals.oid, routine.oid, 'EXECUTE')
+  ) as security_definer_execute,
+  exists (
     select 1 from principals cross join current_database_record as database
     where pg_catalog.has_database_privilege(principals.oid, database.oid, 'CREATE')
   ) as database_create,
@@ -119,11 +133,13 @@ const booleanColumns = [
   "effective_read_all_data",
   "membership_admin",
   "owns_objects",
+  "parameter_privileges",
   "privileged_membership",
   "read_all_data",
   "reachable_privileged_role",
   "replication",
   "schema_create",
+  "security_definer_execute",
   "superuser",
   "tls",
   "write_all_data",
@@ -163,11 +179,13 @@ export const inspectDatabaseRole = async (
     effectiveReadAllData: row.effective_read_all_data,
     membershipAdmin: row.membership_admin,
     ownsObjects: row.owns_objects,
+    parameterPrivileges: row.parameter_privileges,
     privilegedMembership: row.privileged_membership,
     readAllData: row.read_all_data,
     reachablePrivilegedRole: row.reachable_privileged_role,
     replication: row.replication,
     schemaCreate: row.schema_create,
+    securityDefinerExecute: row.security_definer_execute,
     superuser: row.superuser,
     tls: row.tls,
     transport,

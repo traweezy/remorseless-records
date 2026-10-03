@@ -70,6 +70,101 @@ afterAll(async () => {
 })
 
 describe("real PostgreSQL role audit", () => {
+  it.each([
+    "grant set on parameter lo_compat_privileges to rr_audit_subject",
+    "grant set on parameter session_replication_role to public",
+    "grant alter system on parameter work_mem to rr_audit_subject",
+    "grant set on parameter rr_audit.extension_setting to rr_audit_subject",
+    `grant set on parameter lo_compat_privileges to rr_audit_bridge;
+     grant rr_audit_bridge to rr_audit_subject with inherit true, set false`,
+    `grant alter system on parameter work_mem to rr_audit_owner;
+     grant rr_audit_owner to rr_audit_bridge with inherit true, set false;
+     grant rr_audit_bridge to rr_audit_subject with inherit false, set true`,
+  ])("rejects parameter authority outside role flags: %s", async (setup) => {
+    await client.query(setup)
+    expect((await inspectFixture()).reasons).toContain("parameter_privileges")
+  })
+
+  it("rejects a backup role that can enable the large-object ACL bypass", async () => {
+    await client.query(`
+      grant pg_read_all_data to rr_audit_subject;
+      grant set on parameter lo_compat_privileges to rr_audit_subject;
+    `)
+    expect((await inspectFixture("backup")).reasons).toEqual([
+      "parameter_privileges",
+    ])
+    // Prove the granted capability, without changing persistent configuration.
+    await client.query("set local lo_compat_privileges = on")
+    const result = await client.query<{ enabled: string }>(
+      "select current_setting('lo_compat_privileges') as enabled"
+    )
+    expect(result.rows).toEqual([{ enabled: "on" }])
+  })
+
+  it("does not treat an inert parameter grantee as effective authority", async () => {
+    await client.query(`
+      grant set on parameter lo_compat_privileges to rr_audit_bridge;
+      grant rr_audit_bridge to rr_audit_subject with inherit false, set false;
+    `)
+    expect((await inspectFixture()).reasons).toEqual([])
+  })
+
+  it("preserves ordinary session settings without administrative grants", async () => {
+    expect((await inspectFixture()).reasons).toEqual([])
+    await client.query("set local work_mem = '4MB'")
+  })
+
+  it.each(["runtime", "migration", "backup"] as const)(
+    "rejects public definer execution for %s before inspecting function behavior",
+    async (profile) => {
+      await client.query(`
+        create function rr_audit_fixture.authority() returns text
+          language sql security definer set search_path = pg_catalog
+          as 'select current_user::text';
+      `)
+      if (profile === "backup")
+        await client.query("grant pg_read_all_data to rr_audit_subject")
+      expect((await inspectFixture(profile)).reasons).toEqual([
+        "security_definer_execute",
+      ])
+      const result = await client.query<{ authority: string }>(
+        "select rr_audit_fixture.authority()"
+      )
+      expect(result.rows).toEqual([{ authority: "postgres" }])
+    }
+  )
+
+  it.each([
+    "grant execute on function rr_audit_fixture.authority() to rr_audit_subject",
+    `grant execute on function rr_audit_fixture.authority() to rr_audit_bridge;
+     grant rr_audit_bridge to rr_audit_subject with inherit true, set false`,
+    `grant execute on function rr_audit_fixture.authority() to rr_audit_bridge;
+     grant rr_audit_bridge to rr_audit_subject with inherit false, set true`,
+  ])("detects explicit or reachable definer execution: %s", async (grant) => {
+    await client.query(`
+      create function rr_audit_fixture.authority() returns integer
+        language sql security definer as 'select 42';
+      revoke execute on function rr_audit_fixture.authority() from public;
+      ${grant};
+    `)
+    expect((await inspectFixture()).reasons).toEqual([
+      "security_definer_execute",
+    ])
+  })
+
+  it("accepts revoked definer execution and public invoker functions", async () => {
+    await client.query(`
+      create function rr_audit_fixture.authority() returns integer
+        language sql security definer as 'select 42';
+      revoke execute on function rr_audit_fixture.authority() from public;
+      grant execute on function rr_audit_fixture.authority() to rr_audit_bridge;
+      grant rr_audit_bridge to rr_audit_subject with inherit false, set false;
+      create function rr_audit_fixture.ordinary() returns integer
+        language sql security invoker as 'select 7';
+    `)
+    expect((await inspectFixture()).reasons).toEqual([])
+  })
+
   it("accepts a non-owning runtime with only application DML and sequence use", async () => {
     await client.query(`
       grant select, insert, update, delete on rr_audit_fixture.records to rr_audit_subject;
