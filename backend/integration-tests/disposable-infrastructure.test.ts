@@ -2,6 +2,7 @@ import {
   createShippingOptionsWorkflow,
   createApiKeysWorkflow,
   linkSalesChannelsToApiKeyWorkflow,
+  refundPaymentsWorkflow,
 } from "@medusajs/core-flows"
 import { loadStoreCatalogPresentations } from "../src/lib/catalog/store-presentation"
 import { loadProductAuthoringView } from "../src/lib/catalog/product-authoring-view"
@@ -14,8 +15,16 @@ import type {
   ISalesChannelModuleService,
   IStockLocationService,
   IProductModuleService,
+  IPaymentModuleService,
+  IEventBusModuleService,
+  IOrderModuleService,
+  CreateNotificationDTO,
 } from "@medusajs/framework/types"
-import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
+import {
+  ContainerRegistrationKeys,
+  Modules,
+  PaymentEvents,
+} from "@medusajs/framework/utils"
 import { medusaIntegrationTestRunner } from "@medusajs/test-utils"
 import { knex, type Knex } from "@mikro-orm/knex"
 import { createClient } from "redis"
@@ -52,6 +61,8 @@ import {
 import { PAYMENT_LIFECYCLE_MODULE } from "../src/modules/payment-lifecycle/constants"
 import type PaymentLifecycleModuleService from "../src/modules/payment-lifecycle/service"
 import type TaxControlModuleService from "../src/modules/tax-control/service"
+import { buildRefundNotificationPayloads } from "../src/lib/refund-operations/notification"
+import fulfillmentStatusHandler from "../src/subscribers/fulfillment-status"
 
 const databaseName = "rr_disposable_integration"
 const redisUrl = process.env.REDIS_URL?.trim()
@@ -984,6 +995,258 @@ medusaIntegrationTestRunner({
             to_collection_mode: "disabled",
           },
         ])
+      })
+
+      it("resolves the native fulfillment/order link before stage notification and replay", async () => {
+        const container = getContainer()
+        const orders = container.resolve<IOrderModuleService>(Modules.ORDER)
+        const fulfillments = container.resolve<IFulfillmentModuleService>(
+          Modules.FULFILLMENT
+        )
+        const locations = container.resolve<IStockLocationService>(
+          Modules.STOCK_LOCATION
+        )
+        const location = await locations.createStockLocations({
+          name: "Notification fixture",
+        })
+        const order = await orders.createOrders({
+          currency_code: "usd",
+          email: "delivered@resend.dev",
+          items: [],
+        })
+        const fulfillment = await fulfillments.createFulfillment({
+          location_id: location.id,
+          provider_id: "per_item_standard",
+          delivery_address: {
+            address_1: "Synthetic fixture",
+            country_code: "us",
+          },
+          items: [
+            {
+              title: "Synthetic shipment",
+              sku: "NOTIFICATION-TEST",
+              barcode: "TEST",
+              quantity: 1,
+            },
+          ],
+        })
+        await container.resolve(ContainerRegistrationKeys.LINK).create({
+          [Modules.ORDER]: { order_id: order.id },
+          [Modules.FULFILLMENT]: { fulfillment_id: fulfillment.id },
+        })
+        // Only outbound email is stubbed. Graph, native relations and stage
+        // timestamps use the actual disposable Medusa/PostgreSQL modules.
+        const rows = new Map<string, Record<string, unknown>>()
+        const notification = {
+          createNotifications: async (payloads: CreateNotificationDTO[]) => {
+            const created = []
+            for (const payload of payloads) {
+              const key = payload.idempotency_key!
+              if (rows.has(key)) continue
+              const row = {
+                ...payload,
+                id: `noti_${rows.size + 1}`,
+                external_id: `email_${rows.size + 1}`,
+                provider_id: "fixture_resend",
+                status: "success",
+                created_at: new Date(),
+              }
+              rows.set(key, row)
+              created.push(row)
+            }
+            return created
+          },
+          listNotifications: async ({
+            idempotency_key: keys,
+          }: {
+            idempotency_key: string[]
+          }) => keys.flatMap((key) => (rows.has(key) ? [rows.get(key)!] : [])),
+          retrieveNotification: async (id: string) =>
+            [...rows.values()].find((row) => row.id === id),
+          updateNotifications: async () => null,
+        }
+        const invoke = async (name: string, no_notification = false) =>
+          fulfillmentStatusHandler({
+            container: {
+              resolve: (key: string) =>
+                key === Modules.NOTIFICATION
+                  ? notification
+                  : container.resolve(key),
+            },
+            event: {
+              name,
+              data:
+                name === "order.fulfillment_created"
+                  ? {
+                      id: order.id,
+                      fulfillment_id: fulfillment.id,
+                      no_notification,
+                    }
+                  : { id: fulfillment.id, no_notification },
+            },
+          } as unknown as Parameters<typeof fulfillmentStatusHandler>[0])
+        await invoke("order.fulfillment_created", true)
+        expect(rows.size).toBe(0)
+        await invoke("order.fulfillment_created")
+        await invoke("order.fulfillment_created")
+        expect(rows.size).toBe(1)
+        await expect(invoke("shipment.created")).rejects.toThrow(
+          /Fulfillment notification/
+        )
+        expect(rows.size).toBe(1)
+        await fulfillments.updateFulfillment(fulfillment.id, {
+          shipped_at: new Date(),
+        })
+        await invoke("shipment.created")
+        await fulfillments.updateFulfillment(fulfillment.id, {
+          delivered_at: new Date(),
+        })
+        await invoke("delivery.created")
+        await invoke("delivery.created")
+        expect([...rows.keys()]).toEqual(
+          ["prepared", "shipped", "delivered"].map(
+            (status) => `fulfillment-status:${fulfillment.id}:${status}`
+          )
+        )
+        expect(
+          [...rows.values()].every((row) => row.resource_id === order.id)
+        ).toBe(true)
+        await expect(
+          fulfillments.cancelFulfillment(fulfillment.id)
+        ).rejects.toThrow("already shipped")
+        const canceled = await fulfillments.createFulfillment({
+          location_id: location.id,
+          provider_id: "per_item_standard",
+          delivery_address: {
+            address_1: "Synthetic fixture",
+            country_code: "us",
+          },
+          items: [
+            {
+              title: "Canceled synthetic shipment",
+              sku: "CANCEL-TEST",
+              barcode: "TEST",
+              quantity: 1,
+            },
+          ],
+        })
+        await container.resolve(ContainerRegistrationKeys.LINK).create({
+          [Modules.ORDER]: { order_id: order.id },
+          [Modules.FULFILLMENT]: { fulfillment_id: canceled.id },
+        })
+        await fulfillments.cancelFulfillment(canceled.id)
+        await fulfillmentStatusHandler({
+          container: {
+            resolve: (key: string) =>
+              key === Modules.NOTIFICATION
+                ? notification
+                : container.resolve(key),
+          },
+          event: {
+            name: "order.fulfillment_created",
+            data: {
+              id: order.id,
+              fulfillment_id: canceled.id,
+              no_notification: false,
+            },
+          },
+        } as unknown as Parameters<typeof fulfillmentStatusHandler>[0])
+        expect(rows.size).toBe(3)
+      })
+
+      it("emits bulk refund events after native persistence and rejects excess refunds", async () => {
+        const container = getContainer()
+        const payments = container.resolve<IPaymentModuleService>(
+          Modules.PAYMENT
+        )
+        const events = container.resolve<IEventBusModuleService>(
+          Modules.EVENT_BUS
+        )
+        const collection = await payments.createPaymentCollections({
+          amount: 6.23,
+          currency_code: "usd",
+        })
+        const session = await payments.createPaymentSession(collection.id, {
+          amount: 6.23,
+          currency_code: "usd",
+          provider_id: "pp_system_default",
+          data: {},
+          context: {},
+        })
+        const payment = await payments.authorizePaymentSession(session.id, {})
+        if (!payment)
+          throw new Error("Native fixture payment was not authorized.")
+        await payments.capturePayment({ payment_id: payment.id, amount: 6.23 })
+        const received: string[] = []
+        const emit = jest
+          .spyOn(events, "emit")
+          .mockImplementation(async (input) => {
+            for (const event of Array.isArray(input) ? input : [input]) {
+              if (event.name !== PaymentEvents.REFUNDED) continue
+              const data = recordFrom(event.data, "Refund event")
+              expect(data.id).toBe(payment.id)
+              const persisted = await payments.retrievePayment(payment.id, {
+                relations: ["refunds"],
+              })
+              expect(persisted.refunds).toHaveLength(received.length + 1)
+              expect(
+                persisted.refunds?.every((refund) => /^ref_/.test(refund.id))
+              ).toBe(true)
+              received.push(payment.id)
+            }
+          })
+        try {
+          for (const amount of [1, 4, 1.23]) {
+            const { result } = await refundPaymentsWorkflow(container).run({
+              input: [{ payment_id: payment.id, amount }],
+            })
+            expect(result.map((row) => row.id)).toEqual([payment.id])
+          }
+          expect(received).toEqual([payment.id, payment.id, payment.id])
+          const persisted = await payments.retrievePayment(payment.id, {
+            relations: ["refunds"],
+          })
+          const payloads = buildRefundNotificationPayloads({
+            context: {
+              currencyCode: "usd",
+              email: "customer@example.com",
+              customerId: null,
+              referenceLabel: "your checkout payment",
+              refunds: (persisted.refunds ?? []).map((refund) => ({
+                id: refund.id,
+                amount: refund.amount,
+              })),
+              resourceId: "cart_disposable",
+              resourceType: "cart",
+            },
+            template: "refund-issued",
+          })
+          expect(payloads).toHaveLength(3)
+          expect(new Set(payloads.map((row) => row.idempotency_key)).size).toBe(
+            3
+          )
+          const before = received.length
+          const rejected = await refundPaymentsWorkflow(container).run({
+            input: [{ payment_id: payment.id, amount: 0.02 }],
+            throwOnError: false,
+          })
+          expect(rejected.errors).toHaveLength(1)
+          expect(rejected.errors[0]?.error).toMatchObject({
+            message: expect.stringContaining(
+              "greater than the refundable amount"
+            ),
+          })
+          expect(received).toHaveLength(before)
+          expect(
+            (
+              await payments.retrievePayment(payment.id, {
+                relations: ["refunds"],
+              })
+            ).refunds
+          ).toHaveLength(3)
+        } finally {
+          emit.mockRestore()
+        }
       })
 
       it("persists an idempotent payment failure and bounded retry", async () => {

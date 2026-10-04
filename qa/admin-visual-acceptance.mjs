@@ -87,6 +87,41 @@ if (
 }
 
 const timestamp = "2026-08-30T12:00:00.000Z"
+const pendingTaxRecord = {
+  collectionMode: "disabled",
+  currencyCode: "usd",
+  destination: {
+    city: "Hartford",
+    countryCode: "US",
+    county: null,
+    jurisdictionLevel: null,
+    jurisdictionName: null,
+    postalCode: "06103",
+    stateCode: "CT",
+  },
+  displayId: 9,
+  generation: 2,
+  grossSales: "9.07",
+  id: "tax_record_acceptance",
+  issues: [
+    "Tax was not collected for this order; confirm the operating decision and filing treatment.",
+  ],
+  nontaxableSales: "0.00",
+  occurredAt: "2026-10-04T14:36:00.000Z",
+  orderId: "order_acceptance",
+  provider: "not_applicable",
+  quality: "review",
+  refundId: null,
+  refundCreditTiming: null,
+  refundTaxMethod: null,
+  taxAmount: "0.00",
+  taxableSales: "0.00",
+  taxCalculationId: null,
+  taxRatePercent: null,
+  total: "9.07",
+  type: "sale",
+  unclassifiedSales: "9.07",
+}
 const mediaFixtureUrl = "https://assets.acceptance.invalid/fixture-cover.svg"
 const mediaFixtureSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96"><rect width="96" height="96" fill="#17171a"/><circle cx="48" cy="48" r="32" fill="#f59e0b"/><circle cx="48" cy="48" r="11" fill="#17171a"/><text x="48" y="89" fill="#ffffff" font-family="sans-serif" font-size="10" text-anchor="middle">RR</text></svg>`
 const product = {
@@ -124,6 +159,126 @@ const paged = (key, values = []) => ({
   offset: 0,
 })
 
+// A pre-existing native draft exercises RMA rendering without an initialization
+// mutation. The acceptance server continues to reject every write request.
+const rmaItem = {
+  id: "ordli_acceptance",
+  created_at: timestamp,
+  title: "M",
+  product_title: "Acceptance Shirt",
+  product_id: "product_acceptance",
+  variant_id: "variant_acceptance",
+  variant_title: "M",
+  variant_sku: "ACCEPTANCE-M",
+  thumbnail: null,
+  quantity: 1,
+  unit_price: 2.34,
+  subtotal: 2.34,
+  total: 2.34,
+  original_total: 2.34,
+  refundable_total: 2.34,
+  tax_total: 0,
+  discount_total: 0,
+  adjustments: [],
+  tax_lines: [],
+  requires_shipping: true,
+  variant: {
+    id: "variant_acceptance",
+    title: "M",
+    manage_inventory: false,
+    product: { id: "product_acceptance", title: "Acceptance Shirt" },
+  },
+  detail: {
+    quantity: 1,
+    fulfilled_quantity: 1,
+    shipped_quantity: 1,
+    delivered_quantity: 1,
+    return_requested_quantity: 0,
+    return_received_quantity: 0,
+    return_dismissed_quantity: 0,
+  },
+}
+const rmaChange = {
+  id: "ordch_acceptance",
+  order_id: "order_acceptance",
+  change_type: "exchange",
+  status: "pending",
+  exchange_id: "oexc_acceptance",
+  return_id: "return_acceptance",
+  actions: [],
+}
+const rmaOrder = {
+  id: "order_acceptance",
+  display_id: 9,
+  created_at: timestamp,
+  updated_at: timestamp,
+  status: "pending",
+  payment_status: "captured",
+  fulfillment_status: "delivered",
+  currency_code: "usd",
+  email: "acceptance@example.invalid",
+  customer_id: null,
+  customer: null,
+  metadata: {},
+  version: 1,
+  region: { id: "region_acceptance", name: "United States" },
+  sales_channel: { id: "sc_acceptance", name: "Acceptance" },
+  items: [rmaItem],
+  shipping_methods: [],
+  payment_collections: [],
+  fulfillments: [],
+  returns: [],
+  claims: [],
+  exchanges: [],
+  transactions: [],
+  promotions: [],
+  order_change: null,
+  summary: {
+    paid_total: 2.34,
+    refunded_total: 0,
+    accounting_total: 2.34,
+    original_order_total: 2.34,
+    current_order_total: 2.34,
+    transaction_total: 2.34,
+    pending_difference: 0,
+  },
+  total: 2.34,
+  subtotal: 2.34,
+  item_total: 2.34,
+  item_subtotal: 2.34,
+  item_tax_total: 0,
+  item_discount_total: 0,
+  shipping_total: 0,
+  shipping_subtotal: 0,
+  shipping_tax_total: 0,
+  shipping_discount_total: 0,
+  tax_total: 0,
+  discount_total: 0,
+  credit_line_total: 0,
+  credit_lines: [],
+}
+const rmaPreview = {
+  ...rmaOrder,
+  order_change: rmaChange,
+  items: [
+    {
+      ...rmaItem,
+      return_requested_total: 2.34,
+      detail: { ...rmaItem.detail, return_requested_quantity: 1 },
+      actions: [
+        {
+          id: "ordchact_acceptance",
+          action: "RETURN_ITEM",
+          exchange_id: "oexc_acceptance",
+          return_id: "return_acceptance",
+          internal_note: "",
+          details: { reason_id: "", quantity: 1 },
+        },
+      ],
+    },
+  ],
+}
+
 const listKeyByPath = new Map([
   ["/admin/api-keys", "api_keys"],
   ["/admin/campaigns", "campaigns"],
@@ -151,6 +306,48 @@ const listKeyByPath = new Map([
 
 const fixtureFor = (url) => {
   const { pathname } = url
+  if (pathname === "/admin/orders/order_acceptance") {
+    return { order: rmaOrder }
+  }
+  if (pathname === "/admin/orders/order_acceptance/preview") {
+    return { order: rmaPreview }
+  }
+  if (pathname === "/admin/exchanges/oexc_acceptance") {
+    return {
+      exchange: {
+        id: "oexc_acceptance",
+        order_id: "order_acceptance",
+        return_id: "return_acceptance",
+        display_id: 1,
+        created_at: timestamp,
+        additional_items: [],
+        return_items: [],
+        shipping_methods: [],
+        canceled_at: null,
+      },
+    }
+  }
+  if (pathname === "/admin/returns/return_acceptance") {
+    return {
+      return: {
+        id: "return_acceptance",
+        order_id: "order_acceptance",
+        status: "requested",
+        location_id: null,
+        items: [],
+        shipping_methods: [],
+      },
+    }
+  }
+  if (pathname === "/admin/plugins") return { plugins: [] }
+  if (pathname === "/admin/reservations") return paged("reservations")
+  if (pathname === "/admin/returns") return paged("returns")
+  if (pathname === "/admin/stock-locations") {
+    return paged("stock_locations", [
+      { id: "sloc_acceptance", name: "Acceptance HQ" },
+    ])
+  }
+  if (pathname === "/admin/shipping-options") return paged("shipping_options")
   if (pathname === "/admin/users/me") {
     return {
       user: {
@@ -537,11 +734,11 @@ const fixtureFor = (url) => {
         startDate: url.searchParams.get("start") ?? "2026-07-01",
         endDate: url.searchParams.get("end") ?? "2026-10-01",
       }),
-      records: [],
-      resultCount: 0,
+      records: setup === "tax-record-classification" ? [pendingTaxRecord] : [],
+      resultCount: setup === "tax-record-classification" ? 1 : 0,
       source: {
-        medusaOrdersScanned: 0,
-        scopedRecords: 0,
+        medusaOrdersScanned: setup === "tax-record-classification" ? 1 : 0,
+        scopedRecords: setup === "tax-record-classification" ? 1 : 0,
         truncated: false,
         unassignedStateRecords: 0,
       },
@@ -549,22 +746,23 @@ const fixtureFor = (url) => {
         {
           completeRecords: 0,
           currencyCode: "usd",
-          disabledRecordCount: 0,
-          grossSales: "0.00",
+          disabledRecordCount: setup === "tax-record-classification" ? 1 : 0,
+          grossSales: setup === "tax-record-classification" ? "9.07" : "0.00",
           incompleteRecords: 0,
-          netSales: "0.00",
+          netSales: setup === "tax-record-classification" ? "9.07" : "0.00",
           netTax: "0.00",
           nontaxableSales: "0.00",
-          orderCount: 0,
+          orderCount: setup === "tax-record-classification" ? 1 : 0,
           priorPeriodRefundCount: 0,
           refundCount: 0,
           refundedSales: "0.00",
           refundedTax: "0.00",
-          reviewRecords: 0,
+          reviewRecords: setup === "tax-record-classification" ? 1 : 0,
           samePeriodRefundCount: 0,
           taxCollected: "0.00",
           taxableSales: "0.00",
-          unclassifiedSales: "0.00",
+          unclassifiedSales:
+            setup === "tax-record-classification" ? "9.07" : "0.00",
         },
       ],
       unassignedRecordExamples: [],
@@ -848,6 +1046,72 @@ try {
       )
     })
   }
+  if (setup === "native-exchange-hints" || setup === "native-exchange-picker") {
+    await page.waitForFunction(() => {
+      const dialog = document.querySelector('[role="dialog"]')
+      return (
+        dialog?.textContent.includes("Create Exchange") &&
+        dialog.textContent.includes("Acceptance Shirt") &&
+        dialog.querySelector('input[name="inbound_items.0.note"]')
+      )
+    })
+    const invalidIds = await page.evaluate(() =>
+      Array.from(document.querySelectorAll("[id], [aria-labelledby]"))
+        .filter((element) =>
+          `${element.id} ${element.getAttribute("aria-labelledby")}`.includes(
+            "undefined-form-item"
+          )
+        )
+        .map((element) => element.outerHTML)
+    )
+    if (invalidIds.length)
+      throw new Error("Standalone hints generated invalid IDs")
+    await page.click('input[name="inbound_items.0.reason_id"]')
+    await page.waitForFunction(() =>
+      Array.from(document.querySelectorAll('[role="listbox"]')).some(
+        (popup) => getComputedStyle(popup).display !== "none"
+      )
+    )
+    const openSelectorLinked = await page.evaluate(() => {
+      const field = document.querySelector(
+        'input[name="inbound_items.0.reason_id"]'
+      )
+      const popupId = field.getAttribute("aria-controls")
+      return (
+        field.getAttribute("aria-expanded") === "true" &&
+        Boolean(popupId && document.getElementById(popupId))
+      )
+    })
+    if (!openSelectorLinked)
+      throw new Error("Open selector has no exact popup reference")
+    await page.keyboard.press("Escape")
+    await page.waitForFunction(() =>
+      Array.from(document.querySelectorAll('[role="listbox"]')).every(
+        (popup) => getComputedStyle(popup).display === "none"
+      )
+    )
+    if (!page.url().endsWith("/app/orders/order_acceptance/exchanges")) {
+      throw new Error("Closing a selector dismissed its parent exchange form")
+    }
+    if (
+      await page.$eval('input[name="inbound_items.0.reason_id"]', (field) =>
+        field.hasAttribute("aria-controls")
+      )
+    ) {
+      throw new Error("Closed selector retains an unavailable popup reference")
+    }
+    if (setup === "native-exchange-picker") {
+      await clickButton("Add items")
+      await page.waitForFunction(() =>
+        Array.from(document.querySelectorAll('[role="dialog"]')).some(
+          (dialog) =>
+            dialog.getAttribute("aria-hidden") !== "true" &&
+            dialog.textContent.includes("Add items — Inbound") &&
+            dialog.querySelector('[role="checkbox"][aria-label="Select all"]')
+        )
+      )
+    }
+  }
   if (setup === "catalog-create-offerings") {
     await clickButton("Continue")
     await page.waitForSelector("#catalog-create-title")
@@ -870,6 +1134,35 @@ try {
     await page.waitForFunction(
       () => document.activeElement?.id === "catalog-create-artist"
     )
+  }
+  if (setup === "tax-record-classification") {
+    const classified = await page.evaluate((mobile) => {
+      if (mobile) {
+        const card = document.querySelector("main article")
+        return (
+          card?.textContent.includes("Pending tax review") &&
+          card.textContent.includes("$9.07")
+        )
+      }
+      const table = document.querySelector(
+        '[aria-label="Tax record table; scroll horizontally for all columns"] table'
+      )
+      return (
+        table?.textContent.includes("Sales classification") &&
+        table.textContent.includes("Pending tax review") &&
+        table.textContent.includes("$9.07") &&
+        !table.textContent.includes("Taxable")
+      )
+    }, width < 768)
+    if (!classified) throw new Error("Pending sales were mislabeled as taxable")
+    await page.evaluate((mobile) => {
+      const record = document.querySelector(
+        mobile
+          ? "main article"
+          : '[aria-label="Tax record table; scroll horizontally for all columns"]'
+      )
+      record?.scrollIntoView({ block: "center" })
+    }, width < 768)
   }
   if (setup === "tax-period-validation") {
     const taxRequests = []
@@ -961,6 +1254,21 @@ try {
       "tax-period-end"
     )
     page.off("request", collect)
+    // Focus recovery is asserted above. Restore the scroll containers before
+    // contrast analysis so the sticky shell cannot overlap off-screen copy.
+    await page.evaluate(() => {
+      const main = document.querySelector("main")
+      for (const container of [main, ...main.querySelectorAll("*")]) {
+        if (container.scrollHeight > container.clientHeight)
+          container.scrollTo({ top: 0, behavior: "instant" })
+      }
+      let ancestor = main.parentElement
+      while (ancestor) {
+        ancestor.scrollTo({ top: 0, behavior: "instant" })
+        ancestor = ancestor.parentElement
+      }
+      window.scrollTo({ top: 0, behavior: "instant" })
+    })
   }
   if (setup === "tax-provider-availability") {
     await page.evaluate(() => {
@@ -996,6 +1304,7 @@ try {
       const style = getComputedStyle(element)
       const rect = element.getBoundingClientRect()
       return (
+        !element.closest('[aria-hidden="true"]') &&
         style.display !== "none" &&
         style.visibility !== "hidden" &&
         style.clip === "auto" &&

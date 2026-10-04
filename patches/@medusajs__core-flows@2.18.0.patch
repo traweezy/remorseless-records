@@ -10,3 +10,19 @@ index 24f62e14ba7c4255dadfbebdc0708db19e3fd961..cec865da75c9911929a202b96324c258
      "locale",
      "items.*",
      "items.variant.id",
+diff --git a/dist/payment/workflows/refund-payments.js b/dist/payment/workflows/refund-payments.js
+index b34f9e67198d03a4a6c7f32f5317000f1913c014..97c4461a98be4a10eab906618b2a859a211fdb2c 100644
+--- a/dist/payment/workflows/refund-payments.js
++++ b/dist/payment/workflows/refund-payments.js
+@@ -119,6 +119,11 @@ exports.refundPaymentsWorkflow = (0, workflows_sdk_1.createWorkflow)(exports.ref
+             .filter(utils_1.isDefined);
+     });
+     (0, add_order_transaction_1.addOrderTransactionStep)(orderTransactionData);
++    const refundEvents = (0, workflows_sdk_1.transform)({ refundedPayments }, ({ refundedPayments }) => refundedPayments.map((payment) => ({ id: payment.id })));
++    (0, common_1.emitEventStep)({
++        eventName: utils_1.PaymentEvents.REFUNDED,
++        data: refundEvents,
++    });
+     return new workflows_sdk_1.WorkflowResponse(refundedPayments);
+ });
+ //# sourceMappingURL=refund-payments.js.map

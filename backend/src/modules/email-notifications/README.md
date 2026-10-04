@@ -28,7 +28,7 @@ This ensures a unified look and feel across all email communications while allow
 
 ### Transactional notification delivery safety
 
-Order confirmations, refund notices, and administrator invites are side
+Order confirmations, refund notices, fulfillment updates, and administrator invites are side
 effects of retryable events. Build every message with
 `emailIdempotencyFields`: it stores one validated key in Medusa's
 `idempotency_key` and forwards the same key through
@@ -54,7 +54,7 @@ again. If redaction fails after delivery, the unchanged provider idempotency
 key prevents another email while the retry completes redaction.
 
 The Resend provider accepts one validated recipient, the configured sender,
-one of the three known templates, a subject-only options object, and no
+one of the four known templates, a subject-only options object, and no
 attachments or per-message sender. Every template requires provider
 idempotency. Calls have a five-second deadline and success requires Resend's
 exact non-empty external ID response. Errors and logs include no recipient,
@@ -68,6 +68,30 @@ boundary. Numeric strings must be explicit decimal literals; hexadecimal,
 trailing text, booleans, arrays, empty strings, non-finite values, negative
 amounts, and malformed value wrappers fail closed instead of being coerced by
 JavaScript.
+
+### Fulfillment status notifications
+
+`fulfillment-status.ts` consumes the pinned native `order.fulfillment_created`,
+`shipment.created` and `delivery.created` workflow events. The notification
+checkbox maps to `no_notification`; a true opt-out skips the query and send.
+Native Query resolves the fulfillment's order link and the persisted timestamp
+for the requested stage. Wrong IDs, missing/duplicate rows, malformed states
+and mismatched creation-order links fail closed. Canceled fulfillments/orders,
+orders without email and generic fulfillments with no order link are skipped.
+
+Each stage uses `fulfillment-status:<fulfillment-id>:<stage>` in both Medusa and
+Resend. The immutable template projection is the order number and stage; it
+excludes tracking labels, addresses and item data that can change during a
+retry. Separate partial fulfillments have separate keys. Copy explicitly
+covers one shipment, so a partial fulfillment never claims the whole order is
+shipped or delivered. No carrier booking or tracking link is created by email.
+Durable verification and the configured sender/deadline remain unchanged.
+
+The shared email shell now places preview text within the body, uses English
+left-to-right attributes on the document and body containers, and provides a
+head title. The fulfillment template uses its specific stage title and one
+semantic heading. Local render/fixture checks do not establish compatibility
+with every recipient email client or actual inbox delivery.
 
 ### Trigger an email notification
 

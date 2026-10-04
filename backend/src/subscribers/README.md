@@ -22,6 +22,14 @@ idempotency and forwarded unchanged to Resend provider idempotency. Delivery
 errors propagate to the event worker, so a retry reuses the same key and cannot
 create a second provider message after an ambiguous response.
 
+`fulfillment-status.ts` handles the native order-fulfillment, shipment and
+delivery workflow events. It honors the operator's notification opt-out,
+verifies the persisted stage and native order link, and sends one minimal
+partial-shipment update per fulfillment/stage business key. Canceled state
+suppresses stale updates. Its immutable provider projection and durable
+readback preserve retry safety without persisting shipping-address or tracking
+label data in the notification.
+
 Subscribers handle events emitted in the Medusa application.
 
 The subscriber is created in a TypeScript or JavaScript file under the `src/subscribers` directory.

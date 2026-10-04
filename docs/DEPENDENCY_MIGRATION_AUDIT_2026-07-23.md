@@ -1,5 +1,46 @@
 # Dependency Migration Audit — 2026-07-23
 
+## Native refund event and Admin form corrections — October 4, 2026 UTC
+
+Extend the existing MIT Medusa 2.18.0 patches without a package upgrade or new
+cooling exception. Its bulk refund workflow omitted `payment.refunded`, so a
+native cancellation refunded money but skipped the customer notice. Emit the
+native grouped event from successful persisted payment results; existing
+strict notification keys and evidence reconciliation remain authoritative.
+The disposable native payment workflow covers three partial refunds and
+rejects an excess beyond the existing currency tolerance without another
+refund/event. Event emission retains Medusa's grouped completion semantics.
+
+The native Admin now queries captures and subtracts existing refunds when
+choosing its default and maximum. Invalid amounts stop before its mutation;
+server validation remains authoritative. Its drawer uses the native title
+component and its payment selector is labeled. Source and distributed chunks
+are patched together. Six balance projections and invalid/submission cases
+execute the installed form logic, alongside native/browser acceptance.
+
+The actual delivered-order exchange audit also exposed an absent standalone
+Form.Hint context setter. Dashboard's source/main/lazy bundles and Draft
+Order's ESM/CJS copy now guard registration and reference only mounted label,
+hint and message IDs. Native RMA selectors retain their parent dialog on
+Escape, close their own popup, and publish popup references only while open.
+Titles, field/checkbox names, item-picker buttons and quantity/empty-selection
+guards correct the directly observed native forms. The actual compiled-page
+fixtures include the pre-existing inbound draft that triggered the crash;
+three installed-module hook tests cover standalone and registered helpers.
+The same MIT licenses and pinned native Medusa/RBAC contracts remain in place.
+
+Patch SHA-256 values:
+
+- Core flows: `81fc9167eb4d9f40d3e4bba9a5b579396e29d751c19be01e98b408f0110c82c1`.
+- Dashboard: `f5f35f96b712091f28b9c1160a57aacc48f8312cacab1bf3906f6446544bd16c`.
+- Draft Order: `e73e46b07c64ff0f966fb4a6a2550c5fe021c90a150a57985fa31b39aab4fe43`.
+
+The lockfile changes only these patch identities and dependent peer keys.
+Patch-commit's unrelated third-party-web 0.30.0 resolution was restored to
+0.29.2. Frozen installation remains required. Corrective releases stay within
+Batch 6 and must resolve the current exact rollout's identified failures;
+do not infer acceptance from historical builds or CI.
+
 ## Storefront rich-text rendering — October 4, 2026 UTC
 
 Declare exact `htmlparser2@12.0.0` as a direct Storefront dependency so the

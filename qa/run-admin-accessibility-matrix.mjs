@@ -27,6 +27,36 @@ if (!Number.isInteger(concurrency) || concurrency < 1 || concurrency > 4) {
 const cases = [
   {
     axeInclude: "[role=dialog]",
+    height: 1000,
+    name: "native-exchange-standalone-hints",
+    route: "/app/orders/order_acceptance/exchanges",
+    setup: "native-exchange-hints",
+    width: 1440,
+  },
+  {
+    axeInclude: "[role=dialog][data-state=open]:not([aria-hidden=true])",
+    height: 1000,
+    name: "native-exchange-inbound-picker",
+    route: "/app/orders/order_acceptance/exchanges",
+    setup: "native-exchange-picker",
+    width: 1440,
+  },
+  {
+    name: "tax-records-classification-desktop",
+    route: "/app/operations/tax-records",
+    setup: "tax-record-classification",
+    height: 900,
+    width: 1440,
+  },
+  {
+    name: "tax-records-classification-mobile",
+    route: "/app/operations/tax-records",
+    setup: "tax-record-classification",
+    height: 900,
+    width: 760,
+  },
+  {
+    axeInclude: "[role=dialog]",
     height: 900,
     name: "native-refund-reason-validation",
     route: "/app/settings/refund-reasons/create",

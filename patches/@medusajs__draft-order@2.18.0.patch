@@ -1,58 +1,80 @@
 diff --git a/.medusa/server/src/admin/index.js b/.medusa/server/src/admin/index.js
-index 5fc407fa3fee062498e3ea11bfccc840dc419b15..bc6c621da233cb016ea1608193a101807acd27f0 100644
+index 5fc407fa3fee062498e3ea11bfccc840dc419b15..09a9cd6413fa0703e8d1d9b9622625985e7bc212 100644
 --- a/.medusa/server/src/admin/index.js
 +++ b/.medusa/server/src/admin/index.js
-@@ -6981,8 +6981,9 @@ const useFormField = () => {
+@@ -6981,21 +6981,25 @@ const useFormField = () => {
    if (!fieldContext) {
      throw new Error("useFormField should be used within a FormField");
    }
 -  const { id } = itemContext;
-+  const { id, hasHint, hasMessage, setHasHint, setHasMessage } = itemContext;
++  const { id, hasLabel, setHasLabel, hasHint, hasMessage, setHasHint, setHasMessage } = itemContext;
    return {
-+    hasHint, hasMessage, setHasHint, setHasMessage,
++    hasLabel, setHasLabel, hasHint, hasMessage, setHasHint, setHasMessage,
      id,
      name: fieldContext.name,
-     formItemId: `${id}-form-item`,
-@@ -6995,7 +6996,9 @@ const useFormField = () => {
+-    formItemId: `${id}-form-item`,
+-    formLabelId: `${id}-form-item-label`,
+-    formDescriptionId: `${id}-form-item-description`,
+-    formErrorMessageId: `${id}-form-item-message`,
++    formItemId: id ? `${id}-form-item` : undefined,
++    formLabelId: id ? `${id}-form-item-label` : undefined,
++    formDescriptionId: id ? `${id}-form-item-description` : undefined,
++    formErrorMessageId: id ? `${id}-form-item-message` : undefined,
+     ...fieldState
+   };
+ };
  const Item$2 = React.forwardRef(
    ({ className, ...props }, ref) => {
      const id = React.useId();
 -    return /* @__PURE__ */ jsxRuntime.jsx(FormItemContext.Provider, { value: { id }, children: /* @__PURE__ */ jsxRuntime.jsx(
++    const [hasLabel, setHasLabel] = React.useState(false);
 +    const [hasHint, setHasHint] = React.useState(false);
 +    const [hasMessage, setHasMessage] = React.useState(false);
-+    return /* @__PURE__ */ jsxRuntime.jsx(FormItemContext.Provider, { value: { id, hasHint, hasMessage, setHasHint, setHasMessage }, children: /* @__PURE__ */ jsxRuntime.jsx(
++    return /* @__PURE__ */ jsxRuntime.jsx(FormItemContext.Provider, { value: { id, hasLabel, setHasLabel, hasHint, hasMessage, setHasHint, setHasMessage }, children: /* @__PURE__ */ jsxRuntime.jsx(
        "div",
        {
          ref,
-@@ -7043,7 +7046,7 @@ const Label = React.forwardRef(
+@@ -7015,7 +7019,8 @@ const Label = React.forwardRef(
+     variant = "default",
+     ...props
+   }, ref) => {
+-    const { formLabelId, formItemId } = useFormField();
++    const { formLabelId, formItemId, setHasLabel } = useFormField();
++  React.useEffect(() => { setHasLabel?.(true); return () => setHasLabel?.(false); }, [setHasLabel]);
+     return /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "flex items-center gap-x-1", children: [
+       /* @__PURE__ */ jsxRuntime.jsx(
+         ui.Label,
+@@ -7043,7 +7048,7 @@ const Label = React.forwardRef(
  Label.displayName = "Form.Label";
  const Control = React.forwardRef(({ ...props }, ref) => {
    const {
 -    error,
-+    error, hasHint, hasMessage,
++    error, hasLabel, hasHint, hasMessage,
      formItemId,
      formDescriptionId,
      formErrorMessageId,
-@@ -7054,7 +7057,7 @@ const Control = React.forwardRef(({ ...props }, ref) => {
+@@ -7054,16 +7059,17 @@ const Control = React.forwardRef(({ ...props }, ref) => {
      {
        ref,
        id: formItemId,
 -      "aria-describedby": !error ? `${formDescriptionId}` : `${formDescriptionId} ${formErrorMessageId}`,
 +      "aria-describedby": [hasHint && formDescriptionId, hasMessage && formErrorMessageId].filter(Boolean).join(" ") || undefined,
        "aria-invalid": !!error,
-       "aria-labelledby": formLabelId,
+-      "aria-labelledby": formLabelId,
++      "aria-labelledby": hasLabel ? formLabelId : undefined,
        ...props
-@@ -7063,7 +7066,8 @@ const Control = React.forwardRef(({ ...props }, ref) => {
+     }
+   );
  });
  Control.displayName = "Form.Control";
  const Hint = React.forwardRef(({ className, ...props }, ref) => {
 -  const { formDescriptionId } = useFormField();
 +  const { formDescriptionId, setHasHint } = useFormField();
-+  React.useEffect(() => { setHasHint(true); return () => setHasHint(false); }, [setHasHint]);
++  React.useEffect(() => { setHasHint?.(true); return () => setHasHint?.(false); }, [setHasHint]);
    return /* @__PURE__ */ jsxRuntime.jsx(
      ui.Hint,
      {
-@@ -7076,8 +7080,10 @@ const Hint = React.forwardRef(({ className, ...props }, ref) => {
+@@ -7076,8 +7082,10 @@ const Hint = React.forwardRef(({ className, ...props }, ref) => {
  });
  Hint.displayName = "Form.Hint";
  const ErrorMessage = React.forwardRef(({ className, children, ...props }, ref) => {
@@ -60,65 +82,151 @@ index 5fc407fa3fee062498e3ea11bfccc840dc419b15..bc6c621da233cb016ea1608193a10180
 +  const { error, formErrorMessageId, setHasMessage } = useFormField();
    const msg = error ? String(error == null ? void 0 : error.message) : children;
 +  const hasMessage = Boolean(msg && msg !== "undefined");
-+  React.useEffect(() => { setHasMessage(hasMessage); return () => setHasMessage(false); }, [hasMessage, setHasMessage]);
++  React.useEffect(() => { setHasMessage?.(hasMessage); return () => setHasMessage?.(false); }, [hasMessage, setHasMessage]);
    if (!msg || msg === "undefined") {
      return null;
    }
+@@ -7331,7 +7339,16 @@ const ComboboxImpl = ({
+                       }
+                     ),
+                     placeholder: hidePlaceholder ? void 0 : placeholder,
+-                    ...inputProps
++                    ...inputProps,
++                      "aria-controls": open ? listboxRef.current?.id : undefined,
++                    onKeyDown: (event) => {
++                      inputProps.onKeyDown?.(event);
++                      if (open && event.key === "Escape") {
++                        event.preventDefault();
++                        event.stopPropagation();
++                        handleOpenChange(false);
++                      }
++                    }
+                   }
+                 )
+               ] }),
+@@ -7343,6 +7360,7 @@ const ComboboxImpl = ({
+                       "button",
+                       {
+                         ...props,
++                        "aria-controls": open ? listboxRef.current?.id : undefined,
+                         type: "button",
+                         className: "text-ui-fg-muted transition-fg hover:bg-ui-bg-field-hover absolute right-0 flex size-8 items-center justify-center rounded-r outline-none",
+                         children: /* @__PURE__ */ jsxRuntime.jsx(icons.TrianglesMini, {})
+@@ -7357,6 +7375,13 @@ const ComboboxImpl = ({
+         /* @__PURE__ */ jsxRuntime.jsxs(
+           react.ComboboxPopover,
+           {
++            alwaysVisible: true,
++            hideOnEscape: (event) => {
++              if (!open) return false;
++              event.preventDefault();
++              event.stopPropagation();
++              return true;
++            },
+             gutter: 4,
+             sameWidth: true,
+             ref: listboxRef,
+@@ -7369,7 +7394,8 @@ const ComboboxImpl = ({
+               "data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2"
+             ),
+             style: {
+-              pointerEvents: open ? "auto" : "none"
++              pointerEvents: open ? "auto" : "none",
++              display: open ? undefined : "none"
+             },
+             "aria-busy": isPending,
+             children: [
+@@ -7704,9 +7730,10 @@ const Content$2 = ({ stackedModalOpen, children }) => {
+   return /* @__PURE__ */ jsxRuntime.jsx(
+     ui.FocusModal.Content,
+     {
+-      onEscapeKeyDown: shouldPreventClose ? (e) => {
+-        e.preventDefault();
+-      } : void 0,
++      onEscapeKeyDown: (event) => {
++        const selectorOpen = event.target instanceof Element && event.target.closest('[role="combobox"][aria-expanded="true"]');
++        if (shouldPreventClose || selectorOpen) event.preventDefault();
++      },
+       className: ui.clx({
+         "!bg-ui-bg-disabled !inset-x-5 !inset-y-3": stackedModalOpen
+       }),
 diff --git a/.medusa/server/src/admin/index.mjs b/.medusa/server/src/admin/index.mjs
-index 79afa3723a90833e64dbd6c705ded4478ee00dd4..3e23af2ed8d8ecee790e93ef54ad172130f0f0c4 100644
+index 79afa3723a90833e64dbd6c705ded4478ee00dd4..3f546d67f1626e6f2d6e154c882e573aa165f736 100644
 --- a/.medusa/server/src/admin/index.mjs
 +++ b/.medusa/server/src/admin/index.mjs
-@@ -6974,8 +6974,9 @@ const useFormField = () => {
+@@ -6974,21 +6974,25 @@ const useFormField = () => {
    if (!fieldContext) {
      throw new Error("useFormField should be used within a FormField");
    }
 -  const { id } = itemContext;
-+  const { id, hasHint, hasMessage, setHasHint, setHasMessage } = itemContext;
++  const { id, hasLabel, setHasLabel, hasHint, hasMessage, setHasHint, setHasMessage } = itemContext;
    return {
-+    hasHint, hasMessage, setHasHint, setHasMessage,
++    hasLabel, setHasLabel, hasHint, hasMessage, setHasHint, setHasMessage,
      id,
      name: fieldContext.name,
-     formItemId: `${id}-form-item`,
-@@ -6988,7 +6989,9 @@ const useFormField = () => {
+-    formItemId: `${id}-form-item`,
+-    formLabelId: `${id}-form-item-label`,
+-    formDescriptionId: `${id}-form-item-description`,
+-    formErrorMessageId: `${id}-form-item-message`,
++    formItemId: id ? `${id}-form-item` : undefined,
++    formLabelId: id ? `${id}-form-item-label` : undefined,
++    formDescriptionId: id ? `${id}-form-item-description` : undefined,
++    formErrorMessageId: id ? `${id}-form-item-message` : undefined,
+     ...fieldState
+   };
+ };
  const Item$2 = forwardRef(
    ({ className, ...props }, ref) => {
      const id = useId();
 -    return /* @__PURE__ */ jsx(FormItemContext.Provider, { value: { id }, children: /* @__PURE__ */ jsx(
++    const [hasLabel, setHasLabel] = useState(false);
 +    const [hasHint, setHasHint] = useState(false);
 +    const [hasMessage, setHasMessage] = useState(false);
-+    return /* @__PURE__ */ jsx(FormItemContext.Provider, { value: { id, hasHint, hasMessage, setHasHint, setHasMessage }, children: /* @__PURE__ */ jsx(
++    return /* @__PURE__ */ jsx(FormItemContext.Provider, { value: { id, hasLabel, setHasLabel, hasHint, hasMessage, setHasHint, setHasMessage }, children: /* @__PURE__ */ jsx(
        "div",
        {
          ref,
-@@ -7036,7 +7039,7 @@ const Label = forwardRef(
+@@ -7008,7 +7012,8 @@ const Label = forwardRef(
+     variant = "default",
+     ...props
+   }, ref) => {
+-    const { formLabelId, formItemId } = useFormField();
++    const { formLabelId, formItemId, setHasLabel } = useFormField();
++  useEffect(() => { setHasLabel?.(true); return () => setHasLabel?.(false); }, [setHasLabel]);
+     return /* @__PURE__ */ jsxs("div", { className: "flex items-center gap-x-1", children: [
+       /* @__PURE__ */ jsx(
+         Label$1,
+@@ -7036,7 +7041,7 @@ const Label = forwardRef(
  Label.displayName = "Form.Label";
  const Control = forwardRef(({ ...props }, ref) => {
    const {
 -    error,
-+    error, hasHint, hasMessage,
++    error, hasLabel, hasHint, hasMessage,
      formItemId,
      formDescriptionId,
      formErrorMessageId,
-@@ -7047,7 +7050,7 @@ const Control = forwardRef(({ ...props }, ref) => {
+@@ -7047,16 +7052,17 @@ const Control = forwardRef(({ ...props }, ref) => {
      {
        ref,
        id: formItemId,
 -      "aria-describedby": !error ? `${formDescriptionId}` : `${formDescriptionId} ${formErrorMessageId}`,
 +      "aria-describedby": [hasHint && formDescriptionId, hasMessage && formErrorMessageId].filter(Boolean).join(" ") || undefined,
        "aria-invalid": !!error,
-       "aria-labelledby": formLabelId,
+-      "aria-labelledby": formLabelId,
++      "aria-labelledby": hasLabel ? formLabelId : undefined,
        ...props
-@@ -7056,7 +7059,8 @@ const Control = forwardRef(({ ...props }, ref) => {
+     }
+   );
  });
  Control.displayName = "Form.Control";
  const Hint = forwardRef(({ className, ...props }, ref) => {
 -  const { formDescriptionId } = useFormField();
 +  const { formDescriptionId, setHasHint } = useFormField();
-+  useEffect(() => { setHasHint(true); return () => setHasHint(false); }, [setHasHint]);
++  useEffect(() => { setHasHint?.(true); return () => setHasHint?.(false); }, [setHasHint]);
    return /* @__PURE__ */ jsx(
      Hint$1,
      {
-@@ -7069,8 +7073,10 @@ const Hint = forwardRef(({ className, ...props }, ref) => {
+@@ -7069,8 +7075,10 @@ const Hint = forwardRef(({ className, ...props }, ref) => {
  });
  Hint.displayName = "Form.Hint";
  const ErrorMessage = forwardRef(({ className, children, ...props }, ref) => {
@@ -126,7 +234,71 @@ index 79afa3723a90833e64dbd6c705ded4478ee00dd4..3e23af2ed8d8ecee790e93ef54ad1721
 +  const { error, formErrorMessageId, setHasMessage } = useFormField();
    const msg = error ? String(error == null ? void 0 : error.message) : children;
 +  const hasMessage = Boolean(msg && msg !== "undefined");
-+  useEffect(() => { setHasMessage(hasMessage); return () => setHasMessage(false); }, [hasMessage, setHasMessage]);
++  useEffect(() => { setHasMessage?.(hasMessage); return () => setHasMessage?.(false); }, [hasMessage, setHasMessage]);
    if (!msg || msg === "undefined") {
      return null;
    }
+@@ -7324,7 +7332,16 @@ const ComboboxImpl = ({
+                       }
+                     ),
+                     placeholder: hidePlaceholder ? void 0 : placeholder,
+-                    ...inputProps
++                    ...inputProps,
++                      "aria-controls": open ? listboxRef.current?.id : undefined,
++                    onKeyDown: (event) => {
++                      inputProps.onKeyDown?.(event);
++                      if (open && event.key === "Escape") {
++                        event.preventDefault();
++                        event.stopPropagation();
++                        handleOpenChange(false);
++                      }
++                    }
+                   }
+                 )
+               ] }),
+@@ -7336,6 +7353,7 @@ const ComboboxImpl = ({
+                       "button",
+                       {
+                         ...props,
++                        "aria-controls": open ? listboxRef.current?.id : undefined,
+                         type: "button",
+                         className: "text-ui-fg-muted transition-fg hover:bg-ui-bg-field-hover absolute right-0 flex size-8 items-center justify-center rounded-r outline-none",
+                         children: /* @__PURE__ */ jsx(TrianglesMini, {})
+@@ -7350,6 +7368,13 @@ const ComboboxImpl = ({
+         /* @__PURE__ */ jsxs(
+           ComboboxPopover,
+           {
++            alwaysVisible: true,
++            hideOnEscape: (event) => {
++              if (!open) return false;
++              event.preventDefault();
++              event.stopPropagation();
++              return true;
++            },
+             gutter: 4,
+             sameWidth: true,
+             ref: listboxRef,
+@@ -7362,7 +7387,8 @@ const ComboboxImpl = ({
+               "data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2"
+             ),
+             style: {
+-              pointerEvents: open ? "auto" : "none"
++              pointerEvents: open ? "auto" : "none",
++              display: open ? undefined : "none"
+             },
+             "aria-busy": isPending,
+             children: [
+@@ -7697,9 +7723,10 @@ const Content$2 = ({ stackedModalOpen, children }) => {
+   return /* @__PURE__ */ jsx(
+     FocusModal.Content,
+     {
+-      onEscapeKeyDown: shouldPreventClose ? (e) => {
+-        e.preventDefault();
+-      } : void 0,
++      onEscapeKeyDown: (event) => {
++        const selectorOpen = event.target instanceof Element && event.target.closest('[role="combobox"][aria-expanded="true"]');
++        if (shouldPreventClose || selectorOpen) event.preventDefault();
++      },
+       className: clx({
+         "!bg-ui-bg-disabled !inset-x-5 !inset-y-3": stackedModalOpen
+       }),

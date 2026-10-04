@@ -1,5 +1,197 @@
 # Storefront, Admin and Stripe end-to-end audit
 
+### Native fulfillment, exchange crash and notification corrections — October 4, 15:06–22:30 UTC
+
+Batch 6 remains open at deployed `09c3737e`. The existing exact CI, runtime,
+role, migration and application rollout checks passed; that does not accept
+its newly discovered native exchange failure. Corrective releases remain
+within this audit batch. The scheduler's October 3 22:33:01 UTC incident must
+expire naturally after its full 24-hour window; no latch or failed queue is
+cleared. Pause before the client environment clone.
+
+- **Actual owned order #9 fulfillment/stock cycle:** partial CD fulfillment
+  `ful_01M43QV8S80HZM0C90FD2KYRA0` reduced CD stock 20→19 and released only its
+  reservation; native cancellation restored stock 20 and its reservation.
+  The M shirt remained reserved throughout. Full fulfillment
+  `ful_01M43REJQQFQFJWV01HP2FC3YZ` then reduced CD stock to 19 and M stock to 3,
+  with reservations zero. One unchanged $9.07 capture and zero refunds remain.
+  Native shipment registered at 15:33:48 UTC and delivery at 15:35:36 UTC.
+  The saved tracking reference explicitly says NO-SHIP and uses example.com;
+  this was internal manual fulfillment, with no carrier purchase or shipment.
+  Unsaved tracking rows were discarded and reopening showed none before save.
+- **B6-NATIVE-EXCHANGE-CRASH:** adding the delivered M shirt to an exchange's
+  inbound section crashed native Admin (`TypeError: i is not a function`).
+  The public deployed bundle and installed source confirm standalone
+  `Form.Hint` calls an absent context setter outside `Form.Item`. Both Medusa
+  Dashboard and Draft Order contain the helper. Their same-version patches
+  guard standalone registration and emit only mounted label/hint/message IDs.
+  Real compiled-page fixtures and three installed-module hook tests cover both
+  ESM/CJS copies. No Trusted Types exception or permission change is involved.
+- **Preserved native draft:** exchange `oexc_01M43S1AJA5J7BWHNPZBBBYBF6`, return
+  `return_01M43S5XM1Z5ST5R0QX922P5DS` and pending order change
+  `ordch_01M43S1ANR4KXYBN9C7MST1GKD` belong to owned order #9. One M-shirt
+  RETURN_ITEM action is saved. The exchange is unconfirmed; no replacement
+  payment/refund, incoming receipt or outgoing S-shirt fulfillment is claimed.
+  Resume through native Admin after the correction deploys. Do not repair it
+  with SQL, cancel unrelated drafts, or submit an unverified duplicate.
+- **Native form/accessibility corrections:** refund/fulfillment/shipment/RMA
+  forms use their native title/description components and explicit field names.
+  Empty fulfillment and unchanged quantity/note updates stop before mutation.
+  Item pickers use named buttons/checkboxes with adequate targets and contrast.
+  The exchange's selector Escape behavior also closed its parent form; the
+  current keyboard correction covers lazy/main Dashboard and both Draft Order
+  implementations. Nineteen compiled Admin accessibility cases pass with zero
+  axe violations/incomplete results, including the preserved draft, active
+  picker, keyboard focus and oversized-period recovery. The picker's 20-pixel
+  checkbox targets were enlarged to 24 pixels. Failed attempts exposed
+  incomplete build-entry parity and are retained, not counted as passes.
+- **B6-FULFILLMENT-NOTIFICATION:** actual native “Send notification” selections
+  created no notice at fulfillment, shipping or delivery; only order-placed
+  existed. The local subscriber now consumes the pinned native workflow events,
+  honors `no_notification`, checks the persisted stage and exact native order
+  link, and calls the existing durable notification verifier. Per-fulfillment/
+  stage business keys and immutable minimal data preserve provider retry safety.
+  Partial-shipment copy never claims the whole order shipped. No carrier or
+  arbitrary tracking URL is introduced. Actual deployed controlled-recipient
+  delivery and notification opt-out still require retesting after rollout.
+- **Tax/native navigation:** all Connecticut quality/collection/provider and
+  empty-result filters, clearing, native order links and state/period changes
+  were exercised. NY/PA empty reports and jurisdiction filter resets passed.
+  Both nonempty CSVs have the correct pending $9.07 sales and zero tax, with no
+  contact/street fields. Destination export intentionally has separate report
+  sections; naive single-table CSV decoding is not its contract. Oversized
+  periods retain the last applied report. Seventeen existing Admin accessibility
+  cases and both new native exchange cases pass.
+
+A bounded application-log observation passed at 15:06:00–15:06:33 UTC for both
+apps: zero HTTP 5xx, unknown warnings/errors or truncation. This predates the
+exchange failure and is not final audit acceptance. The all-service watcher
+ended at 17:08:24 UTC and resumed at 21:36:13 UTC after the pause; no continuous
+observation is claimed across that gap. Current samples show all nine expected
+healthy/completed/idle states. The fresh 22:07 Redis diagnostic retains its
+same deployment, instance and run hash with 89,476 seconds uptime, healthy
+AOF/RDB, zero OOM/evictions/rejected connections and the unchanged 237 scheduled
+plus one event failure. Preserve those historical failures.
+
+Local notification checks pass 65 focused cases. The full Backend suite passes
+2,395 cases/293 suites. Disposable integration passes 74 native cases and 44
+lifecycle/reconciliation cases plus the full recovery/session aggregate. Its
+new notification case uses the real PostgreSQL fulfillment/order link and
+persisted stage timestamps, with only outbound email stubbed; it proves no live
+provider delivery. An initial test tried to cancel an already shipped fixture
+and correctly hit the native guard; the corrected cancellation uses a separate
+unshipped fulfillment. All failed attempts and owned-resource cleanup remain
+recorded. Both production builds and full lint/type/form contracts pass.
+The Storefront build uses the loopback Medusa fixture and distinct synthetic
+CI secrets; earlier missing-secret/search configuration failures are retained.
+All three mobile email previews pass axe without overflow, with one heading,
+English direction metadata and a main landmark; this is offline Chromium
+rendering, not live provider or email-client acceptance. The picker header now uses the installed “Select all” translation and its
+rendered regression checks that name. CI, deployment and live acceptance
+remain open for the cohesive corrective staging release. No package
+versions, cooling exceptions or third-party-web resolution changed.
+
+Private evidence: `artifacts/end-to-end-audit-2026-10-04/`, including unique
+lifecycle receipts, CSV section verification, strict image scans, screenshots,
+per-attempt logs and read-only Redis/provider diagnostics. Remaining route,
+merchandise/bundle, returns/claims/exchange, content/media, wallet-device and
+responsive/cursor coverage remains open. The client clone remains paused.
+
+### Live payment/refund matrix and further corrections — October 4, 13:44–14:50 UTC
+
+The refund-ID fix is deployed at `09c3737e41e6cd58d31bd7c31e5b07a8bef87593`.
+All four workflows/23 strict checks passed (Root `37206155839`, Backend
+`37206155878`, Storefront `37206155850`, Runtime Images `37206155844`).
+Both image evidence bundles verified. Exact Backend deployment
+`c9e8c959-f7d9-4fac-9102-7bf2843f01bd`, Storefront
+`1c40292e-cb6e-42fd-812f-27f0702a9ca6`, Migrations
+`beaffedb-b68b-4678-ae8a-3d42969c899b` and scheduled RecoveryBackups
+`369d8e37-b914-4ed6-b79c-c2a4f55332b2` succeeded. Runtime packages, real
+process/ancestor roles, completed migration receipt and notification-key
+binding passed. The backup job is scheduled idle; no new exact-revision
+archive was manually manufactured. Keep the verified 04:00 scheduled archive.
+
+- **Order #8 partial refunds recovered:** a second native $4 shipping refund
+  brought the recorded/provider total to $5. Both controlled-recipient notices
+  succeeded, including recovery of the earlier $1 notice. Medusa business keys
+  and provider external IDs verify delivery acceptance; no inbox claim is made.
+- **Native cancellation:** the unfulfilled order canceled at 14:04 UTC,
+  automatically refunded the remaining $1.23 and released its reservation.
+  Stock remains 20, with no phantom restock. Native/Stripe totals agree at
+  $6.23 across three refunds, paid/outstanding zero. Operations → Refunds
+  shows Verified / Tax not collected. Search, combined status/tax filters,
+  empty results, clearing and refresh were exercised on that case.
+- **B6-CANCEL-REFUND-NOTICE — local correction:** the automatic cancellation
+  refund has no customer notice. Pinned Medusa's bulk `refundPaymentsWorkflow`
+  omits the event emitted by its individual refund workflow. The same-version
+  patch emits `payment.refunded` for successfully persisted result IDs through
+  Medusa's grouped event step; existing validated, idempotent subscribers own
+  email and immediate evidence reconciliation. No second refund API is added.
+- **B6-NATIVE-REFUND-DEFAULT / B6-NATIVE-REFUND-DIALOG — local correction:**
+  native Admin reused the original $6.23 after an earlier partial refund, and
+  its Create Refund drawer logged a missing Radix title. The patch queries
+  native captures, defaults to captured amount less refunds, rejects invalid
+  or excessive submissions before the mutation, and uses `RouteDrawer.Title`.
+  Backend financial validation remains authoritative. Native bulk integration
+  records $1/$4/$1.23 and verifies events after persistence; its excessive
+  attempt uses $0.02 beyond Medusa's existing one-cent currency tolerance.
+  Initial tolerance/serialized-error assertion failures are retained.
+- **Actual hosted-card failures and authentication:** the same mixed cart
+  rejected generic decline, insufficient funds, expired card, incorrect CVC
+  and processing-error test cards with clear feedback. Each verified attempt
+  retained the cart/session with zero orders, payments, captures or notices.
+  Invalid card number was blocked by hosted-field validation and disabled
+  submit. Actual 3D Secure cancellation and failure remained retryable, also
+  without a native order/capture. A successful challenge then created only
+  **order #9**, $9.07 USD (M shirt $2.34, CD $1.23, shipping $5.50, tax off).
+  Stripe Dashboard independently shows the complete failed-attempt history,
+  one successful challenge and capture. The optional Link save box was
+  explicitly unchecked; no Link account or phone was submitted.
+- **Order #9 independent reconciliation:** native order
+  `order_01M43NH040G21HCD2CVN38N0ZX`, payment
+  `pay_01M43NH0GH62C6TPX92JVZ4RHB`, one capture, completed cart and controlled
+  order notification agree with Stripe `pi_3UMpmvIM4tTeFQ3W0d8dpXHW` and
+  `ch_3UMpmvIM4tTeFQ3W0JxMTR6A`. The new browser receipt shows #9 and its
+  current items, rather than order #8's earlier data. The later entry above supersedes its
+  unfulfilled state; keep the owned delivered order and pending exchange for
+  return/claim/exchange testing.
+- **Nonempty Connecticut export / B6-TAX-CLASSIFICATION:** the transaction CSV
+  has one order-#9 row and 36 columns, no customer contact/street fields,
+  taxable/nontaxable/tax zero and $9.07 pending review. The desktop table put
+  that pending amount under a “Taxable” heading despite the correct totals,
+  mobile card and CSV. The local UI correction labels its sales classification
+  explicitly; desktop/mobile rendered regressions are being added. A native
+  keyboard period over 1,462 days is rejected while the prior report remains;
+  restoring the current-quarter preset succeeds. DOM date-fill attempts did
+  not update React state and are not counted as acceptance.
+
+All nine services/jobs remain observed with no deployment faults. Redis at
+14:02:45 UTC retained its run/instance identity, 60,418 seconds uptime,
+healthy AOF/RDB and zero OOM/eviction/rejected counters; its 237 scheduled and
+one event failure remain preserved. The ordinary 14:20 scheduler heartbeat
+matches `09c3737e`; the October 3 22:33 incident still correctly makes scheduler
+and operations return 503 within their 24-hour window. This release is **not
+yet accepted**, and the next correction stays local until deployed acceptance
+passes. The initial log review includes two intentional health 503 responses;
+a subsequent read timed out and is retained. Retry correlation separately.
+
+The refund patch group passes frozen offline installation, shared lint/type
+checks, 2,352 Backend coverage cases, 16 dashboard-form cases, 15 pre-existing
+Admin accessibility cases and the full disposable integration/recovery
+aggregate (73 native cases plus 44 lifecycle/reconciliation cases and recovery
+suites). The new tax UI correction still needs its updated build/browser
+checks. Fresh fixture scans used official checksum/digest-verified Trivy
+0.74.0 and the October 4 14:28 DB on both pinned local-daemon images. The
+workstation's stale Desktop Docker context was preserved; a task-local wrapper
+selects its existing Linux daemon. Failed argument/context/install and provider
+read attempts remain in private evidence. No package version/cooling exception
+changed; patch-commit's unrelated third-party-web resolution was restored.
+
+Evidence: ignored `artifacts/end-to-end-audit-2026-10-04/`, including per-attempt
+redacted receipts and verification logs. Batch 6's remaining merchandise/bundle,
+fulfillment/returns, content/media, responsive/cursor and full-route controls
+are still open. Continue the audit; **pause before Batch 7's client clone**.
+
 ### Resumed audit — October 4, 12:47 UTC onward
 
 The user resumed Batch 6 and restored native Admin access. The separate stop

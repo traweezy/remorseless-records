@@ -11,11 +11,17 @@ import {
   RefundIssuedTemplate,
   REFUND_ISSUED,
 } from "./refund-issued"
+import {
+  FULFILLMENT_STATUS,
+  FulfillmentStatusTemplate,
+  isFulfillmentStatusTemplateData,
+} from "./fulfillment-status"
 
 export const EmailTemplates = {
   INVITE_USER,
   ORDER_PLACED,
   REFUND_ISSUED,
+  FULFILLMENT_STATUS,
 } as const
 
 export type EmailTemplateType = keyof typeof EmailTemplates
@@ -25,6 +31,14 @@ export function generateEmailTemplate(
   data: unknown
 ): ReactNode {
   switch (templateKey) {
+    case EmailTemplates.FULFILLMENT_STATUS:
+      if (!isFulfillmentStatusTemplateData(data)) {
+        throw new MedusaError(
+          MedusaError.Types.INVALID_DATA,
+          `Invalid data for template "${EmailTemplates.FULFILLMENT_STATUS}"`
+        )
+      }
+      return <FulfillmentStatusTemplate {...data} />
     case EmailTemplates.INVITE_USER:
       if (!isInviteUserData(data)) {
         throw new MedusaError(
@@ -60,4 +74,9 @@ export function generateEmailTemplate(
   }
 }
 
-export { InviteUserEmail, OrderPlacedTemplate, RefundIssuedTemplate }
+export {
+  FulfillmentStatusTemplate,
+  InviteUserEmail,
+  OrderPlacedTemplate,
+  RefundIssuedTemplate,
+}

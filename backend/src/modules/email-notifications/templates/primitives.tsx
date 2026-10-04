@@ -19,11 +19,18 @@ const mergeStyles = (
 })
 
 export const Html = ({ children }: PropsWithChildren): ReactElement => (
-  <html lang="en">{children}</html>
+  <html lang="en" dir="ltr">
+    {children}
+  </html>
 )
 
-export const Head = (): ReactElement => (
+export const Head = ({
+  title = "Email from Remorseless Records",
+}: {
+  title?: string
+}): ReactElement => (
   <head>
+    <title>{title}</title>
     <meta content="text/html; charset=UTF-8" httpEquiv="Content-Type" />
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
   </head>
@@ -31,6 +38,8 @@ export const Head = (): ReactElement => (
 
 export const Preview = ({ children }: PropsWithChildren): ReactElement => (
   <div
+    lang="en"
+    dir="ltr"
     style={{
       display: "none",
       maxHeight: 0,
@@ -55,7 +64,9 @@ export const Container = ({
   children,
   style,
 }: PropsWithChildren<StyleProps>): ReactElement => (
-  <div style={style}>{children}</div>
+  <div lang="en" dir="ltr" role="main" style={style}>
+    {children}
+  </div>
 )
 
 export const Section = ({

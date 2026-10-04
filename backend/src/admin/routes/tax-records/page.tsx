@@ -1062,7 +1062,7 @@ export const TaxRecordsPageContent = memo(() => {
                 <Table.HeaderCell>Destination</Table.HeaderCell>
                 <Table.HeaderCell>Tax decision</Table.HeaderCell>
                 <Table.HeaderCell className="text-right">
-                  Taxable
+                  Sales classification
                 </Table.HeaderCell>
                 <Table.HeaderCell className="text-right">Tax</Table.HeaderCell>
                 <Table.HeaderCell className="text-right">
@@ -1119,6 +1119,11 @@ export const TaxRecordsPageContent = memo(() => {
                       </Text>
                     </Table.Cell>
                     <Table.Cell className="text-right tabular-nums">
+                      <Text size="xsmall" className="text-ui-fg-subtle">
+                        {record.collectionMode === "disabled"
+                          ? "Pending tax review"
+                          : "Taxable"}
+                      </Text>
                       {record.type === "refund" ? "−" : ""}
                       {formatMoney(
                         record.collectionMode === "disabled"

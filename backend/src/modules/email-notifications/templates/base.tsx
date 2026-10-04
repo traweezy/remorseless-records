@@ -3,15 +3,16 @@ import type { PropsWithChildren, ReactElement } from "react"
 
 type BaseProps = {
   preview?: string
+  title?: string
 }
 
 export const Base = ({
   preview,
+  title,
   children,
 }: PropsWithChildren<BaseProps>): ReactElement => (
   <Html>
-    <Head />
-    {preview ? <Preview>{preview}</Preview> : null}
+    <Head title={title ?? "Email from Remorseless Records"} />
     <Body
       style={{
         backgroundColor: "#ffffff",
@@ -20,6 +21,7 @@ export const Base = ({
         padding: "0 8px",
       }}
     >
+      {preview ? <Preview>{preview}</Preview> : null}
       <Container
         style={{
           border: "1px solid #eaeaea",

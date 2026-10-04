@@ -34,28 +34,49 @@ React nodes on the server and adds actual link/back/forward regressions.
 The existing audit's direct-navigation coverage missed this path; Batch 6
 remains open until deployed retesting and the full checklist are complete.
 
-Current Batch 6 application revision is `923aa73` (full SHA
-`923aa73a4939a8bd05583eb14fb568296acf26b9`). All four workflows/23 checks
-passed: Root `37171741644`, Backend `37171741674`, Storefront `37171741653`,
-Runtime Images `37171741654`. Both image evidence bundles verified. Both
-applications and migration/backup jobs succeeded at this exact revision;
-runtime packages, database roles, migration receipt and notification-key
-binding passed. Product client navigation and back/forward now render their
-descriptions without new TrustedHTML errors. The existing $6.23 checkout now
-renders the real hosted Stripe card form without new browser errors. On
-October 4 its $6.23 test payment completed as native order #8, independently
-verified in Stripe. A $1 native shipping refund reconciles and its signed
-webhooks processed once, but refund email failed: the validator expected
-`refund_…` while pinned Medusa creates `ref_…`. The local correction passes
-27 focused cases and 2,352 Backend coverage cases; its staging release and
-live notification recovery are still pending. Keep order #8 and its $5.23
-remaining paid balance for repeated-refund/cancellation acceptance. The live
-Admin rejects reversed/equal/blank report dates and its empty Connecticut CSV
-has been checked. The actual 04:00 scheduled backup/archive also passed.
-The remaining payment/refund matrix and exhaustive audit are still open.
-Preserve the scheduler incident latch and full observation window. Latest
-evidence: [END_TO_END_AUDIT.md](END_TO_END_AUDIT.md).
-Batch 6 is not accepted; pause before the client clone.
+Current Batch 6 application revision is `09c3737e41e6cd58d31bd7c31e5b07a8bef87593`.
+All four workflows/23 checks, both scanned image bundles, exact app/job
+rollouts, runtime roles/packages/notification key and migration receipt passed.
+Release acceptance remains open: retain the scheduler's October 3 22:33 UTC
+incident through its full 24-hour window and finish log/browser acceptance.
+All nine services/jobs remain stable in observed samples. Observation paused
+17:08–21:36 UTC and resumed; do not claim continuity through that gap. Fresh
+22:07 Redis evidence shows the unchanged run/instance, 89,476 seconds uptime,
+healthy persistence, zero OOM/evictions and preserved 237+1 failed queues.
+Keep monitoring each service/job.
+
+The actual $6.23 order #8 is now canceled and fully refunded across three
+native/Stripe refunds; its reservation was released without changing stock.
+The refund-ID fix recovered both earlier partial-refund emails. Automatic
+cancellation still omitted its email because pinned Medusa's bulk refund flow
+omits `payment.refunded`. The local next correction adds its native grouped
+event, repairs the native refund default/amount guard and drawer title, and
+corrects desktop tax-row classification. These are unpushed as a cohesive corrective release. Both builds, full lint
+and nineteen rendered Admin accessibility cases pass. The picker header
+uses the installed “Select all” translation. CI, deployment and live order
+acceptance remain open for this corrective release. Tests and exact identities are in the top of
+[END_TO_END_AUDIT.md](END_TO_END_AUDIT.md).
+
+The hosted Stripe matrix verified generic/insufficient/expired/CVC/processing
+failures and 3D Secure cancel/fail/retry, each without an order/capture. A
+successful challenge created the owned mixed order #9, $9.07 (shirt/CD/shipping,
+tax collection still disabled), one capture and controlled order email;
+Stripe Dashboard independently agrees. Owned order
+`order_01M43NH040G21HCD2CVN38N0ZX` is now internally shipped/delivered after a
+verified partial fulfillment/cancellation stock cycle. CD stock is 19 and M
+shirt stock is 3, reservations zero. Its pending unconfirmed exchange
+`oexc_01M43S1AJA5J7BWHNPZBBBYBF6` / return
+`return_01M43S5XM1Z5ST5R0QX922P5DS` saved one inbound M shirt before native
+Admin crashed in its standalone Form.Hint context. Preserve the draft and
+resume natively after the two bundled helpers are fixed and deployed. No
+exchange payment/refund or replacement fulfillment has occurred. Local RMA
+accessibility/keyboard and missing fulfillment-notification fixes join this
+corrective group; final rendered/live acceptance is still open. Its nonempty
+Connecticut CSV correctly records $9.07 pending tax review and zero tax;
+the desktop heading inconsistency is the local fix. Oversized-period rejection
+and quarter restoration passed through native keyboard input. The earlier
+04:00 scheduled archive is verified; no new idle-job archive is claimed.
+The audit remains open, and the client clone remains paused.
 
 Batch 5 rotated PostgreSQL administrator, Redis and JWT/cookie credentials,
 verified old-key rejection and native provider/session sign-in, and revoked
