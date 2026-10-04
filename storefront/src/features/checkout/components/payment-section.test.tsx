@@ -252,7 +252,7 @@ describe("PaymentSection", () => {
     expect(screen.getByText("Updating your order total…")).toBeInTheDocument()
   })
 
-  it("loads Inter into Stripe and ignores loader restarts after ready", async () => {
+  it("loads local Inter into Stripe and ignores loader restarts after ready", async () => {
     render(
       <PaymentSection
         checkout={checkoutFixture()}
@@ -274,7 +274,7 @@ describe("PaymentSection", () => {
     const fontSource = stripeMocks.elementsOptions?.fonts?.[0]
     expect(
       fontSource && "cssSrc" in fontSource ? fontSource.cssSrc : null
-    ).toContain("fonts.googleapis.com/css2?family=Inter")
+    ).toBe(new URL("/fonts/stripe-inter.css", window.location.origin).href)
 
     act(() => stripeMocks.loaderStart?.())
     expect(placeOrder).toBeEnabled()

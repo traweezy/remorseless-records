@@ -9,6 +9,21 @@ const manifest = JSON.parse(
   await readFile(new URL("sources.json", directory), "utf8")
 )
 const css = await readFile(new URL("src/styles/fonts.css", root), "utf8")
+const stripeCss = await readFile(
+  new URL("public/fonts/stripe-inter.css", root),
+  "utf8"
+)
+const interFaces = css.match(
+  /@font-face \{\n  font-family: "Inter";[\s\S]*?\n\}/gu
+)
+assert.equal(interFaces?.length, 7)
+assert.equal(
+  stripeCss.trim(),
+  [
+    "/* Stripe Elements: the same vendored Inter faces as the Storefront. */",
+    ...interFaces.map((face) => face.replaceAll("url(/fonts/", "url(./")),
+  ].join("\n\n")
+)
 const layout = await readFile(new URL("src/app/layout.tsx", root), "utf8")
 const digest = (bytes) => createHash("sha256").update(bytes).digest("hex")
 const files = new Set()

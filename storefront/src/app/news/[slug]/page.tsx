@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { MediaPlaceholder } from "@/components/ui/media-placeholder"
 import { siteMetadata } from "@/config/site"
 import { getNewsEntryBySlug } from "@/lib/data/news"
-import { sanitizeNewsHtml } from "@/lib/news/rich-text"
+import { RichText } from "@/components/rich-text"
 
 type NewsPageProps = {
   params: Promise<{ slug: string }>
@@ -86,8 +86,6 @@ const NewsDetailPage = async ({ params }: NewsPageProps) => {
     ? dateFormatter.format(new Date(entry.publishedAt))
     : "Undated"
 
-  const contentHtml = sanitizeNewsHtml(entry.content)
-
   return (
     <div className="bg-background flex min-h-screen flex-col">
       <div className="mx-auto flex w-full max-w-[1100px] flex-1 flex-col gap-10 px-4 pb-20 pt-12 lg:px-8">
@@ -129,10 +127,9 @@ const NewsDetailPage = async ({ params }: NewsPageProps) => {
             )}
           </div>
 
-          <div
-            className="news-richtext text-base leading-relaxed text-muted-foreground"
-            dangerouslySetInnerHTML={{ __html: contentHtml }}
-          />
+          <div className="news-richtext text-base leading-relaxed text-muted-foreground">
+            <RichText html={entry.content} />
+          </div>
 
           {entry.tags.length ? (
             <div className="flex flex-wrap gap-2 pt-4">

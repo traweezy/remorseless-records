@@ -121,6 +121,13 @@ const nextConfig: NextConfig = {
           },
         ],
       },
+      {
+        source: "/fonts/:file([a-z]+-[a-f0-9]{16}\\.woff2|stripe-inter\\.css)",
+        headers: [
+          { key: "Access-Control-Allow-Origin", value: "*" },
+          { key: "Cross-Origin-Resource-Policy", value: "cross-origin" },
+        ],
+      },
     ])
   },
   turbopack: {

@@ -1,5 +1,104 @@
 # Storefront, Admin and Stripe end-to-end audit
 
+### Tax binding deployed; hosted Stripe and report-date corrections — October 4, 02:12 UTC
+
+Revision `115810960c54e47e63cb3216e94491dff8b067c7` passed Root
+`37169204269`, Backend `37169204263`, Storefront `37169204270` and Runtime
+Images `37169204318`, with all 23 required checks. Both image evidence bundles
+passed verification. Exact Railway deployments:
+
+- Backend `10bf2a0d-38a0-4126-8b8a-553f8ee532e4`, running instance
+  `ac59a78f-50c7-48ba-b68e-55374510163a`. Its earlier rollout instance was
+  removed; no CRASHED instance was observed.
+- Storefront `772b4a8e-edb7-4eb7-8837-34a51fa77edb`, running instance
+  `db273351-c00d-4e8a-ba9c-00666a1143ef`.
+- Migrations `b6c23547-a854-4231-a5c3-dde7e47f6077`, completed and exited.
+- RecoveryBackups `42e6b920-f834-4bcd-97cf-1d333da82971`, one manual execution
+  `ed01b8fa-ad91-4e45-a2a5-75c94885423e`, completed and exited. The archive
+  `a2178d08-0bcb-48c6-a070-70c3e6dca2dd` contains four database files and
+  1,172 media objects; receipt and retention passed. The first acceptance
+  read ran before completion and failed closed; the final read passed.
+
+Actual runtime/package/role/ancestor/migration/notification/Next verification
+passed. Redis kept its run and instance identity, with 17,332 seconds uptime at
+02:04:41 UTC, healthy AOF/RDB and zero OOM/eviction/rejected-connection counters.
+The ordinary 02:04 heartbeat matches this revision; the prior 24-hour incident
+latch remains an alert and is not cleared. The all-service observer restarted
+after its local process exited 143; the gap from 01:55:00.986 to 01:56:48.258 UTC
+is retained and does not establish a provider outage. Deployed responsive tests
+passed 90 cases, 11 documented skips, zero retries. Their log is retained; an
+output-directory copy overlapped the next isolated fixture run and is marked
+non-authoritative instead of being presented as deployed screenshots.
+
+The original pending native payment session and PaymentIntent were reused.
+Tax binding now reaches Stripe initialization, confirming the corrected
+persistence/decoder path, but no card was entered or submitted. The real
+hosted script raises `TrustedScriptURL` when it lazily loads its next chunk.
+The next corrective group remains local until its full gates pass:
+
+| Finding | Correction and evidence |
+| --- | --- |
+| `B6-RICH-TEXT-NAVIGATION` | The user's fatal `TrustedHTML`/`innerHTML` stack matches live navigation from the owned shirt to the music release at 02:13:47 UTC. Product descriptions and news articles both used raw HTML insertion. Direct-load tests missed the failing client transition. Render the same sanitized allowlisted content as a server-produced React tree, without an HTML Trusted Types policy. A new catalog-link regression fails against the old build with the exact exception; product/news link, back/forward and repeat-click tests are now required. |
+| `B6-STRIPE-DYNAMIC-SCRIPT` | Retain the exact named bootstrap policy and enforced Trusted Types. Install a default policy only when initializing payable checkout, limited to canonical Stripe HTTPS `.js` paths at `HTMLScriptElement src`. Reject HTML, executable text, other sinks, unrelated origins, credentials, ports, queries, fragments and traversal. Unit boundary tests and a real browser fixture prove accepted chunks and rejected sinks. The original loader-only fixture never exercised Stripe's internal chunk creation. |
+| `B6-PAYMENT-FONT` | Replace the blocked Google Fonts request with the seven existing licensed Inter subsets. The font verifier compares their face definitions; public font assets alone get cross-origin access. |
+| `B6-PAYMENT-TAB-OPTIONS` | Remove accordion-only options from the tabs layout that Stripe correctly warns it ignores. |
+| `B6-TAX-PERIOD-RECOVERY` | Native keyboard input proved end-before-start dates request an invalid report and replace all controls with an error screen. Reuse the server's calendar/range limits before requesting; announce validation beside retained controls and focus the correction field. A rendered regression checks reversed/equal/empty/oversized periods make no request and a valid correction loads the precise new workpaper. Earlier automation `fill()` calls changed the DOM without updating React; those silent-reset observations are not treated as product defects. |
+
+Initial local browser attempts retained two test-fixture failures: the virtual
+font document had no resolved network address, so Chromium blocked its request
+to a loopback server (also when the virtual hostname was localhost). A real
+second loopback HTTP origin now exercises cross-origin loading without bypassing
+browser protections. Firefox/WebKit do not classify `object.data` as a Trusted
+Types sink; assertions now check the browser's declared sink type while retaining
+all six HTML/script/URL rejection checks and the CSP embedded-object denial.
+The initial matrix outcomes (69/72 critical, 102 passed/3 failed/2 skipped
+responsive) and pre-fix navigation trace remain private evidence. All 15 Admin
+matrix cases passed; the invalid-period screenshot was visually reviewed and
+shows retained workpaper controls, focused end date and inline error.
+The first responsive navigation run clicked the mobile card's centered Quick
+shop button rather than its title (109 passed, two failed, two skipped). The
+trace showed the expected drawer with no HTML exception; the regression now
+clicks the linked heading explicitly on every viewport. This is retained as a
+test-targeting correction, not an application navigation failure.
+
+The 02:20/02:21 bounded log attempts could not find the exact request in the
+runtime response and remain failed observations. A fresh 02:22:15–02:22:27 UTC
+probe passed both applications' exact runtime/HTTP correlation, with zero HTTP
+5xx, zero unknown warning/error families and no truncation. This short window
+does not clear the navigation/checkout findings or the scheduler incident.
+
+Local correction gates: frozen install, shared lint/policy/type checks, the
+strict dependency audit (the existing reviewed braces backport remains visible),
+both production builds, 291 Backend suites/2,350 tests, Storefront baseline
+152 files/1,071 tests and transactional 41 files/403 tests pass. All 78 desktop
+Chromium/Firefox/WebKit cases pass, including script/font and real client-link
+regressions. The corrected responsive navigation subset passes all six cases;
+the final complete responsive run passes 111 cases with two documented skips
+and zero retries. Its news/product screenshots and the Admin period-error
+screenshot were reviewed. No card has yet been submitted; local fixtures do not establish live
+Stripe payment acceptance.
+
+Additional live Admin evidence on the preceding revision: refund search,
+attention/tax-mode filters, clear/reset, guidance and refresh passed; no refund
+has yet been issued. Media Cleanup pagination and its empty quarantine tab
+passed; all 28 historical unlinked assets remain untouched. CT/NY/PA preset
+periods were correct, and both NY CSV buttons triggered downloads (contents
+not yet verified). Tax Control's enable-review/cancel retained disabled mode,
+generation 2 and the prepared checkout. Meilisearch status refresh and owned
+product search passed; no sync was triggered. Native Store edit/cancel and
+Region inspection passed, but unnamed native toolbar buttons and the currency
+combobox remain to repair. Numbered authored tracklist text duplicates the
+presentational numbering; review authoring guidance without stripping valid
+title text. The Admin browser tab crashed during one date-stepper action; its
+cause is unproven, and a fresh normal HTTPS tab reused the authenticated session.
+
+Private evidence is under `artifacts/end-to-end-audit-2026-10-03/release-1158109/`
+and adjacent payment preflight/native-session receipts. Batch 6 remains open:
+full control coverage, all product kinds, real sandbox cards/refunds, downstream
+consistency and final observation are unfinished. **The user's stop boundary
+is before Batch 7: do not create or configure the client clone.**
+
+
 ### Canonical presentation deployed; tax binding correction — October 4, 01:46 UTC
 
 Revision `303248c68c18e73fb2b798a4be76a142367648bf` passed all four workflows

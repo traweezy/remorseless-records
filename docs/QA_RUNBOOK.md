@@ -502,11 +502,12 @@ OPTIONS, regardless of origin. The local static server independently returns
 204 and HEAD never streams a body. A failed browser abort produces only
 `request:mutation_block_failed` and cannot fall through to the network.
 `qa:admin-accessibility-boundary` tests both layers and runs in the local lint
-gate and Root CI. Its 14 cases cover native refund-reason required-field validation, guided
+gate and Root CI. Its 15 cases cover native refund-reason required-field validation, guided
 Product validation and offerings,
 existing Product authoring with plain-text rich content, the native Product list and Catalog workspace,
 Merchandising and its creation dialog, News and Discography creation dialogs,
-Tax Control, Media Cleanup, Refund Operations, and Tax Records. Viewports cover
+Tax Control, Media Cleanup, Refund Operations, and Tax Records including
+invalid-period correction without a failed report request. Viewports cover
 760-pixel narrow/mobile, 800-pixel 200%-equivalent, 1,440-pixel laptop, and
 1,920-pixel wide layouts.
 
@@ -625,7 +626,7 @@ GitHub-hosted release jobs continue to use their normal sandbox.
 
 The Storefront enforces Trusted Types on document responses whenever
 `NODE_ENV` is not `development`. `Content-Security-Policy` must contain
-`trusted-types nextjs nextjs#bundler remorseless-stripe-js remorseless-json-ld` and
+`trusted-types nextjs nextjs#bundler remorseless-stripe-js remorseless-json-ld default` and
 `require-trusted-types-for 'script'`. Development retains reporting without
 enforcement. The same directives remain in
 `Content-Security-Policy-Report-Only`, with the same-origin
@@ -650,12 +651,29 @@ For each relevant release:
    scenarios intercept payment/provider responses and do not establish real
    payment-provider acceptance; perform the separate test-mode payment matrix
    in section 2 when that boundary changes.
+   Product descriptions and news articles must also be entered through actual
+   client links, followed by browser back/forward and repeated clicks. The
+   `rich-text-navigation` cases require zero document reloads and zero HTML-sink
+   exceptions. Direct page loads alone do not verify this behavior. Rich text
+   remains sanitized on the server and crosses the RSC boundary as React nodes.
 3. Reject unexpected `securitypolicyviolation` events and investigate blocked
    script/HTML sinks or runtime errors. The listener retains only the reviewed
    classification for React's inert script construction from a versioned Next
    client chunk. JSON-LD sink violations are rejected. That classification does
    not authorize a broken journey or a new sink. Do not add a broad `default`
    Trusted Types policy or expand the named policies to hide a regression.
+   The October 4 Batch 6 correction has one explicit compatibility boundary:
+   Stripe's own dynamic loader requires a default policy even though the npm
+   bootstrap uses its named policy. `stripe-dynamic-script-policy.ts` installs
+   it only when a payable checkout loads Stripe. It accepts canonical HTTPS
+   `.js` paths on `js.stripe.com` or one Stripe script subdomain, exclusively
+   for the `HTMLScriptElement src` sink. Other origins, credentials, ports,
+   query/fragment/traversal variants, HTML, executable text and other sinks
+   remain rejected. The browser matrix must prove these rejections as well as
+   loading both supported Stripe origins; do not substitute report-only mode.
+   This implements the vendor's [dynamic-loader requirement](https://docs.stripe.com/security/guide#content-security-policy)
+   with a narrower URL and sink contract. An existing unknown default policy
+   is an error, not a policy to silently reuse.
 4. Inspect the `rr.security.browser.reports` counter and
    `security.trusted_types.report` events in staging. Logs may contain only the
    bounded report count, effective directive, envelope format, runtime
@@ -747,8 +765,9 @@ The Stripe SDK transport suite validates actual serialized API requests and
 response-body timeouts with an injected Fetch implementation. The browser
 `Stripe loader` tests in both CI and critical configurations serve the installed
 loader under enforced CSP and fulfill all external scripts locally. Keep
-`remorseless-stripe-js` as the only Stripe policy, with its exact URL allowlist,
-and preserve lazy/concurrent loading and failed-load recovery. These offline
+`remorseless-stripe-js` for the bootstrap, with its exact URL allowlist,
+and the narrowly bounded dynamic-script default policy described above.
+Preserve lazy/concurrent loading and failed-load recovery. These offline
 checks supplement, but do not replace, the test-mode payment matrix below.
 
 After final full local gates, verify all four workflows at the pushed SHA,

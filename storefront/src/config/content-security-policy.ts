@@ -32,6 +32,7 @@ export const TRUSTED_TYPES_POLICY_NAMES = [
   "nextjs#bundler",
   "remorseless-stripe-js",
   JSON_LD_TRUSTED_TYPES_POLICY,
+  "default",
 ] as const
 
 const unique = (values: Array<string | null>): string[] =>

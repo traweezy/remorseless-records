@@ -1,6 +1,6 @@
 import sanitizeHtml from "sanitize-html"
 
-const ALLOWED_RICH_TEXT_TAGS = [
+export const ALLOWED_RICH_TEXT_TAGS = [
   "p",
   "br",
   "strong",

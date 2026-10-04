@@ -871,6 +871,97 @@ try {
       () => document.activeElement?.id === "catalog-create-artist"
     )
   }
+  if (setup === "tax-period-validation") {
+    const taxRequests = []
+    const collect = (request) => {
+      if (new URL(request.url()).pathname === "/admin/tax-records") {
+        taxRequests.push(request.url())
+      }
+    }
+    page.on("request", collect)
+    const setDate = (selector, value) =>
+      page.$eval(
+        selector,
+        (element, date) => {
+          const setter = Object.getOwnPropertyDescriptor(
+            HTMLInputElement.prototype,
+            "value"
+          ).set
+          setter.call(element, date)
+          element.dispatchEvent(new Event("input", { bubbles: true }))
+          element.dispatchEvent(new Event("change", { bubbles: true }))
+        },
+        value
+      )
+    const expectInvalid = async (start, end, message, focus) => {
+      await setDate("#tax-period-start", start)
+      await setDate("#tax-period-end", end)
+      await clickButton("Apply period")
+      await page.waitForFunction(
+        (expected, field) => {
+          const alert = document.querySelector("#tax-period-error")
+          return (
+            alert?.textContent === expected &&
+            document.activeElement?.id === field
+          )
+        },
+        {},
+        message,
+        focus
+      )
+      if (taxRequests.length)
+        throw new Error("Invalid period reached the report API")
+    }
+    await expectInvalid(
+      "2027-02-01",
+      "2027-01-01",
+      "The report end date must be after its start date.",
+      "tax-period-end"
+    )
+    await expectInvalid(
+      "2027-01-01",
+      "2027-01-01",
+      "The report end date must be after its start date.",
+      "tax-period-end"
+    )
+    await expectInvalid(
+      "",
+      "2027-01-01",
+      "Enter a valid start date and end date.",
+      "tax-period-start"
+    )
+    await expectInvalid(
+      "2020-01-01",
+      "2027-01-01",
+      "Tax reports are limited to 1462 days at a time.",
+      "tax-period-end"
+    )
+    await setDate("#tax-period-start", "2026-09-01")
+    await setDate("#tax-period-end", "2026-10-01")
+    await clickButton("Apply period")
+    await page.waitForFunction(() =>
+      document
+        .querySelector("main")
+        ?.textContent.includes("Sep 1, 2026 – Sep 30, 2026")
+    )
+    if (
+      taxRequests.length !== 1 ||
+      !taxRequests[0].includes("start=2026-09-01") ||
+      !taxRequests[0].includes("end=2026-10-01")
+    ) {
+      throw new Error("Corrected period did not request the exact new report")
+    }
+    // Leave the last applied workpaper visible beside an actionable validation
+    // error for screenshot and accessibility inspection.
+    taxRequests.length = 0
+    await expectInvalid(
+      "2026-11-01",
+      "2026-10-01",
+      "The report end date must be after its start date.",
+      "tax-period-end"
+    )
+    page.off("request", collect)
+  }
   if (setup === "tax-provider-availability") {
     await page.evaluate(() => {
       document

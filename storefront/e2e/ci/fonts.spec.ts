@@ -1,3 +1,4 @@
+import { createServer } from "node:http"
 import { expect, test } from "@playwright/test"
 import { preloads } from "../../public/fonts/sources.json"
 
@@ -68,4 +69,49 @@ test("UI runtime local fonts resolve all brand tokens without external requests"
     path: testInfo.outputPath("local-fonts-home.png"),
     fullPage: true,
   })
+})
+
+test("UI runtime Stripe's public fonts load across origins without broadening app access", async ({
+  page,
+  request,
+  baseURL,
+}) => {
+  const fontUrl = new URL("/fonts/stripe-inter.css", baseURL).href
+  const stylesheet = await request.get(fontUrl)
+  expect(stylesheet.status()).toBe(200)
+  expect(stylesheet.headers()["access-control-allow-origin"]).toBe("*")
+  expect(stylesheet.headers()["cross-origin-resource-policy"]).toBe(
+    "cross-origin"
+  )
+  expect(stylesheet.headers()["content-security-policy"]).toBeUndefined()
+  const app = await request.get("/")
+  expect(app.headers()["access-control-allow-origin"]).toBeUndefined()
+  expect(app.headers()["cross-origin-resource-policy"]).toBe("same-site")
+  // Serve a real second loopback origin. A route.fulfill-only origin has no
+  // resolved IP and triggers Chromium's private-network access protection.
+  const fixture = createServer((_request, response) => {
+    response.writeHead(200, { "content-type": "text/html" })
+    response.end(
+      `<!doctype html><html lang="en"><head><title>Hosted font fixture</title><link rel="stylesheet" href="${fontUrl}"></head><body><h1 style="font-family:Inter">Payment font</h1></body></html>`
+    )
+  })
+  await new Promise<void>((resolve) => fixture.listen(0, "127.0.0.1", resolve))
+  try {
+    const address = fixture.address()
+    if (!address || typeof address === "string")
+      throw new Error("Font fixture address unavailable")
+    const fixtureOrigin = `http://127.0.0.1:${address.port}/`
+    expect(new URL(fontUrl).origin).not.toBe(new URL(fixtureOrigin).origin)
+    await page.goto(fixtureOrigin)
+    const statuses = await page.evaluate(async () => {
+      const faces = await document.fonts.load('500 16px "Inter"', "Payment Δ")
+      return faces.map((face) => face.status)
+    })
+    expect(statuses.length).toBeGreaterThan(0)
+    expect(statuses.every((status) => status === "loaded")).toBe(true)
+  } finally {
+    await new Promise<void>((resolve, reject) =>
+      fixture.close((error) => (error ? reject(error) : resolve()))
+    )
+  }
 })

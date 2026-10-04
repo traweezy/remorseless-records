@@ -34,7 +34,7 @@ import {
   resolvePublicProductRouteType,
 } from "@/lib/products/routes"
 import { productPresentationType } from "@/lib/products/presentation"
-import { sanitizeNewsHtml } from "@/lib/news/rich-text"
+import { RichText } from "@/components/rich-text"
 import { resolveRegionId } from "@/lib/regions"
 import { getBundleComposition } from "@/lib/data/bundles"
 import { buildBundleAvailabilityNotices } from "@/lib/products/bundle-availability"
@@ -152,8 +152,6 @@ export const ProductDetailPage = async ({ params }: ProductDetailPageProps) => {
   const variantOptions = deriveVariantOptions(product.variants)
   const profile = product.presentation?.profile
   const descriptionHtml = profile?.descriptionHtml
-    ? sanitizeNewsHtml(profile.descriptionHtml)
-    : null
   const genreChips = profile
     ? profile.genres
     : Array.from(
@@ -318,11 +316,9 @@ export const ProductDetailPage = async ({ params }: ProductDetailPageProps) => {
                 Description
               </h2>
               {descriptionHtml ? (
-                <div
-                  className="news-richtext max-w-none break-words text-sm text-muted-foreground"
-                  // biome-ignore lint/security/noDangerouslySetInnerHtml: Sanitized by the existing two-pass rich-text allowlist above.
-                  dangerouslySetInnerHTML={{ __html: descriptionHtml }}
-                />
+                <div className="news-richtext max-w-none break-words text-sm text-muted-foreground">
+                  <RichText html={descriptionHtml} />
+                </div>
               ) : (
                 <p className="text-sm leading-relaxed text-muted-foreground whitespace-pre-line">
                   {productDescription}

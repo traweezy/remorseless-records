@@ -5,6 +5,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ChangeEvent,
 } from "react"
@@ -43,6 +44,8 @@ import {
 import {
   taxPeriodForPreset,
   taxPeriodPresetOptions,
+  parseTaxReportPeriod,
+  TaxReportPeriodError,
   type TaxPeriodPreset,
 } from "../../../lib/tax-reporting/periods"
 import type {
@@ -321,6 +324,9 @@ export const TaxRecordsPageContent = memo(() => {
   const [preset, setPreset] = useState<TaxPeriodPreset>("current-quarter")
   const [draftStart, setDraftStart] = useState(initialPeriod.start)
   const [draftEnd, setDraftEnd] = useState(initialPeriod.end)
+  const [periodError, setPeriodError] = useState<string | null>(null)
+  const startInput = useRef<HTMLInputElement>(null)
+  const endInput = useRef<HTMLInputElement>(null)
   const [period, setPeriod] = useState(initialPeriod)
   const [filters, setFilters] = useState<TaxRecordFilters>(INITIAL_FILTERS)
   const [draftSearch, setDraftSearch] = useState("")
@@ -351,6 +357,7 @@ export const TaxRecordsPageContent = memo(() => {
     const nextState = value as TaxFilingState
     const nextPeriod = uiPeriodForPreset(nextState, "current-quarter")
     setFilingState(nextState)
+    setPeriodError(null)
     setPreset("current-quarter")
     setDraftStart(nextPeriod.start)
     setDraftEnd(nextPeriod.end)
@@ -364,6 +371,7 @@ export const TaxRecordsPageContent = memo(() => {
     (value: string) => {
       const next = value as TaxPeriodPreset
       setPreset(next)
+      setPeriodError(null)
       if (next !== "custom") {
         const nextPeriod = uiPeriodForPreset(filingState, next)
         setDraftStart(nextPeriod.start)
@@ -374,16 +382,33 @@ export const TaxRecordsPageContent = memo(() => {
   )
 
   const handleStart = useCallback((event: ChangeEvent<HTMLInputElement>) => {
+    setPeriodError(null)
     setPreset("custom")
     setDraftStart(event.currentTarget.value)
   }, [])
 
   const handleEnd = useCallback((event: ChangeEvent<HTMLInputElement>) => {
+    setPeriodError(null)
     setPreset("custom")
     setDraftEnd(event.currentTarget.value)
   }, [])
 
   const applyPeriod = useCallback(() => {
+    try {
+      parseTaxReportPeriod({ startDate: draftStart, endDate: draftEnd })
+    } catch (error) {
+      const rangeError = error instanceof TaxReportPeriodError
+      setPeriodError(
+        rangeError ? error.message : "Enter a valid start date and end date."
+      )
+      if (rangeError || (draftStart && !draftEnd)) {
+        endInput.current?.focus()
+      } else {
+        startInput.current?.focus()
+      }
+      return
+    }
+    setPeriodError(null)
     setFilters((current) => ({ ...current, page: 1 }))
     setPeriod({ end: draftEnd, start: draftStart })
   }, [draftEnd, draftStart])
@@ -661,6 +686,9 @@ export const TaxRecordsPageContent = memo(() => {
               <Input
                 className="mt-1"
                 id="tax-period-start"
+                ref={startInput}
+                aria-invalid={Boolean(periodError)}
+                aria-describedby={periodError ? "tax-period-error" : undefined}
                 onChange={handleStart}
                 type="date"
                 value={draftStart}
@@ -671,6 +699,9 @@ export const TaxRecordsPageContent = memo(() => {
               <Input
                 className="mt-1"
                 id="tax-period-end"
+                ref={endInput}
+                aria-invalid={Boolean(periodError)}
+                aria-describedby={periodError ? "tax-period-error" : undefined}
                 onChange={handleEnd}
                 type="date"
                 value={draftEnd}
@@ -680,6 +711,16 @@ export const TaxRecordsPageContent = memo(() => {
               Apply period
             </Button>
           </div>
+          {periodError ? (
+            <Alert
+              className="mt-3"
+              id="tax-period-error"
+              role="alert"
+              variant="error"
+            >
+              {periodError}
+            </Alert>
+          ) : null}
           <Text size="xsmall" className="mt-3 text-ui-fg-subtle">
             {report.period.label} · {report.period.timeZone} · end date is not
             included

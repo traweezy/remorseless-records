@@ -1,5 +1,18 @@
 # Dependency Migration Audit — 2026-07-23
 
+## Storefront rich-text rendering — October 4, 2026 UTC
+
+Declare exact `htmlparser2@12.0.0` as a direct Storefront dependency so the
+server can convert sanitized product/news markup into ordinary React nodes.
+It already belongs to the locked runtime graph through `sanitize-html@2.17.7`;
+only the Storefront importer gains an edge. No version, integrity, patch,
+transitive resolution or cooling exception changes. The npm publication time
+is March 20, 2026 at 23:08:39.985 UTC, beyond seven-day cooling; its MIT license
+and Node >=20.19.0 requirement fit the existing runtime. A frozen offline root
+install passed. Parsing remains server-only and preserves the existing
+two-pass sanitizer. Browser navigation must pass enforced Trusted Types without
+an HTML policy or raw HTML assignment.
+
 ## Native shipping currency projection — October 4, 2026 UTC
 
 The actual sandbox cart exposed a second shipping contract mismatch: pinned

@@ -82,6 +82,17 @@ checks the emitted loader chunk. If Stripe appears on an empty checkout, stop
 the release and inspect the payment-section boundary; do not make the script
 global to hide a timing issue.
 
+Stripe's hosted loader also creates dynamic script elements. A payable
+checkout installs the restricted default Trusted Types policy described in
+[QA](QA_RUNBOOK.md#110-trusted-types-enforcement-and-regression-acceptance)
+before initializing it. This preserves enforced Trusted Types while allowing
+only canonical Stripe HTTPS JavaScript at the script-source sink. It grants
+no HTML, inline-script, worker or arbitrary-origin conversion capability.
+Payment fields load the same seven licensed Inter subsets as the Storefront
+from `/fonts/stripe-inter.css`; only the public font assets permit cross-origin
+reads. The font verifier requires byte-equivalent face definitions. No Google
+Fonts connection is needed at checkout.
+
 ## Fail-closed checkout data boundary
 
 Storefront payment preparation, checkout projection/revision, tax identity,

@@ -115,6 +115,13 @@ const cases = [
   },
   {
     height: 900,
+    name: "tax-records-period-validation",
+    route: "/app/operations/tax-records",
+    setup: "tax-period-validation",
+    width: 1440,
+  },
+  {
+    height: 900,
     name: "tax-records-unavailable-laptop",
     route: "/app/operations/tax-records",
     taxRecordsState: "unavailable",

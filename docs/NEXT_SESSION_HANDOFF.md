@@ -18,20 +18,31 @@ pause before Batch 7. Do not create or configure the client staging environment
 until the user resumes that work.** This supersedes earlier automatic
 continuation into the clone.
 
-Current Batch 6 application revision is `303248c` (all four workflows/23 checks
-passed; both applications and migration/backup jobs succeeded). Canonical
-artwork and authored details, merchandise routes and native shipping now work.
-Deployed responsive testing passed 90 cases with 11 documented skips and no
-retries. The real checkout now reaches its $6.23 native payment session, but
-strict tax-evidence persistence and disabled-tax response decoding block the
-Payment Element. No card was submitted and no fresh payment/refund has run.
-The next correction fixes those two contracts and the cart's merchandise
-subtotal display, with native integration regressions. Local coverage, builds,
-lint, integration and final rendered verification pass; push, CI and live
-financial retests remain pending. Preserve the existing pending PaymentIntent,
-scheduler incident latch and full observation window. Latest evidence:
-[END_TO_END_AUDIT.md](END_TO_END_AUDIT.md). Batch 6 is not accepted; pause before
-the client clone.
+**Latest user follow-up:** recurring Storefront “A track skipped” errors are
+confirmed on actual merchandise-to-music client navigation at `1158109`.
+The user's `TrustedHTML`/`innerHTML` exception matches the reproduced stack.
+Product descriptions and news articles used sanitized strings with React's raw
+HTML insertion, which succeeds on server loads but fails under enforced
+Trusted Types on client navigation. The current correction renders sanitized
+React nodes on the server and adds actual link/back/forward regressions.
+The existing audit's direct-navigation coverage missed this path; Batch 6
+remains open until deployed retesting and the full checklist are complete.
+
+Current Batch 6 application revision is `1158109` (full SHA
+`115810960c54e47e63cb3216e94491dff8b067c7`). All four workflows/23 checks
+passed; both applications and migration/backup jobs succeeded. The tax-evidence
+persistence and disabled-tax decoding repairs now reach Stripe initialization,
+reusing the original $6.23 session. Deployed responsive tests pass 90 cases with
+11 documented skips and no retries. No card has been submitted or audit order
+paid: Stripe's hosted dynamic script loader now exposes a Trusted Types
+compatibility failure. The next corrective group restricts that vendor loader
+to its HTTPS scripts, hosts checkout fonts locally, removes incompatible tab
+options, repairs rich-text link navigation, and prevents invalid Admin report
+dates from hiding their controls.
+Full verification and the corrected real sandbox journey remain pending.
+Preserve the existing pending PaymentIntent, scheduler incident latch and full
+observation window. Latest evidence: [END_TO_END_AUDIT.md](END_TO_END_AUDIT.md).
+Batch 6 is not accepted; pause before the client clone.
 
 Batch 5 rotated PostgreSQL administrator, Redis and JWT/cookie credentials,
 verified old-key rejection and native provider/session sign-in, and revoked

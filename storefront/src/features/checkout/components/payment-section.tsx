@@ -40,10 +40,12 @@ import {
 } from "@/features/checkout/lib/checkout-copy"
 import type { CheckoutProjection } from "@/features/checkout/types/checkout"
 import { formatAmount } from "@/lib/money"
+import { installStripeDynamicScriptPolicy } from "@/lib/stripe-dynamic-script-policy"
 
 let stripePromise: PromiseLike<Stripe | null> | null = null
 
 const getStripePromise = (): PromiseLike<Stripe | null> => {
+  installStripeDynamicScriptPolicy()
   stripePromise ??= loadStripe(clientEnv.stripePublishableKey)
   return stripePromise
 }
@@ -227,9 +229,6 @@ const PaymentElementForm = memo<PaymentElementFormProps>(
       return {
         layout: {
           type: "tabs",
-          defaultCollapsed: false,
-          radios: "auto",
-          spacedAccordionItems: true,
         },
         defaultValues: {
           billingDetails: {
@@ -537,8 +536,12 @@ export const PaymentSection = memo<PaymentSectionProps>(
       appearance,
       fonts: [
         {
-          cssSrc:
-            "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap",
+          cssSrc: new URL(
+            "/fonts/stripe-inter.css",
+            typeof window === "undefined"
+              ? clientEnv.siteUrl
+              : window.location.origin
+          ).href,
         },
       ],
       loader: "auto",

@@ -114,6 +114,22 @@ const presentedRuntimeRow = {
   ],
 }
 
+const richTextNews = {
+  id: "news_CIRICHTEXT",
+  title: "Rich text navigation dispatch",
+  slug: "ci-rich-text",
+  excerpt: "A local article for client navigation acceptance.",
+  content:
+    '<h2>Studio notes</h2><p>Pressing <strong>vinyl</strong> &amp; keeping &lt;script&gt; as text.</p><ul><li>First pressing</li><li>Second pressing</li></ul><p><a href="javascript:alert(1)">Unsafe link</a></p>',
+  author: "CI Editor",
+  status: "published",
+  publishedAt: "2026-08-31T00:00:00.000Z",
+  tags: [],
+  coverUrl: null,
+  seoTitle: null,
+  seoDescription: null,
+}
+
 const fixtureShelves = {
   shelves: [
     {
@@ -223,11 +239,14 @@ const routePayload = (pathname, searchParams) => {
       return fixtureDiscography
     case "/store/news":
       return {
-        entries: [],
-        count: 0,
+        entries:
+          Number(searchParams.get("offset") ?? 0) === 0 ? [richTextNews] : [],
+        count: 1,
         offset: Number(searchParams.get("offset") ?? 0),
         limit: Number(searchParams.get("limit") ?? 12),
       }
+    case "/store/news/ci-rich-text":
+      return { entry: richTextNews }
     case "/store/products": {
       const requestedHandle = searchParams.get("handle")
       const products =

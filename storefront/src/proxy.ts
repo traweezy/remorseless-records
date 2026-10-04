@@ -64,7 +64,7 @@ export const config = {
     "/api/:path*",
     {
       source:
-        "/((?!api|_next/static|_next/image|favicon.ico|apple-touch-icon.png|opengraph-image.jpg|twitter-image.jpg|robots.txt|sitemap.xml).*)",
+        "/((?!api|_next/static|_next/image|fonts/|favicon.ico|apple-touch-icon.png|opengraph-image.jpg|twitter-image.jpg|robots.txt|sitemap.xml).*)",
       missing: [
         { type: "header", key: "next-router-prefetch" },
         { type: "header", key: "purpose", value: "prefetch" },
