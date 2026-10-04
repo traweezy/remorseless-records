@@ -412,7 +412,11 @@ export const ProductDetailPage = async ({ params }: ProductDetailPageProps) => {
         {relatedProducts.length ? (
           <ProductCarouselSection
             heading={{ leading: "Related", highlight: "Assaults" }}
-            description="More wax from this artist and adjacent genres."
+            description={
+              isMusicRelease
+                ? "More releases from this artist and related genres."
+                : "Explore more releases and merchandise."
+            }
             products={relatedProducts}
           />
         ) : null}

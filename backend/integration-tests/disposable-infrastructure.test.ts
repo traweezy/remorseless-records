@@ -51,6 +51,7 @@ import {
 } from "../src/lib/observability/database-diagnostics"
 import { PAYMENT_LIFECYCLE_MODULE } from "../src/modules/payment-lifecycle/constants"
 import type PaymentLifecycleModuleService from "../src/modules/payment-lifecycle/service"
+import type TaxControlModuleService from "../src/modules/tax-control/service"
 
 const databaseName = "rr_disposable_integration"
 const redisUrl = process.env.REDIS_URL?.trim()
@@ -125,6 +126,67 @@ medusaIntegrationTestRunner({
   moduleName: "RemorselessDisposableInfrastructure",
   testSuite: ({ api, dbConfig, getContainer }) => {
     describe("disposable PostgreSQL and Redis integration", () => {
+      it("persists and replays native tax evidence for every collection mode", async () => {
+        const service =
+          getContainer().resolve<TaxControlModuleService>("tax_control")
+        for (const provider of ["stripe_tax", "taxrate_io", null] as const) {
+          const suffix = randomUUID().replaceAll("-", "")
+          const input = {
+            amountMinor: 623,
+            calculationId:
+              provider === "stripe_tax" ? `taxcalc_${suffix}` : null,
+            cartId: `cart_${suffix}`,
+            collectionMode:
+              provider === null ? ("disabled" as const) : ("collect" as const),
+            currencyCode: "usd",
+            fingerprint: "native_tax_evidence_0123456789abcdef0123456789",
+            generation: 2,
+            paymentIntentId: `pi_${suffix}`,
+            provider,
+            status: "prepared" as const,
+          }
+          const created = await service.recordTaxQuoteEvidence(input)
+          expect(created.replayed).toBe(false)
+          expect(created.evidence).toMatchObject({
+            association_status: null,
+            order_id: null,
+            tax_transaction_id: null,
+            amount_minor: 623,
+            collection_mode: input.collectionMode,
+            provider,
+          })
+          const replayed = await service.recordTaxQuoteEvidence(input)
+          expect(replayed.replayed).toBe(true)
+          expect(replayed.evidence.id).toBe(created.evidence.id)
+          await expect(
+            service.recordTaxQuoteEvidence({ ...input, amountMinor: 624 })
+          ).rejects.toThrow("already bound to different tax evidence")
+          const stored = await service.listTaxQuoteEvidences({
+            payment_intent_id: input.paymentIntentId,
+          })
+          expect(stored).toHaveLength(1)
+          expect(stored[0]).toMatchObject({ amount_minor: 623 })
+        }
+      })
+
+      it("initializes complete native tax controls and reuses the singleton", async () => {
+        const service =
+          getContainer().resolve<TaxControlModuleService>("tax_control")
+        // Only this guarded disposable database is in scope for singleton reset.
+        await service.deleteTaxProviderControls("taxctrl_default")
+        const control = await service.ensureTaxProviderControl()
+        expect(control).toMatchObject({
+          id: "taxctrl_default",
+          collection_mode: "disabled",
+          generation: 1,
+          last_switch_reason: null,
+          last_switched_by: null,
+        })
+        await expect(service.ensureTaxProviderControl()).resolves.toEqual(
+          control
+        )
+      })
+
       it("creates and replays a complete native product with priced stocked variants", async () => {
         const container = getContainer()
         const fulfillment = container.resolve<IFulfillmentModuleService>(

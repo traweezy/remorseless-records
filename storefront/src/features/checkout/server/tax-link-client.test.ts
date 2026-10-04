@@ -47,6 +47,7 @@ describe("checkout tax-link client", () => {
     >(() =>
       Promise.resolve(
         Response.json({
+          collectionMode: "collect",
           generation: 3,
           linked: true,
           provider: "stripe_tax",
@@ -80,6 +81,57 @@ describe("checkout tax-link client", () => {
       new RegExp(`^00-${traceId}-[0-9a-f]{16}-01$`)
     )
   })
+
+  it.each([
+    { collectionMode: "collect", provider: "stripe_tax" },
+    { collectionMode: "collect", provider: "taxrate_io" },
+    { collectionMode: "disabled", provider: null },
+  ])(
+    "accepts the explicit tax binding mode $collectionMode / $provider",
+    async (identity) => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async () =>
+          Response.json({
+            ...identity,
+            generation: 2,
+            linked: true,
+            replayed: true,
+          })
+        )
+      )
+      await expect(linkCheckoutTax("cart_01K123ABC")).resolves.toBeUndefined()
+    }
+  )
+
+  it.each([
+    { collectionMode: "collect", provider: null },
+    { collectionMode: "disabled", provider: "stripe_tax" },
+    { collectionMode: "disabled", provider: "taxrate_io" },
+    { provider: null },
+    { collectionMode: "disabled" },
+    { collectionMode: "collect", provider: "unrecognized" },
+    { collectionMode: "collect", provider: "stripe_tax", generation: 0 },
+    { collectionMode: "disabled", provider: null, privateValue: "unexpected" },
+  ])(
+    "rejects inconsistent or incomplete binding identity %#",
+    async (identity) => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async () =>
+          Response.json({
+            generation: 2,
+            linked: true,
+            replayed: false,
+            ...identity,
+          })
+        )
+      )
+      await expect(linkCheckoutTax("cart_01K123ABC")).rejects.toBeInstanceOf(
+        CheckoutTaxLinkError
+      )
+    }
+  )
 
   it.each([
     ["network failure", () => Promise.reject(new Error("offline"))],

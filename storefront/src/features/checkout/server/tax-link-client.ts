@@ -9,14 +9,27 @@ import { createUpstreamHeaders } from "@/lib/http/correlation"
 
 const TAX_LINK_TIMEOUT_MS = 10_000
 
-const responseSchema = z
-  .object({
-    generation: z.number().int().positive(),
-    linked: z.literal(true),
-    provider: z.enum(["stripe_tax", "taxrate_io"]),
-    replayed: z.boolean(),
-  })
-  .strict()
+const commonResponse = {
+  generation: z.number().int().positive(),
+  linked: z.literal(true),
+  replayed: z.boolean(),
+}
+const responseSchema = z.discriminatedUnion("collectionMode", [
+  z
+    .object({
+      ...commonResponse,
+      collectionMode: z.literal("collect"),
+      provider: z.enum(["stripe_tax", "taxrate_io"]),
+    })
+    .strict(),
+  z
+    .object({
+      ...commonResponse,
+      collectionMode: z.literal("disabled"),
+      provider: z.null(),
+    })
+    .strict(),
+])
 
 export class CheckoutTaxLinkError extends Error {
   constructor(message = "Checkout tax binding is temporarily unavailable") {

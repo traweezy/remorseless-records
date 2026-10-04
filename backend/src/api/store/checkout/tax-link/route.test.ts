@@ -144,6 +144,7 @@ describe("POST /store/checkout/tax-link", () => {
 
     expect(state).toEqual({
       body: {
+        collectionMode: "collect",
         generation: 3,
         linked: true,
         provider: "stripe_tax",
@@ -197,6 +198,31 @@ describe("POST /store/checkout/tax-link", () => {
       "[tax-control] Stripe payment binding update_intent retry scheduled (status, attempt 2/2)."
     )
   })
+
+  it.each([
+    { collectionMode: "disabled" as const, provider: null },
+    { collectionMode: "collect" as const, provider: "taxrate_io" as const },
+  ])(
+    "returns the verified $collectionMode / $provider identity",
+    async (identity) => {
+      bindingMock.mockResolvedValueOnce({
+        ...identity,
+        generation: 2,
+        replayed: true,
+      })
+      const timestamp = Math.floor(Date.now() / 1000)
+      const proof = createCheckoutTaxLinkProof({ cartId, timestamp, secret })
+      const fixture = requestFixture({ proof, timestamp })
+      const { res, state } = responseFixture()
+      await POST(fixture.req, res)
+      expect(state.body).toEqual({
+        ...identity,
+        generation: 2,
+        linked: true,
+        replayed: true,
+      })
+    }
+  )
 
   it("rejects a status proof replay before resolving dependencies", async () => {
     const timestamp = Math.floor(Date.now() / 1000)

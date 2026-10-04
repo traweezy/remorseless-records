@@ -170,6 +170,7 @@ export const POST = async (
 
   res.setHeader("Cache-Control", "no-store")
   res.status(200).json({
+    collectionMode: result.collectionMode,
     linked: true,
     provider: result.provider,
     generation: result.generation,

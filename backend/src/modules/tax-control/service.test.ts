@@ -143,13 +143,10 @@ const serviceHarness = (): ServiceHarness => {
     ),
     createTaxQuoteEvidences: jest.fn(
       async ([input]: [Record<string, unknown>]) => {
-        state.evidence = evidenceFixture({
+        state.evidence = {
           ...input,
-          association_status: null,
           id: "taxevidence_01EVIDENCE",
-          order_id: null,
-          tax_transaction_id: null,
-        })
+        } as TaxQuoteEvidenceRecord
         return [state.evidence]
       }
     ),

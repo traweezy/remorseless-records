@@ -1,5 +1,88 @@
 # Storefront, Admin and Stripe end-to-end audit
 
+### Canonical presentation deployed; tax binding correction — October 4, 01:46 UTC
+
+Revision `303248c68c18e73fb2b798a4be76a142367648bf` passed all four workflows
+and 23 checks: Root `37167693789`, Backend `37167693644`, Storefront
+`37167693659`, Runtime Images `37167693776`. Both runtime-image evidence
+bundles passed policy verification. Exact deployments succeeded: Backend
+`a987f87f-16f0-42bc-b2ba-bc85ebf0db2e`, Storefront
+`ab5712aa-b241-4ce3-bd06-17c5f49fcc0c`, Migrations
+`10485e83-f1c4-458c-be7c-2a3ac9505bf2`, RecoveryBackups
+`dd8de5ef-8cd6-400a-adff-697fabb948c5`. The migration completed/exited with
+its receipt; the backup's single requested execution
+`8b441c5a-5ed2-4b84-9315-2a164ad75982` completed/exited and published archive
+`d6349ecc-1842-4f91-a622-3785fb2c5ea7` at 01:33:42 UTC. It contains four
+database files and 1,172 media objects, including all owned audit artwork.
+Receipt SHA-256: `9df50853dd0c7343653fde2eb90fb8391aa6a30df74b7fd3fb8d0bf2beb528df`.
+Retention and exact application readiness/runtime/role/ancestor credential,
+migration, notification and Next checks passed. Manual backup execution does
+not establish the first 04:00 calendar run.
+
+All nine services/jobs remained successful through observation. Redis retained
+its same process identity at 15,374 seconds uptime, UID 1000, healthy AOF/RDB
+and zero OOM/evictions/rejected connections. The first generic diagnostic was
+unverified; a fresh diagnostic with phase labels passed the same checks. The
+ordinary 01:34 heartbeat completed on this SHA; the earlier scheduler incident
+remains latched at 503. Preserve its full observation window and historical
+failed queues. Monitoring resumed at 01:16:36 after the prior bounded watcher
+ended at 01:08:05; do not describe the gap as observed.
+
+Deployed responsive browsers passed **90 cases with 11 documented skips and
+zero retries**; three skips are canonical fixture cases requiring local data.
+Live bare-handle merchandise navigation, canonical description/details,
+prices/sizes and disabled out-of-stock L pass. A description saved in Admin at
+about 01:39 appeared on the storefront after its normal cache window. Music
+artwork, artist, description, tracklist and credits now render. Square,
+landscape and portrait alignment targets retain circular proportions; gallery
+arrows/thumbnails work. The cart renders its canonical square artwork.
+
+Live checkout saves shipping and creates one native $6.23 USD payment session,
+but the Payment Element is blocked. One explicit Retry reproduced the failure;
+no card was entered/submitted and no order/refund is claimed. The owned cart
+is `cart_01M424D3P0ZHA5T404RF2JDRV9`; retain pending native PaymentIntent
+`pi_3UMeJMIM4tTeFQ3W0QNUoBMl` (`requires_payment_method`) and reuse its session
+for the deployed retest. Fresh actual-process preflight confirms the expected
+Stripe sandbox, test key/publishable key, payment-method configuration and both
+native/lifecycle webhooks. No credentials are stored in this document.
+
+| Finding | Evidence and correction | Status |
+| --- | --- | --- |
+| `B6-TAX-EVIDENCE-CREATE` | Actual checkout returns Backend 500, “Tax quote evidence was not persisted exactly once.” Native create omits unspecified nullable association/order/transaction fields; the strict reader rejects it. Explicit nulls preserve the full contract. | Reproduced before repair in native integration; all three tax modes now persist, replay identically and reject conflicting amounts without duplicates. |
+| `B6-TAX-LINK-MODE` | The Backend response omitted collection mode and the Storefront required a non-null provider even for disabled collection. | Return the mode and strictly discriminate collect/provider versus disabled/null; invalid combinations and extra fields still fail. |
+| `B6-CART-SUBTOTAL` | Actual cart shows $6.23 subtotal, $5 shipping and $6.23 total for a $1.23 item. Native cart subtotal already includes shipping. | Display native item subtotal; preserve final Medusa total. Focused regression passes. |
+| `B6-PRODUCT-OPTION-COPY` | Merchandise sizes are grouped as “Available formats”; related copy always describes vinyl. | Use “Available options” and product-appropriate related copy. |
+| `B6-TRACKLIST-NUMBERING` | Numbered authored lines display an additional decorative number. | Open presentation review; preserve authored titles. |
+
+Backend coverage passes 291 suites/2,350 tests. Storefront coverage passes
+150 files/1,028 tests and 41 transactional files/403 tests. Both builds, root
+lint/type/policy checks and full disposable integration pass: 72 native Medusa
+cases, 44 payment cases and the complete recovery/session aggregate. An earlier
+corrected aggregate passed its tests but its receipt writer collided with a
+prior filename; retain that exit-1 attempt. The fresh uniquely named aggregate
+exited 0 and cleaned every owned container/relay. The 66-case cross-engine
+browser matrix passes before the additional subtotal display correction; the final rebuild then passed six focused cross-engine cases and five
+responsive cases with no retries. Desktop/mobile rendered screenshots were
+inspected, and the seven-case cart component regression passes.
+
+Bounded supporting logs retained one PostgreSQL reset/open-transaction EOF pair
+at 01:32:55.470, coinciding with rollout/backup startup; causation is unproven.
+There was no observed PostgreSQL restart. Meilisearch's flagged lines are native
+INFO successful index batches with zero failed tasks; startup's flagged Backend
+line is the audit-role command on stderr. A Storefront cart read returned 500
+`cart_unavailable` at 01:33:55 (request `23305f37-00b4-4f66-bafd-ecd198ea46ec`);
+its underlying cause is unproven and needs follow-up. The 01:40–01:46 follow-up contains no further support warnings or application
+errors; that bounded observation does not establish the earlier cause. Known
+payment failures remain open until the correction is deployed and exercised.
+
+Private receipts, original failures and runtime bundles are retained in
+`artifacts/end-to-end-audit-2026-10-03/release-303248c/` with a checksum manifest.
+Owned payment proof and preflight are adjacent private artifacts. Full route/
+control coverage, all product kinds, actual sandbox cards/refunds and final
+service/log acceptance remain open. **Finish Batch 6, then stop before Batch 7;
+do not create or configure the client clone.**
+
+
 ### Inventory/gallery correction and canonical display work — October 4, 01:08 UTC
 
 Direct staging revision `459276dbcdebf3bba30b8e98efb923775ae82ae8` contains

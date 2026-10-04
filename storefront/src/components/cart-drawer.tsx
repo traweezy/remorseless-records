@@ -51,7 +51,7 @@ export const CartDrawer = memo<CartDrawerProps>(({ open, onOpenChange }) => {
 
   const items = cart?.items ?? EMPTY_CART_ITEMS
   const hasItems = items.length > 0
-  const subtotal = formattedAmount(cart, cart?.subtotal)
+  const subtotal = formattedAmount(cart, cart?.item_subtotal)
   const hasShippingMethod = Boolean(cart?.shipping_methods?.length)
   const shipping = hasShippingMethod
     ? formattedAmount(cart, cart?.shipping_subtotal ?? cart?.shipping_total)

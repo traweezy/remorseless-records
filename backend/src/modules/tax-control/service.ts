@@ -388,6 +388,7 @@ class TaxControlModuleService extends MedusaService({
         [
           {
             amount_minor: input.amountMinor,
+            association_status: null,
             calculation_id: input.calculationId,
             cart_id: input.cartId,
             collection_mode: input.collectionMode,
@@ -397,9 +398,11 @@ class TaxControlModuleService extends MedusaService({
             last_verified_at: now,
             linked_at: now,
             metadata: {},
+            order_id: null,
             payment_intent_id: input.paymentIntentId,
             provider: input.provider,
             status: input.status ?? "prepared",
+            tax_transaction_id: null,
           },
         ],
         sharedContext

@@ -18,19 +18,20 @@ pause before Batch 7. Do not create or configure the client staging environment
 until the user resumes that work.** This supersedes earlier automatic
 continuation into the clone.
 
-Current Batch 6 application revision is `459276d` (all four workflows/23 checks
-passed; both applications and the migration/backup jobs succeeded). Native cart
-inventory now permits contact/address entry. The real shipping read exposed an
-unpaginated Medusa response rejected by the Storefront; no fresh payment/refund
-has run. Deployed responsive testing passed 88 cases with eight documented skips
-and failed two merchandise link assertions. The next correction group covers
-canonical catalog artwork/copy, bare-handle typed routes, matching create/edit
-label requirements, the shipping response contract and native shipping currency
-selection. Local coverage, builds, integration and browser verification pass;
-the correction group's push, CI and live retests remain pending. Preserve the
-scheduler incident latch and full observation window.
-See the latest dated section in [END_TO_END_AUDIT.md](END_TO_END_AUDIT.md).
-Batch 6 is not accepted; pause before the client clone.
+Current Batch 6 application revision is `303248c` (all four workflows/23 checks
+passed; both applications and migration/backup jobs succeeded). Canonical
+artwork and authored details, merchandise routes and native shipping now work.
+Deployed responsive testing passed 90 cases with 11 documented skips and no
+retries. The real checkout now reaches its $6.23 native payment session, but
+strict tax-evidence persistence and disabled-tax response decoding block the
+Payment Element. No card was submitted and no fresh payment/refund has run.
+The next correction fixes those two contracts and the cart's merchandise
+subtotal display, with native integration regressions. Local coverage, builds,
+lint, integration and final rendered verification pass; push, CI and live
+financial retests remain pending. Preserve the existing pending PaymentIntent,
+scheduler incident latch and full observation window. Latest evidence:
+[END_TO_END_AUDIT.md](END_TO_END_AUDIT.md). Batch 6 is not accepted; pause before
+the client clone.
 
 Batch 5 rotated PostgreSQL administrator, Redis and JWT/cookie credentials,
 verified old-key rejection and native provider/session sign-in, and revoked

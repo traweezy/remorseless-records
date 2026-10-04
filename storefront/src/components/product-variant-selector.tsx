@@ -200,7 +200,7 @@ const ProductVariantSelector = memo<ProductVariantSelectorProps>(
         <div
           className="grid gap-2.5 sm:grid-cols-2"
           role="group"
-          aria-label="Available formats"
+          aria-label="Available options"
         >
           {variants.length ? (
             variants.map((variant) => {

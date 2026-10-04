@@ -67,6 +67,7 @@ const cartFixture = (): HttpTypes.StoreCart =>
   ({
     id: "cart_active",
     currency_code: "usd",
+    item_subtotal: 24,
     subtotal: 24,
     total: 24,
     items: [
@@ -120,6 +121,34 @@ describe("CartDrawer", () => {
     render(<CartDrawer open onOpenChange={vi.fn()} />)
 
     expect(screen.getByRole("button", { name: "Checkout" })).toBeDisabled()
+  })
+
+  it("keeps merchandise subtotal separate from native shipping and total", () => {
+    useCartMock.mockReturnValue(
+      cartState({
+        cart: {
+          ...cartFixture(),
+          item_subtotal: 24,
+          subtotal: 29,
+          shipping_subtotal: 5,
+          shipping_methods: [{ id: "casm_TEST" }],
+          shipping_address: { country_code: "us" },
+          tax_total: 0,
+          total: 29,
+        },
+      })
+    )
+    render(<CartDrawer open onOpenChange={vi.fn()} />)
+
+    expect(screen.getByText("Subtotal").nextElementSibling).toHaveTextContent(
+      "$24.00"
+    )
+    expect(screen.getByText("Shipping").nextElementSibling).toHaveTextContent(
+      "$5.00"
+    )
+    expect(screen.getByText("Total").nextElementSibling).toHaveTextContent(
+      "$29.00"
+    )
   })
 
   it("closes the drawer and navigates to checkout when ready", () => {

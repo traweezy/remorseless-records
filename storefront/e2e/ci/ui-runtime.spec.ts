@@ -116,6 +116,12 @@ test("UI runtime authored merchandise resolves a bare handle and canonical artwo
     })
   ).toBeVisible()
   await expect(page.getByText("Stale native description")).toHaveCount(0)
+  await expect(
+    page.getByRole("group", { name: "Available options", exact: true })
+  ).toBeVisible()
+  await expect(
+    page.getByText("Explore more releases and merchandise.", { exact: true })
+  ).toBeVisible()
   await expect(page.locator("strong", { hasText: "cotton" })).toBeVisible()
   await expect(
     page.getByRole("heading", { name: "Product details", exact: true })
