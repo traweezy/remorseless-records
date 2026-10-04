@@ -289,6 +289,22 @@ describe("catalog product creation form", () => {
     })
   })
 
+  it.each([
+    "music_release",
+    "merch",
+    "fixed_bundle",
+    "mystery_bundle",
+  ] as const)("requires a label for %s consistently with editing", (kind) => {
+    const values = {
+      ...createCatalogCreationDefaults(kind),
+      label: "",
+      labelId: "",
+    }
+    expect(validateCatalogCreationStep(values, 1)).toContain(
+      "Choose a label or source."
+    )
+  })
+
   it("builds an accessible merchandise size/color matrix", () => {
     let values = applyCatalogCreationKind(
       createCatalogCreationDefaults(),
@@ -336,6 +352,7 @@ describe("catalog product creation form", () => {
       { Color: "Black", Size: "M" },
     ])
     expect(request.profile).toMatchObject({
+      labelId: "reference_label",
       merchDetails: { sizeGuide: "S: 18 in wide\nM: 20 in wide" },
       references: [
         {

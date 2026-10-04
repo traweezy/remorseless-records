@@ -18,20 +18,19 @@ pause before Batch 7. Do not create or configure the client staging environment
 until the user resumes that work.** This supersedes earlier automatic
 continuation into the clone.
 
-Current Batch 6 application revision is `8aaedfe` (all four workflows/23 checks
-passed; both apps and backup/migration succeeded). Deployed native validation,
-rich-text import/save and variant-profile summary now pass. The owned music
-fixture is published. Its actual checkout exposes missing computed inventory
-in native cart reads; no fresh sandbox payment/refund has run. The next local
-corrective group covers authoritative cart inventory, safe checkout error
-responses, gallery mouse/touch controls, repeated privacy validation focus,
-About returns copy and a font-manifest build warning. The owned merchandise also reveals a typed-route 404 for its default bare
-handle and inconsistent label requirements between create/edit. Product detail/cart
-managed-content projection is a further open finding: search shows the owned
-artwork/artist, while detail/cart still read legacy fields. Preserve the
-scheduler incident latch and full observation window. See the latest dated
-section in [END_TO_END_AUDIT.md](END_TO_END_AUDIT.md) for proofs and remaining
-coverage. Batch 6 is not accepted; pause before the client clone.
+Current Batch 6 application revision is `459276d` (all four workflows/23 checks
+passed; both applications and the migration/backup jobs succeeded). Native cart
+inventory now permits contact/address entry. The real shipping read exposed an
+unpaginated Medusa response rejected by the Storefront; no fresh payment/refund
+has run. Deployed responsive testing passed 88 cases with eight documented skips
+and failed two merchandise link assertions. The next correction group covers
+canonical catalog artwork/copy, bare-handle typed routes, matching create/edit
+label requirements, the shipping response contract and native shipping currency
+selection. Local coverage, builds, integration and browser verification pass;
+the correction group's push, CI and live retests remain pending. Preserve the
+scheduler incident latch and full observation window.
+See the latest dated section in [END_TO_END_AUDIT.md](END_TO_END_AUDIT.md).
+Batch 6 is not accepted; pause before the client clone.
 
 Batch 5 rotated PostgreSQL administrator, Redis and JWT/cookie credentials,
 verified old-key rejection and native provider/session sign-in, and revoked

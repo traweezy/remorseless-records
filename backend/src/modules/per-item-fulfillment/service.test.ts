@@ -1,3 +1,4 @@
+import { dirname, join } from "node:path"
 import {
   calculatePerItemShippingAmount,
   resolveShippingAmount,
@@ -23,6 +24,19 @@ const context = (items: unknown, currencyCode: unknown = "usd") =>
   }) as never
 
 describe("per-item fulfillment major-unit amounts", () => {
+  it("preserves native cart currency in both standalone quotes and refreshes", () => {
+    const fields = require(
+      join(
+        dirname(require.resolve("@medusajs/core-flows")),
+        "cart/utils/fields.js"
+      )
+    )
+    expect(fields.cartFieldsForCalculateShippingOptionsPrices).toContain(
+      "currency_code"
+    )
+    expect(fields.cartFieldsForRefreshSteps).toContain("currency_code")
+  })
+
   it("preserves two-decimal shipping configuration", () => {
     expect(resolveShippingAmount(0.5, 1)).toBe(0.5)
     expect(resolveShippingAmount("5.25", 1)).toBe(5.25)
@@ -111,6 +125,7 @@ describe("per-item fulfillment major-unit amounts", () => {
     ["boolean quantity", [{ id: "cali_1", quantity: false }], "usd", {}],
     ["decimal-string quantity", [{ id: "cali_1", quantity: "2.0" }], "usd", {}],
     ["over-limit quantity", [{ id: "cali_1", quantity: 101 }], "usd", {}],
+    ["missing currency context", [{ id: "cali_1", quantity: 1 }], null, {}],
     ["non-USD context", [{ id: "cali_1", quantity: 1 }], "eur", {}],
     [
       "coercive base amount",

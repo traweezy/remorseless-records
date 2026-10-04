@@ -1,5 +1,91 @@
 # Storefront, Admin and Stripe end-to-end audit
 
+### Inventory/gallery correction and canonical display work — October 4, 01:08 UTC
+
+Direct staging revision `459276dbcdebf3bba30b8e98efb923775ae82ae8` contains
+`73a9197` (native cart inventory) and `459276d` (gallery, privacy focus, returns
+copy and font loading). Root `37165518230`, Backend `37165518236`, Storefront
+`37165518249` and Runtime Images `37165518247` passed all 23 required checks.
+Both current runtime-image evidence bundles verified. The Storefront artifact's
+initial verification rejected download permissions; correcting only the owned
+artifact directory to 0700/files to 0600 passed without changing its content.
+
+Exact Railway application deployments succeeded: Backend
+`057b1443-4c45-46dc-a88f-732ee3819df9`, Storefront
+`5113d4e8-9f44-4e82-8ca6-7053bf95e8e4`. Migrations
+`3d3cdf95-ea2f-41c9-b4ee-41a5938d76eb` completed/exited. RecoveryBackups
+`a43c489a-eae1-4434-a859-58d3fb2d1eb3` completed its explicitly triggered
+execution `ed20313e-8e9c-4b88-b1ad-e848fd5e60d1`, publishing archive
+`e0d27bff-2d5f-48b3-ac82-007fef713810` (four database files and 1,172 media
+objects, including all four owned uploads). This does not prove calendar cron.
+Both runtime/process/role/migration/notification/Next checks pass. All nine
+services/jobs are healthy at provider level. Redis retained its same process,
+healthy persistence and zero OOM/evictions. The ordinary 01:02 heartbeat carries
+this SHA, but the historical scheduler incident remains latched at 503; the
+24-hour observation requirement is still open.
+
+Live checkout now opens. Empty Contact focuses its email error; valid controlled
+Resend test-recipient entry saves. Empty Delivery focuses the error summary,
+its first-name link focuses the field, and a synthetic California address saves,
+including optional address line and the state chooser. Delivery then fails:
+`B6-SHIPPING-CONTRACT`. A guarded read of the owned cart proves Medusa 2.18
+returns only `shipping_options`, without pagination. The Storefront decoder
+incorrectly required count/limit/offset. The correction accepts that native
+complete shape and still rejects partial/coercive pagination, duplicate IDs,
+invalid amounts and malformed options. Real payment/refund remains not run.
+Native quote requests then exposed `B6-SHIPPING-CURRENCY`: both configured
+calculated rates return invalid-data because Medusa's standalone workflow omits
+the currency field required by our provider. The same-version core-flows patch
+adds the native query field; the USD-only provider validation remains intact.
+See the dependency audit for patch provenance and the native HTTP regression.
+
+
+Deployed responsive browsers: **88 passed, two failed, eight documented skips**,
+zero retries. Both failures identify the owned bare-handle merchandise's legacy
+product link. Retain the screenshots/traces; do not count this release as full
+audit acceptance. Local pre-push browser coverage passed 96 cases/two skips and
+63 cross-engine cases; those fixtures did not reveal the live catalog mismatch.
+
+The next correction joins a bounded, publication/channel-filtered catalog
+presentation to native product reads. It supplies authored artwork/alt text,
+rich copy, artists, tracklist, credits and merchandise details to detail, quick
+shop, catalog and cart. Native financial/inventory fields remain authoritative.
+A read-only source inventory found 464 products/profiles, 463 with media links,
+and zero native-only thumbnails. Existing catalog profiles own intentionally
+empty media too, preventing removed/quarantined images from reviving legacy
+thumbnails. Legacy display remains only when no profile or media exists.
+Typed pages try prefixed then bare handles, checking product kind; creator label
+input/validation now agrees with editing. These changes are local and their
+deployment/live retests remain pending. Local verification passed 99 responsive
+browser cases/two documented skips and 66 Chromium/Firefox/WebKit cases, all
+without retries. Desktop/mobile canonical merchandise screenshots were reviewed;
+pa11y reported no confirmed WCAG2AA violations and retained carousel contrast
+manual-review notices. Its first launch could not find Puppeteer's default
+Chrome; reusing the existing pinned Playwright Chromium with its sandbox passed.
+The first native shipping fixture lacked its provider/location link; adding the
+normal native link allowed the real API USD quote and EUR rejection to pass.
+The earlier disposable aggregate caught the newly added route's stale inventory
+count; the generated API inventory and its exact counts were updated, then the
+full native/recovery/session aggregate passed. Original attempts are retained.
+The corresponding private artifacts are under `local-canonical-shipping-verification/`.
+Final Backend coverage passes 291 suites / 2,348 tests; Storefront coverage
+passes 150 files / 1,017 tests plus 41 transactional files / 392 tests. Both
+production builds, frozen installation, root lint/type/policy gates and the
+70 native service cases, 44 payment cases and full recovery/session aggregate
+pass. The new core-flows patch is present in the packaged Backend. After the
+final cache-key/typography changes, all three focused browser engines pass
+without retries; the rendered canonical merchandise screenshot was reviewed.
+The all-service watch completed its bounded run at 01:08 and resumed at 01:17;
+retain that observation gap instead of claiming continuous coverage.
+
+
+
+Private receipts, original failures and coverage: `release-459276d/`,
+`live-coverage-459276d.json`, `owned-cart-native-shipping-proof.json`, and
+`presentation-coverage-readback.json` in the ignored audit evidence directory.
+**Finish Batch 6, then pause before creating/configuring the client environment.**
+
+
 Status: **in progress; not accepted**. Requested October 3, 2026.
 
 Batch 5 release acceptance is complete at `960fe7b`. Run

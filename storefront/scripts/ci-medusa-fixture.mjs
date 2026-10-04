@@ -71,6 +71,49 @@ const galleryRuntimeProduct = {
   })),
 }
 
+// An editor-authored product deliberately has no native artwork or prefixed
+// handle. Its only display content comes from the public catalog projection.
+const presentedRuntimeProduct = {
+  ...fixtureProduct,
+  id: "prod_CIPRESENTATION",
+  handle: "ci-editor-shirt",
+  title: "Editor Authored Shirt",
+  description: "Stale native description",
+  images: [],
+  thumbnail: null,
+  metadata: {},
+}
+const presentedRuntimeRow = {
+  productId: presentedRuntimeProduct.id,
+  managedMedia: true,
+  profile: {
+    productType: "merch",
+    label: "Remorseless Records",
+    artists: [],
+    genres: [],
+    descriptionHtml:
+      "<p>Canonical <strong>cotton</strong> shirt &amp; original artwork.</p>",
+    tracklist: [],
+    credits: null,
+    pressingNotes: null,
+    merch: {
+      material: "Cotton",
+      fit: "Regular",
+      sizeGuide: "S: 18 inches\nM: 20 inches",
+      care: "Cold wash",
+    },
+  },
+  images: [
+    {
+      id: "cpmedia_CISHIRT",
+      url: "/remorseless-header-logo.png",
+      alt: "Original landscape shirt artwork",
+      width: 1200,
+      height: 600,
+    },
+  ],
+}
+
 const fixtureShelves = {
   shelves: [
     {
@@ -150,6 +193,28 @@ const writeJson = (request, response, status, payload) => {
 
 const routePayload = (pathname, searchParams) => {
   switch (pathname) {
+    case "/store/catalog/presentation":
+      return {
+        presentations: (searchParams.get("product_ids") ?? "")
+          .split(",")
+          .filter((id) =>
+            [
+              fixtureProduct.id,
+              galleryRuntimeProduct.id,
+              presentedRuntimeProduct.id,
+            ].includes(id)
+          )
+          .map((productId) =>
+            productId === presentedRuntimeProduct.id
+              ? presentedRuntimeRow
+              : {
+                  productId,
+                  profile: null,
+                  managedMedia: false,
+                  images: [],
+                }
+          ),
+      }
     case "/store/catalog/shelves":
       return fixtureShelves
     case "/store/collections":
@@ -166,11 +231,13 @@ const routePayload = (pathname, searchParams) => {
     case "/store/products": {
       const requestedHandle = searchParams.get("handle")
       const products =
-        requestedHandle === galleryRuntimeProduct.handle
-          ? [galleryRuntimeProduct]
-          : requestedHandle && requestedHandle !== fixtureProduct.handle
-            ? []
-            : [fixtureProduct]
+        requestedHandle === presentedRuntimeProduct.handle
+          ? [presentedRuntimeProduct]
+          : requestedHandle === galleryRuntimeProduct.handle
+            ? [galleryRuntimeProduct]
+            : requestedHandle && requestedHandle !== fixtureProduct.handle
+              ? []
+              : [fixtureProduct]
       return {
         products,
         count: products.length,

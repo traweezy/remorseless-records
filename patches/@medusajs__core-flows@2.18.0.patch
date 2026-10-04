@@ -1,0 +1,12 @@
+diff --git a/dist/cart/utils/fields.js b/dist/cart/utils/fields.js
+index 24f62e14ba7c4255dadfbebdc0708db19e3fd961..cec865da75c9911929a202b96324c258c3f18524 100644
+--- a/dist/cart/utils/fields.js
++++ b/dist/cart/utils/fields.js
+@@ -193,6 +193,7 @@ exports.productVariantsFields = [
+  */
+ exports.cartFieldsForCalculateShippingOptionsPrices = [
+     "id",
++    "currency_code",
+     "locale",
+     "items.*",
+     "items.variant.id",

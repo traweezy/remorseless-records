@@ -233,6 +233,61 @@ describe("cart Medusa boundary", () => {
     expect(medusaMocks.read).not.toHaveBeenCalled()
   })
 
+  it("accepts Medusa's complete unpaginated shipping workflow response", async () => {
+    medusaMocks.read.mockResolvedValue({
+      shipping_options: [
+        {
+          id: "so_01ABC",
+          name: "Standard",
+          price_type: "flat_rate",
+          amount: 5,
+          type: { description: "Tracked delivery" },
+        },
+      ],
+    })
+    await expect(listShippingOptions(cartFixture.id)).resolves.toEqual({
+      shipping_options: [
+        {
+          id: "so_01ABC",
+          name: "Standard",
+          price_type: "flat_rate",
+          amount: 5,
+          description: "Tracked delivery",
+          insufficient_inventory: false,
+        },
+      ],
+    })
+    medusaMocks.read.mockResolvedValue({ shipping_options: [] })
+    await expect(listShippingOptions(cartFixture.id)).resolves.toEqual({
+      shipping_options: [],
+    })
+  })
+
+  it.each([
+    { count: 1 },
+    { count: 2, limit: 20, offset: 0 },
+    { count: 1, limit: 20, offset: 1 },
+    { count: "1", limit: 20, offset: 0 },
+  ])(
+    "rejects partial, malformed or truncated pagination when supplied",
+    async (pagination) => {
+      medusaMocks.read.mockResolvedValue({
+        shipping_options: [
+          {
+            id: "so_01ABC",
+            name: "Standard",
+            price_type: "flat_rate",
+            amount: 5,
+          },
+        ],
+        ...pagination,
+      })
+      await expect(listShippingOptions(cartFixture.id)).rejects.toThrow(
+        /shipping-option response/
+      )
+    }
+  )
+
   it("resolves calculated shipping prices through the provider boundary", async () => {
     medusaMocks.read.mockResolvedValue({
       shipping_options: [

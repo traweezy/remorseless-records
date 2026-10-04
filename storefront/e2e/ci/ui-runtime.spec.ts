@@ -96,6 +96,70 @@ const expectDecorativeIcons = async (control: Locator): Promise<void> => {
   await expect(control.getByRole("img")).toHaveCount(0)
 }
 
+test("UI runtime authored merchandise resolves a bare handle and canonical artwork", async ({
+  page,
+}, testInfo) => {
+  test.skip(
+    Boolean(process.env.PLAYWRIGHT_BASE_URL),
+    "Local canonical presentation fixture"
+  )
+  const errors: string[] = []
+  page.on("pageerror", (error) => errors.push(error.message))
+  const response = await page.goto("/merch/ci-editor-shirt")
+  expect(response?.status()).toBe(200)
+  await expect(
+    page.getByRole("heading", { name: "Editor Authored Shirt", exact: true })
+  ).toBeVisible()
+  await expect(
+    page.getByText("Canonical cotton shirt & original artwork.", {
+      exact: true,
+    })
+  ).toBeVisible()
+  await expect(page.getByText("Stale native description")).toHaveCount(0)
+  await expect(page.locator("strong", { hasText: "cotton" })).toBeVisible()
+  await expect(
+    page.getByRole("heading", { name: "Product details", exact: true })
+  ).toBeVisible()
+  await expect(page.getByText("Cold wash", { exact: true })).toBeVisible()
+  await expect(
+    page.getByText("S: 18 inches\nM: 20 inches", { exact: true })
+  ).toBeVisible()
+  const artwork = page
+    .getByRole("img", { name: "Original landscape shirt artwork", exact: true })
+    .first()
+  await expect(artwork).toBeVisible()
+  await expect(artwork).toHaveCSS("object-fit", "contain")
+  await expect
+    .poll(() =>
+      artwork.evaluate(
+        (image: HTMLImageElement) => image.complete && image.naturalWidth > 0
+      )
+    )
+    .toBe(true)
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth
+    )
+  ).toBe(true)
+  await page.screenshot({
+    path: testInfo.outputPath("canonical-merchandise.png"),
+    fullPage: true,
+  })
+  expect(errors).toEqual([])
+  const detail = await page.request.get("/api/products/ci-editor-shirt")
+  expect(detail.status()).toBe(200)
+  const { product } = await detail.json()
+  expect(product).toMatchObject({
+    description: "Canonical cotton shirt & original artwork.",
+    metadata: { product_type: "merch" },
+    presentation: { managedMedia: true },
+  })
+  await page.goto("/products/ci-editor-shirt")
+  await expect(page).toHaveURL(/\/merch\/ci-editor-shirt$/u)
+  const wrongKind = await page.goto("/music-release/ci-editor-shirt")
+  expect(wrongKind?.status()).toBe(404)
+})
+
 test("UI runtime quick shop opens and closes while optional chunks are delayed", async ({
   page,
 }, testInfo) => {

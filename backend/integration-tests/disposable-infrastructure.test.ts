@@ -1,6 +1,13 @@
+import {
+  createShippingOptionsWorkflow,
+  createApiKeysWorkflow,
+  linkSalesChannelsToApiKeyWorkflow,
+} from "@medusajs/core-flows"
+import { loadStoreCatalogPresentations } from "../src/lib/catalog/store-presentation"
 import { loadProductAuthoringView } from "../src/lib/catalog/product-authoring-view"
 import type {
   FileTypes,
+  ICartModuleService,
   ILockingModule,
   IFulfillmentModuleService,
   IStoreModuleService,
@@ -133,7 +140,7 @@ medusaIntegrationTestRunner({
         const products = container.resolve<IProductModuleService>(
           Modules.PRODUCT
         )
-        await fulfillment.createShippingProfiles({
+        const shippingProfile = await fulfillment.createShippingProfiles({
           name: "Disposable shipping",
           type: "default",
         })
@@ -145,7 +152,7 @@ medusaIntegrationTestRunner({
         await stores.updateStores(store!.id, {
           default_sales_channel_id: channel.id,
         })
-        await locations.createStockLocations({ name: "HQ" })
+        const location = await locations.createStockLocations({ name: "HQ" })
         const command = catalogProductCreateSchema.parse({
           idempotencyKey: randomUUID(),
           kind: "music_release",
@@ -193,6 +200,142 @@ medusaIntegrationTestRunner({
         )
         expect(authoring.commerce.id).toBe(created.productId)
         expect(authoring.catalog.variants).toHaveLength(2)
+        const presentation = await loadStoreCatalogPresentations(
+          container.resolve<CatalogService>("catalog"),
+          [created.productId]
+        )
+        expect(presentation).toMatchObject([
+          {
+            productId: created.productId,
+            managedMedia: true,
+            images: [],
+            profile: {
+              artists: ["Disposable artist"],
+              label: "Disposable label",
+            },
+          },
+        ])
+        expect(JSON.stringify(presentation)).not.toMatch(
+          /stockQuantity|prices|source_file_key/
+        )
+
+        const { result: keys } = await createApiKeysWorkflow(container).run({
+          input: {
+            api_keys: [
+              {
+                type: "publishable",
+                title: "Disposable Store",
+                created_by: "user_disposable_catalog_audit",
+              },
+            ],
+          },
+        })
+        await linkSalesChannelsToApiKeyWorkflow(container).run({
+          input: { id: keys[0]!.id, add: [channel.id] },
+        })
+        const url = `/store/catalog/presentation?product_ids=${created.productId}`
+        const headers = { "x-publishable-api-key": keys[0]!.token }
+        expect((await api.get(url, { headers })).data).toEqual({
+          presentations: [],
+        })
+        await products.updateProducts(created.productId, {
+          status: "published",
+        })
+        const publicRead = await api.get(url, { headers })
+        expect(publicRead.status).toBe(200)
+        expect(publicRead.headers["cache-control"]).toBe("private, no-store")
+        expect(publicRead.data).toEqual({ presentations: presentation })
+        const set = await fulfillment.createFulfillmentSets({
+          name: "Disposable delivery",
+          type: "shipping",
+          service_zones: [
+            {
+              name: "US",
+              geo_zones: [{ country_code: "us", type: "country" }],
+            },
+          ],
+        })
+        const link = container.resolve(ContainerRegistrationKeys.LINK)
+        await link.create({
+          [Modules.STOCK_LOCATION]: { stock_location_id: location.id },
+          [Modules.FULFILLMENT]: { fulfillment_set_id: set.id },
+        })
+        await link.create({
+          [Modules.STOCK_LOCATION]: { stock_location_id: location.id },
+          [Modules.FULFILLMENT]: {
+            fulfillment_provider_id: "per_item_standard",
+          },
+        })
+        const { result: shippingOptions } = await createShippingOptionsWorkflow(
+          container
+        ).run({
+          input: [
+            {
+              name: "Disposable calculated shipping",
+              price_type: "calculated",
+              provider_id: "per_item_standard",
+              service_zone_id: set.service_zones![0]!.id,
+              shipping_profile_id: shippingProfile.id,
+              type: {
+                label: "Standard",
+                code: "standard",
+                description: "Test delivery",
+              },
+              data: {
+                base_amount: 5,
+                additional_amount: 0.5,
+                currency_code: "usd",
+              },
+            },
+          ],
+        })
+        const carts = container.resolve<ICartModuleService>(Modules.CART)
+        const variants = await products.listProductVariants({
+          product_id: created.productId,
+        })
+        const cart = await carts.createCarts({
+          currency_code: "usd",
+          sales_channel_id: channel.id,
+          items: [
+            {
+              title: "Disposable cart line",
+              quantity: 2,
+              unit_price: 1.23,
+              variant_id: variants[0]!.id,
+              product_id: created.productId,
+            },
+          ],
+        })
+        const calculateUrl = `/store/shipping-options/${shippingOptions[0]!.id}/calculate`
+        const quote = await api.post(
+          calculateUrl,
+          { cart_id: cart.id, data: {} },
+          { headers }
+        )
+        expect(quote.status).toBe(200)
+        expect(quote.data.shipping_option).toMatchObject({
+          amount: 5.5,
+          is_tax_inclusive: false,
+        })
+        await carts.updateCarts(cart.id, { currency_code: "eur" })
+        const unsupported = await api.post(
+          calculateUrl,
+          { cart_id: cart.id, data: {} },
+          { headers, validateStatus: () => true }
+        )
+        expect(unsupported.status).toBe(400)
+        expect(unsupported.data).toMatchObject({ type: "invalid_data" })
+
+        const other = await channels.createSalesChannels({
+          name: "Unrelated catalog",
+        })
+        await linkSalesChannelsToApiKeyWorkflow(container).run({
+          input: { id: keys[0]!.id, remove: [channel.id], add: [other.id] },
+        })
+        expect((await api.get(url, { headers })).data).toEqual({
+          presentations: [],
+        })
+        await products.updateProducts(created.productId, { status: "draft" })
         const replayed = (
           await createCatalogProductWorkflow(container).run({ input })
         ).result

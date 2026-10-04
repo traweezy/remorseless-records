@@ -1,5 +1,7 @@
 import type { HttpTypes } from "@medusajs/types"
 
+import type { PresentedStoreProduct } from "./presentation"
+
 import { asUnknownRecord } from "@/lib/provider-boundary"
 
 type MaybeRecord = Record<string, unknown> | null | undefined
@@ -302,6 +304,8 @@ export const buildProductSlugParts = (
 export const extractProductArtistNames = (
   source: SlugSource | HttpTypes.StoreProduct
 ): string[] => {
+  const profile = (source as PresentedStoreProduct).presentation?.profile
+  if (profile) return profile.artists
   const metadata = resolveMetadata(source.metadata)
   const metadataArtistNames = extractMetadataArtistNames(metadata)
 

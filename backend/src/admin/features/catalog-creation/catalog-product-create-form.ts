@@ -647,6 +647,13 @@ export const catalogCreationFormSchema = z
         path: ["releaseDate"],
       })
     }
+    if (!values.labelId && !values.label) {
+      context.addIssue({
+        code: "custom",
+        message: "Choose a label or source.",
+        path: ["label"],
+      })
+    }
     const combinations = new Set<string>()
     const customerLabels = new Set<string>()
     const skus = new Set<string>()
@@ -1019,7 +1026,7 @@ export const buildCatalogProductCreateRequest = (
         ? { notes: values.credits }
         : {},
     descriptionHtml: description,
-    ...(values.kind === "music_release" && values.label
+    ...(values.labelId || values.label
       ? labelId
         ? { labelId }
         : { label: { label: values.label } }

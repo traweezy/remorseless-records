@@ -1,6 +1,10 @@
 import { faker } from "@faker-js/faker"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
+vi.mock("@/lib/products/presentation.server", () => ({
+  presentStoreProducts: vi.fn(async (products: unknown[]) => products),
+}))
+
 describe("getFullCatalogHits", () => {
   beforeEach(() => {
     faker.seed(2601)

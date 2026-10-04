@@ -1,4 +1,5 @@
 import type { HttpTypes } from "@medusajs/types"
+import type { PresentedStoreProduct } from "./presentation"
 
 import {
   extractNonArtistCategoryFacets,
@@ -196,7 +197,10 @@ export const mapStoreProductToSearchHit = (
   const categoryGroups = extractProductCategoryGroups(product.categories, {
     excludeHandles: [summary.slug.artistSlug, summary.slug.albumSlug],
   })
-  const categoryGenres = categoryGroups.genres.map((entry) => entry.label)
+  const profile = (product as PresentedStoreProduct).presentation?.profile
+  const categoryGenres = profile
+    ? profile.genres
+    : categoryGroups.genres.map((entry) => entry.label)
   const categoryTypes = categoryGroups.types.map((entry) => entry.label)
   const categoryFacets = extractNonArtistCategoryFacets(product.categories)
   const categoryHandles = categoryFacets.map((entry) => entry.handle)
@@ -252,20 +256,22 @@ export const mapStoreProductToSearchHit = (
 
   const metadata = coerceRecord(product.metadata)
   const legacyImport = coerceRecord(metadata?.legacy_import)
-  const productType =
-    (typeof legacyImport?.product_type === "string"
-      ? legacyImport.product_type
-      : undefined) ??
-    (typeof metadata?.product_type === "string"
-      ? metadata.product_type
-      : undefined) ??
-    null
+  const productType = profile
+    ? profile.productType
+    : ((typeof legacyImport?.product_type === "string"
+        ? legacyImport.product_type
+        : undefined) ??
+      (typeof metadata?.product_type === "string"
+        ? metadata.product_type
+        : undefined) ??
+      null)
 
   return {
     ...summary,
     formats: Array.from(inferredFormats),
-    genres:
-      categoryGenres.length > 0
+    genres: profile
+      ? profile.genres
+      : categoryGenres.length > 0
         ? categoryGenres
         : (product.tags
             ?.map((tag) => tag.value)

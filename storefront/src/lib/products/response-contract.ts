@@ -1,8 +1,11 @@
-import type { HttpTypes } from "@medusajs/types"
+import {
+  catalogPresentationSchema,
+  type PresentedStoreProduct,
+} from "./presentation"
 
 import { asUnknownRecord } from "@/lib/provider-boundary"
 
-type StoreProduct = HttpTypes.StoreProduct
+type StoreProduct = PresentedStoreProduct
 
 const isOptionalString = (value: unknown): boolean =>
   value === undefined || value === null || typeof value === "string"
@@ -31,6 +34,9 @@ const isStoreProduct = (value: unknown): value is StoreProduct => {
   }
 
   return (
+    (product.presentation === undefined ||
+      (catalogPresentationSchema.safeParse(product.presentation).success &&
+        asUnknownRecord(product.presentation)?.productId === product.id)) &&
     typeof product.id === "string" &&
     product.id.trim().length > 0 &&
     product.id.length <= 200 &&

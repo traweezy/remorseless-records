@@ -5,12 +5,14 @@ import { z } from "zod"
 import { runtimeEnv } from "@/config/env"
 import { fetchObservedProviderRead } from "@/lib/http/provider-read.server"
 import { fetchMedusaStoreRead } from "@/lib/medusa/read-client"
+import { presentStoreProducts } from "@/lib/products/presentation.server"
+import type { PresentedStoreProduct } from "@/lib/products/presentation"
 import { readStoreProductListResponse } from "@/lib/products/response-contract"
 import { resolveRegionId } from "@/lib/regions"
 
-type StoreProduct = HttpTypes.StoreProduct
+type StoreProduct = PresentedStoreProduct
 
-const listProducts = async (
+export const listProducts = async (
   query: HttpTypes.StoreProductListParams
 ): Promise<StoreProduct[]> => {
   const regionId = query.region_id ?? (await resolveRegionId())
@@ -21,7 +23,9 @@ const listProducts = async (
       query: { ...query, region_id: regionId },
     }
   )
-  return readStoreProductListResponse(response, query.limit ?? 200).products
+  return presentStoreProducts(
+    readStoreProductListResponse(response, query.limit ?? 200).products
+  )
 }
 
 export const PRODUCT_LIST_FIELDS = [
@@ -145,7 +149,7 @@ export const getCollectionProductsByHandle = unstable_cache(
       return []
     }
   },
-  ["collection-products-by-handle"],
+  ["collection-products-by-handle-presentation-v1"],
   { revalidate: 900, tags: ["products", "collections"] }
 )
 
@@ -161,7 +165,7 @@ export const getHomepageProducts = unstable_cache(
       return []
     }
   },
-  ["homepage-products"],
+  ["homepage-products-presentation-v1"],
   { revalidate: 600, tags: ["products"] }
 )
 
@@ -174,7 +178,7 @@ const getProductByHandleCached = unstable_cache(
     } satisfies HttpTypes.StoreProductListParams)
     return products[0] ?? null
   },
-  ["product-by-handle-v2"],
+  ["product-by-handle-v3"],
   { revalidate: 300, tags: ["products"] }
 )
 
@@ -204,7 +208,7 @@ export const getProductsByCollection = unstable_cache(
       return []
     }
   },
-  ["products-by-collection"],
+  ["products-by-collection-presentation-v1"],
   { revalidate: 900, tags: ["products", "collections"] }
 )
 
@@ -220,7 +224,7 @@ export const getRecentProducts = unstable_cache(
       return []
     }
   },
-  ["recent-products"],
+  ["recent-products-presentation-v1"],
   { revalidate: 600, tags: ["products"] }
 )
 
@@ -252,7 +256,7 @@ export const getProductsByIds = async (
         return []
       }
     },
-    ["products-by-ids", ...ids],
+    ["products-by-ids-presentation-v1", ...ids],
     { revalidate: 60, tags: ["products", "catalog-shelves"] }
   )
 

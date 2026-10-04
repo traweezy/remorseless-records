@@ -4,6 +4,7 @@ import type { FetchArgs } from "@medusajs/js-sdk"
 import type { HttpTypes } from "@medusajs/types"
 
 import { stripePaymentSessionData } from "@/lib/cart/stripe-payment-data"
+import { presentCartArtwork } from "@/lib/products/presentation.server"
 import { resolveCartInventory } from "@/lib/cart/inventory"
 import {
   cartAmount,
@@ -100,21 +101,27 @@ const requiredCartFromEnvelope = async (
   return cartWithInventory(cart, request)
 }
 
-const cartWithInventory = (cart: HttpTypes.StoreCart, request?: Request) =>
-  resolveCartInventory(cart, ({ productIds, salesChannelId }) =>
-    cartReadRequest<unknown>(
-      "/store/products",
-      {
-        query: {
-          id: productIds,
-          sales_channel_id: salesChannelId,
-          limit: productIds.length,
-          fields:
-            "id,handle,variants.id,variants.manage_inventory,variants.allow_backorder,variants.inventory_quantity",
+const cartWithInventory = async (
+  cart: HttpTypes.StoreCart,
+  request?: Request
+) =>
+  presentCartArtwork(
+    await resolveCartInventory(cart, ({ productIds, salesChannelId }) =>
+      cartReadRequest<unknown>(
+        "/store/products",
+        {
+          query: {
+            id: productIds,
+            sales_channel_id: salesChannelId,
+            limit: productIds.length,
+            fields:
+              "id,handle,variants.id,variants.manage_inventory,variants.allow_backorder,variants.inventory_quantity",
+          },
         },
-      },
-      request
-    )
+        request
+      )
+    ),
+    request
   )
 
 const shippingOptionListFrom = (
@@ -125,16 +132,25 @@ const shippingOptionListFrom = (
   const count = readNonNegativeSafeInteger(response?.count)
   const limit = readNonNegativeSafeInteger(response?.limit)
   const offset = readNonNegativeSafeInteger(response?.offset)
+  // Medusa's cart-specific shipping workflow returns the complete list without
+  // pagination metadata. If a transport supplies metadata, require a complete
+  // first page rather than silently accepting truncated delivery choices.
+  const hasPagination = ["count", "limit", "offset"].some((key) =>
+    Object.hasOwn(response ?? {}, key)
+  )
   if (
     !response ||
     !options ||
     options.length > 50 ||
-    count === null ||
-    count < options.length ||
-    limit === null ||
-    limit < options.length ||
-    limit > 50 ||
-    offset === null
+    (hasPagination &&
+      (typeof response.count !== "number" ||
+        typeof response.limit !== "number" ||
+        typeof response.offset !== "number" ||
+        count !== options.length ||
+        limit === null ||
+        limit < options.length ||
+        limit > 50 ||
+        offset !== 0))
   ) {
     throw new Error("The Medusa shipping-option response is malformed.")
   }

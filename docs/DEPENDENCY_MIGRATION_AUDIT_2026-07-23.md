@@ -1,5 +1,27 @@
 # Dependency Migration Audit — 2026-07-23
 
+## Native shipping currency projection — October 4, 2026 UTC
+
+The actual sandbox cart exposed a second shipping contract mismatch: pinned
+Medusa 2.18.0's standalone shipping-price workflow queries `items.*` and the
+address but omits the cart's `currency_code`. Our per-item provider correctly
+rejects unknown/non-USD currency. A one-line same-version MIT patch adds the
+native currency to `cartFieldsForCalculateShippingOptionsPrices`; cart refresh
+already includes it. No provider defaults, pricing rates or currency checks are
+relaxed. The unit gate asserts both native query field lists; the disposable
+real HTTP calculation checks USD pricing and rejects EUR.
+
+`patches/@medusajs__core-flows@2.18.0.patch` has SHA-256
+`7946c32ab224e2ecd5a77bee04ccba63472a73aa07027f0b173951572aecfab2`.
+The lockfile binds the patch and its existing consumer graph. Patch-commit's
+unrelated third-party-web 0.30.0 resolution was restored to the reviewed 0.29.2;
+there is no package upgrade or cooling exception. Verify a frozen install,
+production dependency packaging and exact-revision CI before deployment.
+Current [Medusa shipping-context documentation](https://docs.medusajs.com/resources/commerce-modules/fulfillment/shipping-option)
+describes extension hooks introduced in 2.20.0; those hooks are absent from our
+pinned 2.18.0 and are not used as an unverified replacement.
+
+
 ## Batch 5 maintenance — October 3, 2026 UTC
 
 Removed matured cooling exceptions for `@railway/cli@5.45.0` (August 27),

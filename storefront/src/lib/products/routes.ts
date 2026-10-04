@@ -81,13 +81,14 @@ export const buildInternalHandleCandidates = (
 
   switch (routeType) {
     case "music-release":
-      return [`music-release-${normalizedSlug}`]
+      return [`music-release-${normalizedSlug}`, normalizedSlug]
     case "bundle":
       return [
         `fixed-bundle-${normalizedSlug}`,
         `mystery-bundle-${normalizedSlug}`,
+        normalizedSlug,
       ]
     case "merch":
-      return [`merch-${normalizedSlug}`]
+      return [`merch-${normalizedSlug}`, normalizedSlug]
   }
 }

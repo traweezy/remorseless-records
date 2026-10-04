@@ -4,6 +4,7 @@ import { z } from "zod"
 import { PRODUCT_DETAIL_FIELDS } from "@/lib/data/products"
 import { providerProblem } from "@/lib/http/provider-boundary"
 import { correlatedMedusaFetch } from "@/lib/medusa/correlated-client"
+import { presentStoreProducts } from "@/lib/products/presentation.server"
 import { readStoreProductListResponse } from "@/lib/products/response-contract"
 import { mapStoreProductToSearchHit } from "@/lib/products/transformers"
 import { resolveRegionId } from "@/lib/regions"
@@ -77,15 +78,15 @@ export async function POST(request: Request) {
         if (!product) {
           return null
         }
-        return mapStoreProductToSearchHit(product)
+        return product
       })
     )
 
-    return jsonApiResponse({
-      hits: hydrated.filter((hit): hit is NonNullable<typeof hit> =>
-        Boolean(hit)
-      ),
-    })
+    const products = hydrated.filter(
+      (product): product is NonNullable<typeof product> => Boolean(product)
+    )
+    const presented = await presentStoreProducts(products, request)
+    return jsonApiResponse({ hits: presented.map(mapStoreProductToSearchHit) })
   } catch (error) {
     console.error("[api/catalog/hydrate] Failed to hydrate handles")
     const problem = providerProblem(error, "catalog")

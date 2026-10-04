@@ -7,6 +7,7 @@ import {
   providerProblem,
 } from "@/lib/http/provider-boundary"
 import { correlatedMedusaFetch } from "@/lib/medusa/correlated-client"
+import { presentStoreProducts } from "@/lib/products/presentation.server"
 import { readStoreProductListResponse } from "@/lib/products/response-contract"
 import { resolveRegionId } from "@/lib/regions"
 import {
@@ -65,7 +66,7 @@ export const GET = async (
     )
     const { products } = readStoreProductListResponse(rawResponse, 1)
 
-    const product = products[0]
+    const [product] = await presentStoreProducts(products, _request)
 
     if (!product) {
       return jsonApiError(

@@ -6,6 +6,7 @@ import ProductDetailPage, {
   type ProductDetailPageProps,
 } from "@/components/product-detail-page"
 import { getProductByHandle } from "@/lib/data/products"
+import { productPresentationType } from "@/lib/products/presentation"
 import { buildPublicProductPath } from "@/lib/products/routes"
 
 export const generateMetadata = async (
@@ -19,7 +20,10 @@ const LegacyProductPage = async ({ params }: ProductDetailPageProps) => {
     notFound()
   }
 
-  const canonicalPath = buildPublicProductPath({ handle: product.handle })
+  const canonicalPath = buildPublicProductPath({
+    handle: product.handle,
+    productType: productPresentationType(product),
+  })
   if (!canonicalPath.startsWith("/products/")) {
     permanentRedirect(canonicalPath)
   }

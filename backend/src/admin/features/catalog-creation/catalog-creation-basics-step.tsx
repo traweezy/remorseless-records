@@ -141,6 +141,20 @@ export const CatalogCreationBasicsStep = memo<CatalogCreationBasicsStepProps>(
             />
           )}
         </AdminFormField>
+        <AdminFormField id="catalog-create-label" label="Label or source">
+          {(control) => (
+            <CatalogControlledInput
+              control={control}
+              entityLabel="label"
+              loading={vocabularyLoading}
+              name="label"
+              onChange={onLabelChange}
+              options={referenceOptions.label}
+              unavailable={vocabularyUnavailable}
+              value={values.label}
+            />
+          )}
+        </AdminFormField>
         {values.kind === "music_release" ? (
           <>
             <AdminFormField id="catalog-create-artist" label="Primary artist">
@@ -154,24 +168,6 @@ export const CatalogCreationBasicsStep = memo<CatalogCreationBasicsStepProps>(
                   options={artistOptions}
                   unavailable={vocabularyUnavailable}
                   value={values.artistName}
-                />
-              )}
-            </AdminFormField>
-            <AdminFormField
-              id="catalog-create-label"
-              label="Label or source"
-              optional
-            >
-              {(control) => (
-                <CatalogControlledInput
-                  control={control}
-                  entityLabel="label"
-                  loading={vocabularyLoading}
-                  name="label"
-                  onChange={onLabelChange}
-                  options={referenceOptions.label}
-                  unavailable={vocabularyUnavailable}
-                  value={values.label}
                 />
               )}
             </AdminFormField>

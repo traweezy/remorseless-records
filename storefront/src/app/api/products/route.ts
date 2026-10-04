@@ -4,6 +4,7 @@ import { mapStoreProductToSearchHit } from "@/lib/products/transformers"
 import { PRODUCT_LIST_FIELDS } from "@/lib/data/products"
 import { providerProblem } from "@/lib/http/provider-boundary"
 import { correlatedMedusaFetch } from "@/lib/medusa/correlated-client"
+import { presentStoreProducts } from "@/lib/products/presentation.server"
 import { readStoreProductListResponse } from "@/lib/products/response-contract"
 import { resolveRegionId } from "@/lib/regions"
 import { SEARCH_MAX_LIMIT, SEARCH_MAX_RESULT_WINDOW } from "@/lib/search/search"
@@ -93,7 +94,8 @@ export const GET = async (request: Request) => {
     )
     const { products, count } = readStoreProductListResponse(rawResponse, limit)
 
-    const hits = products.map(mapStoreProductToSearchHit)
+    const presented = await presentStoreProducts(products, request)
+    const hits = presented.map(mapStoreProductToSearchHit)
     const filteredHits = inStockOnly
       ? hits.filter((hit) => {
           const status =
@@ -111,7 +113,7 @@ export const GET = async (request: Request) => {
     )
 
     return jsonApiResponse({
-      products,
+      products: presented,
       hits: filteredHits,
       offset: options.offset as number,
       total,

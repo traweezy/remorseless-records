@@ -2,12 +2,13 @@ import { unstable_cache } from "next/cache"
 
 import { getAllProductHandles, PRODUCT_LIST_FIELDS } from "@/lib/data/products"
 import { fetchMedusaStoreRead } from "@/lib/medusa/read-client"
+import { presentStoreProducts } from "@/lib/products/presentation.server"
 import { readStoreProductListResponse } from "@/lib/products/response-contract"
 import { mapStoreProductToSearchHit } from "@/lib/products/transformers"
 import { resolveRegionId } from "@/lib/regions"
 import type { ProductSearchHit } from "@/types/product"
 
-const CATALOG_CACHE_KEY = "full-catalog-hits-v2"
+const CATALOG_CACHE_KEY = "full-catalog-hits-v3"
 const FULL_CATALOG_MAX_PRODUCTS = 1_000
 const FULL_CATALOG_BATCH_SIZE = 100
 
@@ -45,7 +46,8 @@ export const getFullCatalogHits = unstable_cache(
           productIds.length
         )
 
-        products.forEach((product) => {
+        const presented = await presentStoreProducts(products)
+        presented.forEach((product) => {
           if (
             typeof product.handle !== "string" ||
             !product.handle.trim().length

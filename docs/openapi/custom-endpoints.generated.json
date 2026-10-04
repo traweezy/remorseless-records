@@ -3812,6 +3812,50 @@
         ]
       }
     },
+    "/store/catalog/presentation": {
+      "get": {
+        "operationId": "backend_get_store_catalog_presentation",
+        "summary": "GET /store/catalog/presentation",
+        "tags": [
+          "backend custom routes"
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "native-medusa-error",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "backend/src/api/store/catalog/presentation/route.ts"
+        ],
+        "x-services": [
+          "backend"
+        ]
+      }
+    },
     "/store/catalog/products/{handle}/bundle": {
       "get": {
         "operationId": "backend_get_store_catalog_products_by_handle_bundle",
@@ -5648,12 +5692,12 @@
     }
   },
   "x-inventory": {
-    "routeFileCount": 90,
+    "routeFileCount": 91,
     "routeFileCounts": {
-      "backend": 58,
+      "backend": 59,
       "storefront": 32
     },
-    "routeOperationCount": 117,
-    "uniqueOperationCount": 115
+    "routeOperationCount": 118,
+    "uniqueOperationCount": 116
   }
 }

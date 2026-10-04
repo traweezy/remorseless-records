@@ -38,6 +38,7 @@ describe("product routes", () => {
     expect(buildInternalHandleCandidates("bundle", "mystery-bundle")).toEqual([
       "fixed-bundle-mystery-bundle",
       "mystery-bundle-mystery-bundle",
+      "mystery-bundle",
     ])
   })
 })

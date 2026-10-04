@@ -8,12 +8,17 @@ import {
 
 const mocks = vi.hoisted(() => ({
   correlatedMedusaFetch: vi.fn(),
+  presentStoreProducts: vi.fn(async (products: unknown[]) => products),
   enforceRateLimit: vi.fn(),
   jsonApiError: vi.fn(
     (_request: Request, detail: string, status: number, code: string) =>
       Response.json({ code, detail, status }, { status })
   ),
   resolveRegionId: vi.fn(),
+}))
+
+vi.mock("@/lib/products/presentation.server", () => ({
+  presentStoreProducts: mocks.presentStoreProducts,
 }))
 
 vi.mock("@/lib/medusa/correlated-client", () => ({

@@ -11,7 +11,11 @@ import { ProductVariantSelectionProvider } from "@/components/providers/product-
 import { Badge } from "@/components/ui/badge"
 import { Card } from "@/components/ui/card"
 import { deriveVariantOptions } from "@/lib/products/transformers"
-import { getProductByHandle, PRODUCT_DETAIL_FIELDS } from "@/lib/data/products"
+import {
+  getProductByHandle,
+  listProducts,
+  PRODUCT_DETAIL_FIELDS,
+} from "@/lib/data/products"
 import JsonLd from "@/components/json-ld"
 import { siteMetadata } from "@/config/site"
 import {
@@ -29,7 +33,8 @@ import {
   buildPublicProductPath,
   resolvePublicProductRouteType,
 } from "@/lib/products/routes"
-import { storeClient } from "@/lib/medusa"
+import { productPresentationType } from "@/lib/products/presentation"
+import { sanitizeNewsHtml } from "@/lib/news/rich-text"
 import { resolveRegionId } from "@/lib/regions"
 import { getBundleComposition } from "@/lib/data/bundles"
 import { buildBundleAvailabilityNotices } from "@/lib/products/bundle-availability"
@@ -75,6 +80,7 @@ export const generateMetadata = async ({
   const canonHandle = normalizeHandle(product.handle) ?? handle
   const canonical = `${siteMetadata.siteUrl}${buildPublicProductPath({
     handle: canonHandle,
+    productType: productPresentationType(product),
   })}`
   const images = product.images?.map((image) => ({
     url: image.url,
@@ -144,15 +150,22 @@ export const ProductDetailPage = async ({ params }: ProductDetailPageProps) => {
     excludeHandles: [slug.artistSlug, slug.albumSlug],
   })
   const variantOptions = deriveVariantOptions(product.variants)
-  const genreChips = Array.from(
-    new Set(
-      (categoryGroups.genres ?? [])
-        .map((entry) => entry.label)
-        .filter((label) => label.trim().length)
-    )
-  )
+  const profile = product.presentation?.profile
+  const descriptionHtml = profile?.descriptionHtml
+    ? sanitizeNewsHtml(profile.descriptionHtml)
+    : null
+  const genreChips = profile
+    ? profile.genres
+    : Array.from(
+        new Set(
+          (categoryGroups.genres ?? [])
+            .map((entry) => entry.label)
+            .filter((label) => label.trim().length)
+        )
+      )
   const productRouteType = resolvePublicProductRouteType({
     handle: product.handle,
+    productType: productPresentationType(product),
   })
   const isBundle = productRouteType === "bundle"
   const isMusicRelease = productRouteType === "music-release"
@@ -186,6 +199,7 @@ export const ProductDetailPage = async ({ params }: ProductDetailPageProps) => {
   const origin = siteMetadata.siteUrl
   const productPath = buildPublicProductPath({
     handle: product.handle ?? handle,
+    productType: productPresentationType(product),
   })
   const productUrl = `${origin}${productPath}`
   const hasPurchasableVariant = variantOptions.some(
@@ -242,7 +256,10 @@ export const ProductDetailPage = async ({ params }: ProductDetailPageProps) => {
             images={heroImages.map((image, index) => ({
               id: image.id ?? `image-${index}`,
               url: image.url ?? "/remorseless-hero-logo.png",
-              alt: productTitle,
+              alt:
+                product.presentation?.images.find(
+                  (item) => item.id === image.id
+                )?.alt ?? productTitle,
             }))}
             title={productTitle}
           />
@@ -300,9 +317,17 @@ export const ProductDetailPage = async ({ params }: ProductDetailPageProps) => {
               <h2 className="font-headline text-sm uppercase tracking-[0.35rem] text-foreground">
                 Description
               </h2>
-              <p className="text-sm leading-relaxed text-muted-foreground whitespace-pre-line">
-                {productDescription}
-              </p>
+              {descriptionHtml ? (
+                <div
+                  className="news-richtext max-w-none break-words text-sm text-muted-foreground"
+                  // biome-ignore lint/security/noDangerouslySetInnerHtml: Sanitized by the existing two-pass rich-text allowlist above.
+                  dangerouslySetInnerHTML={{ __html: descriptionHtml }}
+                />
+              ) : (
+                <p className="text-sm leading-relaxed text-muted-foreground whitespace-pre-line">
+                  {productDescription}
+                </p>
+              )}
             </Card>
 
             {tracklist.length ? (
@@ -329,6 +354,48 @@ export const ProductDetailPage = async ({ params }: ProductDetailPageProps) => {
               </Card>
             ) : null}
 
+            {profile?.credits ? (
+              <Card
+                variant="panel"
+                className="space-y-3 p-4 shadow-none sm:p-6"
+              >
+                <h2 className="font-headline text-sm uppercase tracking-[0.35rem] text-foreground">
+                  Credits
+                </h2>
+                <p className="whitespace-pre-line text-sm leading-relaxed text-muted-foreground">
+                  {profile.credits}
+                </p>
+              </Card>
+            ) : null}
+            {profile && Object.values(profile.merch).some(Boolean) ? (
+              <Card
+                variant="panel"
+                className="space-y-3 p-4 shadow-none sm:p-6"
+              >
+                <h2 className="font-headline text-sm uppercase tracking-[0.35rem] text-foreground">
+                  Product details
+                </h2>
+                <dl className="space-y-3 text-sm">
+                  {(
+                    [
+                      ["Material", profile.merch.material],
+                      ["Fit", profile.merch.fit],
+                      ["Size guide", profile.merch.sizeGuide],
+                      ["Care", profile.merch.care],
+                    ] as const
+                  )
+                    .filter(([, value]) => value)
+                    .map(([label, value]) => (
+                      <div key={label}>
+                        <dt className="font-semibold">{label}</dt>
+                        <dd className="whitespace-pre-line break-words text-muted-foreground">
+                          {value}
+                        </dd>
+                      </div>
+                    ))}
+                </dl>
+              </Card>
+            ) : null}
             {linerNotes ? (
               <Card variant="panel" className="space-y-3 p-7 shadow-none">
                 <h2 className="font-headline text-sm uppercase tracking-[0.35rem] text-foreground">
@@ -420,7 +487,7 @@ const loadRelatedProducts = async (
       null
 
     if (collectionId) {
-      const { products } = await storeClient.product.list({
+      const products = await listProducts({
         collection_id: collectionId,
         limit: limit * 2,
         fields: PRODUCT_DETAIL_FIELDS,
@@ -430,7 +497,7 @@ const loadRelatedProducts = async (
     }
 
     if (related.length < limit && artistCategoryIds.length) {
-      const { products } = await storeClient.product.list({
+      const products = await listProducts({
         category_id: artistCategoryIds,
         limit: limit * 3,
         fields: PRODUCT_DETAIL_FIELDS,
@@ -440,7 +507,7 @@ const loadRelatedProducts = async (
     }
 
     if (related.length < limit && genreCategoryIds.length) {
-      const { products } = await storeClient.product.list({
+      const products = await listProducts({
         category_id: genreCategoryIds,
         limit: limit * 3,
         fields: PRODUCT_DETAIL_FIELDS,
@@ -450,7 +517,7 @@ const loadRelatedProducts = async (
     }
 
     if (related.length < limit) {
-      const { products } = await storeClient.product.list({
+      const products = await listProducts({
         limit: limit * 2,
         order: "-created_at",
         fields: PRODUCT_DETAIL_FIELDS,
@@ -460,8 +527,8 @@ const loadRelatedProducts = async (
     }
 
     return related.slice(0, limit)
-  } catch (error) {
-    console.error("[related] falling back to empty set", error)
+  } catch {
+    console.error("[related] Failed to load products")
     return []
   }
 }
