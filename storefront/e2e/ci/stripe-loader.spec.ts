@@ -123,7 +123,7 @@ test("Stripe loader permits its vendor's dynamic chunks without allowing other s
 }) => {
   const requests: string[] = []
   await page.route(
-    /https:\/\/(?:[a-z0-9-]+\.)?js\.stripe\.com\//,
+    /^https:\/\/(?:[a-z0-9-]+\.)?js\.stripe\.com\//,
     async (route) => {
       requests.push(route.request().url())
       await route.fulfill({

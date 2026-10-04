@@ -51,7 +51,7 @@ for (const route of [
       expect(nonce).toBeTruthy()
       expect(policy).toContain("require-trusted-types-for 'script'")
       expect(policy.split("; ")).toContain(
-        "trusted-types nextjs nextjs#bundler remorseless-stripe-js remorseless-json-ld"
+        "trusted-types nextjs nextjs#bundler remorseless-stripe-js remorseless-json-ld default"
       )
       await expectDataIds(page, route.id)
       const blocks = await readDataBlocks(page)

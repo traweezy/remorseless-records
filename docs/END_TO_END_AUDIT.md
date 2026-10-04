@@ -1,5 +1,30 @@
 # Storefront, Admin and Stripe end-to-end audit
 
+### Trusted Types correction: CI fixture matcher repair — October 4, 02:32 UTC
+
+The correction was pushed directly to staging as
+`4730e12a638dce1279a9d1fa8c3c8b3f8064f5b9`. Backend and Storefront CodeQL
+both analyze the repository and rejected the same new finding, alert 65
+(`js/regex/missing-regexp-anchor`), in the browser fixture's Stripe route
+matcher. The production policy already anchors its URL allowlist. Add the
+missing start anchor to the fixture; all nine Chromium/Firefox/WebKit loader
+cases pass after the correction. No finding is suppressed or CI rule relaxed.
+This revision is not
+release-accepted. Preserve its failed jobs and require all four workflows on
+the corrective revision before release acceptance or subsequent work.
+
+The final workflow inventory also found two launch-suite failures: the
+server-rendered JSON-LD tests still expected the earlier exact policy-name
+list. Update that exact assertion for the narrowly restricted Stripe default
+policy, preserving the required Trusted Types directive, nonce, JSON-LD and
+SPA lifecycle checks. The responsive run itself and critical three-browser
+run passed; the combined responsive/launch job and its aggregate failed.
+An early progress update missed this late result and was corrected. The
+task-owned corrective push was stopped during its pre-push hook before
+submission so both test repairs can travel together.
+The complete local launch suite now passes all 20 cases, including both
+JavaScript-disabled JSON-LD checks and hydrated history/security tests.
+
 ### Tax binding deployed; hosted Stripe and report-date corrections — October 4, 02:12 UTC
 
 Revision `115810960c54e47e63cb3216e94491dff8b067c7` passed Root
