@@ -1,8 +1,14 @@
 # Next-session handoff
 
-Last updated: 2026-10-03 (America/New_York)
+Last updated: 2026-10-04 (America/New_York)
 
 ## Current continuation — direct staging only
+
+**Resumed October 4:** continue Batch 6 and its corrective releases. The user
+restored native Admin access and reiterated existing full authorization for
+routine audit work. The client environment clone remains paused behind the
+separate Batch 7 stop boundary below. Latest evidence and remaining work are
+recorded at the top of `docs/END_TO_END_AUDIT.md`.
 
 **Batch 5 is release-accepted at `960fe7b`.** Full revision:
 `960fe7bbc47b912770c8357c148f5bd6cb75b3f8`. Continue **batch 6: exhaustive
@@ -28,20 +34,27 @@ React nodes on the server and adds actual link/back/forward regressions.
 The existing audit's direct-navigation coverage missed this path; Batch 6
 remains open until deployed retesting and the full checklist are complete.
 
-Current Batch 6 application revision is `1158109` (full SHA
-`115810960c54e47e63cb3216e94491dff8b067c7`). All four workflows/23 checks
-passed; both applications and migration/backup jobs succeeded. The tax-evidence
-persistence and disabled-tax decoding repairs now reach Stripe initialization,
-reusing the original $6.23 session. Deployed responsive tests pass 90 cases with
-11 documented skips and no retries. No card has been submitted or audit order
-paid: Stripe's hosted dynamic script loader now exposes a Trusted Types
-compatibility failure. The next corrective group restricts that vendor loader
-to its HTTPS scripts, hosts checkout fonts locally, removes incompatible tab
-options, repairs rich-text link navigation, and prevents invalid Admin report
-dates from hiding their controls.
-Full verification and the corrected real sandbox journey remain pending.
-Preserve the existing pending PaymentIntent, scheduler incident latch and full
-observation window. Latest evidence: [END_TO_END_AUDIT.md](END_TO_END_AUDIT.md).
+Current Batch 6 application revision is `923aa73` (full SHA
+`923aa73a4939a8bd05583eb14fb568296acf26b9`). All four workflows/23 checks
+passed: Root `37171741644`, Backend `37171741674`, Storefront `37171741653`,
+Runtime Images `37171741654`. Both image evidence bundles verified. Both
+applications and migration/backup jobs succeeded at this exact revision;
+runtime packages, database roles, migration receipt and notification-key
+binding passed. Product client navigation and back/forward now render their
+descriptions without new TrustedHTML errors. The existing $6.23 checkout now
+renders the real hosted Stripe card form without new browser errors. On
+October 4 its $6.23 test payment completed as native order #8, independently
+verified in Stripe. A $1 native shipping refund reconciles and its signed
+webhooks processed once, but refund email failed: the validator expected
+`refund_…` while pinned Medusa creates `ref_…`. The local correction passes
+27 focused cases and 2,352 Backend coverage cases; its staging release and
+live notification recovery are still pending. Keep order #8 and its $5.23
+remaining paid balance for repeated-refund/cancellation acceptance. The live
+Admin rejects reversed/equal/blank report dates and its empty Connecticut CSV
+has been checked. The actual 04:00 scheduled backup/archive also passed.
+The remaining payment/refund matrix and exhaustive audit are still open.
+Preserve the scheduler incident latch and full observation window. Latest
+evidence: [END_TO_END_AUDIT.md](END_TO_END_AUDIT.md).
 Batch 6 is not accepted; pause before the client clone.
 
 Batch 5 rotated PostgreSQL administrator, Redis and JWT/cookie credentials,

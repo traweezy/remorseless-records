@@ -42,7 +42,7 @@ export const buildRefundNotificationPayloads = ({
       ? null
       : readNotificationEntityId(context.customerId, "cus")
   const refundIds = context.refunds.map((refund) =>
-    readNotificationEntityId(refund.id, "refund")
+    readNotificationEntityId(refund.id, "ref")
   )
   if (
     template !== "refund-issued" ||

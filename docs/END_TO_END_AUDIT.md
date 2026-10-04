@@ -1,5 +1,154 @@
 # Storefront, Admin and Stripe end-to-end audit
 
+### Resumed audit — October 4, 12:47 UTC onward
+
+The user resumed Batch 6 and restored native Admin access. The separate stop
+before the client environment remains in force. Fresh exact-revision CI and
+readiness checks passed on `923aa73`; this is not exhaustive audit acceptance.
+
+- **Actual hosted Stripe card payment:** the existing owned $6.23 USD cart
+  completed through the browser using Stripe's official `4242` test card.
+  Storefront confirmation displayed order **#8**, item $1.23, shipping $5,
+  explicit zero tax collected, and an empty cart. Native Medusa and the
+  independently signed-in Stripe sandbox both showed captured/succeeded.
+  Runtime test-key/account binding was verified immediately beforehand.
+  The optional Link phone field stayed empty; no Link account was created.
+- Native order `order_01M43FQ2TJ9RNAS0JP54FV7307` has one captured payment,
+  completed cart, linked disabled-mode generation-2 tax evidence and one
+  successful Resend-backed order notification to the controlled test address.
+  Provider acceptance is recorded; this is not an inbox delivery claim.
+- **Actual native partial refund:** a $1 shipping credit was issued through
+  the Medusa payment row with the owned sandbox reason. Native refund
+  `ref_01M43FX51KH7H2ZGHNARDNCZHP` and Stripe refund
+  `re_3UMeJMIM4tTeFQ3W0zMcUzSR` agree. Both signed lifecycle events processed
+  once; Operations → Refunds shows **Verified / Tax not collected**. Stock
+  remains 20 with one reserved unit, as expected before fulfillment or cancel.
+- **B6-REFUND-NOTICE — corrective release required:** the refund subscriber
+  rejects Medusa's actual `ref_…` identifier because its payload builder
+  expected `refund_…`. The live bounded log confirms the validation failure
+  and no refund notification was created. The installed Medusa 2.18.0 model
+  confirms `ref` is its native prefix. The local fix retains strict entity
+  validation and business-key idempotency. Realistic refund fixtures reproduce
+  the failure before the fix; all 27 focused cases and all 2,352 Backend tests
+  pass afterward. Reject non-native `refund_…` and Stripe `re_…` inputs.
+  Deployed notice recovery and repeated/full refunds remain pending.
+- **B6-WALLET-DOMAIN:** actual Stripe.js reports the staging domain is not
+  registered for Apple Pay. Card payment succeeds. Wallet acceptance is not
+  claimed; retain the domain-registration/device coverage requirement.
+- **Admin report period:** live native keyboard checks reject reversed,
+  equal and blank dates without replacing the prior report; restoring the
+  current-quarter preset works. The Connecticut transaction CSV downloaded
+  successfully and has the expected 36 columns with no customer contact or
+  street-address fields. It contains no data rows because the new owned sale
+  is in California. Oversized-period and nonempty CSV checks remain pending.
+- **Scheduled recovery backup:** the actual October 4 04:00 UTC job ran
+  04:02:09–04:03:13, execution `1bf72c1d-af7b-4240-a73a-fbfe6bff350a`.
+  Verified encrypted archive `d196787a-84c0-4b28-b42c-448e2b7b051c` contains
+  four database files and 1,172 media objects. Its receipt hash is
+  `16d3a95075eb72b84fe546309c41aa9c3a73d9b76faa6f73d7d480579fc04cc3`.
+  Schedule, exited execution, retention and latest archive agree. No extra
+  manual backup was started.
+
+Private redacted evidence and read-only helpers are under
+`artifacts/end-to-end-audit-2026-10-04/`. The local service observer stopped
+after 12:56:39 UTC; a fresh observer resumed at 13:24 UTC and again reported
+all nine services/jobs without faults. Do not claim continuous observation
+across that gap. The prior scheduler incident latch remains intact.
+
+### Requested stopping checkpoint — October 4, 02:57 UTC
+
+The user asked to stop at a safe checkpoint and continue later. The current
+corrective staging push reached the checkpoint below; audit work is paused.
+Resume only when the user asks to continue. Revision
+`923aa73a4939a8bd05583eb14fb568296acf26b9` contains the application fixes in
+`4730e12` plus the two CI fixture corrections described below. All four
+workflows and all 23 required checks passed: Root `37171741644`, Backend
+`37171741674`, Storefront `37171741653`, Runtime Images `37171741654`. Both
+image evidence bundles verified. Exact Railway deployments:
+
+- Backend `e8af8b9b-4202-4eb0-9ddf-6b930d22c7c0`, running instance
+  `c28150e4-43ca-44ee-bf2c-c95b2d899d7c`. The earlier rollout instance was
+  removed; no CRASHED instance was observed.
+- Storefront `7c7095f7-0735-44b2-b42c-5f244ffabfe5`, running instance
+  `9f5b4bf9-ef02-4ea7-b163-2dab54295901`.
+- Migrations `917c010c-b23d-4868-9bb7-3acf3f5b835a`, completed and exited.
+- RecoveryBackups `3302df60-fc10-4f59-9fce-7993cb88d782`, manual execution
+  `67ea5123-2b84-4bfd-82f0-e77172831b2c`, completed and exited. Verified
+  archive `5e879694-970a-43f3-b611-ef5c34ff577a` contains four database files
+  and 1,172 media objects; receipt and retention passed. Do not rerun this
+  manual execution or count it as the scheduled 04:00 UTC observation.
+
+Full deployment/health/readiness passed after an initial unverified read during
+rollout; retain that failed observation. Runtime/package/role/ancestor/Next and
+notification-key binding checks passed. Redis retained its process/instance
+identity at 02:47:05 UTC with 19,875 seconds uptime, healthy persistence and
+zero OOM/eviction/rejected-connection counters. The ordinary 02:56 heartbeat
+matches this SHA. Scheduler/operations still correctly report 503 for the prior
+incident latch; the first heartbeat read still saw the previous SHA and remains
+failed evidence. All catalog/dependency probes passed. Supporting-service logs
+from 02:54:55 UTC showed no suspicious entries; Meilisearch's six stderr rows
+were native INFO 2xx requests. The deployed responsive/browser suite passed
+96 cases with 17 documented skips and zero retries. Its six spec files were
+`contact`, `fonts`, `rich-text-navigation`, `storefront-smoke`, `stripe-loader`
+and `ui-runtime`; the new rich-text fixture paths and existing gallery fixtures
+are local-only skips, not live coverage. Screenshots/traces use a dedicated
+release directory and are not overwritten by another fixture run. Final
+02:57:14–02:57:27 UTC runtime/HTTP correlation passed for both applications:
+zero HTTP 5xx, zero unclassified warnings/errors and no truncation. The sole
+Backend warning was the exact intentional acceptance guard's 400 response.
+All nine services/jobs reached expected healthy or completed/exited states.
+This is a verified stopping checkpoint, not full Batch 6 acceptance; the
+scheduler latch and remaining audit coverage are preserved.
+
+Live client navigation from the owned shirt to `Cacophony of Filth`, followed
+by back/forward, rendered the music description without new browser warnings
+or errors. The owned-release heading moved out of the carousel's visible window
+before earlier clicks; those timed-out targeting attempts are not application
+navigation crashes. The exact owned-to-owned repeat and live news coverage
+remain to be completed. Reloading the existing unpaid checkout now renders
+Stripe's actual hosted card/expiry/CVC form, with no new console warnings/errors;
+its desktop screenshot was inspected. The original $6.23 cart remains pending.
+Stripe Link's save-information option is initially checked; deselect it before
+test payment unless saving information is explicitly authorized. No card or
+phone number was entered. Native Admin report-period live retesting is deferred.
+
+Private release evidence is in
+`artifacts/end-to-end-audit-2026-10-03/release-923aa73/`. These closing handoff
+notes remain local for the next cohesive push, avoiding another deployment
+cycle solely to record the user's pause. All application/test fixes are pushed.
+Audit browser tabs are marked for continuation. Local CI/deployment observers
+are stopped at the user's pause; no continuous overnight observation is claimed.
+
+No card has been submitted, no paid audit order created and no refund issued.
+Preserve the existing $6.23 pending sandbox cart/session and owned fixtures.
+On resumption, complete these remaining audit groups without creating the
+client environment:
+
+1. Finish the exact owned-product pair and live news navigation retests, verify
+   invalid Admin report-period recovery, and repeat payment preflight before
+   using the now-rendering hosted Stripe form on the then-current revision.
+2. Complete the real sandbox payment matrix: success, 3DS success/cancel,
+   decline/retry and interrupted-checkout recovery. Independently reconcile
+   native Medusa orders, Stripe state, inventory, webhooks and controlled
+   notification evidence. Use Medusa as the payment/refund authority.
+3. Complete partial/full/repeated/shipping refund checks and applicable
+   returns, claims and exchanges; preserve their audit evidence.
+4. Finish fixed/mystery bundles and mixed carts, remaining native Admin and
+   catalog/content/media workflows, CSV-content checks, and documented
+   accessible-name/tracklist findings.
+5. Reconcile all 44 routes and 493 inventoried controls with the actual
+   interaction, visual, cursor, responsive and accessibility evidence. Do not
+   present the inventory or automated fixture coverage as exhaustive live QA.
+6. Resolve or explicitly carry forward remaining findings, verify all nine
+   services/jobs and final logs, and publish the Batch 6 completion report.
+
+Retain the scheduler incident latch from October 3, 22:33:01.756 UTC and its
+full 24-hour observation window; a healthy current heartbeat does not clear
+that record. The scheduled 04:00 UTC backup has not yet been observed here.
+Retain historical failed queues (237 scheduled, one event) without replay.
+The existing infrastructure/security carryovers remain in the hardening plan.
+Batch 7's client clone and production remain outside this paused work.
+
 ### Trusted Types correction: CI fixture matcher repair — October 4, 02:32 UTC
 
 The correction was pushed directly to staging as

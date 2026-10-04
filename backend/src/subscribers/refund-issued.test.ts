@@ -14,7 +14,7 @@ const handlerInput = ({
     refunds: [
       {
         amount: 5,
-        id: "refund_01",
+        id: "ref_01M43FX51KH7H2ZGHNARDNCZHP",
         note: "Shipping adjustment",
       },
     ],
@@ -117,9 +117,9 @@ describe("payment refund notification subscriber", () => {
     )
     expect(fixture.createNotifications).toHaveBeenCalledWith([
       expect.objectContaining({
-        idempotency_key: "refund-issued:refund_01",
+        idempotency_key: "refund-issued:ref_01M43FX51KH7H2ZGHNARDNCZHP",
         provider_data: {
-          idempotency_key: "refund-issued:refund_01",
+          idempotency_key: "refund-issued:ref_01M43FX51KH7H2ZGHNARDNCZHP",
         },
         resource_id: "order_01",
         resource_type: "order",
@@ -130,7 +130,7 @@ describe("payment refund notification subscriber", () => {
       expect.not.stringContaining("customer@example.com")
     )
     expect(fixture.listNotifications).toHaveBeenCalledWith(
-      { idempotency_key: ["refund-issued:refund_01"] },
+      { idempotency_key: ["refund-issued:ref_01M43FX51KH7H2ZGHNARDNCZHP"] },
       { take: 2 }
     )
   })
@@ -269,8 +269,8 @@ describe("payment refund notification subscriber", () => {
         id: "pay_01",
         payment_collection_id: "paycol_01",
         refunds: [
-          { amount: 5, id: "refund_01" },
-          { amount: false, id: "refund_02" },
+          { amount: 5, id: "ref_01M43FX51KH7H2ZGHNARDNCZHP" },
+          { amount: false, id: "ref_01M43FX51KH7H2ZGHNARDNCZHQ" },
         ],
       },
     })
@@ -295,7 +295,9 @@ describe("payment refund notification subscriber", () => {
         currency_code: "usd",
         id: "pay_01",
         payment_collection_id: "paycol_01",
-        refunds: [{ amount: 5, id: "refund_01", note: false }],
+        refunds: [
+          { amount: 5, id: "ref_01M43FX51KH7H2ZGHNARDNCZHP", note: false },
+        ],
       },
     })
 

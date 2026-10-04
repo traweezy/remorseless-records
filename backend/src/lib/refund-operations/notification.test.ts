@@ -10,8 +10,12 @@ describe("refund customer notification payloads", () => {
           email: "customer@example.com",
           referenceLabel: "order #42",
           refunds: [
-            { amount: 5, id: "refund_01", note: "Shipping adjustment" },
-            { amount: { value: "2.25" }, id: "refund_02" },
+            {
+              amount: 5,
+              id: "ref_01M43FX51KH7H2ZGHNARDNCZHP",
+              note: "Shipping adjustment",
+            },
+            { amount: { value: "2.25" }, id: "ref_01M43FX51KH7H2ZGHNARDNCZHQ" },
           ],
           resourceId: "order_01",
           resourceType: "order",
@@ -25,9 +29,9 @@ describe("refund customer notification payloads", () => {
           note: "Shipping adjustment",
           referenceLabel: "order #42",
         }),
-        idempotency_key: "refund-issued:refund_01",
+        idempotency_key: "refund-issued:ref_01M43FX51KH7H2ZGHNARDNCZHP",
         provider_data: {
-          idempotency_key: "refund-issued:refund_01",
+          idempotency_key: "refund-issued:ref_01M43FX51KH7H2ZGHNARDNCZHP",
         },
         receiver_id: "cus_01",
         resource_id: "order_01",
@@ -40,9 +44,9 @@ describe("refund customer notification payloads", () => {
           formattedAmount: "$2.25",
           note: null,
         }),
-        idempotency_key: "refund-issued:refund_02",
+        idempotency_key: "refund-issued:ref_01M43FX51KH7H2ZGHNARDNCZHQ",
         provider_data: {
-          idempotency_key: "refund-issued:refund_02",
+          idempotency_key: "refund-issued:ref_01M43FX51KH7H2ZGHNARDNCZHQ",
         },
       }),
     ])
@@ -56,7 +60,7 @@ describe("refund customer notification payloads", () => {
           customerId: null,
           email: "guest@example.com",
           referenceLabel: "your checkout payment",
-          refunds: [{ amount: 20, id: "refund_01" }],
+          refunds: [{ amount: 20, id: "ref_01M43FX51KH7H2ZGHNARDNCZHP" }],
           resourceId: "cart_01",
           resourceType: "cart",
         },
@@ -79,7 +83,9 @@ describe("refund customer notification payloads", () => {
           customerId: null,
           email: "guest@example.com",
           referenceLabel: "your payment",
-          refunds: [{ amount: "not-an-amount", id: "refund_01" }],
+          refunds: [
+            { amount: "not-an-amount", id: "ref_01M43FX51KH7H2ZGHNARDNCZHP" },
+          ],
           resourceId: "cart_01",
           resourceType: "cart",
         },
@@ -94,9 +100,19 @@ describe("refund customer notification payloads", () => {
     ["customer", { customerId: "unsafe" }],
     ["reference", { referenceLabel: "x".repeat(121) }],
     ["refund ID", { refunds: [{ amount: 20, id: "unsafe" }] }],
+    ["non-native refund ID", { refunds: [{ amount: 20, id: "refund_01" }] }],
+    ["Stripe refund ID", { refunds: [{ amount: 20, id: "re_01" }] }],
     [
       "refund note",
-      { refunds: [{ amount: 20, id: "refund_01", note: "x".repeat(2_001) }] },
+      {
+        refunds: [
+          {
+            amount: 20,
+            id: "ref_01M43FX51KH7H2ZGHNARDNCZHP",
+            note: "x".repeat(2_001),
+          },
+        ],
+      },
     ],
   ])("drops a malformed %s", (_label, overrides) => {
     expect(
@@ -106,7 +122,7 @@ describe("refund customer notification payloads", () => {
           customerId: "cus_01",
           email: "guest@example.com",
           referenceLabel: "order #42",
-          refunds: [{ amount: 20, id: "refund_01" }],
+          refunds: [{ amount: 20, id: "ref_01M43FX51KH7H2ZGHNARDNCZHP" }],
           resourceId: "order_01",
           resourceType: "order",
           ...overrides,
@@ -125,8 +141,8 @@ describe("refund customer notification payloads", () => {
           email: "guest@example.com",
           referenceLabel: "your payment",
           refunds: [
-            { amount: 5, id: "refund_01" },
-            { amount: 5, id: "refund_01" },
+            { amount: 5, id: "ref_01M43FX51KH7H2ZGHNARDNCZHP" },
+            { amount: 5, id: "ref_01M43FX51KH7H2ZGHNARDNCZHP" },
           ],
           resourceId: "cart_01",
           resourceType: "cart",
