@@ -154,6 +154,85 @@ describe("cart Medusa boundary", () => {
     ).toBeInstanceOf(AbortSignal)
   })
 
+  it("hydrates native managed cart responses through a correlated channel inventory read", async () => {
+    const request = new Request("https://store.test/api/checkout")
+    const nativeCart = {
+      ...cartFixture,
+      sales_channel_id: "sc_WEB",
+      subtotal: 1.23,
+      total: 1.23,
+      items: [
+        {
+          id: "cali_AUDIT",
+          product_id: "prod_AUDIT",
+          variant_id: "variant_CD",
+          product_title: "Owned release",
+          quantity: 1,
+          subtotal: 1.23,
+          total: 1.23,
+          unit_price: 1.23,
+          product: { id: "prod_AUDIT" },
+          variant: {
+            id: "variant_CD",
+            manage_inventory: true,
+            allow_backorder: false,
+          },
+        },
+      ],
+    }
+    medusaMocks.fetch.mockResolvedValue({ cart: nativeCart })
+    medusaMocks.correlatedRead.mockImplementation((_request, path) =>
+      Promise.resolve(
+        path === "/store/products"
+          ? {
+              products: [
+                {
+                  id: "prod_AUDIT",
+                  handle: "owned-release",
+                  variants: [
+                    {
+                      id: "variant_CD",
+                      manage_inventory: true,
+                      allow_backorder: false,
+                      inventory_quantity: 20,
+                    },
+                  ],
+                },
+              ],
+              count: 1,
+            }
+          : { cart: nativeCart }
+      )
+    )
+    for (const result of [
+      await getCart(nativeCart.id, request),
+      await addLineItem(nativeCart.id, "variant_CD", 1, request),
+      await updateLineItem(nativeCart.id, "cali_AUDIT", 1, request),
+    ]) {
+      expect(result.items?.[0]?.variant?.inventory_quantity).toBe(20)
+      expect(result.total).toBe(1.23)
+    }
+    expect(medusaMocks.correlatedRead).toHaveBeenCalledWith(
+      request,
+      "/store/products",
+      {
+        method: "GET",
+        query: {
+          id: ["prod_AUDIT"],
+          sales_channel_id: "sc_WEB",
+          limit: 1,
+          fields:
+            "id,handle,variants.id,variants.manage_inventory,variants.allow_backorder,variants.inventory_quantity",
+        },
+      }
+    )
+    const fields = medusaMocks.correlatedRead.mock.calls[0]?.[2].query
+      .fields as string
+    expect(fields.split(",")).toContain("sales_channel_id")
+    expect(fields).not.toContain("items.variant.inventory_quantity")
+    expect(medusaMocks.read).not.toHaveBeenCalled()
+  })
+
   it("resolves calculated shipping prices through the provider boundary", async () => {
     medusaMocks.read.mockResolvedValue({
       shipping_options: [

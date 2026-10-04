@@ -4,6 +4,7 @@ import type { FetchArgs } from "@medusajs/js-sdk"
 import type { HttpTypes } from "@medusajs/types"
 
 import { stripePaymentSessionData } from "@/lib/cart/stripe-payment-data"
+import { resolveCartInventory } from "@/lib/cart/inventory"
 import {
   cartAmount,
   cartEnvelopeFrom,
@@ -24,6 +25,7 @@ import { resolveRegionId } from "@/lib/regions"
 
 const CART_FIELDS = [
   "id",
+  "sales_channel_id",
   "email",
   "customer_id",
   "completed_at",
@@ -43,7 +45,6 @@ const CART_FIELDS = [
   "*items.tax_lines",
   "*items.adjustments",
   "*items.variant",
-  "items.variant.inventory_quantity",
   "items.variant.calculated_price",
   "items.product.id",
   "items.product.handle",
@@ -88,13 +89,33 @@ type ShippingOptionCandidateList = {
   shipping_options: ShippingOptionCandidate[]
 }
 
-const requiredCartFromEnvelope = (value: unknown): HttpTypes.StoreCart => {
+const requiredCartFromEnvelope = async (
+  value: unknown,
+  request?: Request
+): Promise<HttpTypes.StoreCart> => {
   const { cart } = cartEnvelopeFrom(value)
   if (!cart) {
     throw new Error("The Medusa cart response is missing.")
   }
-  return cart
+  return cartWithInventory(cart, request)
 }
+
+const cartWithInventory = (cart: HttpTypes.StoreCart, request?: Request) =>
+  resolveCartInventory(cart, ({ productIds, salesChannelId }) =>
+    cartReadRequest<unknown>(
+      "/store/products",
+      {
+        query: {
+          id: productIds,
+          sales_channel_id: salesChannelId,
+          limit: productIds.length,
+          fields:
+            "id,handle,variants.id,variants.manage_inventory,variants.allow_backorder,variants.inventory_quantity",
+        },
+      },
+      request
+    )
+  )
 
 const shippingOptionListFrom = (
   value: unknown
@@ -220,7 +241,7 @@ export const createCart = async (
     CART_UPSTREAM_TIMEOUT_MS,
     request
   )
-  return requiredCartFromEnvelope(response)
+  return requiredCartFromEnvelope(response, request)
 }
 
 export const getCart = async (
@@ -232,7 +253,7 @@ export const getCart = async (
     { query: { fields: CART_FIELDS } },
     request
   )
-  return requiredCartFromEnvelope(response)
+  return requiredCartFromEnvelope(response, request)
 }
 
 export const addLineItem = async (
@@ -252,7 +273,7 @@ export const addLineItem = async (
     request
   )
 
-  return requiredCartFromEnvelope(response)
+  return requiredCartFromEnvelope(response, request)
 }
 
 export const updateLineItem = async (
@@ -272,7 +293,7 @@ export const updateLineItem = async (
     request
   )
 
-  return requiredCartFromEnvelope(response)
+  return requiredCartFromEnvelope(response, request)
 }
 
 export const removeLineItem = async (
@@ -290,7 +311,7 @@ export const removeLineItem = async (
     request
   )
   const parent = asUnknownRecord(response)?.parent
-  return cartSnapshotFrom(parent)
+  return cartWithInventory(cartSnapshotFrom(parent), request)
 }
 
 export const setCartEmail = async (
@@ -309,7 +330,7 @@ export const setCartEmail = async (
     request
   )
 
-  return requiredCartFromEnvelope(response)
+  return requiredCartFromEnvelope(response, request)
 }
 
 export const setCartAddresses = async (
@@ -340,7 +361,7 @@ export const setCartAddresses = async (
     request
   )
 
-  return requiredCartFromEnvelope(response)
+  return requiredCartFromEnvelope(response, request)
 }
 
 export const listShippingOptions = async (
@@ -417,7 +438,7 @@ export const addShippingMethod = async (
     request
   )
 
-  return requiredCartFromEnvelope(response)
+  return requiredCartFromEnvelope(response, request)
 }
 
 export const calculateTaxes = async (
@@ -434,7 +455,7 @@ export const calculateTaxes = async (
     request
   )
 
-  return requiredCartFromEnvelope(response)
+  return requiredCartFromEnvelope(response, request)
 }
 
 const extractClientSecret = (

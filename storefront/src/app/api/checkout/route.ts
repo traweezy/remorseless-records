@@ -6,6 +6,7 @@ import {
   resolveActiveCheckoutCart,
 } from "@/features/checkout/server/active-cart"
 import { guardCheckoutRead } from "@/features/checkout/server/guards"
+import { checkoutOperationError } from "@/features/checkout/server/errors"
 import { jsonApiResponse } from "@/lib/security/route-guards"
 
 const expectedEmptyCheckoutCodes = new Set([
@@ -33,11 +34,19 @@ export const GET = async (request: NextRequest): Promise<Response> => {
     return rateLimited
   }
 
-  const active = await resolveActiveCheckoutCart(request)
-  if (active.ok) {
-    return checkoutProjectionResponse(active.value)
+  try {
+    const active = await resolveActiveCheckoutCart(request)
+    if (active.ok) {
+      return checkoutProjectionResponse(active.value)
+    }
+    return expectedEmptyCheckoutCodes.has(active.code)
+      ? emptyCheckoutResponse(active.response)
+      : active.response
+  } catch (error) {
+    return checkoutOperationError(request, error, {
+      code: "checkout_unavailable",
+      title: "Checkout is temporarily unavailable",
+      detail: "We could not load checkout. Please try again.",
+    })
   }
-  return expectedEmptyCheckoutCodes.has(active.code)
-    ? emptyCheckoutResponse(active.response)
-    : active.response
 }
