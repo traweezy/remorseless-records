@@ -4,7 +4,7 @@ import { Suspense } from "react"
 
 import "@/styles/globals.css"
 import "@/styles/fonts.css"
-import { preloads as fontPreloads } from "../../public/fonts/sources.json"
+import fontSources from "../../public/fonts/sources.json"
 import BackToTopButton from "@/components/back-to-top-button"
 import SiteFooter from "@/components/site-footer"
 import SiteHeader from "@/components/site-header"
@@ -116,7 +116,7 @@ const RootLayout = async ({ children }: RootLayoutProps) => {
       className="site-fonts bg-background text-foreground"
     >
       <head>
-        {fontPreloads.map((href) => (
+        {Array.from(fontSources.preloads).map((href) => (
           <link
             key={href}
             rel="preload"

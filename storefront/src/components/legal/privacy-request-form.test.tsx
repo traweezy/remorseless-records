@@ -57,6 +57,23 @@ describe("PrivacyRequestForm", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /^Email:/ }))
     expect(screen.getByLabelText("Email")).toHaveFocus()
+
+    fireEvent.change(screen.getByLabelText("Name"), {
+      target: { value: "Privacy Customer" },
+    })
+    fireEvent.change(screen.getByLabelText("Email"), {
+      target: { value: "privacy@example.test" },
+    })
+    const submit = screen.getByRole("button", {
+      name: "Submit privacy request",
+    })
+    submit.focus()
+    fireEvent.click(submit)
+    await waitFor(() => expect(summary).toHaveFocus())
+    expect(screen.queryByRole("button", { name: /^Name:/ })).toBeNull()
+    expect(screen.queryByRole("button", { name: /^Email:/ })).toBeNull()
+    expect(screen.getByRole("button", { name: /^Details:/ })).toBeVisible()
+    expect(fetchMock).not.toHaveBeenCalled()
   })
 
   it("announces the bounded request reference returned by Backend", async () => {

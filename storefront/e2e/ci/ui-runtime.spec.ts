@@ -296,6 +296,18 @@ for (const reducedMotion of ["no-preference", "reduce"] as const) {
       await expectMainImage("front")
       await expect(previous).toBeDisabled()
       await expectDecorativeIcons(next)
+      // Pointer activation must survive the pressed style without moving the
+      // hit target away before pointerup. Keyboard activation misses that bug.
+      await next.click()
+      await expectMainImage("back")
+      await previous.click()
+      await expectMainImage("front")
+      if (testInfo.project.use.hasTouch) {
+        await next.tap()
+        await expectMainImage("back")
+        await previous.tap()
+        await expectMainImage("front")
+      }
       await next.press("Enter")
       await previous.press("Enter")
       await next.press("Enter")

@@ -486,3 +486,80 @@ validation screenshots were inspected; the latter now keeps the heading and
 focused Artist control visible. Shared lint/type/policy checks, frozen install
 and Backend production build pass. Candidate corrections still require their
 own exact-SHA CI, deployed retests and service acceptance before closure.
+
+### Native-form deployment and customer-journey blockers — October 4, 00:25 UTC
+
+`8aaedfe5a9494d2250b396741653514f67151d8a` reached staging after all four
+workflows and 23 required checks passed: Root `37163393798`, Backend
+`37163393742`, Storefront `37163393811`, Runtime Images `37163393765`.
+Both complete runtime evidence bundles verified against current policy.
+Backend deployment `43ef2eda-07f7-42b6-9323-189d5da74e21`, Storefront
+`f44d4760-06d6-44e2-a3f4-11ef1ae7592e`, and migration
+`cc4ff232-a9ef-4feb-921c-e9c4a9a091f9` succeeded. Migration completed and
+exited with its exact receipt. Runtime packages, database role/ancestor
+isolation, restricted notification key and Next backport checks passed.
+
+RecoveryBackups deployment `81e3045e-237c-42ac-8b7c-2eacff8e41b1` executed
+as `bbf0a95f-adc2-4d53-8ab2-a301d71a2653` and exited. Archive
+`c8b752d8-1b92-4ef1-aab0-185ed65504f5`, created at 00:10:25 UTC, contains
+four database files and 1,171 media objects, including all three owned audit
+uploads. Receipt SHA-256:
+`41c60100180bb395d992faec2cdb64581ec81b412bfebe8204b78428c3dc2795`.
+Retention checks passed. Redis retains its original process identity at
+10,528 seconds uptime, with healthy persistence and zero OOM, eviction or
+rejected connections. All nine service/job states were observed; scheduled
+jobs exited normally. Evidence is under private `release-8aaedfe/`.
+
+Live Admin retests now pass for the Ready product summary, both variant prices,
+plain-content editor import, rich-text edit/save/reload, publication, and empty
+native refund-reason validation. Native validation focuses Label, associates
+its error, and exposes a named close button. No extra refund reason was created.
+The owned product is published for the real purchase matrix; its history and
+three managed assets remain retained.
+
+| Finding | Actual reproduction | Correction/status |
+| --- | --- | --- |
+| `B6-GALLERY-POINTER` | At 320 px the real merchandise gallery ignored arrow clicks; keyboard and thumbnails worked. The shared button's pressed transform replaced the arrow's centering transform and moved the target away before pointer-up. | Center arrows with a positioning wrapper; retain normal pressed feedback. Mouse, keyboard and touch regressions pass locally. |
+| `B6-PRIVACY-REPEAT-FOCUS` | After fixing Name/Email, another invalid privacy submission updates errors but leaves focus on Submit. | Re-run summary focus for each new validation result, retaining field editing focus. Unit and rendered regressions pass; form delivery is intercepted in tests. |
+| `B6-ABOUT-RETURN-COPY` | About still said case-by-case returns and always customer-paid return shipping. | Match the existing 30-day policy and damaged/incorrect-item exception. No policy change. |
+| `B6-CART-INVENTORY` | The owned CD adds correctly at $1.23, but checkout and Retry fail before contact/payment. Native Medusa 2.18 cart reads omit computed inventory even when requested. An independent native product read returns 20 units in the same channel. | Read bounded, identity-checked availability from the native product endpoint. Preserve strict quantities and native commerce authority; completed-cart recovery must not depend on current stock. Return safe problem JSON for projection errors. Local verification is underway. |
+| `B6-CANONICAL-PRESENTATION` | Search renders managed artwork and artist, but detail displays Artwork unavailable, omits artist/tracklist and reads the old description. Cart shows No image. | Open. Connect customer presentation to canonical catalog/media reads without duplicating commerce authority or exposing internal diagnostics. |
+
+No fresh payment/refund has run: checkout is blocked before payment. The broader
+route/control ledger, remaining native create/media-focus retests, all product
+kinds, actual card/refund matrix, controlled contact/privacy delivery and full
+scheduler observation remain open. Do not clear the scheduler incident latch.
+The user's latest instruction is to pause before creating or configuring the
+client environment after this audit; Batch 7 must not start automatically.
+
+A local broad browser run passed 94 cases, skipped two documented cases and
+failed two discography cases because the fixture was absent during its build.
+The failed evidence is retained; rebuild with the owned fixture active before
+rerunning the unchanged matrix. A subsequent build also exposed a webpack
+warning from looking up `map` on a named JSON export; copy the font preload
+array before mapping, retaining the same four URLs and font integrity checks.
+
+Final local verification passed 148 Storefront suites/997 tests, including the
+41-suite/387-test transactional gate. The fixture-backed responsive matrix
+passed 96 cases with two documented skips; the final artifact passed all 63
+Chromium/Firefox/WebKit critical cases and 12 focused gallery/privacy/font
+cases, without retries. Rendered desktop/mobile gallery and privacy feedback
+were inspected. The font manifest now uses its default JSON export and an
+explicit array copy; the final production build has no JSON-export warning.
+
+The actual owned merchandise creation now verifies successful redirect without
+a false leave prompt and repeated missing-alt-text focus. Its five sizes
+include an out-of-stock L variant. One new managed square image retains its
+800×800 dimensions and alt text; this post-backup upload must be included in
+the next backup. Two further customer-journey findings remain open:
+
+- `B6-TYPED-HANDLE`: the creator defaults to a bare merchandise handle. Search
+  builds its typed `/merch/…` link, but that detail route looks up only a
+  prefixed handle and returns 404. Verified by following the actual search link.
+- `B6-MERCH-LABEL`: merchandise creation omits label selection and succeeds,
+  while the subsequent editor refuses to save without a label/source. The
+  owned fixture used the existing Remorseless Records label to continue.
+
+Keep these findings within Batch 6. The successful local checks do not replace
+the exact pushed CI, deployed checkout retest, real sandbox transactions or
+the still-open canonical-content and full interaction audit.

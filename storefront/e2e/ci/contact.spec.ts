@@ -49,3 +49,47 @@ test("UI runtime contact validation focuses errors and announces delivery feedba
   expect(requests).toBe(2)
   await page.screenshot({ path: testInfo.outputPath("contact-success.png") })
 })
+
+test("UI runtime privacy requests refocus repeated validation and confirm delivery", async ({
+  page,
+}, testInfo) => {
+  let requests = 0
+  const reference = "b8517c2c-e013-46bd-9765-e4475641fd82"
+  await page.route("**/api/privacy-request", async (route) => {
+    requests += 1
+    await route.fulfill({ json: { ok: true, requestId: reference } })
+  })
+  await page.goto("/privacy")
+  const submit = page.getByRole("button", {
+    name: "Submit privacy request",
+    exact: true,
+  })
+  const summary = page.getByRole("alert", {
+    name: "Check your privacy request",
+  })
+  await submit.click()
+  await expect(summary).toBeFocused()
+  await page
+    .getByRole("textbox", { name: "Name", exact: true })
+    .fill("Audit Privacy")
+  await page
+    .getByRole("textbox", { name: "Email", exact: true })
+    .fill("audit@example.test")
+  await submit.click()
+  await expect(summary).toBeFocused()
+  await expect(summary.getByRole("button")).toHaveCount(1)
+  await submit.click()
+  await expect(summary).toBeFocused()
+  expect(requests).toBe(0)
+  await summary.getByRole("button", { name: /^Details:/ }).click()
+  const details = page.getByRole("textbox", { name: "Details", exact: true })
+  await expect(details).toBeFocused()
+  await page.screenshot({ path: testInfo.outputPath("privacy-validation.png") })
+  await details.fill("Controlled privacy request feedback regression.")
+  await submit.click()
+  const result = page.getByRole("main").getByRole("status")
+  await expect(result).toBeFocused()
+  await expect(result).toContainText(reference)
+  expect(requests).toBe(1)
+  await expect(details).toHaveValue("")
+})

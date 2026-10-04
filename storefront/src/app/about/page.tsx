@@ -20,7 +20,7 @@ const ABOUT_PARAGRAPHS = [
   "Remorseless Records was founded in 2024 in Stamford, Connecticut with a singular goal: release and distribute the best in underground death and doom metal. Every release is personally vetted, mastered for maximum impact, and packed in small batches to keep quality brutal and uncompromised.",
   "If you want to be considered for a release or want to carry Remorseless titles in your distro, reach out via the Contact page. All messages get answered as quickly as possible.",
   `${legalConfig.shipping.destinationSummary} ${legalConfig.shipping.rateSummary}`,
-  "Refunds are granted for damaged or unplayable items. Returns and exchanges for unopened products are considered case-by-case; return shipping is covered by the customer. Contact us to request a return or refund.",
+  `Eligible returns must be requested within ${legalConfig.returns.windowDays} days of delivery. ${legalConfig.returns.condition} Return shipping is the customer’s responsibility unless an item arrives damaged or incorrect. See the Returns & Refunds Policy for exclusions and full terms.`,
 ]
 
 const AboutPage = () => {

@@ -15,6 +15,10 @@ client environment. Preserve accepted batches 1–4 and the next maintenance
 batch. Insert the audit as batch 6, move the client clone to batch 7, and move
 production/launch acceptance to batch 8. This supersedes the seven-batch plan.
 
+**October 3 user boundary:** continue Batch 6's audit and corrections, then
+pause before the client clone. Batch 7 must not start until the user explicitly
+resumes it; earlier continuation requests do not override this stop point.
+
 1. **Accepted at `849abea`: credential isolation and backup access.** Migration
    authority is isolated in a one-shot service, and restricted backup export is
    integrated. Each subsequent numbered group retains its own batch push.

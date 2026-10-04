@@ -189,10 +189,14 @@ const PrivacyRequestForm = () => {
   }, [])
 
   useEffect(() => {
-    if (["validation", "success", "error"].includes(status)) {
+    if (
+      (status === "validation" && validationIssues.length > 0) ||
+      status === "success" ||
+      status === "error"
+    ) {
       resultRef.current?.focus({ preventScroll: false })
     }
-  }, [status])
+  }, [status, validationIssues])
 
   return (
     <Card

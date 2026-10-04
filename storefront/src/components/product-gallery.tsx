@@ -97,12 +97,12 @@ const ProductGallery = ({ images, title }: ProductGalleryProps) => {
           </motion.div>
         </AnimatePresence>
         {sanitized.length > 1 ? (
-          <>
+          <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-between px-3">
             <Button
               type="button"
               variant="outline"
               size="icon"
-              className="absolute left-3 top-1/2 z-10 -translate-y-1/2 border-white/50 bg-black/75 text-white shadow-lg backdrop-blur-sm hover:bg-black/90 hover:text-white disabled:opacity-35"
+              className="pointer-events-auto border-white/50 bg-black/75 text-white shadow-lg backdrop-blur-sm hover:bg-black/90 hover:text-white disabled:opacity-35"
               onClick={showPrevious}
               disabled={resolvedActiveIndex === 0}
               aria-label="Previous image"
@@ -113,14 +113,14 @@ const ProductGallery = ({ images, title }: ProductGalleryProps) => {
               type="button"
               variant="outline"
               size="icon"
-              className="absolute right-3 top-1/2 z-10 -translate-y-1/2 border-white/50 bg-black/75 text-white shadow-lg backdrop-blur-sm hover:bg-black/90 hover:text-white disabled:opacity-35"
+              className="pointer-events-auto border-white/50 bg-black/75 text-white shadow-lg backdrop-blur-sm hover:bg-black/90 hover:text-white disabled:opacity-35"
               onClick={showNext}
               disabled={resolvedActiveIndex === sanitized.length - 1}
               aria-label="Next image"
             >
               <ChevronRight className="size-5" aria-hidden="true" />
             </Button>
-          </>
+          </div>
         ) : null}
       </div>
       {sanitized.length > 1 ? (

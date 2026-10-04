@@ -61,7 +61,10 @@ for (const preload of manifest.preloads) {
 }
 assert.doesNotMatch(layout, /next\/font\/google/u)
 assert.ok(layout.includes("@/styles/fonts.css"))
-assert.ok(layout.includes("preloads as fontPreloads"))
+assert.ok(
+  layout.includes('import fontSources from "../../public/fonts/sources.json"')
+)
+assert.ok(layout.includes("Array.from(fontSources.preloads).map("))
 console.log(
   `Verified ${files.size} licensed local fonts and four preloads in ${fileURLToPath(directory)}`
 )
