@@ -1633,6 +1633,7 @@ const ProductSearchExperience = ({
 
   return (
     <div className="bg-background pb-8">
+      <h1 className="sr-only">Catalog</h1>
       <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-4 px-4 pt-4 sm:px-6 lg:flex-row lg:gap-8 lg:px-8">
         {desktopFiltersVisible ? (
           <aside

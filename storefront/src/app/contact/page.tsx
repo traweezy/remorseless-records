@@ -58,7 +58,7 @@ const ContactPage = () => {
               asChild
               variant="outlined"
               size="compact"
-              className="w-full min-w-0 px-3 tracking-[0.08rem] sm:w-fit sm:px-6 sm:tracking-[0.2rem]"
+              className="h-auto min-h-9 w-full min-w-0 whitespace-normal break-all px-3 py-2 tracking-[0.08rem] sm:w-fit sm:px-6 sm:tracking-[0.2rem]"
             >
               <a href={`mailto:${siteMetadata.contact.email}`}>
                 {siteMetadata.contact.email}
@@ -88,7 +88,7 @@ const ContactPage = () => {
               asChild
               variant="outlined"
               size="compact"
-              className="w-full gap-2 sm:w-fit"
+              className="h-auto min-h-9 w-full min-w-0 gap-2 whitespace-normal py-2 sm:w-fit"
             >
               <a
                 href={

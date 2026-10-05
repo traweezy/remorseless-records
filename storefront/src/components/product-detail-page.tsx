@@ -5,6 +5,7 @@ import type { HttpTypes } from "@medusajs/types"
 
 import ProductVariantSelector from "@/components/product-variant-selector"
 import ProductGallery from "@/components/product-gallery"
+import { ProductTracklist } from "@/components/product-tracklist"
 import ProductCarouselSection from "@/components/product-carousel-section"
 import BundleComposition from "@/components/bundle-composition"
 import { ProductVariantSelectionProvider } from "@/components/providers/product-variant-selection-provider"
@@ -331,22 +332,10 @@ export const ProductDetailPage = async ({ params }: ProductDetailPageProps) => {
                 variant="panel"
                 className="space-y-3 p-4 shadow-none sm:p-6"
               >
-                <h3 className="font-headline text-sm uppercase tracking-[0.35rem] text-foreground">
+                <h2 className="font-headline text-sm uppercase tracking-[0.35rem] text-foreground">
                   Tracklist
-                </h3>
-                <ol className="space-y-2 text-sm leading-relaxed text-muted-foreground">
-                  {tracklist.map((entry, index) => (
-                    <li
-                      key={`track-${index}`}
-                      className="flex items-baseline gap-3"
-                    >
-                      <span className="text-xs font-mono uppercase tracking-[0.35rem] text-muted-foreground">
-                        {(index + 1).toString().padStart(2, "0")}
-                      </span>
-                      <span>{entry}</span>
-                    </li>
-                  ))}
-                </ol>
+                </h2>
+                <ProductTracklist tracks={tracklist} />
               </Card>
             ) : null}
 

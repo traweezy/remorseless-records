@@ -33,7 +33,7 @@ const Drawer = memo<DrawerProps>(
     onCloseAutoFocus,
     children,
   }) => {
-    const panelRef = useRef<HTMLElement>(null)
+    const panelRef = useRef<HTMLDivElement>(null)
     const mountedRef = useRef(false)
     const openRef = useRef(open)
     useEffect(() => {
@@ -133,7 +133,7 @@ const Drawer = memo<DrawerProps>(
             onOpenAutoFocus={handleOpenAutoFocus}
             onCloseAutoFocus={handleCloseAutoFocus}
           >
-            <aside
+            <div
               ref={panelRef}
               className={cn(
                 "fixed inset-y-0 z-50 flex h-full w-full flex-col border-border/60 bg-background shadow-glow duration-300 data-[state=open]:animate-in data-[state=open]:fade-in data-[state=closed]:animate-out data-[state=closed]:fade-out motion-reduce:animate-none",
@@ -151,7 +151,7 @@ const Drawer = memo<DrawerProps>(
                 </VisuallyHidden.Root>
               ) : null}
               {children}
-            </aside>
+            </div>
           </SheetPrimitive.Content>
         </SheetPrimitive.Portal>
       </SheetPrimitive.Root>

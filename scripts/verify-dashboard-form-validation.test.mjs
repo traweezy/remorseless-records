@@ -27,6 +27,202 @@ const draftOrderRoot = dirname(
   backendRequire.resolve("@medusajs/draft-order/package.json")
 )
 
+for (const [component, artifact, kind] of [
+  ["ExchangeCreate", "order-create-exchange-QETUJ3ER.mjs", "exchanges"],
+  ["ClaimCreate", "order-create-claim-ZMJRSB2U.mjs", "claims"],
+  ["ReturnCreate", "order-create-return-CZVXDD6A.mjs", "returns"],
+]) {
+  for (const entry of [artifact, "app.js"]) {
+    test(`${component} ${entry}: name and describe the pending native dialog`, () => {
+      const ts = backendRequire("typescript")
+      const source = readFileSync(join(dashboardRoot, "dist", entry), "utf8")
+      const parsed = ts.createSourceFile(
+        entry,
+        source,
+        ts.ScriptTarget.Latest,
+        true
+      )
+      const matches = []
+      const visit = (node) => {
+        if (
+          ts.isVariableDeclaration(node) &&
+          node.name.getText(parsed) === component &&
+          node.initializer &&
+          ts.isArrowFunction(node.initializer)
+        )
+          matches.push(node.initializer)
+        if (
+          ts.isBinaryExpression(node) &&
+          node.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
+          node.left.getText(parsed) === component &&
+          ts.isArrowFunction(node.right)
+        )
+          matches.push(node.right)
+        ts.forEachChild(node, visit)
+      }
+      visit(parsed)
+      assert.equal(matches.length, 1)
+      const expression = matches[0].getText(parsed)
+      let loaded = false
+      const jsx = (type, props) => ({ type, props })
+      const data = () => (loaded ? { id: "owned-fixture" } : undefined)
+      const context = {
+        RouteFocusModal: Object.assign(() => {}, {
+          Title: "title",
+          Description: "description",
+        }),
+        [`${component}Form`]: "native-form",
+        DEFAULT_FIELDS: "id",
+        useParams: () => ({ id: "owned-fixture" }),
+        useNavigate: () => () => {},
+        useOrder: () => ({ order: data() }),
+        useOrderPreview: () => ({ order: data() }),
+        useExchange: () => ({ exchange: data() }),
+        useClaim: () => ({ claim: data() }),
+        useReturn: () => ({ return: data() }),
+        useCreateExchange: () => ({
+          mutateAsync: () => assert.fail("unexpected mutation"),
+        }),
+        useCreateClaim: () => ({
+          mutateAsync: () => assert.fail("unexpected mutation"),
+        }),
+        useInitiateReturn: () => ({
+          mutateAsync: () => assert.fail("unexpected mutation"),
+        }),
+      }
+      for (const token of new Set(expression.match(/[A-Za-z_]\w*/gu))) {
+        if (/^DEFAULT_FIELDS\d*$/u.test(token)) context[token] = "id"
+        if (/^import_react_router_dom\d*$/u.test(token))
+          context[token] = {
+            useParams: context.useParams,
+            useNavigate: context.useNavigate,
+          }
+        if (/^import_react\d*$/u.test(token))
+          context[token] = {
+            useState: () => [undefined, () => {}],
+            useEffect: () => {},
+          }
+        if (/^import_react_i18next\d*$/u.test(token))
+          context[token] = {
+            useTranslation: () => ({
+              t: (key, options) => options?.defaultValue ?? key,
+            }),
+          }
+        if (/^import_jsx_runtime\d*$/u.test(token)) context[token] = { jsx }
+        if (/^useState\d*$/u.test(token))
+          context[token] = () => [undefined, () => {}]
+        if (/^useEffect\d*$/u.test(token)) context[token] = () => {}
+        if (/^useTranslation\d*$/u.test(token))
+          context[token] = () => ({
+            t: (key, options) => options?.defaultValue ?? key,
+          })
+        if (/^jsx\d*$/u.test(token)) context[token] = jsx
+      }
+      const render = vm.runInNewContext(`(${expression})`, context)
+      const pending = render().props.children
+      assert.equal(pending.type, "div")
+      assert.equal(pending.props.className, "sr-only")
+      assert.equal(pending.props.children[0].type, "title")
+      assert.equal(
+        pending.props.children[0].props.children,
+        `orders.${kind}.create`
+      )
+      assert.equal(pending.props.children[1].type, "description")
+      assert.match(pending.props.children[1].props.children, /\S/u)
+      loaded = true
+      assert.equal(render().props.children.type, "native-form")
+    })
+  }
+}
+
+for (const [component, artifact] of [
+  ["AddExchangeOutboundItemsTable", "order-create-exchange-QETUJ3ER.mjs"],
+  ["AddClaimOutboundItemsTable", "order-create-claim-ZMJRSB2U.mjs"],
+  ["AddOrderEditItemsTable", "order-create-edit-2IL2AZSQ.mjs"],
+]) {
+  for (const entry of [artifact, "app.js"]) {
+    test(`${component} ${entry}: distinguish loading and denied reads from empty data`, () => {
+      const ts = backendRequire("typescript")
+      const source = readFileSync(join(dashboardRoot, "dist", entry), "utf8")
+      const parsed = ts.createSourceFile(
+        entry,
+        source,
+        ts.ScriptTarget.Latest,
+        true
+      )
+      const matches = []
+      const visit = (node) => {
+        if (
+          ts.isVariableDeclaration(node) &&
+          ts.isIdentifier(node.name) &&
+          node.name.text === component &&
+          node.initializer &&
+          ts.isArrowFunction(node.initializer)
+        )
+          matches.push(node.initializer)
+        if (
+          ts.isBinaryExpression(node) &&
+          node.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
+          ts.isIdentifier(node.left) &&
+          node.left.text === component &&
+          ts.isArrowFunction(node.right)
+        )
+          matches.push(node.right)
+        ts.forEachChild(node, visit)
+      }
+      visit(parsed)
+      assert.equal(matches.length, 1)
+      const expression = source.slice(
+        matches[0].getStart(parsed),
+        matches[0].end
+      )
+      let query = { isPending: true, isError: false, count: 0 }
+      const jsx = (type, props) => ({ type, props })
+      const translation = () => ({ t: (key) => key })
+      const state = (initial) => [initial, () => {}]
+      const context = {
+        useVariants: () => query,
+        useDataTable: (options) => ({ table: options }),
+        _DataTable: "native-table",
+      }
+      for (const token of new Set(expression.match(/[A-Za-z_]\w*/gu))) {
+        if (/^import_react\d*$/u.test(token))
+          context[token] = { useState: state }
+        if (/^import_react_i18next\d*$/u.test(token))
+          context[token] = { useTranslation: translation }
+        if (/^import_jsx_runtime\d*$/u.test(token)) context[token] = { jsx }
+        if (/^useState\d*$/u.test(token)) context[token] = state
+        if (/^useTranslation\d*$/u.test(token)) context[token] = translation
+        if (/^jsx\d*$/u.test(token)) context[token] = jsx
+        if (/^PAGE_SIZE\d*$/u.test(token)) context[token] = 50
+        if (/^PREFIX\d*$/u.test(token)) context[token] = "rit"
+        if (/^use\w+Item[s]?TableQuery$/u.test(token))
+          context[token] = () => ({ searchParams: {}, raw: {} })
+        if (/^use\w+Item[s]?Table(?:Columns|Filters)$/u.test(token))
+          context[token] = () => []
+      }
+      const render = vm.runInNewContext(`(${expression})`, context)
+      const props = {
+        selectedItems: [],
+        currencyCode: "usd",
+        onSelectionChange: () => {},
+      }
+      assert.equal(render(props).props.children.props.isLoading, true)
+      const denied = Object.assign(new Error("Unauthorized"), { status: 401 })
+      query = { isPending: false, isError: true, error: denied }
+      assert.throws(
+        () => render(props),
+        (error) => error === denied
+      )
+      query = { isPending: false, isError: false, variants: [], count: 0 }
+      const empty = render(props).props.children
+      assert.equal(empty.type, "native-table")
+      assert.equal(empty.props.isLoading, false)
+      assert.equal(empty.props.count, 0)
+    })
+  }
+}
+
 for (const artifact of [
   join(dashboardRoot, "dist/chunk-OBQI23QM.mjs"),
   join(draftOrderRoot, ".medusa/server/src/admin/index.mjs"),

@@ -28,6 +28,14 @@ const cases = [
   {
     axeInclude: "[role=dialog]",
     height: 1000,
+    name: "native-exchange-pending-dialog",
+    route: "/app/orders/order_acceptance/exchanges",
+    setup: "native-exchange-pending",
+    width: 1440,
+  },
+  {
+    axeInclude: "[role=dialog]",
+    height: 1000,
     name: "native-exchange-standalone-hints",
     route: "/app/orders/order_acceptance/exchanges",
     setup: "native-exchange-hints",

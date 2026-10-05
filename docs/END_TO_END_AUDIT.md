@@ -1,5 +1,373 @@
 # Storefront, Admin and Stripe end-to-end audit
 
+### Owned cart completion and final drawer repairs — October 5 UTC
+
+Batch 6 remains open on deployed `c290b7b`. Its exact CI, scanned runtime
+bundles and Railway deployments pass; required native order/refund and new
+stage-notification acceptance remains incomplete. The existing Admin tab still
+shows native sign-in. Existing authorization does not supply an authenticated
+session, and no replacement credential was found in the scoped access checks.
+Keep the corrective group local under the release gate; do not bypass native
+authentication or repeat routine permission/login questions. The client clone
+remains paused.
+
+The real guest-cart audit completes eight action groups in each of desktop,
+Pixel 7 and iPhone 15 Pro Chromium profiles. Repeated additions merge one CD
+line; rapid quantity changes settle at native subtotals; the three-item shirt
+limit disables increase; two tabs synchronize in both directions and survive
+reload. Separate sizes remain distinct, individual removals affect only their
+line, and Checkout opens the actual untouched contact step. Decreasing a line
+at one removes it, and final removals restore the empty cart. All three final
+profiles removed their lines through the UI, with 135 validated native cart
+responses and no browser errors or blocked writes. No contact/address,
+payment preparation, order, capture or refund was submitted by this sweep.
+
+These are **functional passes with retained accessibility failures**. All
+three live profiles expose **B6-DRAWER-SEMANTICS**: the shared panel is an
+`aside` with a dialog role, which axe rejects. The local correction uses a
+`div` with the existing Radix dialog semantics and preserves focus restoration.
+The new populated-cart regression verifies actual rendered controls and axe.
+A separate short-viewport diagnostic also found **B6-CART-SHORT-VIEWPORT**:
+the fixed totals area leaves the line controls unusable and clips Continue
+shopping at 390/450-pixel heights. One scrolling cart body now contains items
+and totals, while the header and close button remain available. Tests scroll
+to every line/checkout/shopping control and assert its visible, unobscured
+target at the default profile viewport, landscape and a 720×450 reflow viewport.
+The latter models 200% reflow, not actual browser zoom.
+
+Earlier helper attempts are retained, including SSR hydration/consent timing,
+navigation-canceled response-body reads and an incorrectly transcribed variant
+ID. The final helper derives allowed IDs from the authoritative inventory and
+preserves every native response. The crashed earlier guest helper lost its
+in-memory signed cookie and left one anonymous cart with two CD units. The
+01:05 read-only bounded cohort verifies eight carts with no contact/completion
+or order links, zero reservations and unchanged stock. Only that earlier cart
+has an active line; preserve it for normal anonymous-cart retention. Do not
+forge its cookie or delete its rows directly. All three final profile carts
+have no active lines.
+
+The completed local primary matrix passes **51 first-attempt cases** across
+desktop and the two phone profiles, including the prior tracklist, headings,
+compact information and tablet navigation corrections. Both production builds
+pass; the final cart change's 19 focus/cart component cases pass. The final
+Chromium/Firefox/WebKit critical matrix passes **105 first-attempt cases**, with
+zero skips, flakes or report errors. Fresh Storefront coverage passes 1,079
+baseline and 403 transactional tests. The normal commit enforces the repository
+lint/type/policy gate. These local fixtures do not establish deployed or financial
+acceptance.
+
+The initial new drawer axe run retained five contrast uncertainties. Instrumented
+execution of the installed axe source shows different page elements behind
+the same opaque modal on separate wrapped lines. Rendered text is unobscured
+and its foreground/background contrast passes. Firefox additionally exposes an
+OKLab scientific-notation parser error in the covered page, aborting the rule.
+The regression retains the complete axe result, fails every violation and
+unknown incomplete result, and directly verifies every visible dialog text
+node when that precise parser error occurs. It otherwise verifies each flagged
+text node. The browser resolves its actual colors and composites translucent
+backgrounds up to the opaque modal; AA ratios, clipping and topmost text
+geometry are checked. No axe rule, browser sandbox or failure is disabled.
+The earlier 99-case attempt retains four Firefox failures from the initial
+review helper's unsupported error shape. The following 105-case attempt retains
+three Firefox failures from that helper's RGB-only conversion; native browser
+color resolution replaces that restriction without changing application colors.
+The final run retains ten direct-review attachments. Every reviewed text node
+is unobscured and meets its AA threshold, with the smallest measured ratio
+0.49 above that threshold.
+
+Fresh native Stripe verification at 01:12 UTC confirms the owned order #9
+payment page, $9.07 Succeeded heading and its latest charge. The page's read-only
+WebMCP context independently identifies the expected account and sandbox
+(`livemode: false`). The connection fallback text exists in the DOM but is
+hidden; its text presence alone was an insufficient earlier diagnosis of a
+visible connection failure. The rendered page agrees with the guarded 00:17
+Medusa/Stripe read. No Dashboard financial action or receipt send occurred.
+
+The latest detailed Redis read at 00:52 UTC retains the same instance/run,
+99,423 seconds uptime, healthy AOF/RDB and zero OOM, evictions or rejected
+connections. Its 237 scheduled plus one event failure remain untouched.
+The all-nine-service watcher completed its bounded 23:19–01:09 window without
+an observed crash; the one 23:54 unverified sample is retained. Monitoring
+resumed at 01:20 after that gap. Do not claim continuous observation or a new
+archive from the idle RecoveryBackups deployment.
+Fresh ordinary scheduler/operations observation passes at 01:35 UTC with the
+exact-revision 01:34 completed heartbeat, all eleven dependency/capability
+checks and the unchanged published catalog counts. Older retention execution
+revisions remain explicitly recorded; this read does not claim new retention
+or backup execution.
+
+Private evidence includes `receipts/owned-cart-functional-completion.json`,
+`browser/owned-c290b7b-cart-functional/`, `browser/cart-scroll-primary/`,
+`browser/cart-native-color-critical/`, the retained failed
+`browser/cart-scroll-critical/` attempt, drawer/short-viewport diagnostic receipts and
+screenshots, the Stripe visibility review and original per-attempt logs under
+`artifacts/end-to-end-audit-2026-10-04/`. Remaining live responsive/drawer
+retests, native financial/notification actions, other product-kind purchases,
+Admin settings/role coverage and wallet eligibility still prevent exhaustive
+acceptance and the client clone.
+
+### Public interaction completion and held local repairs — October 5, 00:43 UTC
+
+Batch 6 remains open. The live application pair still runs exact
+`c290b7b0c521cfabedf136a4881a2f9262eaf2bf`, whose four workflows/23 checks,
+scanned runtime bundles and app/job deployments pass. **Keep the next
+corrective group local until this revision's required native order and
+notification acceptance passes.** The existing Admin tab remains on native
+sign-in; authorization is already granted, but its expired session supplies no
+authenticated access. Do not repeat permission/login questions or bypass
+Medusa authentication. The client clone remains paused.
+
+The completed public link sweep clicked each of the 463 actual catalog title
+links, then used browser Back and Forward. Every title/route and restored query
+matched, with zero document navigations, browser errors or “A track skipped”
+fallbacks. All 431 enabled Quick shop controls opened the correct loaded
+product with an enabled purchase button and closed without submission; the
+remaining 32 controls correctly stayed disabled. Earlier helper failures used
+the wrong input role or clicked the card's nested Quick shop button rather than
+its title. Those attempts and screenshots are retained separately.
+
+Desktop, Pixel 7 and iPhone 15 Pro emulation also pass 84 distinct shared
+control/profile pairs: both link forms on all six news articles, all 13 internal
+footer links, all six FAQ questions, back-to-top and consent preference flows.
+Editorial links retained client navigation and Back/Forward; FAQ click/Enter,
+answer visibility, scroll/main focus and pointer checks passed. Consent values
+match the actual local storage and Secure/SameSite=Lax cookie, including
+analytics/marketing changes, rejection, acceptance and two-tab propagation.
+The broad attempt passed 81 pairs and timed out on three consent pairs while
+waiting for page-wide network idle. A separate rendered-state retest passes
+those three pairs using DOMContentLoaded and the actual checkbox contract.
+Pending telemetry requests are recorded without payloads; the original failures
+are retained. These are emulated Chromium profiles, not physical-device tests.
+
+The held correction now includes native return/claim/exchange loading titles
+and descriptions, purchased product/variant labels, correct existing shipping
+translations and loading/denied/empty outbound picker states. Source and main/
+lazy bundles agree in the same-version MIT Dashboard patch, SHA-256
+`c00ad2d4949235b796e70d57caea3b449869dcb8b7486d1950cb41ef9e843ce4`.
+Frozen offline installation passes with only its five lockfile identity
+references changed. Thirty-two installed form contracts and all 20 compiled
+Admin fixture cases pass, with zero axe violations/incomplete results. The
+pending dialog is tested before its fixture read is released. A rendered
+contrast diagnostic also found the tax filing link's negative margins overlapping
+neighboring punctuation. Removing those margins preserves its minimum target;
+the browser now rejects overlap and retains the separate focused-validation
+screenshot. No tax, payment, authentication or mutation contract changes.
+
+The Storefront correction preserves authored track titles while displaying
+sequential ordinals once, adds Home/Catalog main headings, wraps compact
+information controls and moves desktop navigation to the width where it fits.
+All 18 final desktop/phone fixture browser cases pass on their first attempts,
+including 60 information-page/width renders with every FAQ answer expanded,
+control/text containment and drawer focus return. Eight tracklist component
+cases, both production builds, 1,079 baseline and 403 transactional Storefront
+tests pass. Earlier pending-dialog execution stubs, tax backdrop/overlap and
+combined phone-case timeout failures remain in their separate logs. The normal
+commit lint/type/policy gate is required before recording this group as committed;
+none of these local results count as deployed acceptance.
+
+Fresh ordinary scheduler/operations observation passes at 00:43 UTC, including
+the exact-revision 00:42 completed heartbeat, all eleven dependency/capability
+checks and unchanged 463 products/442 discography records/three shelves with
+25 memberships. The 00:23–00:30 application-log window passes runtime/HTTP
+correlation for both exact deployments, with 109 Backend and 101 Storefront
+records, zero HTTP 5xx, unknown warnings/errors or truncation. One intentional
+Backend guard 400 is explicitly correlated. All nine service/job identities
+retain their expected states in the 00:38 observation. Redis's latest detailed
+23:46 evidence remains the same stable run with healthy persistence and
+untouched 237+1 failed queues.
+
+Read-only Medusa/Stripe reconciliation at 00:17 confirms owned order #9's
+unchanged $9.07 capture, zero refunds and same pending inbound-only exchange.
+No outbound action or temporary note is saved. The earlier inference from
+Stripe's connection-fallback DOM text was insufficient: the 01:12 visibility
+retest above confirms that fallback is hidden and the native sandbox transaction
+page is healthy. The independently guarded API read agrees with its state.
+
+| Coverage area | Current result and exact limit |
+| --- | --- |
+| Published detail pages | Pass: 463 products and six articles at desktop width on `c290b7b` |
+| Product gallery/options | Pass: 1,144 image selections; 539 available and 52 disabled options across all products |
+| Catalog client navigation/Quick shop | Pass: all 463 title links/history; 431 loaded and 32 disabled drawers; no cart submission |
+| Shared editorial/footer/FAQ/consent | Pass: 84 control/profile pairs across desktop and two phone emulations |
+| Responsive layouts | Live failures retained in 240-row inventory; local 18-case correction passes; deployed retest pending |
+| Actual cart mutations | Pass: eight native action groups in each of three profiles; three live drawer axe failures remain open until the correction deploys |
+| Native RMA/refund/stage notifications | Blocked by expired Admin session; partial crash retest and read-only reconciliation pass |
+| Remaining product-kind purchases | Not run: standalone merchandise, fixed/mystery bundles and remaining receipt/recovery combinations |
+| Admin authoring/settings/role matrix | Partial historical owned-data coverage; remaining native screens/actions need authenticated execution |
+| Wallet device path | Blocked: staging domain/device eligibility; no unsupported payment method enabled |
+| Final release/clone gate | Open: held correction needs direct staging CI, exact rollout and complete applicable live acceptance; no clone started |
+
+Durable private evidence is `artifacts/end-to-end-audit-2026-10-04/`, especially
+`browser/public-c290b7b-title-links/`, `browser/public-c290b7b-editorial-consent/`,
+`browser/public-c290b7b-consent-dom/`, `browser/responsive-expanded-faq/`,
+`screenshots/presentation-final-admin/`, the completion/reconciliation receipts
+and per-attempt check logs. Preserve original failures and the remaining native
+financial gate. The quantitative public sweeps do not establish exhaustive
+audit completion.
+
+### Gallery/option completion and responsive corrections — October 4, 23:53 UTC
+
+The exact `c290b7b` desktop gallery sweep passes all 463 products and all 1,144
+authored images. Every thumbnail was clicked, each image loaded with intrinsic
+dimensions and `object-fit: contain`, and Previous/Next traversal and endpoint
+disabled states matched the displayed image. Named controls, pointer cursors
+and page overflow checks pass. The independent option sweep passes all 463
+products: 539 available options were selected by click and Enter, with enabled
+purchase controls and zero/above-limit quantity clamping; 52 disabled options
+retain their disabled state and unavailable cursor. Quantities were restored
+to one. Neither sweep submitted a cart, reserved inventory or moved money.
+The first option helper used rendered uppercase text against mixed-case native
+titles; its failed rows are retained. Reading the authored DOM text fixes that
+helper without changing expected product identities or application behavior.
+
+The live responsive inventory covers 48 route/data families at five CSS
+viewports: 320×740, 844×390, 768×1024, 1920×1080 and 720×450. The last viewport
+models reflow at 200% of 1440×900; it is not actual browser zoom. The retained
+240-row attempt records 127 passes/113 failures, including related failures
+from the shared header and missing headings plus a helper's off-screen virtual
+image checks. These totals are not 113 distinct application bugs. All rows
+have zero actionable-cursor mismatches and zero main axe violations. Current
+live failures remain open until their local corrections deploy and pass:
+
+- **B6-COMPACT-INFORMATION:** implicit minimum grid widths let Contact, FAQ,
+  Privacy and Cookies extend beyond a 320-pixel viewport. Shared page/field
+  grids now use explicit shrinkable tracks and long text wraps. Contact email,
+  Bandcamp and privacy-submit controls wrap within their own cards instead of
+  merely fitting the document's width.
+- **B6-TABLET-HEADER:** desktop navigation appeared at 768 pixels before its
+  links, logo and cart fit. It now starts at 1024 pixels, with the existing
+  keyboard-accessible drawer available below that width.
+- **B6-MAIN-HEADINGS:** Home and Catalog had no main level-one heading. Home's
+  existing label is now its heading, and Catalog has a visually hidden main
+  heading. Cart's existing redirect leads to Home and inherits its correction.
+  Authored numbered tracklists also retain their existing peer level-two panel
+  heading and no duplicate ordinal.
+
+The complete local correction passes 18 first-attempt browser cases across
+desktop Chromium, Pixel 7 and iPhone 15 Pro emulation. These include 60 rendered
+information-page/width checks, expanded FAQ answers, text/control containment,
+main axe, nine drawer open/close/focus-return checks, Home/Catalog headings and
+numbered tracklists. An earlier combined 20-page case exceeded its existing
+30-second timeout on iPhone, including its retry. The replacement splits the
+same checks into one case per width; no assertion, timeout or retry policy was
+relaxed. Screenshots were inspected, and both production builds pass. The
+local correction remains unpushed behind the prior live acceptance gate.
+
+Fresh Redis inspection at 23:46 UTC verifies the same deployment/instance/run,
+95,440 seconds uptime, healthy AOF/RDB, zero OOM/evictions/rejected connections
+and the unchanged 237+1 failed queues. The 23:37:22–23:47:22 UTC support-log
+window contains 12 ordinary Redis records, two PostgreSQL checkpoint start/
+completion pairs, and 18 Meilisearch INFO/HTTP-200 records; Bucket/Console have
+zero records. Exact identities remained unchanged. Railway's stderr severity
+marked native LOG/INFO records as errors in the first helper; the explicit
+native-message review passes with zero unknown entries or truncation. Retain
+both attempts. This is a bounded observation, not an all-time crash claim.
+
+Private gallery/option inventories, rows and screenshots are in
+`browser/public-c290b7b-gallery/` and `browser/public-c290b7b-variant-text/`;
+responsive evidence is in `browser/public-c290b7b-responsive-families/` and
+`browser/responsive-controls-width-cases/`. Actual catalog client-link/history
+coverage is still running. Native exchange/notification/refund acceptance
+still requires the existing signed-in Admin session; do not count the fixture
+matrix as real order acceptance or proceed to the client clone.
+
+### Exact rollout and full public detail sweep — October 4, 23:25 UTC
+
+Batch 6 remains open; pause before the client environment clone. Deployed
+revision `c290b7b0c521cfabedf136a4881a2f9262eaf2bf` passes all four workflows/
+23 strict checks and both complete current-database runtime image bundles.
+Backend deployment `3e968ada-3f73-4732-a49b-5bc2d7b208b6`, Storefront
+`0336922f-39b7-4ae9-89ab-715ae4e3965b`, Migrations
+`bf6cfdd7-d64f-4303-8b16-a25fdf630c68` and RecoveryBackups
+`a03388da-2a85-459b-9929-cd729e2fb29c` succeeded at the exact revision.
+Migrations exited successfully; RecoveryBackups is scheduled idle. No new
+manual archive or idle-job execution is claimed. Runtime role/ancestor,
+package, notification-key binding and completed migration-receipt checks pass.
+All nine services/jobs retain their expected observed states. The Backend's
+build instance was removed during rollout; its new running instance is not a
+post-success restart. The overlapping watcher started at 23:19 UTC.
+
+- **Public inventory and direct-render coverage:** all 463 published products
+  (443 music, 14 fixed bundles, five merchandise and one mystery bundle) and
+  all six published news articles passed at 1365×900 in Chromium. Each actual
+  page returned 200, rendered its expected title and one main heading, scrolled
+  through its content, and showed no horizontal overflow, stretched visible
+  images, browser errors or “A track skipped” fallback. Each has a private
+  full-page screenshot and ledger row. This is 469 direct-page checks, not
+  complete interaction, phone or financial acceptance. The feed lists 1,144
+  authored product images; the separate gallery-control sweep is in progress.
+  An earlier helper incorrectly counted clipped, unloaded carousel items as
+  visible images. That failed attempt is retained; the corrected visibility
+  check respects viewport and ancestor clipping without excluding visible
+  broken media.
+- **Deployed regression suites:** the primary suite passed 96 cases, with 17
+  explicit local-fixture/desktop-only skips; Firefox/WebKit passed 16 cases.
+  Mocked cart/payment routes in those suites are not actual Stripe purchases.
+- **Bounded application logs:** fresh runtime and HTTP request correlation
+  passed for both exact deployments, with zero server errors, unknown
+  warnings/errors or truncation. Backend window 23:09:30–23:10:11 UTC contains
+  71 rows; Storefront through 23:10:24 UTC contains 208. The first correlation
+  attempt missed records that appeared in a later diagnostic; a subsequent
+  helper observes advancing bounded window ends and rechecks the full window.
+  An accidental future-start attempt correctly failed. Both failed attempts
+  remain evidence, not passes. Ordinary scheduler/operations observation passed
+  at 22:52 UTC with an exact-revision completed heartbeat.
+- **Native exchange retest and actual access limit:** reopening the owned
+  exchange and adding Reason/Note no longer crashed. Escape closed its reason
+  popup while retaining the parent. At 22:58 UTC the native Admin session
+  expired; its outbound item query returned 401 and misleadingly displayed
+  “No records.” Existing native access is required to continue order actions.
+  The sign-in page is ready; no new credentials or authorization bypass were
+  introduced. Read-only Medusa/Stripe verification at 22:59 UTC confirms the
+  same unconfirmed exchange/inbound M action, unchanged $9.07 capture, zero
+  refunds and no replacement fulfillment. The temporary note was discarded
+  and is not persisted. Live exchange, notification and cancellation-refund
+  acceptance remain blocked on a valid native session.
+- **Next local correction, held from push:** native RMA cards/quantity labels
+  now preserve product and purchased variant names; claim/exchange shipping
+  labels use existing translations. Three outbound pickers distinguish pending
+  and denied reads from actual empty results through native loading/error
+  boundaries. Six installed-component cases pass within 26 form contracts;
+  all 19 compiled Admin fixture cases pass and both production builds pass.
+  Authored sequential track numbers are displayed once while numeric song
+  titles and mixed lists remain intact. Eight component cases and three local
+  desktop/phone browser cases pass. The first browser run read cached older
+  fixture data and had two retries; its evidence is retained. A separate
+  numbered fixture and fresh provider/build give three first-attempt passes.
+  Storefront baseline coverage passes 1,079 tests and transactional coverage
+  passes 403. The responsive sweep additionally identified absent Home/Catalog
+  main headings; their local semantic correction preserves existing layout.
+  Final local checks and live acceptance of these changes remain open.
+
+Private evidence stays in `artifacts/end-to-end-audit-2026-10-04/`: unique
+per-attempt check logs, `browser/public-c290b7b-visible/` inventory/469 rows/
+screenshots, exact runtime/migration receipts, application-log diagnostics,
+`screenshots/rma-presentation/` and `browser/tracklist-fresh/`. The broad
+responsive/cursor, gallery, remaining native Admin and real product-kind
+checkout matrix remain open. Keep this local corrective group unpushed until
+the preceding exact deployment's required live acceptance passes.
+
+### Native order correction release — October 4, 22:35 UTC
+
+The cohesive correction is pushed directly to `staging` at
+`c290b7b0c521cfabedf136a4881a2f9262eaf2bf`, with its Conventional Commit bullet
+body and normal lint/coverage hooks. All four workflows and 23 strict checks pass: Root `37240584136`, Backend
+`37240584145`, Storefront `37240584154`, Runtime Images `37240584151`.
+Read-only exact-SHA readiness is green. Both complete image evidence bundles
+verify with the current vulnerability database. Railway observed all four
+app/job deployments waiting before CI completion. The later entry above
+records their successful exact rollout and the remaining live acceptance.
+
+At 22:33:45–22:33:47 UTC the prior exact `09c3737e` scheduler and operations
+probes passed after the incident naturally expired through its full 24-hour
+window. Its ordinary heartbeat was 22:32:00 UTC. All eleven dependency and
+capability checks passed; the catalog remains 463 products, 442 discography
+records and three shelves/25 memberships. The 22:32:30–22:32:59 UTC application
+log window independently passed runtime/HTTP correlation with zero server
+errors, unknown warnings or truncation. No incident/failed queue was cleared.
+The native exchange crash still requires the corrective deployment and live
+retest; these operational passes do not close the exhaustive audit.
+
 ### Native fulfillment, exchange crash and notification corrections — October 4, 15:06–22:30 UTC
 
 Batch 6 remains open at deployed `09c3737e`. The existing exact CI, runtime,

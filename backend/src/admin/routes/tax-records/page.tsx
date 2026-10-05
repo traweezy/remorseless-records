@@ -1355,7 +1355,7 @@ export const TaxRecordsPageContent = memo(() => {
           {filingProfile.separateReconciliation} Review the official{" "}
           {filingProfile.returnName} instructions, then file through{" "}
           <a
-            className="-mx-1 inline-flex min-h-6 items-center rounded-sm px-1 text-ui-fg-base underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ui-fg-interactive"
+            className="inline-flex min-h-6 items-center rounded-sm px-1 text-ui-fg-base underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ui-fg-interactive"
             href={filingProfile.portalUrl}
             rel="noreferrer"
             target="_blank"

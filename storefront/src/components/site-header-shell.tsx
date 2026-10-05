@@ -170,7 +170,7 @@ const SiteHeaderShell = () => {
 
         <div className="flex items-center gap-2 sm:gap-4">
           {!pathname?.startsWith("/checkout") ? (
-            <nav className="hidden items-center md:flex">
+            <nav className="hidden items-center lg:flex">
               {NAV_LINKS.map((link) => (
                 <SmartLink
                   key={link.href}
@@ -215,7 +215,7 @@ const SiteHeaderShell = () => {
           <Button
             variant="ghost"
             size="icon"
-            className="md:hidden"
+            className="lg:hidden"
             aria-label="Open navigation"
             onClick={openMenu}
           >

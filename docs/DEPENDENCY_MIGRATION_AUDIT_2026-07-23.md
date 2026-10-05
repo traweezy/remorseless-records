@@ -1,5 +1,29 @@
 # Dependency Migration Audit — 2026-07-23
 
+## Native item presentation and picker states — October 4, 2026 UTC
+
+Extend only the existing MIT Dashboard 2.18.0 patch. Purchased native line
+items store the product title in `title` and the selected option in
+`variant_title`; the live exchange repeated the product name and omitted its
+size. Return/claim/exchange cards and quantity names now use both native
+fields. Outbound shipping labels use existing claim/exchange translations.
+Three outbound item tables distinguish loading and failed reads from an empty
+result, retaining the native error boundary and all authorization checks.
+Source, main bundle and lazy bundles agree. Six installed-component execution
+cases and the actual native-shaped browser fixture verify these contracts.
+Pending return, claim and exchange dialogs also mount their native title and
+description until the form loads. Six additional installed-component cases
+execute pending/loaded main and lazy behavior; source is patched in parallel.
+Native authentication,
+mutation hooks and the selected Medusa/RBAC contracts remain unchanged.
+
+Current Dashboard patch SHA-256:
+`c00ad2d4949235b796e70d57caea3b449869dcb8b7486d1950cb41ef9e843ce4`.
+The earlier hash below records the previous pushed release. Frozen installation
+passes with only this patch identity changed across its existing peer keys;
+no package version, third-party-web resolution or cooling exception changes.
+Live acceptance and the next staging push remain pending.
+
 ## Native refund event and Admin form corrections — October 4, 2026 UTC
 
 Extend the existing MIT Medusa 2.18.0 patches without a package upgrade or new

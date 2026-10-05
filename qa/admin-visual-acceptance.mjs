@@ -164,7 +164,7 @@ const paged = (key, values = []) => ({
 const rmaItem = {
   id: "ordli_acceptance",
   created_at: timestamp,
-  title: "M",
+  title: "Acceptance Shirt",
   product_title: "Acceptance Shirt",
   product_id: "product_acceptance",
   variant_id: "variant_acceptance",
@@ -912,6 +912,13 @@ try {
     if (message.type() === "error") {
       issues.push(`console:${message.text()}`)
     }
+    if (
+      setup === "native-exchange-pending" &&
+      message.type() === "warn" &&
+      /Missing.*Description|requires.*DialogTitle/iu.test(message.text())
+    ) {
+      issues.push(`dialog:${message.text()}`)
+    }
   })
   page.on("pageerror", (error) => issues.push(`page:${error.message}`))
   page.on("requestfailed", (request) => {
@@ -929,6 +936,17 @@ try {
     }
   })
 
+  let pendingExchangeRequest
+  const pendingExchangeRead =
+    setup === "native-exchange-pending"
+      ? page.waitForRequest(
+          (request) =>
+            request.method() === "GET" &&
+            new URL(request.url()).pathname ===
+              "/admin/exchanges/oexc_acceptance",
+          { timeout: 30_000 }
+        )
+      : null
   await page.setRequestInterception(true)
   page.on("request", (request) => {
     if (rejectAdminAcceptanceMutation(request, (code) => issues.push(code))) {
@@ -966,6 +984,13 @@ try {
         url.pathname,
         (fixtureRequests.get(url.pathname) ?? 0) + 1
       )
+      if (
+        setup === "native-exchange-pending" &&
+        url.pathname === "/admin/exchanges/oexc_acceptance"
+      ) {
+        pendingExchangeRequest = request
+        return
+      }
       void request.respond({
         body: JSON.stringify(fixtureFor(url)),
         contentType: "application/json",
@@ -997,6 +1022,38 @@ try {
     timeout: 30_000,
     waitUntil: "domcontentloaded",
   })
+  if (pendingExchangeRead) {
+    await pendingExchangeRead
+    await page.waitForFunction(() => {
+      const dialog = document.querySelector('[role="dialog"]')
+      const titleId = dialog?.getAttribute("aria-labelledby")
+      const descriptionId = dialog?.getAttribute("aria-describedby")
+      return (
+        titleId &&
+        document.getElementById(titleId)?.textContent === "Create Exchange" &&
+        descriptionId &&
+        document.getElementById(descriptionId)?.textContent?.trim() &&
+        !dialog.querySelector('input[name="inbound_items.0.note"]')
+      )
+    })
+    await page.screenshot({
+      path: screenshotPath.replace(/\.png$/u, "-pending.png"),
+      fullPage: true,
+    })
+    if (!pendingExchangeRequest)
+      throw new Error("Pending native exchange read was not captured")
+    await pendingExchangeRequest.respond({
+      body: JSON.stringify(fixtureFor(new URL(pendingExchangeRequest.url()))),
+      contentType: "application/json",
+      headers: {
+        "access-control-allow-credentials": "true",
+        "access-control-allow-origin": acceptanceOrigin,
+        "cache-control": "no-store",
+      },
+      status: 200,
+    })
+    await page.waitForSelector('input[name="inbound_items.0.note"]')
+  }
   // Wait for the compiled route and fixture requests, not just the shell.
   // A fixed sleep alone can audit skeletons while lazy routes still load.
   await page.waitForFunction(
@@ -1066,6 +1123,24 @@ try {
     )
     if (invalidIds.length)
       throw new Error("Standalone hints generated invalid IDs")
+    const itemNames = await page.evaluate(() => {
+      const dialog = document.querySelector('[role="dialog"]')
+      const quantity = dialog?.querySelector('input[type="number"]')
+      const names = Array.from(
+        dialog?.querySelectorAll("[aria-label]") ?? [],
+        (element) => element.getAttribute("aria-label")
+      )
+      return {
+        quantity: quantity?.getAttribute("aria-label"),
+        rawTranslation: names.some((name) =>
+          /orders\.(?:returns|exchanges)\./u.test(name)
+        ),
+      }
+    })
+    if (itemNames.quantity !== "Quantity Acceptance Shirt M")
+      throw new Error("Native quantity label omitted its purchased variant")
+    if (itemNames.rawTranslation)
+      throw new Error("Native exchange label exposed a translation key")
     await page.click('input[name="inbound_items.0.reason_id"]')
     await page.waitForFunction(() =>
       Array.from(document.querySelectorAll('[role="listbox"]')).some(
@@ -1254,21 +1329,59 @@ try {
       "tax-period-end"
     )
     page.off("request", collect)
-    // Focus recovery is asserted above. Restore the scroll containers before
-    // contrast analysis so the sticky shell cannot overlap off-screen copy.
-    await page.evaluate(() => {
-      const main = document.querySelector("main")
-      for (const container of [main, ...main.querySelectorAll("*")]) {
-        if (container.scrollHeight > container.clientHeight)
-          container.scrollTo({ top: 0, behavior: "instant" })
-      }
-      let ancestor = main.parentElement
-      while (ancestor) {
-        ancestor.scrollTo({ top: 0, behavior: "instant" })
-        ancestor = ancestor.parentElement
-      }
-      window.scrollTo({ top: 0, behavior: "instant" })
+    await page.screenshot({
+      path: screenshotPath.replace(/\.png$/u, "-validation.png"),
+      fullPage: true,
     })
+    // Preserve the focused validation state above, then bring the filing
+    // guidance into view so contrast analysis can resolve its real backdrop.
+    await page.evaluate(() =>
+      document.querySelector("main .max-w-4xl")?.scrollIntoView({
+        block: "center",
+        behavior: "instant",
+      })
+    )
+    await page.waitForFunction(() => {
+      const guidance = document.querySelector("main .max-w-4xl")
+      if (!guidance) return false
+      const box = guidance.getBoundingClientRect()
+      const topmost = document.elementFromPoint(
+        box.left + box.width / 2,
+        box.top + box.height / 2
+      )
+      return (
+        box.top >= 0 &&
+        box.bottom <= innerHeight &&
+        topmost &&
+        (guidance.contains(topmost) || topmost.contains(guidance))
+      )
+    })
+    const filingLinkOverlaps = await page.evaluate(() => {
+      const guidance = document.querySelector("main .max-w-4xl")
+      const links = [...guidance.querySelectorAll("a")]
+      const walk = document.createTreeWalker(guidance, NodeFilter.SHOW_TEXT)
+      const textRects = []
+      let node
+      while ((node = walk.nextNode())) {
+        if (!node.textContent.trim() || node.parentElement.closest("a"))
+          continue
+        const range = document.createRange()
+        range.selectNodeContents(node)
+        textRects.push(...range.getClientRects())
+      }
+      return links.some((link) => {
+        const box = link.getBoundingClientRect()
+        return textRects.some(
+          (text) =>
+            Math.min(box.right, text.right) - Math.max(box.left, text.left) >
+              0.5 &&
+            Math.min(box.bottom, text.bottom) - Math.max(box.top, text.top) >
+              0.5
+        )
+      })
+    })
+    if (filingLinkOverlaps)
+      throw new Error("Tax filing link overlaps neighboring text")
   }
   if (setup === "tax-provider-availability") {
     await page.evaluate(() => {

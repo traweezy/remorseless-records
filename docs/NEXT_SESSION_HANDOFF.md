@@ -34,27 +34,85 @@ React nodes on the server and adds actual link/back/forward regressions.
 The existing audit's direct-navigation coverage missed this path; Batch 6
 remains open until deployed retesting and the full checklist are complete.
 
-Current Batch 6 application revision is `09c3737e41e6cd58d31bd7c31e5b07a8bef87593`.
+Latest pushed Batch 6 correction is
+`c290b7b0c521cfabedf136a4881a2f9262eaf2bf`; all four workflows/23 required
+checks and both complete scanned image bundles pass. Railway waited for CI
+and all four app/job deployments now succeeded at this exact revision.
+Runtime roles/packages/notification key, completed migration receipt, ordinary
+scheduler/operations and bounded application logs pass. Preserve the owned
+exchange draft for native retesting: the actual Admin session expired at
+22:58 UTC and no replacement credential/session is available. Independent
+public audit work continues without bypassing native authentication. All 463
+published products and six news articles pass the desktop direct-render sweep;
+469 private ledger rows/screenshots do not close the remaining interaction,
+responsive and real financial/Admin matrix. The separate gallery sweep passes
+all 463 products/1,144 images and actual thumbnails/both arrow controls. The
+option sweep passes all products with 539 available and 52 disabled options;
+no cart submission or financial action occurred. Primary deployed browser
+checks pass 96 cases/17 explicit skips and Firefox/WebKit pass 16 cases.
+The next local RMA labels/picker-state, tracklist and Home/Catalog heading
+corrections remain held from push until required live acceptance of the
+preceding release passes. Pending return/claim/exchange dialogs now retain their
+native title/description during reads; the tax filing link no longer overlaps
+neighboring text. Thirty-two form contracts, 20 rendered Admin fixture cases,
+eight tracklist cases, both builds and Storefront coverage pass.
+Eighteen complete local desktop/phone browser cases verify the tracklist,
+main headings and compact information/tablet navigation corrections. The
+240-row deployed responsive inventory retains current failures from these
+shared layouts; local fixes are not deployed passes. All 463 actual catalog
+title links and Back/Forward pass with zero document navigations/browser
+errors/track-skipped fallbacks. Quick shop passes 431 loaded drawers and 32
+disabled controls. The editorial/footer/FAQ/consent matrix passes 84 distinct
+desktop/phone control pairs, including three focused rendered-state consent
+retests; retain the broad attempt's three network-idle timeouts. Fresh 00:43 UTC
+scheduler/operations and 00:23–00:30 application correlation pass. Read-only
+00:17 Medusa/Stripe evidence confirms the unchanged owned order #9 and inbound
+exchange with no saved note or outbound action. The later native Stripe
+visibility retest confirms the healthy owned $9.07 sandbox payment page; its
+connection fallback text is hidden, so DOM text presence alone did not
+establish a visible connection failure. Native Admin remains at sign-in:
+do not repeat routine approval/login questions or bypass its expired session.
+The actual native cart audit now passes eight functional action groups in all
+three profiles, including rapid quantities, stock limits, two-tab synchronization,
+separate sizes and checkout contact navigation. All final profile lines were
+removed through the UI. Their retained axe failures expose the shared
+`aside`/dialog role defect; a separate diagnostic finds inaccessible cart
+controls at short heights. The local correction uses valid panel markup and
+one scrolling item/totals body with a stable header. Fifty-one local
+desktop/phone cases, 105 first-attempt Chromium/Firefox/WebKit critical cases
+and 19 focus/cart units pass. Fresh coverage passes 1,079 baseline and 403
+transactional tests; the normal commit enforces lint/type/policy checks for this
+held group. Fresh 01:35 scheduler/operations observation passes with the exact
+01:34 heartbeat and all eleven capabilities. A bounded 01:05 read confirms unchanged stock, zero
+reservations and no contact/completion/order links in eight owned guest carts.
+One earlier crashed helper's anonymous cart retains two CD units; its signed
+cookie was lost, so leave it for normal retention instead of direct database
+deletion or cookie forgery. Detailed receipts and retained failures are at
+the opening of the audit.
+The prior application revision is
+`09c3737e41e6cd58d31bd7c31e5b07a8bef87593`.
 All four workflows/23 checks, both scanned image bundles, exact app/job
 rollouts, runtime roles/packages/notification key and migration receipt passed.
-Release acceptance remains open: retain the scheduler's October 3 22:33 UTC
-incident through its full 24-hour window and finish log/browser acceptance.
+The prior scheduler incident naturally expired after its full 24-hour window;
+22:33 UTC scheduler/operations and the 22:32 application log window pass.
+The exhaustive browser audit and actual live order/notification acceptance
+remain open. New fixture passes do not establish real provider delivery.
 All nine services/jobs remain stable in observed samples. Observation paused
 17:08–21:36 UTC and resumed; do not claim continuity through that gap. Fresh
-22:07 Redis evidence shows the unchanged run/instance, 89,476 seconds uptime,
+00:52 Redis evidence shows the unchanged run/instance, 99,423 seconds uptime,
 healthy persistence, zero OOM/evictions and preserved 237+1 failed queues.
-Keep monitoring each service/job.
+The bounded all-service watcher completed at 01:09 and resumed at 01:20;
+preserve that observation gap. Keep monitoring each service/job during work.
 
 The actual $6.23 order #8 is now canceled and fully refunded across three
 native/Stripe refunds; its reservation was released without changing stock.
 The refund-ID fix recovered both earlier partial-refund emails. Automatic
 cancellation still omitted its email because pinned Medusa's bulk refund flow
-omits `payment.refunded`. The local next correction adds its native grouped
+omitted `payment.refunded`. The pushed `c290b7b` correction adds its native grouped
 event, repairs the native refund default/amount guard and drawer title, and
-corrects desktop tax-row classification. These are unpushed as a cohesive corrective release. Both builds, full lint
-and nineteen rendered Admin accessibility cases pass. The picker header
-uses the installed “Select all” translation. CI, deployment and live order
-acceptance remain open for this corrective release. Tests and exact identities are in the top of
+corrects desktop tax-row classification. Its CI, builds, local tests and exact
+rollout pass; live order acceptance remains open. The picker header uses the
+installed “Select all” translation. Tests and exact identities are at the top of
 [END_TO_END_AUDIT.md](END_TO_END_AUDIT.md).
 
 The hosted Stripe matrix verified generic/insufficient/expired/CVC/processing
@@ -68,12 +126,13 @@ shirt stock is 3, reservations zero. Its pending unconfirmed exchange
 `oexc_01M43S1AJA5J7BWHNPZBBBYBF6` / return
 `return_01M43S5XM1Z5ST5R0QX922P5DS` saved one inbound M shirt before native
 Admin crashed in its standalone Form.Hint context. Preserve the draft and
-resume natively after the two bundled helpers are fixed and deployed. No
-exchange payment/refund or replacement fulfillment has occurred. Local RMA
-accessibility/keyboard and missing fulfillment-notification fixes join this
-corrective group; final rendered/live acceptance is still open. Its nonempty
+resume natively once the existing Admin session is valid. Both bundled helpers
+are fixed and deployed; the Reason/Note crash retest passed before session
+expiry. No exchange payment/refund or replacement fulfillment has occurred.
+RMA accessibility/keyboard and fulfillment-notification fixes are deployed,
+but actual stage-notice acceptance remains open. Its nonempty
 Connecticut CSV correctly records $9.07 pending tax review and zero tax;
-the desktop heading inconsistency is the local fix. Oversized-period rejection
+the desktop heading inconsistency is fixed in `c290b7b`. Oversized-period rejection
 and quarter restoration passed through native keyboard input. The earlier
 04:00 scheduled archive is verified; no new idle-job archive is claimed.
 The audit remains open, and the client clone remains paused.

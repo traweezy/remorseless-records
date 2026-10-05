@@ -15,7 +15,7 @@ export const PageShell = ({
   <div className={cn("bg-background", className)} {...props}>
     <div
       className={cn(
-        "mx-auto flex w-full max-w-[1440px] flex-col gap-7 px-4 pb-14 pt-8 sm:gap-8 sm:pb-16 sm:pt-12 lg:gap-10 lg:px-8",
+        "mx-auto flex min-w-0 w-full max-w-[1440px] flex-col gap-7 break-words px-4 pb-14 pt-8 sm:gap-8 sm:pb-16 sm:pt-12 lg:gap-10 lg:px-8",
         contentClassName
       )}
     >
@@ -68,7 +68,7 @@ export const PageContentGrid = ({
 }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
     className={cn(
-      "grid gap-6 lg:grid-cols-[1.1fr_0.9fr] lg:items-start lg:gap-8",
+      "grid min-w-0 grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] lg:items-start lg:gap-8",
       className
     )}
     {...props}

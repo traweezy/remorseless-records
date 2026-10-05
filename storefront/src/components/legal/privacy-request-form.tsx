@@ -355,7 +355,7 @@ const PrivacyRequestForm = () => {
           disabled={disabled}
           variant="filled"
           size="sm"
-          className="inline-flex items-center gap-2 rounded-full px-4"
+          className="inline-flex h-auto min-h-9 max-w-full items-center gap-2 whitespace-normal rounded-full px-4 py-2"
         >
           {status === "submitting" ? "Submitting..." : "Submit privacy request"}
         </Button>

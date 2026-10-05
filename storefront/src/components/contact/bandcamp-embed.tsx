@@ -125,6 +125,7 @@ const BandcampEmbed = memo<BandcampEmbedProps>(({ className }) => {
           type="button"
           variant="outlined"
           size="compact"
+          className="h-auto min-h-9 max-w-full whitespace-normal py-2"
           onClick={enablePlayer}
         >
           Enable Bandcamp player

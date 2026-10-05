@@ -71,6 +71,17 @@ const galleryRuntimeProduct = {
   })),
 }
 
+const numberedTracklistProduct = {
+  ...galleryRuntimeProduct,
+  id: "prod_CINUMBEREDTRACKLIST",
+  handle: "music-release-ci-numbered-tracklist",
+  title: "Authored Tracklist Pressing",
+  metadata: {
+    ...fixtureProduct.metadata,
+    tracklist: ["1. Exhumed Remains", "2. Pathological Decomposition"],
+  },
+}
+
 // An editor-authored product deliberately has no native artwork or prefixed
 // handle. Its only display content comes from the public catalog projection.
 const presentedRuntimeProduct = {
@@ -217,6 +228,7 @@ const routePayload = (pathname, searchParams) => {
             [
               fixtureProduct.id,
               galleryRuntimeProduct.id,
+              numberedTracklistProduct.id,
               presentedRuntimeProduct.id,
             ].includes(id)
           )
@@ -252,11 +264,13 @@ const routePayload = (pathname, searchParams) => {
       const products =
         requestedHandle === presentedRuntimeProduct.handle
           ? [presentedRuntimeProduct]
-          : requestedHandle === galleryRuntimeProduct.handle
-            ? [galleryRuntimeProduct]
-            : requestedHandle && requestedHandle !== fixtureProduct.handle
-              ? []
-              : [fixtureProduct]
+          : requestedHandle === numberedTracklistProduct.handle
+            ? [numberedTracklistProduct]
+            : requestedHandle === galleryRuntimeProduct.handle
+              ? [galleryRuntimeProduct]
+              : requestedHandle && requestedHandle !== fixtureProduct.handle
+                ? []
+                : [fixtureProduct]
       return {
         products,
         count: products.length,

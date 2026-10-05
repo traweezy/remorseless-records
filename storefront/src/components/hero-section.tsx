@@ -9,9 +9,9 @@ export const HeroSection = () => (
   <section className="relative flex min-h-screen w-full items-center justify-center overflow-hidden bg-background pt-16 sm:pt-20">
     <ParallaxSection className="relative z-10 w-full">
       <div className="flex w-full flex-col items-center gap-8 px-4 text-center sm:gap-10 sm:px-8 lg:gap-12 lg:px-12">
-        <span className="text-sm font-medium uppercase tracking-[0.4rem] text-muted-foreground">
+        <h1 className="text-sm font-medium uppercase tracking-[0.4rem] text-muted-foreground">
           Remorseless Records
-        </span>
+        </h1>
 
         <div className="relative inline-block w-full max-w-[320px] sm:max-w-xl lg:max-w-3xl">
           <div className="absolute inset-0 blur-3xl bg-destructive/30 animate-glow-pulse" />

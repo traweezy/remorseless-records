@@ -7,7 +7,11 @@ export const FieldGroup = forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
 >(({ className, ...props }, ref) => (
-  <div ref={ref} className={cn("grid gap-4", className)} {...props} />
+  <div
+    ref={ref}
+    className={cn("grid min-w-0 grid-cols-1 gap-4", className)}
+    {...props}
+  />
 ))
 FieldGroup.displayName = "FieldGroup"
 

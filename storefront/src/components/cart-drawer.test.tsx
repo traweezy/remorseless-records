@@ -47,7 +47,7 @@ vi.mock("@/components/ui/drawer", () => ({
   }: {
     children: React.ReactNode
     open: boolean
-  }) => (open ? <aside role="dialog">{children}</aside> : null),
+  }) => (open ? <div role="dialog">{children}</div> : null),
   DrawerCloseButton: ({ label }: { label: string }) => (
     <button type="button" aria-label={label} />
   ),

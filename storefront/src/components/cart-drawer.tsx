@@ -99,7 +99,7 @@ export const CartDrawer = memo<CartDrawerProps>(({ open, onOpenChange }) => {
       panelClassName="min-w-0"
     >
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-        <DrawerHeader className="px-4 py-4 sm:px-6">
+        <DrawerHeader className="shrink-0 px-4 py-4 sm:px-6">
           <DrawerHeading>
             <DrawerTitle className="flex items-center gap-2 text-2xl tracking-[0.14rem] sm:text-3xl sm:tracking-[0.24rem]">
               <ShoppingBag className="h-5 w-5 text-accent" aria-hidden />
@@ -132,102 +132,104 @@ export const CartDrawer = memo<CartDrawerProps>(({ open, onOpenChange }) => {
             ))}
           </div>
         ) : hasItems ? (
-          <>
-            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-5 sm:px-6">
-              <div className="space-y-4">
-                {items.map((item, index) => (
-                  <CartItem
-                    key={item.id ?? `${item.variant_id ?? "item"}-${index}`}
-                    item={item}
-                    currencyCode={currencyFromCart(cart)}
-                    onRemove={handleRemove}
-                  />
-                ))}
-              </div>
-            </div>
-
-            <div className="shrink-0 space-y-4 border-t border-border/60 bg-background px-4 py-5 sm:px-6">
-              <dl className="space-y-2.5 text-sm text-muted-foreground">
-                <div className="flex items-center justify-between gap-4">
-                  <dt>Subtotal</dt>
-                  <dd className="text-foreground">{subtotal ?? "—"}</dd>
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+            <div className="flex min-h-full flex-col">
+              <div className="flex-1 px-4 py-5 sm:px-6">
+                <div className="space-y-4">
+                  {items.map((item, index) => (
+                    <CartItem
+                      key={item.id ?? `${item.variant_id ?? "item"}-${index}`}
+                      item={item}
+                      currencyCode={currencyFromCart(cart)}
+                      onRemove={handleRemove}
+                    />
+                  ))}
                 </div>
-                {discount ? (
-                  <div className="flex items-center justify-between gap-4 text-emerald-300">
-                    <dt>Discount</dt>
-                    <dd>−{discount}</dd>
+              </div>
+
+              <div className="shrink-0 space-y-4 border-t border-border/60 bg-background px-4 py-5 sm:px-6">
+                <dl className="space-y-2.5 text-sm text-muted-foreground">
+                  <div className="flex items-center justify-between gap-4">
+                    <dt>Subtotal</dt>
+                    <dd className="text-foreground">{subtotal ?? "—"}</dd>
+                  </div>
+                  {discount ? (
+                    <div className="flex items-center justify-between gap-4 text-emerald-300">
+                      <dt>Discount</dt>
+                      <dd>−{discount}</dd>
+                    </div>
+                  ) : null}
+                  <div className="flex items-center justify-between gap-4">
+                    <dt>Shipping</dt>
+                    <dd className="text-right text-foreground">
+                      {shipping ?? "Calculated at checkout"}
+                    </dd>
+                  </div>
+                  <div className="flex items-center justify-between gap-4">
+                    <dt>Tax</dt>
+                    <dd className="text-right text-foreground">
+                      {tax ?? "Calculated at checkout"}
+                    </dd>
+                  </div>
+                  <div className="flex items-center justify-between gap-4 border-t border-border/60 pt-2 text-base font-semibold text-foreground">
+                    <dt>{totalsAreFinal ? "Total" : "Current total"}</dt>
+                    <dd>{currentTotal ?? "—"}</dd>
+                  </div>
+                </dl>
+
+                {!totalsAreFinal ? (
+                  <p className="text-xs leading-relaxed text-muted-foreground">
+                    Shipping and tax are confirmed after you enter your address.
+                  </p>
+                ) : null}
+                <p className="text-xs leading-relaxed text-muted-foreground">
+                  Availability is rechecked before purchase; cart items are not
+                  reserved.
+                </p>
+
+                {error ? (
+                  <div
+                    className="space-y-3 rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+                    role="alert"
+                  >
+                    <p>{error}</p>
+                    <Button
+                      type="button"
+                      variant="outlined"
+                      size="compact"
+                      onClick={retryCart}
+                      disabled={isLoading}
+                    >
+                      Retry
+                    </Button>
                   </div>
                 ) : null}
-                <div className="flex items-center justify-between gap-4">
-                  <dt>Shipping</dt>
-                  <dd className="text-right text-foreground">
-                    {shipping ?? "Calculated at checkout"}
-                  </dd>
-                </div>
-                <div className="flex items-center justify-between gap-4">
-                  <dt>Tax</dt>
-                  <dd className="text-right text-foreground">
-                    {tax ?? "Calculated at checkout"}
-                  </dd>
-                </div>
-                <div className="flex items-center justify-between gap-4 border-t border-border/60 pt-2 text-base font-semibold text-foreground">
-                  <dt>{totalsAreFinal ? "Total" : "Current total"}</dt>
-                  <dd>{currentTotal ?? "—"}</dd>
-                </div>
-              </dl>
 
-              {!totalsAreFinal ? (
-                <p className="text-xs leading-relaxed text-muted-foreground">
-                  Shipping and tax are confirmed after you enter your address.
-                </p>
-              ) : null}
-              <p className="text-xs leading-relaxed text-muted-foreground">
-                Availability is rechecked before purchase; cart items are not
-                reserved.
-              </p>
-
-              {error ? (
-                <div
-                  className="space-y-3 rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive"
-                  role="alert"
-                >
-                  <p>{error}</p>
+                <div className="grid gap-3">
+                  <Button
+                    type="button"
+                    size="lg"
+                    className="h-12 w-full text-sm"
+                    disabled={
+                      !cart?.id || isLoading || isMutating || isCheckoutPending
+                    }
+                    onClick={goToCheckout}
+                  >
+                    {isCheckoutPending ? "Opening checkout…" : "Checkout"}
+                  </Button>
                   <Button
                     type="button"
                     variant="outlined"
-                    size="compact"
-                    onClick={retryCart}
-                    disabled={isLoading}
+                    size="lg"
+                    className="h-12 w-full text-sm"
+                    onClick={goToCatalog}
                   >
-                    Retry
+                    Continue shopping
                   </Button>
                 </div>
-              ) : null}
-
-              <div className="grid gap-3">
-                <Button
-                  type="button"
-                  size="lg"
-                  className="h-12 w-full text-sm"
-                  disabled={
-                    !cart?.id || isLoading || isMutating || isCheckoutPending
-                  }
-                  onClick={goToCheckout}
-                >
-                  {isCheckoutPending ? "Opening checkout…" : "Checkout"}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outlined"
-                  size="lg"
-                  className="h-12 w-full text-sm"
-                  onClick={goToCatalog}
-                >
-                  Continue shopping
-                </Button>
               </div>
             </div>
-          </>
+          </div>
         ) : (
           <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-5 overflow-y-auto px-4 py-8 text-center sm:px-6 sm:py-10">
             <div className="flex h-16 w-16 items-center justify-center rounded-full border border-destructive/35 bg-destructive/10">

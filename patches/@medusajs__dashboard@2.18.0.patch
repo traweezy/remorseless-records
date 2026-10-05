@@ -1,5 +1,5 @@
 diff --git a/dist/app.js b/dist/app.js
-index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4395d5e9e39029aa6428e47645fbf19b79e203f7 100644
+index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..a18ce49c8a07f2a14350cde395614f03125c267f 100644
 --- a/dist/app.js
 +++ b/dist/app.js
 @@ -111811,17 +111811,25 @@ var init_layout_composer = __esm({
@@ -596,12 +596,30 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4395d5e9e39029aa6428e47645fbf19b
    const { return_reasons = [] } = useReturnReasons({ fields: "+label" });
    const formItem = form.watch(`items.${index}`);
    const showReturnReason = typeof formItem.reason_id === "string";
+@@ -156936,7 +156865,7 @@ function ReturnItem({
+         /* @__PURE__ */ (0, import_jsx_runtime319.jsxs)("div", { className: "flex flex-col", children: [
+           /* @__PURE__ */ (0, import_jsx_runtime319.jsxs)("div", { children: [
+             /* @__PURE__ */ (0, import_jsx_runtime319.jsxs)(import_ui212.Text, { className: "txt-small", as: "span", weight: "plus", children: [
+-              item.title,
++              item.product_title ?? item.title,
+               " "
+             ] }),
+             item.variant_sku && /* @__PURE__ */ (0, import_jsx_runtime319.jsxs)("span", { children: [
+@@ -156945,7 +156874,7 @@ function ReturnItem({
+               ")"
+             ] })
+           ] }),
+-          /* @__PURE__ */ (0, import_jsx_runtime319.jsx)(import_ui212.Text, { as: "div", className: "text-ui-fg-subtle txt-small", children: item.product_title })
++          /* @__PURE__ */ (0, import_jsx_runtime319.jsx)(import_ui212.Text, { as: "div", className: "text-ui-fg-subtle txt-small", children: item.variant_title ?? (item.title !== item.product_title ? item.title : null) })
+         ] })
+       ] }),
+       /* @__PURE__ */ (0, import_jsx_runtime319.jsxs)("div", { className: "flex flex-1 justify-between", children: [
 @@ -156960,7 +156889,8 @@ function ReturnItem({
                    /* @__PURE__ */ (0, import_jsx_runtime319.jsx)(Form.Control, { children: /* @__PURE__ */ (0, import_jsx_runtime319.jsx)(
                      import_ui212.Input,
                      {
 -                      className: "bg-ui-bg-base txt-small w-[67px] rounded-lg",
-+                      "aria-label": [t5("fields.quantity"), item.product_title, item.title].filter(Boolean).join(" "),
++                      "aria-label": [t5("fields.quantity"), item.product_title, item.variant_title ?? item.title].filter(Boolean).join(" "),
 +                        className: "bg-ui-bg-base txt-small w-[67px] rounded-lg",
                        min: 1,
                        max: item.quantity,
@@ -700,6 +718,23 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4395d5e9e39029aa6428e47645fbf19b
                              checked: !!value,
                              onCheckedChange: onChange,
                              ...field
+@@ -157796,14 +157733,14 @@ var init_return_create = __esm({
+         }
+         run();
+       }, [preview]);
+-      return /* @__PURE__ */ (0, import_jsx_runtime321.jsx)(RouteFocusModal, { children: activeReturn && preview && order && /* @__PURE__ */ (0, import_jsx_runtime321.jsx)(
++      return /* @__PURE__ */ (0, import_jsx_runtime321.jsx)(RouteFocusModal, { children: activeReturn && preview && order ? (0, import_jsx_runtime321.jsx)(
+         ReturnCreateForm,
+         {
+           order,
+           activeReturn,
+           preview
+         }
+-      ) });
++      ) : (0, import_jsx_runtime321.jsx)("div", { className: "sr-only", children: [(0, import_jsx_runtime321.jsx)(RouteFocusModal.Title, { children: t5("orders.returns.create") }, "pending-title"), (0, import_jsx_runtime321.jsx)(RouteFocusModal.Description, { children: t5("orders.returns.description", { defaultValue: "Choose the items and destination for this return." }) }, "pending-description")] }) });
+     };
+   }
+ });
 @@ -157844,7 +157781,9 @@ var init_use_claim_item_table_columns = __esm({
                return /* @__PURE__ */ (0, import_jsx_runtime322.jsx)(
                  import_ui215.Checkbox,
@@ -730,12 +765,30 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4395d5e9e39029aa6428e47645fbf19b
    const { return_reasons = [] } = useReturnReasons({ fields: "+label" });
    const formItem = form.watch(`inbound_items.${index}`);
    const showReturnReason = typeof formItem.reason_id === "string";
+@@ -158234,7 +158176,7 @@ function ClaimInboundItem({
+         /* @__PURE__ */ (0, import_jsx_runtime324.jsxs)("div", { className: "flex flex-col", children: [
+           /* @__PURE__ */ (0, import_jsx_runtime324.jsxs)("div", { children: [
+             /* @__PURE__ */ (0, import_jsx_runtime324.jsxs)(import_ui216.Text, { className: "txt-small", as: "span", weight: "plus", children: [
+-              item.title,
++              item.product_title ?? item.title,
+               " "
+             ] }),
+             item.variant_sku && /* @__PURE__ */ (0, import_jsx_runtime324.jsxs)("span", { children: [
+@@ -158243,7 +158185,7 @@ function ClaimInboundItem({
+               ")"
+             ] })
+           ] }),
+-          /* @__PURE__ */ (0, import_jsx_runtime324.jsx)(import_ui216.Text, { as: "div", className: "text-ui-fg-subtle txt-small", children: item.product_title })
++          /* @__PURE__ */ (0, import_jsx_runtime324.jsx)(import_ui216.Text, { as: "div", className: "text-ui-fg-subtle txt-small", children: item.variant_title ?? (item.title !== item.product_title ? item.title : null) })
+         ] })
+       ] }),
+       /* @__PURE__ */ (0, import_jsx_runtime324.jsxs)("div", { className: "flex flex-1 justify-between", children: [
 @@ -158259,7 +158201,8 @@ function ClaimInboundItem({
                      import_ui216.Input,
                      {
                        ...field,
 -                      className: "bg-ui-bg-base txt-small w-[67px] rounded-lg",
-+                      "aria-label": [t5("fields.quantity"), item.product_title, item.title].filter(Boolean).join(" "),
++                      "aria-label": [t5("fields.quantity"), item.product_title, item.variant_title ?? item.title].filter(Boolean).join(" "),
 +                        className: "bg-ui-bg-base txt-small w-[67px] rounded-lg",
                        min: 1,
                        max: item.quantity,
@@ -814,12 +867,55 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4395d5e9e39029aa6428e47645fbf19b
                    checked: row.getIsSelected(),
                    onCheckedChange: (value) => row.toggleSelected(!!value),
                    onClick: (e) => {
-@@ -158709,14 +158660,15 @@ function ClaimOutboundItem({
+@@ -158615,7 +158566,7 @@ var init_add_claim_outbound_items_table = __esm({
+         pageSize: PAGE_SIZE16,
+         prefix: PREFIX7
+       });
+-      const { variants = [], count } = useVariants({
++      const { variants = [], count, isPending, isError, error } = useVariants({
+         ...searchParams,
+         fields: "*inventory_items.inventory.location_levels,+inventory_quantity"
+       });
+@@ -158636,12 +158587,14 @@ var init_add_claim_outbound_items_table = __esm({
+           updater
+         }
+       });
+-      return /* @__PURE__ */ (0, import_jsx_runtime326.jsx)("div", { className: "flex size-full flex-col overflow-hidden", children: /* @__PURE__ */ (0, import_jsx_runtime326.jsx)(
++      if (isError) throw error;
++return /* @__PURE__ */ (0, import_jsx_runtime326.jsx)("div", { className: "flex size-full flex-col overflow-hidden", children: /* @__PURE__ */ (0, import_jsx_runtime326.jsx)(
+         _DataTable,
+         {
+           table,
+           columns,
+           pageSize: PAGE_SIZE16,
++          isLoading: isPending,
+           count,
+           filters,
+           pagination: true,
+@@ -158684,7 +158637,7 @@ function ClaimOutboundItem({
+       /* @__PURE__ */ (0, import_jsx_runtime327.jsxs)("div", { className: "flex flex-col", children: [
+         /* @__PURE__ */ (0, import_jsx_runtime327.jsxs)("div", { children: [
+           /* @__PURE__ */ (0, import_jsx_runtime327.jsxs)(import_ui218.Text, { className: "txt-small", as: "span", weight: "plus", children: [
+-            previewItem.title,
++            previewItem.product_title ?? previewItem.title,
+             " "
+           ] }),
+           previewItem.variant_sku && /* @__PURE__ */ (0, import_jsx_runtime327.jsxs)("span", { children: [
+@@ -158693,7 +158646,7 @@ function ClaimOutboundItem({
+             ")"
+           ] })
+         ] }),
+-        /* @__PURE__ */ (0, import_jsx_runtime327.jsx)(import_ui218.Text, { as: "div", className: "text-ui-fg-subtle txt-small", children: previewItem.subtitle })
++        /* @__PURE__ */ (0, import_jsx_runtime327.jsx)(import_ui218.Text, { as: "div", className: "text-ui-fg-subtle txt-small", children: previewItem.variant_title ?? previewItem.subtitle })
+       ] })
+     ] }),
+     /* @__PURE__ */ (0, import_jsx_runtime327.jsxs)("div", { className: "flex flex-1 justify-between", children: [
+@@ -158709,14 +158662,15 @@ function ClaimOutboundItem({
                    import_ui218.Input,
                    {
                      ...field,
 -                    className: "bg-ui-bg-base txt-small w-[67px] rounded-lg",
-+                    "aria-label": [t5("fields.quantity"), previewItem.product_title, previewItem.title].filter(Boolean).join(" "),
++                    "aria-label": [t5("fields.quantity"), previewItem.product_title, previewItem.variant_title ?? previewItem.title].filter(Boolean).join(" "),
 +                        className: "bg-ui-bg-base txt-small w-[67px] rounded-lg",
                      min: 1,
                      type: "number",
@@ -832,7 +928,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4395d5e9e39029aa6428e47645fbf19b
                          onUpdate({ quantity: payload });
                        }
                      }
-@@ -159042,9 +158994,9 @@ var init_claim_outbound_section = __esm({
+@@ -159042,9 +158996,9 @@ var init_claim_outbound_section = __esm({
          /* @__PURE__ */ (0, import_jsx_runtime329.jsxs)("div", { className: "mt-8 flex items-center justify-between", children: [
            /* @__PURE__ */ (0, import_jsx_runtime329.jsx)(import_ui219.Heading, { level: "h2", children: t5("orders.returns.outbound") }),
            /* @__PURE__ */ (0, import_jsx_runtime329.jsxs)(StackedFocusModal, { id: "outbound-items", children: [
@@ -844,15 +940,15 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4395d5e9e39029aa6428e47645fbf19b
                /* @__PURE__ */ (0, import_jsx_runtime329.jsx)(
                  AddClaimOutboundItemsTable,
                  {
-@@ -159129,6 +159081,7 @@ var init_claim_outbound_section = __esm({
+@@ -159129,6 +159083,7 @@ var init_claim_outbound_section = __esm({
                  return /* @__PURE__ */ (0, import_jsx_runtime329.jsx)(Form.Item, { children: /* @__PURE__ */ (0, import_jsx_runtime329.jsx)(Form.Control, { children: /* @__PURE__ */ (0, import_jsx_runtime329.jsx)(
                    Combobox,
                    {
-+                        "aria-label": t5("orders.returns.outboundShipping"),
++                        "aria-label": t5("orders.claims.outboundShipping"),
                      allowClear: true,
                      value: value ?? void 0,
                      onChange: (val) => {
-@@ -159577,13 +159530,14 @@ var init_claim_create_form = __esm({
+@@ -159577,13 +159532,14 @@ var init_claim_create_form = __esm({
        return /* @__PURE__ */ (0, import_jsx_runtime330.jsx)(RouteFocusModal.Form, { form, children: /* @__PURE__ */ (0, import_jsx_runtime330.jsxs)(KeyboundForm, { onSubmit: handleSubmit, className: "flex h-full flex-col", children: [
          /* @__PURE__ */ (0, import_jsx_runtime330.jsx)(RouteFocusModal.Header, {}),
          /* @__PURE__ */ (0, import_jsx_runtime330.jsx)(RouteFocusModal.Body, { className: "flex size-full justify-center overflow-y-auto", children: /* @__PURE__ */ (0, import_jsx_runtime330.jsxs)("div", { className: "mt-16 w-[720px] max-w-[100%] px-4 md:p-0", children: [
@@ -870,7 +966,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4395d5e9e39029aa6428e47645fbf19b
                  /* @__PURE__ */ (0, import_jsx_runtime330.jsx)(
                    AddClaimItemsTable,
                    {
-@@ -159685,6 +159639,7 @@ var init_claim_create_form = __esm({
+@@ -159685,6 +159641,7 @@ var init_claim_create_form = __esm({
                      return /* @__PURE__ */ (0, import_jsx_runtime330.jsx)(Form.Item, { children: /* @__PURE__ */ (0, import_jsx_runtime330.jsx)(Form.Control, { children: /* @__PURE__ */ (0, import_jsx_runtime330.jsx)(
                        Combobox,
                        {
@@ -878,7 +974,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4395d5e9e39029aa6428e47645fbf19b
                          ...field,
                          value: value ?? void 0,
                          onChange: (v) => {
-@@ -159732,6 +159687,7 @@ var init_claim_create_form = __esm({
+@@ -159732,6 +159689,7 @@ var init_claim_create_form = __esm({
                      return /* @__PURE__ */ (0, import_jsx_runtime330.jsx)(Form.Item, { children: /* @__PURE__ */ (0, import_jsx_runtime330.jsx)(Form.Control, { children: /* @__PURE__ */ (0, import_jsx_runtime330.jsx)(
                        Combobox,
                        {
@@ -886,7 +982,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4395d5e9e39029aa6428e47645fbf19b
                          allowClear: true,
                          value: value ?? void 0,
                          onChange: (val) => {
-@@ -159928,7 +159884,7 @@ var init_claim_create_form = __esm({
+@@ -159928,7 +159886,7 @@ var init_claim_create_form = __esm({
                        import_ui220.Switch,
                        {
                          dir: "ltr",
@@ -895,7 +991,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4395d5e9e39029aa6428e47645fbf19b
                          checked: !!value,
                          onCheckedChange: async (checked) => {
                            onChange(checked);
-@@ -159974,7 +159930,7 @@ var init_claim_create_form = __esm({
+@@ -159974,7 +159932,7 @@ var init_claim_create_form = __esm({
                        import_ui220.Switch,
                        {
                          dir: "ltr",
@@ -904,7 +1000,25 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4395d5e9e39029aa6428e47645fbf19b
                          checked: !!value,
                          onCheckedChange: onChange,
                          ...field
-@@ -160174,7 +160130,9 @@ var init_use_exchange_item_table_columns = __esm({
+@@ -160093,7 +160051,7 @@ var init_claim_create = __esm({
+         }
+         run();
+       }, [preview]);
+-      return /* @__PURE__ */ (0, import_jsx_runtime331.jsx)(RouteFocusModal, { children: claim && preview && order && /* @__PURE__ */ (0, import_jsx_runtime331.jsx)(
++      return /* @__PURE__ */ (0, import_jsx_runtime331.jsx)(RouteFocusModal, { children: claim && preview && order ? (0, import_jsx_runtime331.jsx)(
+         ClaimCreateForm,
+         {
+           order,
+@@ -160101,7 +160059,7 @@ var init_claim_create = __esm({
+           preview,
+           orderReturn
+         }
+-      ) });
++      ) : (0, import_jsx_runtime331.jsx)("div", { className: "sr-only", children: [(0, import_jsx_runtime331.jsx)(RouteFocusModal.Title, { children: t5("orders.claims.create") }, "pending-title"), (0, import_jsx_runtime331.jsx)(RouteFocusModal.Description, { children: t5("orders.claims.description", { defaultValue: "Record the claimed items and any return or replacement." }) }, "pending-description")] }) });
+     };
+   }
+ });
+@@ -160174,7 +160132,9 @@ var init_use_exchange_item_table_columns = __esm({
                return /* @__PURE__ */ (0, import_jsx_runtime332.jsx)(
                  import_ui222.Checkbox,
                  {
@@ -915,7 +1029,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4395d5e9e39029aa6428e47645fbf19b
                    onCheckedChange: (value) => table.toggleAllPageRowsSelected(!!value)
                  }
                );
-@@ -160184,7 +160142,9 @@ var init_use_exchange_item_table_columns = __esm({
+@@ -160184,7 +160144,9 @@ var init_use_exchange_item_table_columns = __esm({
                return /* @__PURE__ */ (0, import_jsx_runtime332.jsx)(
                  import_ui222.Checkbox,
                  {
@@ -926,7 +1040,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4395d5e9e39029aa6428e47645fbf19b
                    checked: row.getIsSelected(),
                    onCheckedChange: (value) => row.toggleSelected(!!value),
                    onClick: (e) => {
-@@ -160451,6 +160411,7 @@ function ExchangeInboundItem({
+@@ -160451,6 +160413,7 @@ function ExchangeInboundItem({
    index
  }) {
    const { t: t5 } = (0, import_react_i18next242.useTranslation)();
@@ -934,17 +1048,35 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4395d5e9e39029aa6428e47645fbf19b
    const { return_reasons = [] } = useReturnReasons({ fields: "+label" });
    const formItem = form.watch(`inbound_items.${index}`);
    const showReturnReason = typeof formItem.reason_id === "string";
-@@ -160497,7 +160458,8 @@ function ExchangeInboundItem({
+@@ -160465,7 +160428,7 @@ function ExchangeInboundItem({
+         /* @__PURE__ */ (0, import_jsx_runtime334.jsxs)("div", { className: "flex flex-grow flex-col", children: [
+           /* @__PURE__ */ (0, import_jsx_runtime334.jsxs)("div", { children: [
+             /* @__PURE__ */ (0, import_jsx_runtime334.jsxs)(import_ui223.Text, { className: "txt-small", as: "span", weight: "plus", children: [
+-              item.title,
++              item.product_title ?? item.title,
+               " "
+             ] }),
+             item.variant_sku && /* @__PURE__ */ (0, import_jsx_runtime334.jsxs)("span", { children: [
+@@ -160474,7 +160437,7 @@ function ExchangeInboundItem({
+               ")"
+             ] })
+           ] }),
+-          /* @__PURE__ */ (0, import_jsx_runtime334.jsx)(import_ui223.Text, { as: "div", className: "text-ui-fg-subtle txt-small", children: item.product_title })
++          /* @__PURE__ */ (0, import_jsx_runtime334.jsx)(import_ui223.Text, { as: "div", className: "text-ui-fg-subtle txt-small", children: item.variant_title ?? (item.title !== item.product_title ? item.title : null) })
+         ] }),
+         appliedPromoCodes.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime334.jsx)("div", { className: "flex flex-shrink", children: /* @__PURE__ */ (0, import_jsx_runtime334.jsx)(
+           import_ui223.Tooltip,
+@@ -160497,7 +160460,8 @@ function ExchangeInboundItem({
                      import_ui223.Input,
                      {
                        ...field,
 -                      className: "bg-ui-bg-base txt-small w-[67px] rounded-lg",
-+                      "aria-label": [t5("fields.quantity"), item.product_title, item.title].filter(Boolean).join(" "),
++                      "aria-label": [t5("fields.quantity"), item.product_title, item.variant_title ?? item.title].filter(Boolean).join(" "),
 +                        className: "bg-ui-bg-base txt-small w-[67px] rounded-lg",
                        min: 1,
                        max: item.quantity,
                        type: "number",
-@@ -160505,7 +160467,7 @@ function ExchangeInboundItem({
+@@ -160505,7 +160469,7 @@ function ExchangeInboundItem({
                          const val = e.target.value;
                          const payload = val === "" ? null : Number(val);
                          field.onChange(payload);
@@ -953,7 +1085,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4395d5e9e39029aa6428e47645fbf19b
                            onUpdate({ quantity: payload });
                          }
                        }
-@@ -160570,7 +160532,8 @@ function ExchangeInboundItem({
+@@ -160570,7 +160534,8 @@ function ExchangeInboundItem({
                    /* @__PURE__ */ (0, import_jsx_runtime334.jsx)(Form.Control, { children: /* @__PURE__ */ (0, import_jsx_runtime334.jsx)(
                      Combobox,
                      {
@@ -963,7 +1095,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4395d5e9e39029aa6428e47645fbf19b
                        value,
                        onChange: (v) => {
                          onUpdate({ reason_id: v });
-@@ -160591,7 +160554,8 @@ function ExchangeInboundItem({
+@@ -160591,7 +160556,8 @@ function ExchangeInboundItem({
            /* @__PURE__ */ (0, import_jsx_runtime334.jsx)(
              import_ui223.IconButton,
              {
@@ -973,7 +1105,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4395d5e9e39029aa6428e47645fbf19b
                className: "flex-shrink",
                variant: "transparent",
                onClick: () => {
-@@ -160622,9 +160586,10 @@ function ExchangeInboundItem({
+@@ -160622,9 +160588,10 @@ function ExchangeInboundItem({
                        ...field,
                        onBlur: () => {
                          field.onChange(field.value);
@@ -986,7 +1118,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4395d5e9e39029aa6428e47645fbf19b
                      }
                    ) }),
                    /* @__PURE__ */ (0, import_jsx_runtime334.jsx)(Form.ErrorMessage, {})
-@@ -160635,7 +160600,8 @@ function ExchangeInboundItem({
+@@ -160635,7 +160602,8 @@ function ExchangeInboundItem({
            /* @__PURE__ */ (0, import_jsx_runtime334.jsx)(
              import_ui223.IconButton,
              {
@@ -996,7 +1128,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4395d5e9e39029aa6428e47645fbf19b
                className: "flex-shrink",
                variant: "transparent",
                onClick: () => {
-@@ -160906,9 +160872,9 @@ var init_exchange_inbound_section = __esm({
+@@ -160906,9 +160874,9 @@ var init_exchange_inbound_section = __esm({
          /* @__PURE__ */ (0, import_jsx_runtime335.jsxs)("div", { className: "mt-8 flex items-center justify-between", children: [
            /* @__PURE__ */ (0, import_jsx_runtime335.jsx)(import_ui224.Heading, { level: "h2", children: t5("orders.returns.inbound") }),
            /* @__PURE__ */ (0, import_jsx_runtime335.jsxs)(StackedFocusModal, { id: "inbound-items", children: [
@@ -1008,7 +1140,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4395d5e9e39029aa6428e47645fbf19b
                /* @__PURE__ */ (0, import_jsx_runtime335.jsx)(
                  AddExchangeInboundItemsTable,
                  {
-@@ -161002,6 +160968,7 @@ var init_exchange_inbound_section = __esm({
+@@ -161002,6 +160970,7 @@ var init_exchange_inbound_section = __esm({
                    return /* @__PURE__ */ (0, import_jsx_runtime335.jsx)(Form.Item, { children: /* @__PURE__ */ (0, import_jsx_runtime335.jsx)(Form.Control, { children: /* @__PURE__ */ (0, import_jsx_runtime335.jsx)(
                      Combobox,
                      {
@@ -1016,7 +1148,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4395d5e9e39029aa6428e47645fbf19b
                        ...field,
                        value: value ?? void 0,
                        onChange: (v) => {
-@@ -161049,6 +161016,7 @@ var init_exchange_inbound_section = __esm({
+@@ -161049,6 +161018,7 @@ var init_exchange_inbound_section = __esm({
                    return /* @__PURE__ */ (0, import_jsx_runtime335.jsx)(Form.Item, { children: /* @__PURE__ */ (0, import_jsx_runtime335.jsx)(Form.Control, { children: /* @__PURE__ */ (0, import_jsx_runtime335.jsx)(
                      Combobox,
                      {
@@ -1024,7 +1156,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4395d5e9e39029aa6428e47645fbf19b
                        allowClear: true,
                        value: value ?? void 0,
                        onChange: (val) => {
-@@ -161100,7 +161068,9 @@ var init_use_exchange_outbound_item_table_columns = __esm({
+@@ -161100,7 +161070,9 @@ var init_use_exchange_outbound_item_table_columns = __esm({
                return /* @__PURE__ */ (0, import_jsx_runtime336.jsx)(
                  import_ui225.Checkbox,
                  {
@@ -1035,7 +1167,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4395d5e9e39029aa6428e47645fbf19b
                    onCheckedChange: (value) => table.toggleAllPageRowsSelected(!!value)
                  }
                );
-@@ -161110,7 +161080,9 @@ var init_use_exchange_outbound_item_table_columns = __esm({
+@@ -161110,7 +161082,9 @@ var init_use_exchange_outbound_item_table_columns = __esm({
                return /* @__PURE__ */ (0, import_jsx_runtime336.jsx)(
                  import_ui225.Checkbox,
                  {
@@ -1046,12 +1178,55 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4395d5e9e39029aa6428e47645fbf19b
                    checked: row.getIsSelected(),
                    onCheckedChange: (value) => row.toggleSelected(!!value),
                    onClick: (e) => {
-@@ -161336,14 +161308,15 @@ function ExchangeOutboundItem({
+@@ -161232,7 +161206,7 @@ var init_add_exchange_outbound_items_table = __esm({
+         pageSize: PAGE_SIZE18,
+         prefix: PREFIX9
+       });
+-      const { variants = [], count } = useVariants({
++      const { variants = [], count, isPending, isError, error } = useVariants({
+         ...searchParams,
+         fields: "*inventory_items.inventory.location_levels,+inventory_quantity"
+       });
+@@ -161253,12 +161227,14 @@ var init_add_exchange_outbound_items_table = __esm({
+           updater
+         }
+       });
+-      return /* @__PURE__ */ (0, import_jsx_runtime337.jsx)("div", { className: "flex size-full flex-col overflow-hidden", children: /* @__PURE__ */ (0, import_jsx_runtime337.jsx)(
++      if (isError) throw error;
++return /* @__PURE__ */ (0, import_jsx_runtime337.jsx)("div", { className: "flex size-full flex-col overflow-hidden", children: /* @__PURE__ */ (0, import_jsx_runtime337.jsx)(
+         _DataTable,
+         {
+           table,
+           columns,
+           pageSize: PAGE_SIZE18,
++          isLoading: isPending,
+           count,
+           filters,
+           pagination: true,
+@@ -161304,7 +161280,7 @@ function ExchangeOutboundItem({
+       /* @__PURE__ */ (0, import_jsx_runtime338.jsxs)("div", { className: "flex flex-grow flex-col", children: [
+         /* @__PURE__ */ (0, import_jsx_runtime338.jsxs)("div", { children: [
+           /* @__PURE__ */ (0, import_jsx_runtime338.jsxs)(import_ui226.Text, { className: "txt-small", as: "span", weight: "plus", children: [
+-            previewItem.title,
++            previewItem.product_title ?? previewItem.title,
+             " "
+           ] }),
+           previewItem.variant_sku && /* @__PURE__ */ (0, import_jsx_runtime338.jsxs)("span", { children: [
+@@ -161313,7 +161289,7 @@ function ExchangeOutboundItem({
+             ")"
+           ] })
+         ] }),
+-        /* @__PURE__ */ (0, import_jsx_runtime338.jsx)(import_ui226.Text, { as: "div", className: "text-ui-fg-subtle txt-small", children: previewItem.subtitle })
++        /* @__PURE__ */ (0, import_jsx_runtime338.jsx)(import_ui226.Text, { as: "div", className: "text-ui-fg-subtle txt-small", children: previewItem.variant_title ?? previewItem.subtitle })
+       ] }),
+       appliedPromoCodes.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime338.jsx)("div", { className: "flex flex-shrink", children: /* @__PURE__ */ (0, import_jsx_runtime338.jsx)(
+         import_ui226.Tooltip,
+@@ -161336,14 +161312,15 @@ function ExchangeOutboundItem({
                    import_ui226.Input,
                    {
                      ...field,
 -                    className: "bg-ui-bg-base txt-small w-[67px] rounded-lg",
-+                    "aria-label": [t5("fields.quantity"), previewItem.product_title, previewItem.title].filter(Boolean).join(" "),
++                    "aria-label": [t5("fields.quantity"), previewItem.product_title, previewItem.variant_title ?? previewItem.title].filter(Boolean).join(" "),
 +                        className: "bg-ui-bg-base txt-small w-[67px] rounded-lg",
                      min: 1,
                      type: "number",
@@ -1064,7 +1239,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4395d5e9e39029aa6428e47645fbf19b
                          onUpdate({ quantity: payload });
                        }
                      }
-@@ -161611,9 +161584,9 @@ var init_exchange_outbound_section = __esm({
+@@ -161611,9 +161588,9 @@ var init_exchange_outbound_section = __esm({
          /* @__PURE__ */ (0, import_jsx_runtime339.jsxs)("div", { className: "mt-8 flex items-center justify-between", children: [
            /* @__PURE__ */ (0, import_jsx_runtime339.jsx)(import_ui227.Heading, { level: "h2", children: t5("orders.returns.outbound") }),
            /* @__PURE__ */ (0, import_jsx_runtime339.jsxs)(StackedFocusModal, { id: "outbound-items", children: [
@@ -1076,7 +1251,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4395d5e9e39029aa6428e47645fbf19b
                /* @__PURE__ */ (0, import_jsx_runtime339.jsx)(
                  AddExchangeOutboundItemsTable,
                  {
-@@ -161698,6 +161671,7 @@ var init_exchange_outbound_section = __esm({
+@@ -161698,6 +161675,7 @@ var init_exchange_outbound_section = __esm({
                  return /* @__PURE__ */ (0, import_jsx_runtime339.jsx)(Form.Item, { children: /* @__PURE__ */ (0, import_jsx_runtime339.jsx)(Form.Control, { children: /* @__PURE__ */ (0, import_jsx_runtime339.jsx)(
                    Combobox,
                    {
@@ -1084,7 +1259,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4395d5e9e39029aa6428e47645fbf19b
                      allowClear: true,
                      noResultsPlaceholder: /* @__PURE__ */ (0, import_jsx_runtime339.jsx)(OutboundShippingPlaceholder, {}),
                      value: value ?? void 0,
-@@ -161932,7 +161906,8 @@ var init_exchange_create_form = __esm({
+@@ -161932,7 +161910,8 @@ var init_exchange_create_form = __esm({
        return /* @__PURE__ */ (0, import_jsx_runtime340.jsx)(RouteFocusModal.Form, { form, children: /* @__PURE__ */ (0, import_jsx_runtime340.jsxs)(KeyboundForm, { onSubmit: handleSubmit, className: "flex h-full flex-col", children: [
          /* @__PURE__ */ (0, import_jsx_runtime340.jsx)(RouteFocusModal.Header, {}),
          /* @__PURE__ */ (0, import_jsx_runtime340.jsx)(RouteFocusModal.Body, { className: "flex size-full justify-center overflow-y-auto", children: /* @__PURE__ */ (0, import_jsx_runtime340.jsxs)("div", { className: "mt-16 w-[720px] max-w-[100%] px-4 md:p-0", children: [
@@ -1094,7 +1269,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4395d5e9e39029aa6428e47645fbf19b
            /* @__PURE__ */ (0, import_jsx_runtime340.jsx)(
              ExchangeInboundSection,
              {
-@@ -161982,7 +161957,8 @@ var init_exchange_create_form = __esm({
+@@ -161982,7 +161961,8 @@ var init_exchange_create_form = __esm({
                  !isInboundShippingPriceEdit && /* @__PURE__ */ (0, import_jsx_runtime340.jsx)(
                    import_ui228.IconButton,
                    {
@@ -1104,7 +1279,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4395d5e9e39029aa6428e47645fbf19b
                      variant: "transparent",
                      className: "text-ui-fg-muted",
                      disabled: !inboundPreviewItems?.length || !inboundShippingOptionId,
-@@ -161993,6 +161969,7 @@ var init_exchange_create_form = __esm({
+@@ -161993,6 +161973,7 @@ var init_exchange_create_form = __esm({
                    import_ui228.CurrencyInput,
                    {
                      id: "js-inbound-shipping-input",
@@ -1112,25 +1287,25 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4395d5e9e39029aa6428e47645fbf19b
                      onBlur: () => {
                        let actionId;
                        preview.shipping_methods.forEach((s) => {
-@@ -162038,7 +162015,8 @@ var init_exchange_create_form = __esm({
+@@ -162038,7 +162019,8 @@ var init_exchange_create_form = __esm({
                  !isOutboundShippingPriceEdit && /* @__PURE__ */ (0, import_jsx_runtime340.jsx)(
                    import_ui228.IconButton,
                    {
 -                    onClick: () => setIsOutboundShippingPriceEdit(true),
-+                    "aria-label": t5("actions.edit") + " " + t5("orders.returns.outboundShipping"),
++                    "aria-label": t5("actions.edit") + " " + t5("orders.exchanges.outboundShipping"),
 +                  onClick: () => setIsOutboundShippingPriceEdit(true),
                      variant: "transparent",
                      className: "text-ui-fg-muted",
                      disabled: !outboundPreviewItems?.length || !outboundShippingOptionId,
-@@ -162049,6 +162027,7 @@ var init_exchange_create_form = __esm({
+@@ -162049,6 +162031,7 @@ var init_exchange_create_form = __esm({
                    import_ui228.CurrencyInput,
                    {
                      id: "js-outbound-shipping-input",
-+                    "aria-label": t5("orders.returns.outboundShipping"),
++                    "aria-label": t5("orders.exchanges.outboundShipping"),
                      onBlur: () => {
                        let actionId;
                        preview.shipping_methods.forEach((s) => {
-@@ -162108,7 +162087,7 @@ var init_exchange_create_form = __esm({
+@@ -162108,7 +162091,7 @@ var init_exchange_create_form = __esm({
                        import_ui228.Switch,
                        {
                          dir: "ltr",
@@ -1139,7 +1314,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4395d5e9e39029aa6428e47645fbf19b
                          checked: !!value,
                          onCheckedChange: async (checked) => {
                            onChange(checked);
-@@ -162154,7 +162133,7 @@ var init_exchange_create_form = __esm({
+@@ -162154,7 +162137,7 @@ var init_exchange_create_form = __esm({
                        import_ui228.Switch,
                        {
                          dir: "ltr",
@@ -1148,25 +1323,50 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4395d5e9e39029aa6428e47645fbf19b
                          checked: !!value,
                          onCheckedChange: onChange,
                          ...field
-@@ -162272,7 +162251,7 @@ var init_exchange_create = __esm({
+@@ -162272,7 +162255,7 @@ var init_exchange_create = __esm({
          }
          run();
        }, [preview]);
 -      return /* @__PURE__ */ (0, import_jsx_runtime341.jsx)(RouteFocusModal, { children: exchange && preview && order && /* @__PURE__ */ (0, import_jsx_runtime341.jsx)(
-+      return /* @__PURE__ */ (0, import_jsx_runtime341.jsx)(RouteFocusModal, { children: exchange && preview && order ? /* @__PURE__ */ (0, import_jsx_runtime341.jsx)(
++      return /* @__PURE__ */ (0, import_jsx_runtime341.jsx)(RouteFocusModal, { children: exchange && preview && order ? (0, import_jsx_runtime341.jsx)(
          ExchangeCreateForm,
          {
            order,
-@@ -162280,7 +162259,7 @@ var init_exchange_create = __esm({
+@@ -162280,7 +162263,7 @@ var init_exchange_create = __esm({
            preview,
            orderReturn
          }
 -      ) });
-+      ) : /* @__PURE__ */ (0, import_jsx_runtime341.jsx)(RouteFocusModal.Title, { className: "sr-only", children: t5("orders.exchanges.create") }) });
++      ) : (0, import_jsx_runtime341.jsx)("div", { className: "sr-only", children: [(0, import_jsx_runtime341.jsx)(RouteFocusModal.Title, { children: t5("orders.exchanges.create") }, "pending-title"), (0, import_jsx_runtime341.jsx)(RouteFocusModal.Description, { children: t5("orders.exchanges.description", { defaultValue: "Choose the inbound and replacement items for this exchange." }) }, "pending-description")] }) });
      };
    }
  });
-@@ -163482,7 +163461,9 @@ var init_create_refund_form = __esm({
+@@ -162445,7 +162428,7 @@ var init_add_order_edit_items_table = __esm({
+         pageSize: PAGE_SIZE19,
+         prefix: PREFIX10
+       });
+-      const { variants = [], count } = useVariants({
++      const { variants = [], count, isPending, isError, error } = useVariants({
+         ...searchParams,
+         fields: "*inventory_items.inventory.location_levels,+inventory_quantity"
+       });
+@@ -162466,12 +162449,14 @@ var init_add_order_edit_items_table = __esm({
+           updater
+         }
+       });
+-      return /* @__PURE__ */ (0, import_jsx_runtime343.jsx)("div", { className: "flex size-full flex-col overflow-hidden", children: /* @__PURE__ */ (0, import_jsx_runtime343.jsx)(
++      if (isError) throw error;
++return /* @__PURE__ */ (0, import_jsx_runtime343.jsx)("div", { className: "flex size-full flex-col overflow-hidden", children: /* @__PURE__ */ (0, import_jsx_runtime343.jsx)(
+         _DataTable,
+         {
+           table,
+           columns,
+           pageSize: PAGE_SIZE19,
++          isLoading: isPending,
+           count,
+           filters,
+           pagination: true,
+@@ -163482,7 +163467,9 @@ var init_create_refund_form = __esm({
        );
        const payments = getPaymentsFromOrder(order);
        const payment = payments.find((p) => p.id === paymentId);
@@ -1177,7 +1377,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4395d5e9e39029aa6428e47645fbf19b
        const currency = (0, import_react238.useMemo)(
          () => currencies[order.currency_code.toUpperCase()],
          [order.currency_code]
-@@ -163505,16 +163486,21 @@ var init_create_refund_form = __esm({
+@@ -163505,16 +163492,21 @@ var init_create_refund_form = __esm({
        });
        (0, import_react238.useEffect)(() => {
          const pendingDifference = order.summary.pending_difference;
@@ -1202,7 +1402,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4395d5e9e39029aa6428e47645fbf19b
          await mutateAsync(
            {
              amount: data.amount.float,
-@@ -163556,7 +163542,7 @@ var init_create_refund_form = __esm({
+@@ -163556,7 +163548,7 @@ var init_create_refund_form = __esm({
                    },
                    children: [
                      /* @__PURE__ */ (0, import_jsx_runtime349.jsx)(import_ui236.Label, { className: "txt-compact-small mb-[-6px] font-sans font-medium", children: t5("orders.payment.selectPaymentToRefund") }),
@@ -1211,7 +1411,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4395d5e9e39029aa6428e47645fbf19b
                        import_ui236.Select.Value,
                        {
                          placeholder: t5("orders.payment.selectPaymentToRefund")
-@@ -163633,10 +163619,10 @@ var init_create_refund_form = __esm({
+@@ -163633,10 +163625,10 @@ var init_create_refund_form = __esm({
                            symbol: currency.symbol_native,
                            code: currency.code,
                            value: field.value.value,
@@ -1226,7 +1426,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4395d5e9e39029aa6428e47645fbf19b
                            autoFocus: true
                          }
                        ) }),
-@@ -163738,7 +163724,7 @@ var init_order_create_refund = __esm({
+@@ -163738,7 +163730,7 @@ var init_order_create_refund = __esm({
        const { plugins = [] } = usePlugins();
        const loyaltyPlugin = getLoyaltyPlugin(plugins);
        return /* @__PURE__ */ (0, import_jsx_runtime350.jsxs)(RouteDrawer, { children: [
@@ -1235,7 +1435,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4395d5e9e39029aa6428e47645fbf19b
          order && !loyaltyPlugin && /* @__PURE__ */ (0, import_jsx_runtime350.jsx)(CreateRefundForm, { order }),
          order && loyaltyPlugin && /* @__PURE__ */ (0, import_jsx_runtime350.jsx)(OrderBalanceSettlementForm, { order })
        ] });
-@@ -218597,14 +218583,6 @@ function getRouteMap({
+@@ -218597,14 +218589,6 @@ function getRouteMap({
                    path: "",
                    lazy: () => Promise.resolve().then(() => (init_product_list2(), product_list_exports)),
                    children: [
@@ -1250,7 +1450,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4395d5e9e39029aa6428e47645fbf19b
                      {
                        path: "export",
                        lazy: () => Promise.resolve().then(() => (init_product_export2(), product_export_exports))
-@@ -221160,9 +221138,10 @@ var init_dashboard_app = __esm({
+@@ -221160,9 +221144,10 @@ var init_dashboard_app = __esm({
        }
        /**
         * Returns widgets for a given base zone grouped by layout section.
@@ -1264,7 +1464,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4395d5e9e39029aa6428e47645fbf19b
         */
        getWidgetsForSections(route, sections) {
          const result = {};
-@@ -221170,7 +221149,9 @@ var init_dashboard_app = __esm({
+@@ -221170,7 +221155,9 @@ var init_dashboard_app = __esm({
            if (!zone.startsWith(route)) {
              continue;
            }
@@ -1275,7 +1475,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4395d5e9e39029aa6428e47645fbf19b
            const mainSection = sections.includes("main") ? "main" : sections[0];
            const section = suffix || mainSection;
            if (!result[section]) {
-@@ -221180,6 +221161,7 @@ var init_dashboard_app = __esm({
+@@ -221180,6 +221167,7 @@ var init_dashboard_app = __esm({
              const sourceId = ext.widgetId ?? `${zone}:${i}`;
              result[section].push({
                Component: ext.Component,
@@ -1659,7 +1859,7 @@ index c5e00d8ee8258b0a64c95975948c21402ec98ce5..0cca0c2a3fb2a179fdda9b216a090b02
      const entriesBySection2 = buildDisplayEntries(
        rawEntries,
 diff --git a/dist/order-create-claim-ZMJRSB2U.mjs b/dist/order-create-claim-ZMJRSB2U.mjs
-index 675d55c5face56e3a5e2362de690aad0f2109785..aeb5a3f6257174458b6e4013eb39680d2cb0a7fc 100644
+index 675d55c5face56e3a5e2362de690aad0f2109785..3a4b31d328e102f8779c07702d2c44db51d9327f 100644
 --- a/dist/order-create-claim-ZMJRSB2U.mjs
 +++ b/dist/order-create-claim-ZMJRSB2U.mjs
 @@ -187,6 +187,8 @@ var useClaimItemTableColumns = (currencyCode) => {
@@ -1688,12 +1888,30 @@ index 675d55c5face56e3a5e2362de690aad0f2109785..aeb5a3f6257174458b6e4013eb39680d
    const { return_reasons = [] } = useReturnReasons({ fields: "+label" });
    const formItem = form.watch(`inbound_items.${index}`);
    const showReturnReason = typeof formItem.reason_id === "string";
+@@ -543,7 +548,7 @@ function ClaimInboundItem({
+         /* @__PURE__ */ jsxs("div", { className: "flex flex-col", children: [
+           /* @__PURE__ */ jsxs("div", { children: [
+             /* @__PURE__ */ jsxs(Text, { className: "txt-small", as: "span", weight: "plus", children: [
+-              item.title,
++              item.product_title ?? item.title,
+               " "
+             ] }),
+             item.variant_sku && /* @__PURE__ */ jsxs("span", { children: [
+@@ -552,7 +557,7 @@ function ClaimInboundItem({
+               ")"
+             ] })
+           ] }),
+-          /* @__PURE__ */ jsx3(Text, { as: "div", className: "text-ui-fg-subtle txt-small", children: item.product_title })
++          /* @__PURE__ */ jsx3(Text, { as: "div", className: "text-ui-fg-subtle txt-small", children: item.variant_title ?? (item.title !== item.product_title ? item.title : null) })
+         ] })
+       ] }),
+       /* @__PURE__ */ jsxs("div", { className: "flex flex-1 justify-between", children: [
 @@ -568,7 +573,8 @@ function ClaimInboundItem({
                      Input,
                      {
                        ...field,
 -                      className: "bg-ui-bg-base txt-small w-[67px] rounded-lg",
-+                      "aria-label": [t("fields.quantity"), item.product_title, item.title].filter(Boolean).join(" "),
++                      "aria-label": [t("fields.quantity"), item.product_title, item.variant_title ?? item.title].filter(Boolean).join(" "),
 +                        className: "bg-ui-bg-base txt-small w-[67px] rounded-lg",
                        min: 1,
                        max: item.quantity,
@@ -1768,12 +1986,55 @@ index 675d55c5face56e3a5e2362de690aad0f2109785..aeb5a3f6257174458b6e4013eb39680d
                disabled: !isSelectable,
                checked: row.getIsSelected(),
                onCheckedChange: (value) => row.toggleSelected(!!value),
-@@ -968,14 +982,15 @@ function ClaimOutboundItem({
+@@ -880,7 +894,7 @@ var AddClaimOutboundItemsTable = ({
+     pageSize: PAGE_SIZE2,
+     prefix: PREFIX2
+   });
+-  const { variants = [], count } = useVariants({
++  const { variants = [], count, isPending, isError, error } = useVariants({
+     ...searchParams,
+     fields: "*inventory_items.inventory.location_levels,+inventory_quantity"
+   });
+@@ -901,12 +915,14 @@ var AddClaimOutboundItemsTable = ({
+       updater
+     }
+   });
+-  return /* @__PURE__ */ jsx5("div", { className: "flex size-full flex-col overflow-hidden", children: /* @__PURE__ */ jsx5(
++  if (isError) throw error;
++return /* @__PURE__ */ jsx5("div", { className: "flex size-full flex-col overflow-hidden", children: /* @__PURE__ */ jsx5(
+     _DataTable,
+     {
+       table,
+       columns,
+       pageSize: PAGE_SIZE2,
++          isLoading: isPending,
+       count,
+       filters,
+       pagination: true,
+@@ -943,7 +959,7 @@ function ClaimOutboundItem({
+       /* @__PURE__ */ jsxs2("div", { className: "flex flex-col", children: [
+         /* @__PURE__ */ jsxs2("div", { children: [
+           /* @__PURE__ */ jsxs2(Text2, { className: "txt-small", as: "span", weight: "plus", children: [
+-            previewItem.title,
++            previewItem.product_title ?? previewItem.title,
+             " "
+           ] }),
+           previewItem.variant_sku && /* @__PURE__ */ jsxs2("span", { children: [
+@@ -952,7 +968,7 @@ function ClaimOutboundItem({
+             ")"
+           ] })
+         ] }),
+-        /* @__PURE__ */ jsx6(Text2, { as: "div", className: "text-ui-fg-subtle txt-small", children: previewItem.subtitle })
++        /* @__PURE__ */ jsx6(Text2, { as: "div", className: "text-ui-fg-subtle txt-small", children: previewItem.variant_title ?? previewItem.subtitle })
+       ] })
+     ] }),
+     /* @__PURE__ */ jsxs2("div", { className: "flex flex-1 justify-between", children: [
+@@ -968,14 +984,15 @@ function ClaimOutboundItem({
                    Input2,
                    {
                      ...field,
 -                    className: "bg-ui-bg-base txt-small w-[67px] rounded-lg",
-+                    "aria-label": [t("fields.quantity"), previewItem.product_title, previewItem.title].filter(Boolean).join(" "),
++                    "aria-label": [t("fields.quantity"), previewItem.product_title, previewItem.variant_title ?? previewItem.title].filter(Boolean).join(" "),
 +                        className: "bg-ui-bg-base txt-small w-[67px] rounded-lg",
                      min: 1,
                      type: "number",
@@ -1786,7 +2047,7 @@ index 675d55c5face56e3a5e2362de690aad0f2109785..aeb5a3f6257174458b6e4013eb39680d
                          onUpdate({ quantity: payload });
                        }
                      }
-@@ -1203,9 +1218,9 @@ var ClaimOutboundSection = ({
+@@ -1203,9 +1220,9 @@ var ClaimOutboundSection = ({
      /* @__PURE__ */ jsxs3("div", { className: "mt-8 flex items-center justify-between", children: [
        /* @__PURE__ */ jsx7(Heading, { level: "h2", children: t("orders.returns.outbound") }),
        /* @__PURE__ */ jsxs3(StackedFocusModal, { id: "outbound-items", children: [
@@ -1798,15 +2059,15 @@ index 675d55c5face56e3a5e2362de690aad0f2109785..aeb5a3f6257174458b6e4013eb39680d
            /* @__PURE__ */ jsx7(
              AddClaimOutboundItemsTable,
              {
-@@ -1290,6 +1305,7 @@ var ClaimOutboundSection = ({
+@@ -1290,6 +1307,7 @@ var ClaimOutboundSection = ({
              return /* @__PURE__ */ jsx7(Form.Item, { children: /* @__PURE__ */ jsx7(Form.Control, { children: /* @__PURE__ */ jsx7(
                Combobox,
                {
-+                        "aria-label": t("orders.returns.outboundShipping"),
++                        "aria-label": t("orders.claims.outboundShipping"),
                  allowClear: true,
                  value: value ?? void 0,
                  onChange: (val) => {
-@@ -1708,13 +1724,14 @@ var ClaimCreateForm = ({
+@@ -1708,13 +1726,14 @@ var ClaimCreateForm = ({
    return /* @__PURE__ */ jsx8(RouteFocusModal.Form, { form, children: /* @__PURE__ */ jsxs4(KeyboundForm, { onSubmit: handleSubmit, className: "flex h-full flex-col", children: [
      /* @__PURE__ */ jsx8(RouteFocusModal.Header, {}),
      /* @__PURE__ */ jsx8(RouteFocusModal.Body, { className: "flex size-full justify-center overflow-y-auto", children: /* @__PURE__ */ jsxs4("div", { className: "mt-16 w-[720px] max-w-[100%] px-4 md:p-0", children: [
@@ -1824,7 +2085,7 @@ index 675d55c5face56e3a5e2362de690aad0f2109785..aeb5a3f6257174458b6e4013eb39680d
              /* @__PURE__ */ jsx8(
                AddClaimItemsTable,
                {
-@@ -1816,6 +1833,7 @@ var ClaimCreateForm = ({
+@@ -1816,6 +1835,7 @@ var ClaimCreateForm = ({
                  return /* @__PURE__ */ jsx8(Form.Item, { children: /* @__PURE__ */ jsx8(Form.Control, { children: /* @__PURE__ */ jsx8(
                    Combobox,
                    {
@@ -1832,7 +2093,7 @@ index 675d55c5face56e3a5e2362de690aad0f2109785..aeb5a3f6257174458b6e4013eb39680d
                      ...field,
                      value: value ?? void 0,
                      onChange: (v) => {
-@@ -1863,6 +1881,7 @@ var ClaimCreateForm = ({
+@@ -1863,6 +1883,7 @@ var ClaimCreateForm = ({
                  return /* @__PURE__ */ jsx8(Form.Item, { children: /* @__PURE__ */ jsx8(Form.Control, { children: /* @__PURE__ */ jsx8(
                    Combobox,
                    {
@@ -1840,7 +2101,7 @@ index 675d55c5face56e3a5e2362de690aad0f2109785..aeb5a3f6257174458b6e4013eb39680d
                      allowClear: true,
                      value: value ?? void 0,
                      onChange: (val) => {
-@@ -2059,7 +2078,7 @@ var ClaimCreateForm = ({
+@@ -2059,7 +2080,7 @@ var ClaimCreateForm = ({
                    Switch,
                    {
                      dir: "ltr",
@@ -1849,7 +2110,7 @@ index 675d55c5face56e3a5e2362de690aad0f2109785..aeb5a3f6257174458b6e4013eb39680d
                      checked: !!value,
                      onCheckedChange: async (checked) => {
                        onChange(checked);
-@@ -2105,7 +2124,7 @@ var ClaimCreateForm = ({
+@@ -2105,7 +2126,7 @@ var ClaimCreateForm = ({
                    Switch,
                    {
                      dir: "ltr",
@@ -1858,8 +2119,55 @@ index 675d55c5face56e3a5e2362de690aad0f2109785..aeb5a3f6257174458b6e4013eb39680d
                      checked: !!value,
                      onCheckedChange: onChange,
                      ...field
+@@ -2200,7 +2221,7 @@ var ClaimCreate = () => {
+     }
+     run();
+   }, [preview]);
+-  return /* @__PURE__ */ jsx9(RouteFocusModal, { children: claim && preview && order && /* @__PURE__ */ jsx9(
++  return /* @__PURE__ */ jsx9(RouteFocusModal, { children: claim && preview && order ? jsx9(
+     ClaimCreateForm,
+     {
+       order,
+@@ -2208,7 +2229,7 @@ var ClaimCreate = () => {
+       preview,
+       orderReturn
+     }
+-  ) });
++  ) : jsx9("div", { className: "sr-only", children: [jsx9(RouteFocusModal.Title, { children: t("orders.claims.create") }, "pending-title"), jsx9(RouteFocusModal.Description, { children: t("orders.claims.description", { defaultValue: "Record the claimed items and any return or replacement." }) }, "pending-description")] }) });
+ };
+ export {
+   ClaimCreate as Component
+diff --git a/dist/order-create-edit-2IL2AZSQ.mjs b/dist/order-create-edit-2IL2AZSQ.mjs
+index 1b9013f35869f9784a3a077772555825da6c243d..361547bf2c5542b8883337a91dbc896e2186fb47 100644
+--- a/dist/order-create-edit-2IL2AZSQ.mjs
++++ b/dist/order-create-edit-2IL2AZSQ.mjs
+@@ -238,7 +238,7 @@ var AddOrderEditItemsTable = ({
+     pageSize: PAGE_SIZE,
+     prefix: PREFIX
+   });
+-  const { variants = [], count } = useVariants({
++  const { variants = [], count, isPending, isError, error } = useVariants({
+     ...searchParams,
+     fields: "*inventory_items.inventory.location_levels,+inventory_quantity"
+   });
+@@ -259,12 +259,14 @@ var AddOrderEditItemsTable = ({
+       updater
+     }
+   });
+-  return /* @__PURE__ */ jsx2("div", { className: "flex size-full flex-col overflow-hidden", children: /* @__PURE__ */ jsx2(
++  if (isError) throw error;
++return /* @__PURE__ */ jsx2("div", { className: "flex size-full flex-col overflow-hidden", children: /* @__PURE__ */ jsx2(
+     _DataTable,
+     {
+       table,
+       columns,
+       pageSize: PAGE_SIZE,
++          isLoading: isPending,
+       count,
+       filters,
+       pagination: true,
 diff --git a/dist/order-create-exchange-QETUJ3ER.mjs b/dist/order-create-exchange-QETUJ3ER.mjs
-index abe2bee8da0c2dd579d012a67aed692c74a3fa82..be3b1bfd2a7276f41956a63fee132c6f30de3745 100644
+index abe2bee8da0c2dd579d012a67aed692c74a3fa82..ed9db0ceffd623aa496557059f564492f758c410 100644
 --- a/dist/order-create-exchange-QETUJ3ER.mjs
 +++ b/dist/order-create-exchange-QETUJ3ER.mjs
 @@ -217,6 +217,8 @@ var useExchangeItemTableColumns = (currencyCode) => {
@@ -1888,12 +2196,30 @@ index abe2bee8da0c2dd579d012a67aed692c74a3fa82..be3b1bfd2a7276f41956a63fee132c6f
    const { return_reasons = [] } = useReturnReasons({ fields: "+label" });
    const formItem = form.watch(`inbound_items.${index}`);
    const showReturnReason = typeof formItem.reason_id === "string";
+@@ -481,7 +486,7 @@ function ExchangeInboundItem({
+         /* @__PURE__ */ jsxs("div", { className: "flex flex-grow flex-col", children: [
+           /* @__PURE__ */ jsxs("div", { children: [
+             /* @__PURE__ */ jsxs(Text, { className: "txt-small", as: "span", weight: "plus", children: [
+-              item.title,
++              item.product_title ?? item.title,
+               " "
+             ] }),
+             item.variant_sku && /* @__PURE__ */ jsxs("span", { children: [
+@@ -490,7 +495,7 @@ function ExchangeInboundItem({
+               ")"
+             ] })
+           ] }),
+-          /* @__PURE__ */ jsx3(Text, { as: "div", className: "text-ui-fg-subtle txt-small", children: item.product_title })
++          /* @__PURE__ */ jsx3(Text, { as: "div", className: "text-ui-fg-subtle txt-small", children: item.variant_title ?? (item.title !== item.product_title ? item.title : null) })
+         ] }),
+         appliedPromoCodes.length > 0 && /* @__PURE__ */ jsx3("div", { className: "flex flex-shrink", children: /* @__PURE__ */ jsx3(
+           Tooltip,
 @@ -513,7 +518,8 @@ function ExchangeInboundItem({
                      Input,
                      {
                        ...field,
 -                      className: "bg-ui-bg-base txt-small w-[67px] rounded-lg",
-+                      "aria-label": [t("fields.quantity"), item.product_title, item.title].filter(Boolean).join(" "),
++                      "aria-label": [t("fields.quantity"), item.product_title, item.variant_title ?? item.title].filter(Boolean).join(" "),
 +                        className: "bg-ui-bg-base txt-small w-[67px] rounded-lg",
                        min: 1,
                        max: item.quantity,
@@ -1996,12 +2322,55 @@ index abe2bee8da0c2dd579d012a67aed692c74a3fa82..be3b1bfd2a7276f41956a63fee132c6f
                disabled: !isSelectable,
                checked: row.getIsSelected(),
                onCheckedChange: (value) => row.toggleSelected(!!value),
-@@ -1287,14 +1303,15 @@ function ExchangeOutboundItem({
+@@ -1189,7 +1205,7 @@ var AddExchangeOutboundItemsTable = ({
+     pageSize: PAGE_SIZE2,
+     prefix: PREFIX2
+   });
+-  const { variants = [], count } = useVariants({
++  const { variants = [], count, isPending, isError, error } = useVariants({
+     ...searchParams,
+     fields: "*inventory_items.inventory.location_levels,+inventory_quantity"
+   });
+@@ -1210,12 +1226,14 @@ var AddExchangeOutboundItemsTable = ({
+       updater
+     }
+   });
+-  return /* @__PURE__ */ jsx6("div", { className: "flex size-full flex-col overflow-hidden", children: /* @__PURE__ */ jsx6(
++  if (isError) throw error;
++return /* @__PURE__ */ jsx6("div", { className: "flex size-full flex-col overflow-hidden", children: /* @__PURE__ */ jsx6(
+     _DataTable,
+     {
+       table,
+       columns,
+       pageSize: PAGE_SIZE2,
++          isLoading: isPending,
+       count,
+       filters,
+       pagination: true,
+@@ -1255,7 +1273,7 @@ function ExchangeOutboundItem({
+       /* @__PURE__ */ jsxs3("div", { className: "flex flex-grow flex-col", children: [
+         /* @__PURE__ */ jsxs3("div", { children: [
+           /* @__PURE__ */ jsxs3(Text3, { className: "txt-small", as: "span", weight: "plus", children: [
+-            previewItem.title,
++            previewItem.product_title ?? previewItem.title,
+             " "
+           ] }),
+           previewItem.variant_sku && /* @__PURE__ */ jsxs3("span", { children: [
+@@ -1264,7 +1282,7 @@ function ExchangeOutboundItem({
+             ")"
+           ] })
+         ] }),
+-        /* @__PURE__ */ jsx7(Text3, { as: "div", className: "text-ui-fg-subtle txt-small", children: previewItem.subtitle })
++        /* @__PURE__ */ jsx7(Text3, { as: "div", className: "text-ui-fg-subtle txt-small", children: previewItem.variant_title ?? previewItem.subtitle })
+       ] }),
+       appliedPromoCodes.length > 0 && /* @__PURE__ */ jsx7("div", { className: "flex flex-shrink", children: /* @__PURE__ */ jsx7(
+         Tooltip2,
+@@ -1287,14 +1305,15 @@ function ExchangeOutboundItem({
                    Input2,
                    {
                      ...field,
 -                    className: "bg-ui-bg-base txt-small w-[67px] rounded-lg",
-+                    "aria-label": [t("fields.quantity"), previewItem.product_title, previewItem.title].filter(Boolean).join(" "),
++                    "aria-label": [t("fields.quantity"), previewItem.product_title, previewItem.variant_title ?? previewItem.title].filter(Boolean).join(" "),
 +                        className: "bg-ui-bg-base txt-small w-[67px] rounded-lg",
                      min: 1,
                      type: "number",
@@ -2014,7 +2383,7 @@ index abe2bee8da0c2dd579d012a67aed692c74a3fa82..be3b1bfd2a7276f41956a63fee132c6f
                          onUpdate({ quantity: payload });
                        }
                      }
-@@ -1529,9 +1546,9 @@ var ExchangeOutboundSection = ({
+@@ -1529,9 +1548,9 @@ var ExchangeOutboundSection = ({
      /* @__PURE__ */ jsxs4("div", { className: "mt-8 flex items-center justify-between", children: [
        /* @__PURE__ */ jsx8(Heading2, { level: "h2", children: t("orders.returns.outbound") }),
        /* @__PURE__ */ jsxs4(StackedFocusModal, { id: "outbound-items", children: [
@@ -2026,7 +2395,7 @@ index abe2bee8da0c2dd579d012a67aed692c74a3fa82..be3b1bfd2a7276f41956a63fee132c6f
            /* @__PURE__ */ jsx8(
              AddExchangeOutboundItemsTable,
              {
-@@ -1616,6 +1633,7 @@ var ExchangeOutboundSection = ({
+@@ -1616,6 +1635,7 @@ var ExchangeOutboundSection = ({
              return /* @__PURE__ */ jsx8(Form.Item, { children: /* @__PURE__ */ jsx8(Form.Control, { children: /* @__PURE__ */ jsx8(
                Combobox,
                {
@@ -2034,7 +2403,7 @@ index abe2bee8da0c2dd579d012a67aed692c74a3fa82..be3b1bfd2a7276f41956a63fee132c6f
                  allowClear: true,
                  noResultsPlaceholder: /* @__PURE__ */ jsx8(OutboundShippingPlaceholder, {}),
                  value: value ?? void 0,
-@@ -1828,7 +1846,8 @@ var ExchangeCreateForm = ({
+@@ -1828,7 +1848,8 @@ var ExchangeCreateForm = ({
    return /* @__PURE__ */ jsx9(RouteFocusModal.Form, { form, children: /* @__PURE__ */ jsxs5(KeyboundForm, { onSubmit: handleSubmit, className: "flex h-full flex-col", children: [
      /* @__PURE__ */ jsx9(RouteFocusModal.Header, {}),
      /* @__PURE__ */ jsx9(RouteFocusModal.Body, { className: "flex size-full justify-center overflow-y-auto", children: /* @__PURE__ */ jsxs5("div", { className: "mt-16 w-[720px] max-w-[100%] px-4 md:p-0", children: [
@@ -2044,7 +2413,7 @@ index abe2bee8da0c2dd579d012a67aed692c74a3fa82..be3b1bfd2a7276f41956a63fee132c6f
        /* @__PURE__ */ jsx9(
          ExchangeInboundSection,
          {
-@@ -1878,7 +1897,8 @@ var ExchangeCreateForm = ({
+@@ -1878,7 +1899,8 @@ var ExchangeCreateForm = ({
              !isInboundShippingPriceEdit && /* @__PURE__ */ jsx9(
                IconButton2,
                {
@@ -2054,7 +2423,7 @@ index abe2bee8da0c2dd579d012a67aed692c74a3fa82..be3b1bfd2a7276f41956a63fee132c6f
                  variant: "transparent",
                  className: "text-ui-fg-muted",
                  disabled: !inboundPreviewItems?.length || !inboundShippingOptionId,
-@@ -1889,6 +1909,7 @@ var ExchangeCreateForm = ({
+@@ -1889,6 +1911,7 @@ var ExchangeCreateForm = ({
                CurrencyInput,
                {
                  id: "js-inbound-shipping-input",
@@ -2062,25 +2431,25 @@ index abe2bee8da0c2dd579d012a67aed692c74a3fa82..be3b1bfd2a7276f41956a63fee132c6f
                  onBlur: () => {
                    let actionId;
                    preview.shipping_methods.forEach((s) => {
-@@ -1934,7 +1955,8 @@ var ExchangeCreateForm = ({
+@@ -1934,7 +1957,8 @@ var ExchangeCreateForm = ({
              !isOutboundShippingPriceEdit && /* @__PURE__ */ jsx9(
                IconButton2,
                {
 -                onClick: () => setIsOutboundShippingPriceEdit(true),
-+                "aria-label": t("actions.edit") + " " + t("orders.returns.outboundShipping"),
++                "aria-label": t("actions.edit") + " " + t("orders.exchanges.outboundShipping"),
 +                  onClick: () => setIsOutboundShippingPriceEdit(true),
                  variant: "transparent",
                  className: "text-ui-fg-muted",
                  disabled: !outboundPreviewItems?.length || !outboundShippingOptionId,
-@@ -1945,6 +1967,7 @@ var ExchangeCreateForm = ({
+@@ -1945,6 +1969,7 @@ var ExchangeCreateForm = ({
                CurrencyInput,
                {
                  id: "js-outbound-shipping-input",
-+                    "aria-label": t("orders.returns.outboundShipping"),
++                    "aria-label": t("orders.exchanges.outboundShipping"),
                  onBlur: () => {
                    let actionId;
                    preview.shipping_methods.forEach((s) => {
-@@ -2004,7 +2027,7 @@ var ExchangeCreateForm = ({
+@@ -2004,7 +2029,7 @@ var ExchangeCreateForm = ({
                    Switch,
                    {
                      dir: "ltr",
@@ -2089,7 +2458,7 @@ index abe2bee8da0c2dd579d012a67aed692c74a3fa82..be3b1bfd2a7276f41956a63fee132c6f
                      checked: !!value,
                      onCheckedChange: async (checked) => {
                        onChange(checked);
-@@ -2050,7 +2073,7 @@ var ExchangeCreateForm = ({
+@@ -2050,7 +2075,7 @@ var ExchangeCreateForm = ({
                    Switch,
                    {
                      dir: "ltr",
@@ -2098,21 +2467,21 @@ index abe2bee8da0c2dd579d012a67aed692c74a3fa82..be3b1bfd2a7276f41956a63fee132c6f
                      checked: !!value,
                      onCheckedChange: onChange,
                      ...field
-@@ -2144,7 +2167,7 @@ var ExchangeCreate = () => {
+@@ -2144,7 +2169,7 @@ var ExchangeCreate = () => {
      }
      run();
    }, [preview]);
 -  return /* @__PURE__ */ jsx10(RouteFocusModal, { children: exchange && preview && order && /* @__PURE__ */ jsx10(
-+  return /* @__PURE__ */ jsx10(RouteFocusModal, { children: exchange && preview && order ? /* @__PURE__ */ jsx10(
++  return /* @__PURE__ */ jsx10(RouteFocusModal, { children: exchange && preview && order ? jsx10(
      ExchangeCreateForm,
      {
        order,
-@@ -2152,7 +2175,7 @@ var ExchangeCreate = () => {
+@@ -2152,7 +2177,7 @@ var ExchangeCreate = () => {
        preview,
        orderReturn
      }
 -  ) });
-+  ) : /* @__PURE__ */ jsx10(RouteFocusModal.Title, { className: "sr-only", children: t("orders.exchanges.create") }) });
++  ) : jsx10("div", { className: "sr-only", children: [jsx10(RouteFocusModal.Title, { children: t("orders.exchanges.create") }, "pending-title"), jsx10(RouteFocusModal.Description, { children: t("orders.exchanges.description", { defaultValue: "Choose the inbound and replacement items for this exchange." }) }, "pending-description")] }) });
  };
  export {
    ExchangeCreate as Component
@@ -2248,7 +2617,7 @@ index 194742b565cd47c3b1d7602f60e377dd0733c4e5..9449fb8be47affdb08fff38f0a77a652
      order && loyaltyPlugin && /* @__PURE__ */ jsx3(OrderBalanceSettlementForm, { order })
    ] });
 diff --git a/dist/order-create-return-CZVXDD6A.mjs b/dist/order-create-return-CZVXDD6A.mjs
-index ad4511598af5015b804cd470f3166fbf8ec97fa4..c82e6fb13891f49ad30ee2a0586d67138eedc1bd 100644
+index ad4511598af5015b804cd470f3166fbf8ec97fa4..1492090a4ba008ad1ebd90674d8fe35848ca0743 100644
 --- a/dist/order-create-return-CZVXDD6A.mjs
 +++ b/dist/order-create-return-CZVXDD6A.mjs
 @@ -142,6 +142,8 @@ var useReturnItemTableColumns = (currencyCode) => {
@@ -2277,12 +2646,30 @@ index ad4511598af5015b804cd470f3166fbf8ec97fa4..c82e6fb13891f49ad30ee2a0586d6713
    const { return_reasons = [] } = useReturnReasons({ fields: "+label" });
    const formItem = form.watch(`items.${index}`);
    const showReturnReason = typeof formItem.reason_id === "string";
+@@ -501,7 +506,7 @@ function ReturnItem({
+         /* @__PURE__ */ jsxs("div", { className: "flex flex-col", children: [
+           /* @__PURE__ */ jsxs("div", { children: [
+             /* @__PURE__ */ jsxs(Text, { className: "txt-small", as: "span", weight: "plus", children: [
+-              item.title,
++              item.product_title ?? item.title,
+               " "
+             ] }),
+             item.variant_sku && /* @__PURE__ */ jsxs("span", { children: [
+@@ -510,7 +515,7 @@ function ReturnItem({
+               ")"
+             ] })
+           ] }),
+-          /* @__PURE__ */ jsx3(Text, { as: "div", className: "text-ui-fg-subtle txt-small", children: item.product_title })
++          /* @__PURE__ */ jsx3(Text, { as: "div", className: "text-ui-fg-subtle txt-small", children: item.variant_title ?? (item.title !== item.product_title ? item.title : null) })
+         ] })
+       ] }),
+       /* @__PURE__ */ jsxs("div", { className: "flex flex-1 justify-between", children: [
 @@ -525,7 +530,8 @@ function ReturnItem({
                    /* @__PURE__ */ jsx3(Form.Control, { children: /* @__PURE__ */ jsx3(
                      Input,
                      {
 -                      className: "bg-ui-bg-base txt-small w-[67px] rounded-lg",
-+                      "aria-label": [t("fields.quantity"), item.product_title, item.title].filter(Boolean).join(" "),
++                      "aria-label": [t("fields.quantity"), item.product_title, item.variant_title ?? item.title].filter(Boolean).join(" "),
 +                        className: "bg-ui-bg-base txt-small w-[67px] rounded-lg",
                        min: 1,
                        max: item.quantity,
@@ -2381,6 +2768,23 @@ index ad4511598af5015b804cd470f3166fbf8ec97fa4..c82e6fb13891f49ad30ee2a0586d6713
                          checked: !!value,
                          onCheckedChange: onChange,
                          ...field
+@@ -1292,14 +1305,14 @@ var ReturnCreate = () => {
+     }
+     run();
+   }, [preview]);
+-  return /* @__PURE__ */ jsx5(RouteFocusModal, { children: activeReturn && preview && order && /* @__PURE__ */ jsx5(
++  return /* @__PURE__ */ jsx5(RouteFocusModal, { children: activeReturn && preview && order ? jsx5(
+     ReturnCreateForm,
+     {
+       order,
+       activeReturn,
+       preview
+     }
+-  ) });
++  ) : jsx5("div", { className: "sr-only", children: [jsx5(RouteFocusModal.Title, { children: t("orders.returns.create") }, "pending-title"), jsx5(RouteFocusModal.Description, { children: t("orders.returns.description", { defaultValue: "Choose the items and destination for this return." }) }, "pending-description")] }) });
+ };
+ export {
+   ReturnCreate as Component
 diff --git a/dist/order-create-shipment-6S74GD6M.mjs b/dist/order-create-shipment-6S74GD6M.mjs
 index 5207400e3498c0d8c75f3eb1d02db6dc4ac25184..7ffa29e5daefd639e36cdcf24edcf78414533d77 100644
 --- a/dist/order-create-shipment-6S74GD6M.mjs
@@ -3162,6 +3566,25 @@ index a2b3dc5ddea120bab6c99eb40b3d0c3c068285de..8284a7ad41530ba115e8b5b6cbf4a795
                      {
                        path: "export",
                        lazy: () =>
+diff --git a/src/routes/orders/order-create-claim/claim-create.tsx b/src/routes/orders/order-create-claim/claim-create.tsx
+index 0744578b617963ef156fdcb7bd1beaed46de07d5..0e999aed5d2a6df0c16e4e2340bab23f6f249925 100644
+--- a/src/routes/orders/order-create-claim/claim-create.tsx
++++ b/src/routes/orders/order-create-claim/claim-create.tsx
+@@ -73,6 +73,14 @@ export const ClaimCreate = () => {
+ 
+   return (
+     <RouteFocusModal>
++      {(!claim || !preview || !order) && (
++        <div className="sr-only">
++          <RouteFocusModal.Title>{t("orders.claims.create")}</RouteFocusModal.Title>
++          <RouteFocusModal.Description>
++            {t("orders.claims.description", { defaultValue: "Record the claimed items and any return or replacement." })}
++          </RouteFocusModal.Description>
++        </div>
++      )}
+       {claim && preview && order && (
+         <ClaimCreateForm
+           order={order}
 diff --git a/src/routes/orders/order-create-claim/components/add-claim-items-table/use-claim-item-table-columns.tsx b/src/routes/orders/order-create-claim/components/add-claim-items-table/use-claim-item-table-columns.tsx
 index 5f9a5afbab8e4c9021fd8b5308d79c36500a0523..4183339a5b80a6d3358f551217391e87ec676175 100644
 --- a/src/routes/orders/order-create-claim/components/add-claim-items-table/use-claim-item-table-columns.tsx
@@ -3188,6 +3611,35 @@ index 5f9a5afbab8e4c9021fd8b5308d79c36500a0523..4183339a5b80a6d3358f551217391e87
                disabled={!isSelectable}
                checked={row.getIsSelected()}
                onCheckedChange={(value) => row.toggleSelected(!!value)}
+diff --git a/src/routes/orders/order-create-claim/components/add-claim-outbound-items-table/add-claim-outbound-items-table.tsx b/src/routes/orders/order-create-claim/components/add-claim-outbound-items-table/add-claim-outbound-items-table.tsx
+index f48fbe87606657e6dabbdf0ac3ad8de2bcdee6eb..7aaaf1c77364d76479fbf2bc4142d0a0fd100d60 100644
+--- a/src/routes/orders/order-create-claim/components/add-claim-outbound-items-table/add-claim-outbound-items-table.tsx
++++ b/src/routes/orders/order-create-claim/components/add-claim-outbound-items-table/add-claim-outbound-items-table.tsx
+@@ -45,7 +45,7 @@ export const AddClaimOutboundItemsTable = ({
+     prefix: PREFIX,
+   })
+ 
+-  const { variants = [], count } = useVariants({
++  const { variants = [], count, isPending, isError, error } = useVariants({
+     ...searchParams,
+     fields: "*inventory_items.inventory.location_levels,+inventory_quantity",
+   })
+@@ -70,12 +70,15 @@ export const AddClaimOutboundItemsTable = ({
+     },
+   })
+ 
++  if (isError) throw error
++
+   return (
+     <div className="flex size-full flex-col overflow-hidden">
+       <_DataTable
+         table={table}
+         columns={columns}
+         pageSize={PAGE_SIZE}
++        isLoading={isPending}
+         count={count}
+         filters={filters}
+         pagination
 diff --git a/src/routes/orders/order-create-claim/components/add-claim-outbound-items-table/use-claim-outbound-item-table-columns.tsx b/src/routes/orders/order-create-claim/components/add-claim-outbound-items-table/use-claim-outbound-item-table-columns.tsx
 index 9e7e51f3a2ca292d384311fa411b55b002734888..06e85c91a2a8d5d7c62450deac80abfc3bede0eb 100644
 --- a/src/routes/orders/order-create-claim/components/add-claim-outbound-items-table/use-claim-outbound-item-table-columns.tsx
@@ -3290,7 +3742,7 @@ index 87f461501072c54a3f6dad671290e3a71badaaf3..72accafa19441a40ffa4614026d2e285
                              onCheckedChange={onChange}
                              {...field}
 diff --git a/src/routes/orders/order-create-claim/components/claim-create-form/claim-inbound-item.tsx b/src/routes/orders/order-create-claim/components/claim-create-form/claim-inbound-item.tsx
-index caffd1a36a3a4dd28c8e212145a972112ebe5776..0978b380c6125085458a3a3053a8965b712373a2 100644
+index caffd1a36a3a4dd28c8e212145a972112ebe5776..c705330f484a9c9c703f6b86d85412c85e941d3f 100644
 --- a/src/routes/orders/order-create-claim/components/claim-create-form/claim-inbound-item.tsx
 +++ b/src/routes/orders/order-create-claim/components/claim-create-form/claim-inbound-item.tsx
 @@ -38,6 +38,9 @@ function ClaimInboundItem({
@@ -3303,11 +3755,27 @@ index caffd1a36a3a4dd28c8e212145a972112ebe5776..0978b380c6125085458a3a3053a8965b
    const { return_reasons = [] } = useReturnReasons({ fields: "+label" })
  
    const formItem = form.watch(`inbound_items.${index}`)
+@@ -53,13 +56,13 @@ function ClaimInboundItem({
+           <div className="flex flex-col">
+             <div>
+               <Text className="txt-small" as="span" weight="plus">
+-                {item.title}{" "}
++                {item.product_title ?? item.title}{" "}
+               </Text>
+ 
+               {item.variant_sku && <span>({item.variant_sku})</span>}
+             </div>
+             <Text as="div" className="text-ui-fg-subtle txt-small">
+-              {item.product_title}
++              {item.variant_title ?? (item.title !== item.product_title ? item.title : null)}
+             </Text>
+           </div>
+         </div>
 @@ -74,6 +77,7 @@ function ClaimInboundItem({
                    <Form.Item>
                      <Form.Control>
                        <Input
-+                        aria-label={[t("fields.quantity"), item.product_title, item.title].filter(Boolean).join(" ")}
++                        aria-label={[t("fields.quantity"), item.product_title, item.variant_title ?? item.title].filter(Boolean).join(" ")}
                          {...field}
                          className="bg-ui-bg-base txt-small w-[67px] rounded-lg"
                          min={1}
@@ -3358,14 +3826,32 @@ index caffd1a36a3a4dd28c8e212145a972112ebe5776..0978b380c6125085458a3a3053a8965b
                  className="flex-shrink"
                  variant="transparent"
 diff --git a/src/routes/orders/order-create-claim/components/claim-create-form/claim-outbound-item.tsx b/src/routes/orders/order-create-claim/components/claim-create-form/claim-outbound-item.tsx
-index 7a1e2e64e792c3edb0271d0a9dce358831ddf784..5b795897e46fa4ca3750695ad6033dcf1725cbe7 100644
+index 7a1e2e64e792c3edb0271d0a9dce358831ddf784..c4efa8207e0f96bebc04b0a4cabc68437e87a40b 100644
 --- a/src/routes/orders/order-create-claim/components/claim-create-form/claim-outbound-item.tsx
 +++ b/src/routes/orders/order-create-claim/components/claim-create-form/claim-outbound-item.tsx
+@@ -41,7 +41,7 @@ function ClaimOutboundItem({
+           <div className="flex flex-col">
+             <div>
+               <Text className="txt-small" as="span" weight="plus">
+-                {previewItem.title}{" "}
++                {previewItem.product_title ?? previewItem.title}{" "}
+               </Text>
+ 
+               {previewItem.variant_sku && (
+@@ -49,7 +49,7 @@ function ClaimOutboundItem({
+               )}
+             </div>
+             <Text as="div" className="text-ui-fg-subtle txt-small">
+-              {previewItem.subtitle}
++              {previewItem.variant_title ?? previewItem.subtitle}
+             </Text>
+           </div>
+         </div>
 @@ -64,6 +64,7 @@ function ClaimOutboundItem({
                    <Form.Item>
                      <Form.Control>
                        <Input
-+                        aria-label={[t("fields.quantity"), previewItem.product_title, previewItem.title].filter(Boolean).join(" ")}
++                        aria-label={[t("fields.quantity"), previewItem.product_title, previewItem.variant_title ?? previewItem.title].filter(Boolean).join(" ")}
                          {...field}
                          className="bg-ui-bg-base txt-small w-[67px] rounded-lg"
                          min={1}
@@ -3379,7 +3865,7 @@ index 7a1e2e64e792c3edb0271d0a9dce358831ddf784..5b795897e46fa4ca3750695ad6033dcf
                            }
                          }}
 diff --git a/src/routes/orders/order-create-claim/components/claim-create-form/claim-outbound-section.tsx b/src/routes/orders/order-create-claim/components/claim-create-form/claim-outbound-section.tsx
-index efb56b605f3d51abc541e7d76a983c5e1888d63d..bc7fe4ac928377b15429ffab0d8ecc21e1d43131 100644
+index efb56b605f3d51abc541e7d76a983c5e1888d63d..ba717d46a7ceeb1da3569fd9323bfac9a9d8cd06 100644
 --- a/src/routes/orders/order-create-claim/components/claim-create-form/claim-outbound-section.tsx
 +++ b/src/routes/orders/order-create-claim/components/claim-create-form/claim-outbound-section.tsx
 @@ -299,12 +299,19 @@ export const ClaimOutboundSection = ({
@@ -3410,10 +3896,39 @@ index efb56b605f3d51abc541e7d76a983c5e1888d63d..bc7fe4ac928377b15429ffab0d8ecc21
                    <Form.Item>
                      <Form.Control>
 -                      <Combobox
-+                      <Combobox aria-label={t("orders.returns.outboundShipping")}
++                      <Combobox aria-label={t("orders.claims.outboundShipping")}
                          allowClear
                          value={value ?? undefined}
                          onChange={(val) => {
+diff --git a/src/routes/orders/order-create-edit/components/add-order-edit-items-table/add-order-edit-items-table.tsx b/src/routes/orders/order-create-edit/components/add-order-edit-items-table/add-order-edit-items-table.tsx
+index b67e6eb1d7f7797561847e617166eb8bc389724a..e68c002d3861e7d7033b1fe40a728010cb16c818 100644
+--- a/src/routes/orders/order-create-edit/components/add-order-edit-items-table/add-order-edit-items-table.tsx
++++ b/src/routes/orders/order-create-edit/components/add-order-edit-items-table/add-order-edit-items-table.tsx
+@@ -38,7 +38,7 @@ export const AddOrderEditItemsTable = ({
+     prefix: PREFIX,
+   })
+ 
+-  const { variants = [], count } = useVariants({
++  const { variants = [], count, isPending, isError, error } = useVariants({
+     ...searchParams,
+     fields: "*inventory_items.inventory.location_levels,+inventory_quantity",
+   })
+@@ -63,12 +63,15 @@ export const AddOrderEditItemsTable = ({
+     },
+   })
+ 
++  if (isError) throw error
++
+   return (
+     <div className="flex size-full flex-col overflow-hidden">
+       <_DataTable
+         table={table}
+         columns={columns}
+         pageSize={PAGE_SIZE}
++        isLoading={isPending}
+         count={count}
+         filters={filters}
+         pagination
 diff --git a/src/routes/orders/order-create-exchange/components/add-exchange-inbound-items-table/use-exchange-item-table-columns.tsx b/src/routes/orders/order-create-exchange/components/add-exchange-inbound-items-table/use-exchange-item-table-columns.tsx
 index de289ab39078d313eb5ee141d6f7f7564aefe11b..e8826bea26aaf675ec5a0213e903f6a7af5c11b0 100644
 --- a/src/routes/orders/order-create-exchange/components/add-exchange-inbound-items-table/use-exchange-item-table-columns.tsx
@@ -3440,6 +3955,35 @@ index de289ab39078d313eb5ee141d6f7f7564aefe11b..e8826bea26aaf675ec5a0213e903f6a7
                disabled={!isSelectable}
                checked={row.getIsSelected()}
                onCheckedChange={(value) => row.toggleSelected(!!value)}
+diff --git a/src/routes/orders/order-create-exchange/components/add-exchange-outbound-items-table/add-exchange-outbound-items-table.tsx b/src/routes/orders/order-create-exchange/components/add-exchange-outbound-items-table/add-exchange-outbound-items-table.tsx
+index 20dd35d8bac1f6a9c61c8cf84849b29af5d83336..8782dfb545e65381434c86b21f3a38b960d74ebc 100644
+--- a/src/routes/orders/order-create-exchange/components/add-exchange-outbound-items-table/add-exchange-outbound-items-table.tsx
++++ b/src/routes/orders/order-create-exchange/components/add-exchange-outbound-items-table/add-exchange-outbound-items-table.tsx
+@@ -45,7 +45,7 @@ export const AddExchangeOutboundItemsTable = ({
+     prefix: PREFIX,
+   })
+ 
+-  const { variants = [], count } = useVariants({
++  const { variants = [], count, isPending, isError, error } = useVariants({
+     ...searchParams,
+     fields: "*inventory_items.inventory.location_levels,+inventory_quantity",
+   })
+@@ -70,12 +70,15 @@ export const AddExchangeOutboundItemsTable = ({
+     },
+   })
+ 
++  if (isError) throw error
++
+   return (
+     <div className="flex size-full flex-col overflow-hidden">
+       <_DataTable
+         table={table}
+         columns={columns}
+         pageSize={PAGE_SIZE}
++        isLoading={isPending}
+         count={count}
+         filters={filters}
+         pagination
 diff --git a/src/routes/orders/order-create-exchange/components/add-exchange-outbound-items-table/use-exchange-outbound-item-table-columns.tsx b/src/routes/orders/order-create-exchange/components/add-exchange-outbound-items-table/use-exchange-outbound-item-table-columns.tsx
 index 466a118ee79f2bf14a59f0d2afe467b91c94b7a5..a3a472e1e0a4c7a935ce8c9221e1f20359047bb9 100644
 --- a/src/routes/orders/order-create-exchange/components/add-exchange-outbound-items-table/use-exchange-outbound-item-table-columns.tsx
@@ -3467,7 +4011,7 @@ index 466a118ee79f2bf14a59f0d2afe467b91c94b7a5..a3a472e1e0a4c7a935ce8c9221e1f203
                checked={row.getIsSelected()}
                onCheckedChange={(value) => row.toggleSelected(!!value)}
 diff --git a/src/routes/orders/order-create-exchange/components/exchange-create-form/exchange-create-form.tsx b/src/routes/orders/order-create-exchange/components/exchange-create-form/exchange-create-form.tsx
-index 8c451963df4da3b58482065b4ccb341c352e783b..d73e34fa6cac302101e8d414d7447921bda55f55 100644
+index 8c451963df4da3b58482065b4ccb341c352e783b..156c83f5c4dc772f49b0faeebd2a2637381dea5b 100644
 --- a/src/routes/orders/order-create-exchange/components/exchange-create-form/exchange-create-form.tsx
 +++ b/src/routes/orders/order-create-exchange/components/exchange-create-form/exchange-create-form.tsx
 @@ -314,7 +314,12 @@ export const ExchangeCreateForm = ({
@@ -3504,7 +4048,7 @@ index 8c451963df4da3b58482065b4ccb341c352e783b..d73e34fa6cac302101e8d414d7447921
                  <span className="txt-small text-ui-fg-subtle flex items-center">
                    {!isOutboundShippingPriceEdit && (
                      <IconButton
-+                      aria-label={t("actions.edit") + " " + t("orders.returns.outboundShipping")}
++                      aria-label={t("actions.edit") + " " + t("orders.exchanges.outboundShipping")}
                        onClick={() => setIsOutboundShippingPriceEdit(true)}
                        variant="transparent"
                        className="text-ui-fg-muted"
@@ -3512,7 +4056,7 @@ index 8c451963df4da3b58482065b4ccb341c352e783b..d73e34fa6cac302101e8d414d7447921
                    {isOutboundShippingPriceEdit ? (
                      <CurrencyInput
                        id="js-outbound-shipping-input"
-+                      aria-label={t("orders.returns.outboundShipping")}
++                      aria-label={t("orders.exchanges.outboundShipping")}
                        onBlur={() => {
                          let actionId
  
@@ -3535,7 +4079,7 @@ index 8c451963df4da3b58482065b4ccb341c352e783b..d73e34fa6cac302101e8d414d7447921
                              onCheckedChange={onChange}
                              {...field}
 diff --git a/src/routes/orders/order-create-exchange/components/exchange-create-form/exchange-inbound-item.tsx b/src/routes/orders/order-create-exchange/components/exchange-create-form/exchange-inbound-item.tsx
-index 7ec3ba6c2f8ee6851f594d1e1bf1aaa7960c4af0..56b20b24c966a51d83d4349c5f258a4c19fb7187 100644
+index 7ec3ba6c2f8ee6851f594d1e1bf1aaa7960c4af0..dfbcb3039a8ad00c3d379dce7839754b1b977026 100644
 --- a/src/routes/orders/order-create-exchange/components/exchange-create-form/exchange-inbound-item.tsx
 +++ b/src/routes/orders/order-create-exchange/components/exchange-create-form/exchange-inbound-item.tsx
 @@ -46,6 +46,9 @@ function ExchangeInboundItem({
@@ -3548,11 +4092,27 @@ index 7ec3ba6c2f8ee6851f594d1e1bf1aaa7960c4af0..56b20b24c966a51d83d4349c5f258a4c
    const { return_reasons = [] } = useReturnReasons({ fields: "+label" })
  
    const formItem = form.watch(`inbound_items.${index}`)
+@@ -65,13 +68,13 @@ function ExchangeInboundItem({
+           <div className="flex flex-grow flex-col">
+             <div>
+               <Text className="txt-small" as="span" weight="plus">
+-                {item.title}{" "}
++                {item.product_title ?? item.title}{" "}
+               </Text>
+ 
+               {item.variant_sku && <span>({item.variant_sku})</span>}
+             </div>
+             <Text as="div" className="text-ui-fg-subtle txt-small">
+-              {item.product_title}
++              {item.variant_title ?? (item.title !== item.product_title ? item.title : null)}
+             </Text>
+           </div>
+           {appliedPromoCodes.length > 0 && (
 @@ -101,6 +104,7 @@ function ExchangeInboundItem({
                    <Form.Item>
                      <Form.Control>
                        <Input
-+                        aria-label={[t("fields.quantity"), item.product_title, item.title].filter(Boolean).join(" ")}
++                        aria-label={[t("fields.quantity"), item.product_title, item.variant_title ?? item.title].filter(Boolean).join(" ")}
                          {...field}
                          className="bg-ui-bg-base txt-small w-[67px] rounded-lg"
                          min={1}
@@ -3649,14 +4209,32 @@ index 4b8f238405a82435c27e66d5861dff8d9b39e1db..ef05a87fdb2cfe4cd6a815698814086c
                          value={value ?? undefined}
                          onChange={(val) => {
 diff --git a/src/routes/orders/order-create-exchange/components/exchange-create-form/exchange-outbound-item.tsx b/src/routes/orders/order-create-exchange/components/exchange-create-form/exchange-outbound-item.tsx
-index 36372bd8ce1535f5a154a5b418ca5a85be9d9a3d..845e7eee701a52d2dc415c73ac0f5aeb28e236d7 100644
+index 36372bd8ce1535f5a154a5b418ca5a85be9d9a3d..169b572f24681854547849dcc841254f27ddbcc8 100644
 --- a/src/routes/orders/order-create-exchange/components/exchange-create-form/exchange-outbound-item.tsx
 +++ b/src/routes/orders/order-create-exchange/components/exchange-create-form/exchange-outbound-item.tsx
+@@ -45,7 +45,7 @@ function ExchangeOutboundItem({
+           <div className="flex flex-grow flex-col">
+             <div>
+               <Text className="txt-small" as="span" weight="plus">
+-                {previewItem.title}{" "}
++                {previewItem.product_title ?? previewItem.title}{" "}
+               </Text>
+ 
+               {previewItem.variant_sku && (
+@@ -53,7 +53,7 @@ function ExchangeOutboundItem({
+               )}
+             </div>
+             <Text as="div" className="text-ui-fg-subtle txt-small">
+-              {previewItem.subtitle}
++              {previewItem.variant_title ?? previewItem.subtitle}
+             </Text>
+           </div>
+           {appliedPromoCodes.length > 0 && (
 @@ -83,6 +83,7 @@ function ExchangeOutboundItem({
                    <Form.Item>
                      <Form.Control>
                        <Input
-+                        aria-label={[t("fields.quantity"), previewItem.product_title, previewItem.title].filter(Boolean).join(" ")}
++                        aria-label={[t("fields.quantity"), previewItem.product_title, previewItem.variant_title ?? previewItem.title].filter(Boolean).join(" ")}
                          {...field}
                          className="bg-ui-bg-base txt-small w-[67px] rounded-lg"
                          min={1}
@@ -3706,17 +4284,20 @@ index 88b2e8a43ec9a6a3b4e69eab16ee77877e7e5f1c..b064ff1374e08d24d90a1add010be563
                          noResultsPlaceholder={<OutboundShippingPlaceholder />}
                          value={value ?? undefined}
 diff --git a/src/routes/orders/order-create-exchange/exchange-create.tsx b/src/routes/orders/order-create-exchange/exchange-create.tsx
-index e5ce6d040e83b46471ed46e128c2168efff6063f..c06de652457b6b57600b9dc24f5120b57869a61a 100644
+index e5ce6d040e83b46471ed46e128c2168efff6063f..044329c747daa9db715f37e60740ba8360adcd3b 100644
 --- a/src/routes/orders/order-create-exchange/exchange-create.tsx
 +++ b/src/routes/orders/order-create-exchange/exchange-create.tsx
-@@ -73,6 +73,11 @@ export const ExchangeCreate = () => {
+@@ -73,6 +73,14 @@ export const ExchangeCreate = () => {
  
    return (
      <RouteFocusModal>
 +      {(!exchange || !preview || !order) && (
-+        <RouteFocusModal.Title className="sr-only">
-+          {t("orders.exchanges.create")}
-+        </RouteFocusModal.Title>
++        <div className="sr-only">
++          <RouteFocusModal.Title>{t("orders.exchanges.create")}</RouteFocusModal.Title>
++          <RouteFocusModal.Description>
++            {t("orders.exchanges.description", { defaultValue: "Choose the inbound and replacement items for this exchange." })}
++          </RouteFocusModal.Description>
++        </div>
 +      )}
        {exchange && preview && order && (
          <ExchangeCreateForm
@@ -3960,7 +4541,7 @@ index 42ff770ea622bc3ccde2ac5579640c55d3e25533..46d1ed85c40154cbdfaef2a07f0b3a68
                              onCheckedChange={onChange}
                              {...field}
 diff --git a/src/routes/orders/order-create-return/components/return-create-form/return-item.tsx b/src/routes/orders/order-create-return/components/return-create-form/return-item.tsx
-index e64fdbf8c8e43399b14b689574afada62b33aaef..49171a9f1beabedd6a84a0539ac78ef6d318759e 100644
+index e64fdbf8c8e43399b14b689574afada62b33aaef..fcee7c6216006616c1f97c754b524b52f3f50e1a 100644
 --- a/src/routes/orders/order-create-return/components/return-create-form/return-item.tsx
 +++ b/src/routes/orders/order-create-return/components/return-create-form/return-item.tsx
 @@ -41,6 +41,9 @@ function ReturnItem({
@@ -3973,11 +4554,26 @@ index e64fdbf8c8e43399b14b689574afada62b33aaef..49171a9f1beabedd6a84a0539ac78ef6
  
    const { return_reasons = [] } = useReturnReasons({ fields: "+label" })
  
+@@ -57,12 +60,12 @@ function ReturnItem({
+           <div className="flex flex-col">
+             <div>
+               <Text className="txt-small" as="span" weight="plus">
+-                {item.title}{" "}
++                {item.product_title ?? item.title}{" "}
+               </Text>
+               {item.variant_sku && <span>({item.variant_sku})</span>}
+             </div>
+             <Text as="div" className="text-ui-fg-subtle txt-small">
+-              {item.product_title}
++              {item.variant_title ?? (item.title !== item.product_title ? item.title : null)}
+             </Text>
+           </div>
+         </div>
 @@ -77,6 +80,7 @@ function ReturnItem({
                    <Form.Item>
                      <Form.Control>
                        <Input
-+                        aria-label={[t("fields.quantity"), item.product_title, item.title].filter(Boolean).join(" ")}
++                        aria-label={[t("fields.quantity"), item.product_title, item.variant_title ?? item.title].filter(Boolean).join(" ")}
                          className="bg-ui-bg-base txt-small w-[67px] rounded-lg"
                          min={1}
                          max={item.quantity}
@@ -4027,6 +4623,25 @@ index e64fdbf8c8e43399b14b689574afada62b33aaef..49171a9f1beabedd6a84a0539ac78ef6
                  type="button"
                  className="flex-shrink"
                  variant="transparent"
+diff --git a/src/routes/orders/order-create-return/return-create.tsx b/src/routes/orders/order-create-return/return-create.tsx
+index 13f62565f7196dacab49c2dcaad1d38e2cc4def7..62cdbb04293ec958787c0b00d76dcb9635deea5f 100644
+--- a/src/routes/orders/order-create-return/return-create.tsx
++++ b/src/routes/orders/order-create-return/return-create.tsx
+@@ -72,6 +72,14 @@ export const ReturnCreate = () => {
+ 
+   return (
+     <RouteFocusModal>
++      {(!activeReturn || !preview || !order) && (
++        <div className="sr-only">
++          <RouteFocusModal.Title>{t("orders.returns.create")}</RouteFocusModal.Title>
++          <RouteFocusModal.Description>
++            {t("orders.returns.description", { defaultValue: "Choose the items and destination for this return." })}
++          </RouteFocusModal.Description>
++        </div>
++      )}
+       {activeReturn && preview && order && (
+         <ReturnCreateForm
+           order={order}
 diff --git a/src/routes/orders/order-create-shipment/components/order-create-shipment-form/order-create-shipment-form.tsx b/src/routes/orders/order-create-shipment/components/order-create-shipment-form/order-create-shipment-form.tsx
 index 6da5cb651255a2631242f7f7c8e8c7147e1ed0a6..2f971994ef96790bab28ed95aa9ff0d285a1bb37 100644
 --- a/src/routes/orders/order-create-shipment/components/order-create-shipment-form/order-create-shipment-form.tsx
