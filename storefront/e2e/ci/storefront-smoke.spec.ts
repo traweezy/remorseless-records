@@ -125,23 +125,26 @@ const createPaginationFixture = (
   limit: number
 ): ProductSearchResponse => ({
   ...catalogSearchFixture,
-  hits: Array.from({ length: limit }, (_, index) => {
-    const sequence = offset + index + 1
-    const baseHit = catalogSearchFixture.hits[0]
+  hits: Array.from(
+    { length: Math.min(limit, Math.max(0, 461 - offset)) },
+    (_, index) => {
+      const sequence = offset + index + 1
+      const baseHit = catalogSearchFixture.hits[0]
 
-    return {
-      ...baseHit,
-      id: `prod_CIPAGINATION${sequence}`,
-      handle: `music-release-ci-pagination-${sequence}`,
-      title: `Pagination Test ${sequence}`,
-      album: `Pagination Test ${sequence}`,
-      slug: {
-        ...baseHit.slug,
+      return {
+        ...baseHit,
+        id: `prod_CIPAGINATION${sequence}`,
+        handle: `music-release-ci-pagination-${sequence}`,
+        title: `Pagination Test ${sequence}`,
         album: `Pagination Test ${sequence}`,
-        albumSlug: `pagination-test-${sequence}`,
-      },
+        slug: {
+          ...baseHit.slug,
+          album: `Pagination Test ${sequence}`,
+          albumSlug: `pagination-test-${sequence}`,
+        },
+      }
     }
-  }),
+  ),
   total: 461,
   offset,
   hasMore: offset + limit < 461,
@@ -1236,6 +1239,109 @@ test("catalog loads the next result window before the end is reached", async ({
     .toBeGreaterThanOrEqual(120)
 })
 
+test("catalog keeps loading after a jump past the pagination marker", async ({
+  page,
+}, testInfo) => {
+  await page.setViewportSize({ width: 320, height: 740 })
+  const searchRequests: ProductSearchRequest[] = []
+  await page.route("**/api/catalog/filters/**", async (route) => {
+    const fixture =
+      catalogFilterFixtures[new URL(route.request().url()).pathname]
+    if (!fixture) return route.fallback()
+    await route.fulfill({ json: fixture })
+  })
+  await page.route("**/api/search/products", async (route) => {
+    const request = route.request().postDataJSON() as ProductSearchRequest
+    searchRequests.push(request)
+    const response = createPaginationFixture(
+      request.offset ?? 0,
+      request.limit ?? 60
+    )
+    if (request.query === "pagination-end") {
+      response.hits = response.hits.map((hit) => ({
+        ...hit,
+        title: `End ${hit.title}`,
+        album: `End ${hit.album}`,
+        slug: { ...hit.slug, album: `End ${hit.slug.album}` },
+      }))
+    }
+    await route.fulfill({
+      json: response,
+    })
+  })
+  await page.goto("/catalog", { waitUntil: "domcontentloaded" })
+  await rejectNonEssentialCookies(page)
+  await page
+    .getByRole("searchbox", {
+      name: "Search catalog by product or artist name",
+    })
+    .fill("pagination-end")
+  await expect(
+    page.getByRole("heading", { name: "End Pagination Test 1", exact: true })
+  ).toBeVisible()
+  const loadedCount = page.getByText(/^Showing \d+ of 461$/u)
+  await expect(loadedCount).toBeVisible()
+  // Blur the search field so End scrolls the document rather than its caret.
+  await page.locator('main header p[aria-live="polite"]').click()
+  const readCount = async () =>
+    Number(
+      (await loadedCount.textContent())?.match(/^Showing (\d+)/u)?.[1] ?? 0
+    )
+  // Appending rows can move the footer below the viewport in some engines.
+  // Continue browsing each window instead of relying on scroll anchoring.
+  for (let pageIndex = 0; pageIndex < 8; pageIndex++) {
+    const previousCount = await readCount()
+    if (previousCount === 461) break
+    await page.keyboard.press("End")
+    await page.locator("footer").scrollIntoViewIfNeeded()
+    try {
+      await expect.poll(readCount).toBeGreaterThan(previousCount)
+    } catch (error) {
+      await testInfo.attach("pagination-geometry", {
+        contentType: "application/json",
+        body: JSON.stringify(
+          await page.evaluate(() => {
+            const marker = document.querySelector(
+              'main [aria-busy][aria-live="polite"]'
+            )
+            const bounds = marker?.getBoundingClientRect()
+            const footer = document
+              .querySelector("footer")
+              ?.getBoundingClientRect()
+            return {
+              scrollY,
+              innerHeight,
+              height: document.documentElement.scrollHeight,
+              marker: bounds
+                ? {
+                    top: bounds.top,
+                    bottom: bounds.bottom,
+                    text: marker?.textContent,
+                  }
+                : null,
+              footer: footer
+                ? { top: footer.top, bottom: footer.bottom }
+                : null,
+            }
+          })
+        ),
+      })
+      throw error
+    }
+  }
+  await expect(loadedCount).toHaveText("Showing 461 of 461")
+  const offsets = searchRequests
+    .filter((request) => request.query === "pagination-end")
+    .map((request) => request.offset ?? 0)
+  expect(offsets).toEqual([0, 60, 120, 180, 240, 300, 360, 420])
+  await expect(
+    page.getByText("All available products are shown.")
+  ).toBeVisible()
+  await loadedCount.scrollIntoViewIfNeeded()
+  await expect(loadedCount).toBeInViewport()
+  await page.screenshot({ path: testInfo.outputPath("catalog-complete.png") })
+})
+
 const routes = [
   "/",
   "/catalog",
@@ -1289,6 +1395,89 @@ for (const path of routes) {
   })
 }
 
+test("UI runtime discography preserves browsing state after a release visit", async ({
+  page,
+}, testInfo) => {
+  await page.goto("/discography", { waitUntil: "domcontentloaded" })
+  await rejectNonEssentialCookies(page)
+  const search = page.getByRole("searchbox", { name: "Search discography" })
+  await search.fill("Pathological Decomposition")
+  const releases = page.getByRole("list", {
+    name: "1 discography release",
+    exact: true,
+  })
+  await expect(releases).toBeVisible()
+  const sort = page.getByRole("combobox", { name: "Sort discography" })
+  await sort.press("Enter")
+  await page
+    .getByRole("option", { name: "Title Z–A", exact: true })
+    .press("Enter")
+  const mobile = (page.viewportSize()?.width ?? 0) < 1024
+  if (mobile) await page.getByRole("button", { name: /^Show filters/ }).click()
+  const filters = mobile
+    ? page.getByRole("dialog", { name: "Discography filters", exact: true })
+    : page.locator("#discography-desktop-filters")
+  const availability = filters.getByRole("combobox", {
+    name: "Filter by availability",
+  })
+  await availability.press("Enter")
+  await page
+    .getByRole("option", { name: "In print", exact: true })
+    .press("Enter")
+  const format = filters.getByRole("combobox", { name: "Filter by format" })
+  await format.press("Enter")
+  await page.getByRole("option", { name: "CD", exact: true }).press("Enter")
+  const tag = filters.getByRole("combobox", { name: "Filter by tag" })
+  await tag.press("Enter")
+  await page
+    .getByRole("option", { name: "CI fixture", exact: true })
+    .press("Enter")
+  if (mobile)
+    await page
+      .getByRole("button", { name: "Close discography filters" })
+      .click()
+  await expect(releases).toBeVisible()
+  const link = releases.getByRole("link")
+  const destination = await link.getAttribute("href")
+  expect(destination).toMatch(/^\/music-release\//u)
+  await link.click()
+  await expect(page).toHaveURL(new RegExp(`${destination}$`, "u"))
+  await expect(
+    page.getByRole("main").getByRole("heading", { level: 1 })
+  ).toContainText("Pathological Decomposition")
+  await page.goBack()
+  await expect(search).toHaveValue("Pathological Decomposition")
+  await expect(releases).toBeVisible()
+  await expect(sort).toContainText("Title Z–A")
+  if (mobile) await page.getByRole("button", { name: /^Show filters/ }).click()
+  await expect(availability).toContainText("In print")
+  await expect(format).toContainText("CD")
+  await expect(tag).toContainText("CI fixture")
+  const clearScope = mobile
+    ? filters
+    : page.getByRole("region", {
+        name: "Remorseless Records discography",
+        exact: true,
+      })
+  await clearScope
+    .getByRole("button", { name: "Clear filters", exact: true })
+    .click()
+  await expect(availability).toContainText("All availability")
+  await expect(format).toContainText("All formats")
+  await expect(tag).toContainText("All tags")
+  if (mobile)
+    await page
+      .getByRole("button", { name: "Close discography filters" })
+      .click()
+  await expect(search).toHaveValue("Pathological Decomposition")
+  await expect(sort).toContainText("Title Z–A")
+  await page.getByRole("button", { name: "Clear discography search" }).click()
+  await expect(search).toHaveValue("")
+  await page.screenshot({
+    path: testInfo.outputPath("discography-history-restored.png"),
+  })
+})
+
 test("discography header precedes every desktop row", async ({
   page,
 }, testInfo) => {
@@ -1323,7 +1512,7 @@ test("virtual discography rows recover after resize and empty filtering", async 
   await page.goto("/discography", { waitUntil: "domcontentloaded" })
   await rejectNonEssentialCookies(page)
   const releases = page.getByRole("list", {
-    name: /^\d+ discography releases$/,
+    name: /^\d+ discography releases?$/,
   })
   const rows = page.getByTestId("discography-row")
   await expect(rows.first()).toBeVisible()

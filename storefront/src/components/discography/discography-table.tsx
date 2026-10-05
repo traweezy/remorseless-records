@@ -50,20 +50,16 @@ import {
 } from "@/components/ui/pill-dropdown"
 import SmartLink from "@/components/ui/smart-link"
 import type { DiscographyEntry } from "@/lib/data/discography"
+import {
+  useDiscographyStore,
+  type DiscographySort,
+} from "@/lib/store/discography"
 import { cn } from "@/lib/ui/cn"
 
 type DiscographyTableProps = {
   entries: DiscographyEntry[]
   className?: string
 }
-
-type DiscographySort =
-  | "catalog-desc"
-  | "title-asc"
-  | "title-desc"
-  | "artist-asc"
-  | "newest"
-  | "oldest"
 
 export type DiscographyFilters = {
   availability: DiscographyEntry["availability"] | ""
@@ -456,12 +452,19 @@ DiscographyRow.displayName = "DiscographyRow"
 
 const DiscographyTable = memo(
   ({ entries, className }: DiscographyTableProps) => {
-    const [query, setQuery] = useState("")
-    const [availability, setAvailability] =
-      useState<DiscographyFilters["availability"]>("")
-    const [format, setFormat] = useState("")
-    const [tag, setTag] = useState("")
-    const [sort, setSort] = useState<DiscographySort>("catalog-desc")
+    const {
+      query,
+      setQuery,
+      availability,
+      setAvailability,
+      format,
+      setFormat,
+      tag,
+      setTag,
+      sort,
+      setSort,
+      clearFilters,
+    } = useDiscographyStore((state) => state)
     const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
     const [desktopFiltersVisible, setDesktopFiltersVisible] = useState(true)
     const [scrollMargin, setScrollMargin] = useState(0)
@@ -540,20 +543,16 @@ const DiscographyTable = memo(
       (availability ? 1 : 0) + (format ? 1 : 0) + (tag ? 1 : 0)
     const hasAnyConstraint = Boolean(query.trim() || activeFilterCount)
 
-    const clearFilters = useCallback(() => {
-      setAvailability("")
-      setFormat("")
-      setTag("")
-    }, [])
     const openMobileFilters = useCallback(() => setMobileFiltersOpen(true), [])
     const toggleDesktopFilters = useCallback(
       () => setDesktopFiltersVisible((visible) => !visible),
       []
     )
 
+    const releaseNoun = visibleEntries.length === 1 ? "release" : "releases"
     const resultCopy =
       visibleEntries.length === entries.length
-        ? `${entries.length} releases`
+        ? `${entries.length} ${releaseNoun}`
         : `Showing ${visibleEntries.length} of ${entries.length}`
 
     return (
@@ -753,7 +752,7 @@ const DiscographyTable = memo(
                 className="w-full"
                 onClick={() => setMobileFiltersOpen(false)}
               >
-                Show {visibleEntries.length} releases
+                Show {visibleEntries.length} {releaseNoun}
               </Button>
             </div>
           </div>
@@ -763,7 +762,7 @@ const DiscographyTable = memo(
           <div
             ref={listRef}
             role="list"
-            aria-label={`${visibleEntries.length} discography releases`}
+            aria-label={`${visibleEntries.length} discography ${releaseNoun}`}
             className="relative"
             style={{ height: virtualizer.getTotalSize() }}
           >

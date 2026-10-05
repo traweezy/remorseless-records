@@ -1592,6 +1592,7 @@ const ProductSearchExperience = ({
     if (
       !sentinel ||
       !searchQuery.hasNextPage ||
+      searchQuery.isFetching ||
       searchQuery.isFetchingNextPage ||
       searchQuery.isFetchNextPageError ||
       typeof IntersectionObserver === "undefined"
@@ -1599,34 +1600,53 @@ const ProductSearchExperience = ({
       return
     }
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (!entries.some((entry) => entry.isIntersecting)) {
-          return
-        }
-
-        const renderedResultCount = deferredResults.length
-        if (lastAutoRequestedResultCountRef.current === renderedResultCount) {
-          return
-        }
-
-        lastAutoRequestedResultCountRef.current = renderedResultCount
-        void fetchNextPage()
-      },
-      {
-        rootMargin: "0px 0px 1200px 0px",
-        threshold: 0,
+    const requestIfReached = () => {
+      // Include markers already passed near a tall footer. Virtual row
+      // measurement can move the marker from below to above the viewport
+      // without an IntersectionObserver threshold crossing.
+      if (sentinel.getBoundingClientRect().top > window.innerHeight + 1200) {
+        return
       }
-    )
-
+      const renderedResultCount = deferredResults.length
+      if (lastAutoRequestedResultCountRef.current === renderedResultCount) {
+        return
+      }
+      lastAutoRequestedResultCountRef.current = renderedResultCount
+      void fetchNextPage()
+    }
+    let frame: number | null = null
+    const scheduleCheck = () => {
+      if (frame !== null) return
+      frame = window.requestAnimationFrame(() => {
+        frame = null
+        requestIfReached()
+      })
+    }
+    const observer = new IntersectionObserver(scheduleCheck, {
+      rootMargin: "0px 0px 1200px 0px",
+      threshold: 0,
+    })
+    const resizeObserver =
+      typeof ResizeObserver === "undefined"
+        ? null
+        : new ResizeObserver(scheduleCheck)
+    if (sentinel.parentElement) resizeObserver?.observe(sentinel.parentElement)
+    window.addEventListener("scroll", scheduleCheck, { passive: true })
+    window.addEventListener("resize", scheduleCheck)
     observer.observe(sentinel)
+    scheduleCheck()
     return () => {
       observer.disconnect()
+      resizeObserver?.disconnect()
+      window.removeEventListener("scroll", scheduleCheck)
+      window.removeEventListener("resize", scheduleCheck)
+      if (frame !== null) window.cancelAnimationFrame(frame)
     }
   }, [
     deferredResults.length,
     fetchNextPage,
     searchQuery.hasNextPage,
+    searchQuery.isFetching,
     searchQuery.isFetchNextPageError,
     searchQuery.isFetchingNextPage,
   ])

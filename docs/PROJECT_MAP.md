@@ -105,16 +105,19 @@ contracts before applying generic framework examples from those files.
 
 ## Verified continuation boundary
 
-Latest accepted release is October 3 UTC at revision
-`9a90adc06abdbd4a45eb3204581cdd9b19dbf674`: four workflows/23 checks,
-all nine staging services and completed jobs, runtime/telemetry checks and
-live/browser acceptance passed. Batch 4 delivers bounded indexing, database
-telemetry and the Next stream-abort correction. Earlier recovery/support-service
-limits and the cold-asset finding remain in the carryover register.
-Batch 5 (credential/dependency maintenance) is next. The added exhaustive audit
-is batch 6, followed by the client clone in batch 7 and production acceptance
-in batch 8. Read the opening handoff and carryover register before continuing.
-The snapshots below are historical.
+Latest fully accepted hardening batch is Batch 5 at
+`960fe7bbc47b912770c8357c148f5bd6cb75b3f8`. Batch 6's exhaustive
+Storefront/Admin/Stripe audit is still open. Its deployed correction is
+`c290b7b0c521cfabedf136a4881a2f9262eaf2bf`, with passing exact CI,
+runtime bundles and all nine app/service/job observations; native financial
+and notification acceptance is incomplete after the Admin session expired.
+Responsive/native-drawer corrections are committed locally at `283052b`,
+and further format-filter, mobile-paging and Discography-history corrections
+remain local behind that release gate. Follow the opening handoff/audit for
+current evidence, unresolved checks and guarded search rebuild requirements.
+The user requires a pause before Batch 7's client clone; do not create it.
+Production approval remains separately in Batch 8. Earlier recovery/support
+limits remain in the carryover register. The snapshots below are historical.
 
 At the 07:54 UTC acceptance, the application pair was Backend `33de0ec` and
 Storefront `7e743bf`; the exact CI runs, deployments, health probes, scheduler

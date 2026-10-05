@@ -3,6 +3,93 @@ import productSearchTransformer, {
 } from "./product-transformer"
 
 describe("buildSearchDocument", () => {
+  it("indexes canonical bundle formats without changing authored option labels", () => {
+    const document = buildSearchDocument({
+      id: "prod_mystery",
+      title: "Mystery Bundle",
+      metadata: { product_type: "mystery-bundle" },
+      variants: [
+        { id: "var_cd_bundle", title: "3x CDs" },
+        { id: "var_cassette_bundle", title: "3x Cassettes" },
+      ],
+    })
+
+    expect(document.formats).toEqual([
+      "3x CDs",
+      "3x Cassettes",
+      "CD",
+      "Cassette",
+    ])
+    expect(document.variant_titles).toEqual(["3x CDs", "3x Cassettes"])
+    expect(document.variants.map((variant) => variant.title)).toEqual([
+      "3x CDs",
+      "3x Cassettes",
+    ])
+  })
+
+  it.each([
+    { format: "Cassette" },
+    { packaging: "Black shell" },
+    { formats: ["Cassette"] },
+  ])(
+    "retains readable legacy formats when the variant title is an album",
+    (metadata) => {
+      const document = buildSearchDocument({
+        id: "prod_legacy_cassette",
+        title: "Relics of Ancient Love",
+        metadata,
+        variants: [
+          {
+            id: "var_legacy_cassette",
+            title: "Tears of Fire - Relics of Ancient Love",
+          },
+        ],
+      })
+
+      expect(document.formats).toEqual([
+        "Tears of Fire - Relics of Ancient Love",
+        "Cassette",
+      ])
+      expect(document.variant_titles).toEqual([
+        "Tears of Fire - Relics of Ancient Love",
+      ])
+    }
+  )
+
+  it.each(["CD", "Digital", "Box"])(
+    "keeps explicit native format %s ahead of legacy metadata",
+    (format) => {
+      const document = buildSearchDocument(
+        {
+          id: "prod_native_format",
+          metadata: { format: "Cassette", formats: ["DVD"] },
+          variants: [{ id: "var_native_format", title: "Limited edition" }],
+        },
+        {
+          variantProfiles: [
+            { variant_id: "var_native_format", format_label: format },
+          ],
+        }
+      )
+
+      expect(document.formats).toEqual([format])
+      expect(document.variant_titles).toEqual(["Limited edition"])
+    }
+  )
+
+  it("does not infer media formats from apparel sizes or unrelated words", () => {
+    const document = buildSearchDocument({
+      id: "prod_apparel",
+      title: "Label shirt",
+      variants: [
+        { id: "var_size", title: "12" },
+        { id: "var_text", title: "Eclipse" },
+      ],
+    })
+
+    expect(document.formats).toEqual(["12", "Eclipse"])
+  })
+
   it("builds a catalog-aware search document from product and catalog facts", () => {
     const document = buildSearchDocument(
       {

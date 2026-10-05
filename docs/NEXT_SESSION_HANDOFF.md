@@ -24,6 +24,32 @@ pause before Batch 7. Do not create or configure the client staging environment
 until the user resumes that work.** This supersedes earlier automatic
 continuation into the clone.
 
+**Latest local continuation — October 5 UTC:** the responsive/native-drawer
+correction is committed at `283052b5ef39d2232561361cdd56166fc6388723` and
+remains unpushed. Further real Catalog/Discography checks find missing CD and
+Cassette format results, mobile paging stopping at 120 near the footer, and
+Back dropping the Discography search in all three profiles. The next local
+browsing correction canonicalizes index formats with native authority intact,
+checks paging geometry on scroll/layout changes and preserves public
+Discography filters/sort in tab memory. Full inventory source parity passes
+463 products; Backend coverage passes 2,403 tests, Storefront 1,079+403, both
+builds pass and the final combined browsing matrices pass 18 first-attempt
+cases each in primary profiles and Chromium/Firefox/WebKit, with no skips,
+flakes or report errors. The normal commit enforces lint/type/policy gates.
+Follow the opening audit entry and final private completion receipt. After
+eventual exact deployment,
+rebuild the versioned search candidate with guarded tooling and repeat native
+format/paging/history acceptance; source projection does not update the live
+index. The native Admin session remains expired and no scoped replacement is
+available. Preserve the owned exchange and the preceding release's acceptance
+hold; do not bypass authentication or repeat routine login/approval questions.
+All nine services/jobs remain stable in the overlapping 01:20/02:11 watcher
+samples. Fresh 02:40 UTC Redis inspection passes on the same instance/run,
+105,906 seconds uptime, healthy persistence and zero OOM/evictions; failed
+237+1 queues remain untouched. Keep both logical correction groups local until
+required native
+financial/notification acceptance passes. The client clone remains paused.
+
 **Latest user follow-up:** recurring Storefront “A track skipped” errors are
 confirmed on actual merchandise-to-music client navigation at `1158109`.
 The user's `TrustedHTML`/`innerHTML` exception matches the reproduced stack.

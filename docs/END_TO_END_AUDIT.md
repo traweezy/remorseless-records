@@ -1,5 +1,99 @@
 # Storefront, Admin and Stripe end-to-end audit
 
+### Catalog filters, mobile paging and Discography history — October 5 UTC
+
+Batch 6 continues at deployed `c290b7b`. The preceding responsive/native
+drawer group is committed locally at
+`283052b5ef39d2232561361cdd56166fc6388723`; this next browsing correction
+also stays local until the preceding release's applicable native financial
+and stage-notification acceptance passes. Native Admin still shows sign-in;
+do not repeat routine login/approval questions or bypass authentication. The
+client environment clone remains paused.
+
+The real Catalog control sweep records **73 completed action groups** across
+desktop and two phone emulations: every available type/genre/format option,
+stock, price range/error/reset, all seven sort choices, no results, clearing
+and reloading. Desktop also completes all 463 products/eight search pages.
+Each phone finishes 24 control groups but its final footer-jump pagination
+attempt fails; these are not whole-profile passes. Six repeated format-count
+findings represent two distinct missing products:
+
+- **B6-FORMAT-FILTER-PARITY:** CD advertises 282 but returns 281; Cassette
+  advertises 131 but returns 130. Independent bounded queries verify every
+  page against the native 463-product presentation inventory. The missing
+  CD product is a mystery bundle with a “3x CDs” option; the missing Cassette
+  product uses its album name as its variant title and retains readable
+  legacy format metadata. The transformer now retains authored raw labels,
+  adds canonical format facets, and uses legacy metadata only when explicit
+  native format assignment is absent. Native CD/Digital/Box assignments win.
+  Eight new cases pass, 15 total transformer tests. A pure candidate projection
+  matches all 463 products: CD 282, Vinyl 126, Cassette 131 and DVD one, with
+  zero differences. This does not prove the deployed index or independently
+  load Catalog facts. After the eventual exact rollout, run the guarded
+  versioned candidate rebuild/atomic swap and `search:check`, then repeat the
+  standalone format queries. No live index write or failed-queue replay occurred.
+- **B6-MOBILE-PAGING:** a separate hydrated Pixel diagnostic reproduces both
+  incremental scrolling and End-key browsing stopping at 120 of 463. The
+  loading marker sits above the viewport near the tall footer. The initial
+  bounding-rectangle-only correction also fails in WebKit: private geometry
+  shows a marker bottom at −160 pixels after 120 fixture products. Virtual row
+  measurement can move the marker across the viewport without an intersection
+  threshold transition. The final correction schedules one geometry check
+  per animation frame on scroll, resize, intersection and result-container
+  resize. It retains fetching/error/has-next guards, once-per-result-count
+  requests and complete listener/frame cleanup. The regression browses all
+  eight exact windows to 461 fixture products and the final 41-item page.
+  Desktop and all three engines include this test in their normal CI selection.
+- **B6-DISCOGRAPHY-HISTORY:** 54 live control observations across desktop,
+  Pixel and iPhone check all five availability choices, three formats, one
+  tag, six sort selections, empty/search restoration and one actual View link
+  per profile. Availability partitions 442 releases into 414 in print and 28
+  out of print; three other choices correctly show zero. All three profiles
+  reproduce Back resetting the one-release query to the entire list. Public
+  browsing state now uses the existing Zustand pattern in tab memory. Query,
+  availability, format, tag and sort survive a release visit; Clear filters
+  still preserves query/sort. Single-release counts use consistent singular
+  text in the summary, drawer action and accessible list name. It adds no
+  browser-storage persistence. Actual
+  sort selection/count checks do not independently prove the full sort order.
+
+Both final production builds pass. Backend coverage passes 293 suites/2,403
+tests; fresh Storefront coverage passes 1,079 baseline and 403 transactional
+tests. The final catalog-only Chromium/Firefox/WebKit matrix passes 12 cases
+with no retries/skips/flakes. The combined final browsing/history matrices pass
+18 first-attempt cases in Chromium/Firefox/WebKit and 18 in desktop/Pixel/iPhone
+Chromium, with zero skips, flakes or report errors. Rendered completion and
+history screenshots were inspected. The normal commit enforces lint/type/policy
+checks; its completion receipt binds this group to the local revision. These
+source/fixture checks do not establish deployed acceptance.
+
+Preserve earlier helper failures: aliases, stock/range expectations, header
+selection, cached sort restoration, search term dropping, missing Origin,
+SSR hydration, modal-hidden background lists and footer anchoring. The first
+full-pagination fixture incorrectly returned 60 records on its final 41-item
+page; its corrected bounds retain the exact final-count/page-sequence checks.
+The initial single-jump test also incorrectly assumed identical scroll
+anchoring in every engine. The final per-window browsing test retains real
+failure geometry and does not relax the final count or request sequence.
+The interrupted oversized live screenshot helper retains two complete Pixel
+findings; do not claim its uncompleted iPhone diagnostics.
+
+All nine services/jobs remain stable in observed samples. The 90-sample
+01:20:30–02:14:58 UTC watcher finishes without a fault, and its successor
+starts at 02:11:37 UTC with overlapping coverage. This does not erase earlier
+observation gaps or replace the detailed Redis persistence/queue receipt.
+The fresh 02:40:54 UTC Redis inspection passes on the same deployment,
+instance and run identity, with 105,906 seconds uptime, healthy AOF/RDB and
+zero OOM, high/max events, evictions or rejected connections. Historical
+237 scheduled and one event failure remain untouched.
+Private evidence remains in `artifacts/end-to-end-audit-2026-10-04/`, especially
+`browser/public-c290b7b-catalog-final-filter-pagination/`,
+`browser/public-discography-modal-controls/`, `browser/catalog-footer-geometry/`,
+the format diagnostic/candidate receipts and corresponding check logs.
+The final singular-count build/coverage and primary/critical reports are
+`checks/catalog-history-singular-*` and `browser/catalog-history-singular-*`;
+the fresh Redis receipt is `receipts/catalog-completion-redis-diagnostic.json`.
+
 ### Owned cart completion and final drawer repairs — October 5 UTC
 
 Batch 6 remains open on deployed `c290b7b`. Its exact CI, scanned runtime
@@ -188,6 +282,8 @@ page is healthy. The independently guarded API read agrees with its state.
 | Published detail pages | Pass: 463 products and six articles at desktop width on `c290b7b` |
 | Product gallery/options | Pass: 1,144 image selections; 539 available and 52 disabled options across all products |
 | Catalog client navigation/Quick shop | Pass: all 463 title links/history; 431 loaded and 32 disabled drawers; no cart submission |
+| Catalog filtering/sort/pagination | 73 live control groups; two format parity and mobile paging findings retained; local correction passes both 18-case browsing matrices; index rebuild/deployed acceptance pending |
+| Discography controls/history | 54 live observations; all three profiles lose search on Back; local memory-state correction passes native-link fixture regressions in all primary profiles/engines |
 | Shared editorial/footer/FAQ/consent | Pass: 84 control/profile pairs across desktop and two phone emulations |
 | Responsive layouts | Live failures retained in 240-row inventory; local 18-case correction passes; deployed retest pending |
 | Actual cart mutations | Pass: eight native action groups in each of three profiles; three live drawer axe failures remain open until the correction deploys |

@@ -455,6 +455,17 @@ const findFormatOptionValues = (product: DynamicRecord): string[] => {
   return Array.from(formatValues)
 }
 
+const canonicalFormatLabel = (label: string | null): string | null => {
+  if (!label) return null
+  if (/\bdvd\b/i.test(label)) return "DVD"
+  if (/\b(?:cassettes?|tapes?|cs)\b/i.test(label)) return "Cassette"
+  if (/\bshell\b/i.test(label))
+    return /\bcds?\b/i.test(label) ? "CD" : "Cassette"
+  if (/\b(?:vinyl|lp)\b|\b(?:7|10|12)["″]/i.test(label)) return "Vinyl"
+  if (/\bcds?\b/i.test(label)) return "CD"
+  return null
+}
+
 const selectPrimaryVariant = (
   variants?: Array<DynamicRecord> | null
 ): DynamicRecord | null => {
@@ -910,9 +921,39 @@ export const buildSearchDocument = (
   const priceMin = priceAmounts.length ? Math.min(...priceAmounts) : null
   const priceMax = priceAmounts.length ? Math.max(...priceAmounts) : null
 
-  const formatLabels = unique([
-    ...findFormatOptionValues(normalizedProduct),
+  const optionFormatLabels = findFormatOptionValues(normalizedProduct)
+  const nativeFormatLabels = unique([
+    ...optionFormatLabels,
     ...variantDocuments.map((variant) => variant.format),
+  ])
+  const nativeCanonicalFormats = unique(
+    nativeFormatLabels.map(canonicalFormatLabel)
+  )
+  const hasNativeFormatAssignment =
+    optionFormatLabels.length > 0 ||
+    Boolean(
+      facts?.variantProfiles?.some(
+        (profile) =>
+          toStringOrNull(profile.format_label ?? profile.formatLabel) ||
+          toStringOrNull(profile.format_id ?? profile.formatId)
+      )
+    )
+  // Retain authored option labels, but index the canonical format too so
+  // plural bundle options match the same filters as individual releases.
+  // Legacy metadata is a fallback only when native formats cannot be read.
+  const formatLabels = unique([
+    ...nativeFormatLabels,
+    ...(nativeCanonicalFormats.length
+      ? nativeCanonicalFormats
+      : hasNativeFormatAssignment
+        ? []
+        : [
+            toStringOrNull(metadata?.format),
+            toStringOrNull(metadata?.packaging),
+            ...toStringList(
+              Array.isArray(metadata?.formats) ? metadata.formats : []
+            ),
+          ].map(canonicalFormatLabel)),
   ])
   const formatDetails = unique(
     variantDocuments.map((variant) => variant.format_detail)
