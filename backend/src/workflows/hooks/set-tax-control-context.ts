@@ -551,11 +551,52 @@ const contextForOrder = async (
     throw new Error("Tax calculation order identity is unavailable.")
   }
   const isPartialUpdate = Array.isArray(items) || Array.isArray(shippingMethods)
+  // Medusa's partial order projection omits the original items. Read their
+  // tax identity before choosing a provider so a later store-wide switch
+  // cannot change the tax treatment of an existing order.
+  const historicalOrder = isPartialUpdate
+    ? readSingleProviderDataRecord(
+        await container
+          .resolve<QueryGraph>(ContainerRegistrationKeys.QUERY)
+          .graph({
+            entity: "order",
+            fields: [
+              "id",
+              "items.id",
+              "items.tax_lines.code",
+              "items.tax_lines.rate",
+              "shipping_methods.id",
+              "shipping_methods.tax_lines.code",
+              "shipping_methods.tax_lines.rate",
+            ],
+            filters: { id: subjectId },
+            pagination: { take: 1 },
+          }),
+        "Historical order tax query"
+      )
+    : order
+  if (text(historicalOrder.id) !== subjectId) {
+    throw new Error(
+      "Historical order tax query returned an invalid order identity."
+    )
+  }
+  // Native partial updates query order_line_item before ITEM_ADD creates its
+  // order-item link. That row has no quantity: tax rates use a unit basis.
+  // Normalize only this context copy; checkout/full orders remain strict and
+  // Medusa still owns the replacement quantity, totals and inventory.
+  const partialItems = Array.isArray(items)
+    ? readRecordArray(items, { context: "Partial order tax item query" }).map(
+        (item) => ({
+          ...item,
+          quantity: item.quantity === undefined ? 1 : item.quantity,
+        })
+      )
+    : []
   const taxSubject = {
     ...order,
     ...(isPartialUpdate
       ? {
-          items: Array.isArray(items) ? items : [],
+          items: partialItems,
           shipping_methods: Array.isArray(shippingMethods)
             ? shippingMethods
             : [],
@@ -567,7 +608,7 @@ const contextForOrder = async (
     resolveItemTaxCodes(container, taxSubject),
   ])
   const historical =
-    identityFromTaxLines(taxSubject) ?? identityFromTaxLines(order)
+    identityFromTaxLines(taxSubject) ?? identityFromTaxLines(historicalOrder)
   const collectionMode = historical?.collectionMode ?? control.collection_mode
   const provider =
     collectionMode === "collect"
@@ -577,7 +618,11 @@ const contextForOrder = async (
   const preservedRates =
     historical?.collectionMode === "collect" &&
     historical.provider === "stripe_tax"
-      ? requirePreservedStripeOrderRates(order, taxSubject, historical)
+      ? requirePreservedStripeOrderRates(
+          historicalOrder,
+          taxSubject,
+          historical
+        )
       : null
   const frozenQuote =
     historical?.collectionMode === "disabled" ||

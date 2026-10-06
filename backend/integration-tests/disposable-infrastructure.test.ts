@@ -3,6 +3,7 @@ import {
   createApiKeysWorkflow,
   linkSalesChannelsToApiKeyWorkflow,
   refundPaymentsWorkflow,
+  updateOrderTaxLinesWorkflow,
 } from "@medusajs/core-flows"
 import { loadStoreCatalogPresentations } from "../src/lib/catalog/store-presentation"
 import { loadProductAuthoringView } from "../src/lib/catalog/product-authoring-view"
@@ -18,6 +19,7 @@ import type {
   IPaymentModuleService,
   IEventBusModuleService,
   IOrderModuleService,
+  ITaxModuleService,
   CreateNotificationDTO,
 } from "@medusajs/framework/types"
 import {
@@ -196,6 +198,104 @@ medusaIntegrationTestRunner({
         await expect(service.ensureTaxProviderControl()).resolves.toEqual(
           control
         )
+      })
+
+      it("taxes an unattached native order line before its exchange quantity exists", async () => {
+        const container = getContainer()
+        const orders = container.resolve<IOrderModuleService>(Modules.ORDER)
+        const taxes = container.resolve<ITaxModuleService>(Modules.TAX)
+        const control = await container
+          .resolve<TaxControlModuleService>("tax_control")
+          .ensureTaxProviderControl()
+        expect(control.collection_mode).toBe("disabled")
+        const providers = await taxes.listTaxProviders()
+        const provider = providers.find((row) => row.id.includes("rate_lookup"))
+        expect(provider).toBeDefined()
+        await taxes.createTaxRegions({
+          country_code: "us",
+          provider_id: provider!.id,
+        })
+        for (const historical of [
+          { code: "rr_tax:disabled:g99:decision", rate: 0 },
+          { code: "rr_tax:taxrate_io:g98:quote", rate: 6.35 },
+          { code: "rr_tax:stripe_tax:g97:taxcalc_disposable", rate: 6.35 },
+        ]) {
+          const order = await orders.createOrders({
+            currency_code: "usd",
+            items: [
+              {
+                title: "Original synthetic line",
+                quantity: 2,
+                unit_price: 2.34,
+                tax_lines: [
+                  {
+                    ...historical,
+                    description: "Synthetic historical tax",
+                    provider_id: provider!.id,
+                  },
+                ],
+              },
+            ],
+            shipping_address: {
+              address_1: "Synthetic fixture",
+              city: "Hartford",
+              postal_code: "06103",
+              province: "ct",
+              country_code: "us",
+            },
+          })
+          const [line] = await orders.createOrderLineItems([
+            {
+              title: "Replacement synthetic line",
+              quantity: 3,
+              unit_price: 2.34,
+            },
+          ])
+          expect(line).toBeDefined()
+          const query = container.resolve(ContainerRegistrationKeys.QUERY)
+          const native = await query.graph({
+            entity: "order_line_item",
+            fields: ["id", "unit_price", "quantity"],
+            filters: { id: line!.id },
+          })
+          expect(native.data).toHaveLength(1)
+          expect(native.data[0].quantity).toBeUndefined()
+          const execution = await updateOrderTaxLinesWorkflow(container).run({
+            input: {
+              order_id: order.id,
+              item_ids: [line!.id],
+              force_tax_calculation: true,
+            },
+            throwOnError: false,
+          })
+          const stored = await orders.retrieveOrderLineItem(line!.id, {
+            relations: ["tax_lines"],
+          })
+          if (historical.code.includes("stripe_tax")) {
+            expect(execution.errors).toHaveLength(1)
+            expect(execution.errors[0]?.error).toMatchObject({
+              message: expect.stringContaining(
+                "Stripe Tax order changes cannot add or reprice taxable items."
+              ),
+            })
+            expect(stored.tax_lines).toEqual([])
+          } else {
+            expect(execution.errors).toHaveLength(0)
+            expect(execution.result.itemTaxLines).toMatchObject([
+              {
+                line_item_id: line!.id,
+                rate: historical.rate,
+                code: historical.code,
+              },
+            ])
+            expect(stored.tax_lines).toMatchObject([historical])
+          }
+          const unchanged = await orders.retrieveOrder(order.id, {
+            relations: ["items"],
+          })
+          expect(unchanged.items).toHaveLength(1)
+          expect(unchanged.items?.[0]?.quantity).toBe(2)
+        }
       })
 
       it("creates and replays a complete native product with priced stocked variants", async () => {

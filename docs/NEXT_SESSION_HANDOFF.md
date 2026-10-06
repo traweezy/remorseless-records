@@ -29,11 +29,19 @@ healthy observation after the window; its cause is unconfirmed. Surrounding
 gate failure is retained; a separate read identifies its only Backend 5xx as
 this audit's scheduler diagnostic and zero Storefront 5xx.
 
-Native Admin still shows Login with blank fields; required order/refund and
-stage-notification acceptance remains open. Read-only reconciliation confirms
-the unchanged owned order #9 ($9.07 capture, no refunds, inbound exchange draft).
-Do not repeat routine login/approval questions, bypass authentication or create
-more paid audit orders without completing their native reconciliation/cleanup.
+**Native resumption — October 6, 22:07 UTC:** an existing authenticated Admin
+tab reloads owned order #9. The earlier Login observation used a different
+expired tab. Outbound exchange save now reproduces a tax-hook failure: native
+bare order lines have no quantity before the order-item link exists. The local
+repair normalizes only this partial tax context, reads omitted historical tax
+lines from the exact order and preserves the Stripe Tax new-item hold.
+Focused 62-case checks, Backend 2,423-test coverage, 75 native/44 payment cases,
+the complete disposable recovery aggregate and both builds pass. Original
+failures are retained. Read-only comparisons confirm the unchanged owned $9.07
+capture, no refunds, inbound draft and full owned inventory. Native order/refund
+and stage-notification acceptance still require the deployed repair. Do not
+repeat login questions, bypass authentication or create more paid audit orders
+before their native reconciliation/cleanup can finish.
 The public bundle/merchandise ledger now has 60/60 latest desktop/phone page
 passes, 78 option observations and 126 actual component-link visits. Retain
 the initial hydration failures and the hydrated attempt's 12 rate-limit
@@ -52,9 +60,16 @@ healthy persistence and zero OOM/eviction events; failed 237+1 queues remain
 untouched. Automatic recovery archive `ac0dbcad-4329-4194-8360-0e7c5871eeaa`
 authenticates, with 1,176 media objects and 17 stored archives. Fresh all-nine
 observation starts at 21:29 UTC, with the earlier watcher gap preserved.
-Private evidence is under `artifacts/end-to-end-audit-2026-10-06/`. Hold all
-correction groups from push until native and ordinary health acceptance pass;
-eventual catalog rollout needs the guarded search rebuild and fresh parity.
+The original private evidence is under `artifacts/end-to-end-audit-2026-10-06/`;
+new native/repair evidence is under its separate `2026-10-06-resume` directory.
+The former directory stays unchanged. Resolve the native failure with one
+corrective push **within Batch 6**, grouping the local UI, catalog, readiness
+and tax repairs after normal gates. The earlier pre-push native hold cannot
+pass on the defective deployed code; it does not prohibit the repair needed
+to close it. This does not authorize the next batch or waive ordinary scheduler
+acceptance. Eventual catalog rollout needs the guarded search rebuild and fresh
+parity. Require exact CI, all-nine rollout and deployed acceptance, retain the
+24-hour scheduler latch and keep Batch 6 open until all applicable gates pass.
 Keep Batch 6 open and pause before Batch 7's client clone.
 
 **Batch 5 is release-accepted at `960fe7b`.** Full revision:

@@ -110,7 +110,11 @@ Latest fully accepted hardening batch is Batch 5 at
 Storefront/Admin/Stripe audit is still open. Its deployed correction is
 `c290b7b0c521cfabedf136a4881a2f9262eaf2bf`, with passing exact CI,
 runtime bundles and dated all-nine app/service/job observations. Native
-financial/notification acceptance remains incomplete after Admin expiry;
+financial/notification acceptance remains incomplete. An authenticated Admin
+tab is now verified; outbound exchange save exposes a native partial-order
+tax quantity/history defect, locally repaired with full coverage, native
+service integration and both builds passing. Its corrective staging release
+and native retests remain pending;
 October 6 ordinary health also fails on the scheduler's intact 24-hour
 incident latch. Responsive/native-drawer corrections are local at `283052b`,
 and format-filter, mobile-paging and Discography-history corrections are

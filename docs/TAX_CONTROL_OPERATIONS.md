@@ -90,6 +90,19 @@ and an order edit cannot inherit an ambiguous historical rate. A boundary
 failure stops tax calculation and payment preparation without logging
 provider, customer, or address payloads.
 
+Native partial order changes use a different Medusa projection from checkout.
+An unattached order-line row has no quantity before its order-item link and
+exchange change action exist. The hook copies an absent quantity onto a unit
+tax basis only for this partial projection; it does not assign an order
+quantity or alter Medusa totals/inventory. Explicit invalid quantities and
+missing quantities on checkout/full-order subjects still fail. Because the
+partial order projection also omits original items, the hook loads that exact
+order's historical item/shipping tax lines before choosing its preserved
+decision. Ambiguous or wrong-order history fails closed. Historical disabled
+and TaxRate.io decisions stay frozen; Stripe Tax's prohibition on adding or
+repricing taxable items remains in force. The disposable native workflow
+regression covers all three historical modes without external provider calls.
+
 ## Turn collection off
 
 1. Confirm the decision with the store owner and tax professional. The Admin

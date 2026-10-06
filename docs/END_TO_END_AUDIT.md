@@ -1,5 +1,65 @@
 # Storefront, Admin and Stripe end-to-end audit
 
+### Native Admin resumption and exchange tax repair — October 6, 22:07 UTC
+
+An existing authenticated Admin tab successfully reloads owned order #9.
+The earlier Login observation came from a different, expired tab; it is no
+longer the access blocker. The native outbound S-shirt save fails twice with
+`Tax subject fingerprint data is invalid.` Both failures compensate the new
+line before creating an outbound exchange action. Read-only native/Stripe
+and full owned-product inventory comparisons confirm the unchanged $9.07
+capture, no refunds, unchanged stock/reservations and preserved inbound draft.
+Close only the item picker and drawer; do not cancel the exchange.
+
+**B6-NATIVE-ORDER-TAX-QUANTITY:** Medusa 2.18.0 creates an unattached
+`order_line_item`, then calls its tax workflow before the exchange's `ITEM_ADD`
+action exists. Quantity belongs to the later order-item link and is absent
+from the bare line projection. The correction copies only partial order-tax
+items onto a unit basis when quantity is absent. Explicit invalid quantities,
+checkout and full-order refreshes remain strict; native quantities, inventory,
+totals and provider inputs are not mutated.
+
+The same partial workflow omits original items from its order projection.
+Load the exact order's persisted item/shipping tax identity before selecting
+the historical mode, provider and generation. Missing, malformed, ambiguous
+or wrong-order history fails closed. Historical disabled and TaxRate.io rates
+remain frozen after a store-wide switch. New taxable items on a Stripe Tax
+order remain blocked by the existing payment/calculation binding rule.
+
+The original three failing unit cases are retained. Final focused verification
+passes 62 cases; Backend coverage passes 293 suites / 2,423 tests. The real
+disposable Medusa workflow proves missing bare-line quantity, historical
+disabled/TaxRate.io preservation and the Stripe Tax hold: 75 native service
+cases plus 44 payment cases and the full recovery/session aggregate pass.
+Both production builds pass; the Storefront build uses an owned read-only
+loopback fixture and distinct synthetic process-only secrets. Preserve the
+initial generation-assumption, strict optional-property and local build-env
+failures. Fresh scans bind both exact fixture images to unchanged reviewed
+vulnerability database bytes; no finding or gate was waived. The stopped
+Desktop context is preserved; local verification explicitly uses the available
+Linux daemon without changing global Docker settings.
+
+Authenticated refund controls also pass search/empty, all four status choices,
+all five tax-handling choices, combined filters, clear, guidance and refresh.
+Order #8 shows $6.23 in both Medusa and Stripe, verified with zero attention or
+processing cases. These reads do not issue another refund. The Connecticut
+tax report shows owned order #9 as pending tax review, not exempt; its native
+transaction export retains the full one-sale filing scope while the table's
+Refunds filter is empty. Further native/paid workflow acceptance remains open.
+
+Private evidence is under `artifacts/end-to-end-audit-2026-10-06-resume/`;
+the earlier October 6 directory is retained unchanged. All-nine observation
+continues with no service fault. Preserve the scheduler's existing 24-hour
+incident latch, thresholds, monitor issue and failed Redis queues.
+
+The earlier pre-push native hold cannot close this failure on `c290b7b`.
+Collect this repair with the already-tested responsive, catalog/history and
+push-suite readiness corrections in one corrective staging release **within
+Batch 6**, then require exact CI/deployments and deployed native retests.
+This does not start the next batch or accept the unresolved scheduler gate.
+Keep Batch 6 open until ordinary health and the full audit pass; Batch 7's
+client clone remains paused.
+
 ### Public bundles, release check identity and scheduler incident — October 6 UTC
 
 Batch 6 remains open at deployed `c290b7b0c521cfabedf136a4881a2f9262eaf2bf`.
