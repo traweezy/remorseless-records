@@ -109,12 +109,19 @@ Latest fully accepted hardening batch is Batch 5 at
 `960fe7bbc47b912770c8357c148f5bd6cb75b3f8`. Batch 6's exhaustive
 Storefront/Admin/Stripe audit is still open. Its deployed correction is
 `c290b7b0c521cfabedf136a4881a2f9262eaf2bf`, with passing exact CI,
-runtime bundles and all nine app/service/job observations; native financial
-and notification acceptance is incomplete after the Admin session expired.
-Responsive/native-drawer corrections are committed locally at `283052b`,
-and further format-filter, mobile-paging and Discography-history corrections
-remain local behind that release gate. Follow the opening handoff/audit for
-current evidence, unresolved checks and guarded search rebuild requirements.
+runtime bundles and dated all-nine app/service/job observations. Native
+financial/notification acceptance remains incomplete after Admin expiry;
+October 6 ordinary health also fails on the scheduler's intact 24-hour
+incident latch. Responsive/native-drawer corrections are local at `283052b`,
+and format-filter, mobile-paging and Discography-history corrections are
+local at `fab7d61`, all unpushed. The latest readiness correction binds the
+same 23 required jobs to their verified push suites; fresh read-only readiness
+and 62 release-policy cases pass without closing native/ordinary acceptance.
+Public merchandise/bundle pages have 60 latest desktop/phone passes, with
+earlier hydration/rate-limit failures retained. Three unpaid bundle-cart
+profiles also pass, with native boundaries and UI cleanup verified; those
+checks do not close paid product-family acceptance. Follow the opening handoff/audit
+for current evidence, unresolved checks and guarded search rebuild requirements.
 The user requires a pause before Batch 7's client clone; do not create it.
 Production approval remains separately in Batch 8. Earlier recovery/support
 limits remain in the carryover register. The snapshots below are historical.

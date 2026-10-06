@@ -15,6 +15,7 @@ import {
   evaluateReleaseCi,
   evaluateReleaseHealth,
   evaluateStagingDeployments,
+  selectReleaseWorkflowRuns,
   STAGING,
   WORKFLOWS,
 } from "./lib/staging-release.mjs"
@@ -148,10 +149,7 @@ export const collectReleaseReadiness = async (
     JSON.parse(
       await capture("gh", ["api", `repos/${STAGING.repository}/${path}`])
     )
-  const [branch, protection, checks, workflowEntries] = await Promise.all([
-    api("branches/staging"),
-    api("branches/staging/protection"),
-    api(`commits/${sha}/check-runs?per_page=100`),
+  const readWorkflows = () =>
     Promise.all(
       WORKFLOWS.map(async (name) => [
         name,
@@ -159,14 +157,49 @@ export const collectReleaseReadiness = async (
           `actions/workflows/${name}.yml/runs?head_sha=${sha}&event=push&per_page=100`
         ),
       ])
-    ),
+    ).then(Object.fromEntries)
+  const [branch, protection, workflows] = await Promise.all([
+    api("branches/staging"),
+    api("branches/staging/protection"),
+    readWorkflows(),
   ])
+  const selectedRuns = selectReleaseWorkflowRuns(workflows, sha)
+  const responses = await Promise.all(
+    selectedRuns.map(async ({ checkSuiteId }) => {
+      if (!Number.isSafeInteger(checkSuiteId) || checkSuiteId <= 0)
+        return { total_count: 0, check_runs: [] }
+      const response = await api(
+        `check-suites/${checkSuiteId}/check-runs?per_page=100`
+      )
+      ensure(
+        Array.isArray(response.check_runs) &&
+          response.total_count === response.check_runs.length &&
+          response.total_count < 100 &&
+          response.check_runs.every(
+            (check) => check.check_suite?.id === checkSuiteId
+          )
+      )
+      return response
+    })
+  )
+  const checks = {
+    total_count: responses.reduce(
+      (sum, response) => sum + response.total_count,
+      0
+    ),
+    check_runs: responses.flatMap((response) => response.check_runs),
+  }
+  const verifyFinalWorkflows = (finalWorkflows) =>
+    ensure(
+      JSON.stringify(selectedRuns) ===
+        JSON.stringify(selectReleaseWorkflowRuns(finalWorkflows, sha))
+    )
   const ci = evaluateReleaseCi({
     sha,
     branch,
     protection,
     checks,
-    workflows: Object.fromEntries(workflowEntries),
+    workflows,
   })
   const report = {
     schemaVersion: 1,
@@ -179,8 +212,12 @@ export const collectReleaseReadiness = async (
     releaseAccepted: false,
   }
   if (ciOnly) {
-    const finalBranch = await api("branches/staging")
+    const [finalBranch, finalWorkflows] = await Promise.all([
+      api("branches/staging"),
+      readWorkflows(),
+    ])
     ensure(finalBranch.commit.sha === sha)
+    verifyFinalWorkflows(finalWorkflows)
     return { ...report, passed: ci.passed }
   }
   const railway = await verifiedStagingRailwayReader(capture)
@@ -219,10 +256,12 @@ export const collectReleaseReadiness = async (
   const backups = evaluateStagingBackups(
     await railway(["api", BACKUPS_QUERY, "--compact"])
   )
-  const [after, finalBranch] = await Promise.all([
+  const [after, finalBranch, finalWorkflows] = await Promise.all([
     deploymentSnapshot(),
     api("branches/staging"),
+    readWorkflows(),
   ])
+  verifyFinalWorkflows(finalWorkflows)
   ensure(
     finalBranch.commit.sha === sha &&
       JSON.stringify(after) === JSON.stringify(deployments)

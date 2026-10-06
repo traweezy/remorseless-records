@@ -12,6 +12,7 @@ import {
   REQUIRED_CHECKS,
   STAGING,
   verifyStagingProtection,
+  WORKFLOW_CHECKS,
   WORKFLOWS,
 } from "./lib/staging-release.mjs"
 import {
@@ -42,6 +43,13 @@ const ciFixture = () => ({
       id: index + 1,
       name,
       app: { id: 15368 },
+      check_suite: {
+        id:
+          1000 +
+          WORKFLOWS.findIndex((workflow) =>
+            WORKFLOW_CHECKS[workflow].includes(name)
+          ),
+      },
       head_sha: sha,
       status: "completed",
       conclusion: "success",
@@ -55,6 +63,8 @@ const ciFixture = () => ({
         workflow_runs: [
           {
             id: 100 + index,
+            check_suite_id: 1000 + index,
+            run_attempt: 1,
             path: `.github/workflows/${name}.yml`,
             head_sha: sha,
             head_branch: "staging",
@@ -201,6 +211,12 @@ test("CI binds workflows and check runs to the same repository, event, ref and r
       f.checks.check_runs[0].app.id = 1
     },
     (f) => {
+      f.checks.check_runs[0].check_suite.id = 1001
+    },
+    (f) => {
+      delete f.checks.check_runs[0].check_suite
+    },
+    (f) => {
       f.checks.check_runs[0].conclusion = "skipped"
     },
     (f) => {
@@ -231,6 +247,12 @@ test("CI binds workflows and check runs to the same repository, event, ref and r
       f.workflows.backend.workflow_runs[0].conclusion = "cancelled"
     },
     (f) => {
+      delete f.workflows.backend.workflow_runs[0].check_suite_id
+    },
+    (f) => {
+      f.workflows.backend.workflow_runs[0].run_attempt = 0
+    },
+    (f) => {
       f.workflows.backend.workflow_runs.push({
         ...f.workflows.backend.workflow_runs[0],
         id: 999,
@@ -254,11 +276,47 @@ test("CI binds workflows and check runs to the same repository, event, ref and r
     (f) => {
       f.workflows.root.total_count++
     },
+    (f) => {
+      f.workflows.backend.workflow_runs[0].check_suite_id =
+        f.workflows.root.workflow_runs[0].check_suite_id
+    },
   ]) {
     const f = ciFixture()
     mutate(f)
     assert.throws(() => evaluateReleaseCi(f))
   }
+})
+
+test("scheduled checks cannot replace the selected push suite or repair its failures", () => {
+  const f = ciFixture()
+  f.checks.check_runs.push(
+    ...f.checks.check_runs.map((row) => ({
+      ...row,
+      id: row.id + 500,
+      check_suite: { id: row.check_suite.id + 500 },
+      conclusion: "skipped",
+    }))
+  )
+  f.checks.total_count = f.checks.check_runs.length
+  assert.equal(evaluateReleaseCi(f).passed, true)
+  const pushReview = f.checks.check_runs.find(
+    (row) => row.name === "dependency-review" && row.check_suite.id === 1000
+  )
+  for (const conclusion of ["failure", "skipped", "cancelled", null]) {
+    pushReview.conclusion = conclusion
+    f.checks.check_runs.find(
+      (row) => row.name === "dependency-review" && row.check_suite.id === 1500
+    ).conclusion = "success"
+    assert.equal(evaluateReleaseCi(f).passed, false)
+  }
+  pushReview.conclusion = "success"
+  f.workflows.root.workflow_runs.push({
+    ...f.workflows.root.workflow_runs[0],
+    id: 999,
+    check_suite_id: 9999,
+  })
+  f.workflows.root.total_count++
+  assert.equal(evaluateReleaseCi(f).passed, false)
 })
 
 test("Railway verifies source triggers, target domains and stable single active deployments", () => {
@@ -385,9 +443,16 @@ const transportFixture = (mutate = () => {}) => {
           branchReads++
         } else if (path === "branches/staging/protection")
           result = structuredClone(ci.protection)
-        else if (path.startsWith("commits/"))
-          result = structuredClone(ci.checks)
-        else {
+        else if (path.startsWith("check-suites/")) {
+          const suiteId = Number(path.match(/^check-suites\/(\d+)\//u)?.[1])
+          const rows = ci.checks.check_runs.filter(
+            (row) => row.check_suite.id === suiteId
+          )
+          result = {
+            total_count: rows.length,
+            check_runs: structuredClone(rows),
+          }
+        } else {
           const name = path.match(
             /^actions\/workflows\/(.*)\.yml\/runs\?/u
           )?.[1]
@@ -485,6 +550,48 @@ test("collector rechecks deployments and branch after probing; health never clai
   const failedHealth = await collectReleaseReadiness({ sha }, io)
   assert.equal(failedHealth.passed, false)
   assert.ok(!JSON.stringify(failedHealth).includes("private provider response"))
+})
+
+test("collector reads complete push suites and rejects a rerun during the snapshot", async () => {
+  const complete = transportFixture()
+  assert.equal(
+    (await collectReleaseReadiness({ sha, ciOnly: true }, complete)).passed,
+    true
+  )
+  const suites = complete.commands.filter(
+    ([command, args]) => command === "gh" && args[1].includes("/check-suites/")
+  )
+  assert.equal(suites.length, 4)
+  assert.ok(
+    suites.every(([, args]) => args[1].endsWith("/check-runs?per_page=100"))
+  )
+  assert.ok(
+    !complete.commands.some(([, args]) => args[1]?.includes("/commits/"))
+  )
+  for (const mutate of [
+    (value, state) => {
+      if (state.args[1]?.includes("/check-suites/1000/")) value.total_count++
+    },
+    (value, state) => {
+      if (state.args[1]?.includes("/check-suites/1000/"))
+        value.check_runs[0].check_suite.id = 9999
+    },
+  ])
+    await assert.rejects(
+      collectReleaseReadiness({ sha, ciOnly: true }, transportFixture(mutate))
+    )
+  let reads = 0
+  await assert.rejects(
+    collectReleaseReadiness(
+      { sha, ciOnly: true },
+      transportFixture((value, state) => {
+        if (state.args[1]?.includes("/workflows/root.yml/runs?")) {
+          reads++
+          if (reads === 2) value.workflow_runs[0].run_attempt++
+        }
+      })
+    )
+  )
 })
 
 test("HTTP reads are bounded, reject redirects and preserve uncached response requirements", async () => {

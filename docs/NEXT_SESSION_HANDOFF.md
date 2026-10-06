@@ -1,14 +1,61 @@
 # Next-session handoff
 
-Last updated: 2026-10-04 (America/New_York)
+Last updated: 2026-10-06 (America/New_York)
 
 ## Current continuation — direct staging only
 
-**Resumed October 4:** continue Batch 6 and its corrective releases. The user
-restored native Admin access and reiterated existing full authorization for
+**Resumed October 6:** continue Batch 6 with existing full authorization for
 routine audit work. The client environment clone remains paused behind the
 separate Batch 7 stop boundary below. Latest evidence and remaining work are
 recorded at the top of `docs/END_TO_END_AUDIT.md`.
+
+**Latest continuation — October 6 UTC:** staging remains deployed at
+`c290b7b0c521cfabedf136a4881a2f9262eaf2bf`. The responsive/native-drawer
+correction `283052b5ef39d2232561361cdd56166fc6388723` and catalog/history
+correction `fab7d618e3271d8c43ff5b1c2e77ba38b1da94b8` are committed locally,
+unpushed. The readiness correction now binds the same 23 required jobs to
+the four latest exact-SHA staging push suites; newer scheduled skipped jobs
+cannot replace them. Its 62 release-policy cases and fresh read-only exact
+CI/deployment/basic-health readiness pass. Preserve the original false-negative
+receipt; do not waive checks or treat readiness as release acceptance.
+
+Ordinary live acceptance fails on the scheduler incident at October 6
+14:18:40.644 UTC: one job started 40,604 ms late, completed in 39.845 ms with
+zero eligible/failed/held/completed carts, then released its lock. Subsequent
+heartbeats pass, but the existing 24-hour latch keeps scheduler/operations
+health at 503. Leave it intact, retain monitor issue #21 and require fresh
+healthy observation after the window; its cause is unconfirmed. Surrounding
+30-second metrics show no measured saturation. The original application-log
+gate failure is retained; a separate read identifies its only Backend 5xx as
+this audit's scheduler diagnostic and zero Storefront 5xx.
+
+Native Admin still shows Login with blank fields; required order/refund and
+stage-notification acceptance remains open. Read-only reconciliation confirms
+the unchanged owned order #9 ($9.07 capture, no refunds, inbound exchange draft).
+Do not repeat routine login/approval questions, bypass authentication or create
+more paid audit orders without completing their native reconciliation/cleanup.
+The public bundle/merchandise ledger now has 60/60 latest desktop/phone page
+passes, 78 option observations and 126 actual component-link visits. Retain
+the initial hydration failures and the hydrated attempt's 12 rate-limit
+failures; its focused paced rerun passes all 12 with server policy unchanged.
+The fixed/mystery unpaid guest-cart audit then passes all three primary
+profiles and 64 native responses: native $35 subtotal, component-link/Back,
+quantity, reload and untouched Checkout. All six lines are removed through
+the UI. Read-only boundaries verify unchanged inventory, no contact,
+completion, order links, reservations or payment sessions; the native US-only
+shipping placeholders contain no recipient/delivery fields. Preserve the
+initial helper's no-address assumption failure and explicit field verification.
+Paid product-family and the earlier live drawer acceptance remain open.
+
+Fresh Redis passes on the same instance/run with 260,051 seconds uptime,
+healthy persistence and zero OOM/eviction events; failed 237+1 queues remain
+untouched. Automatic recovery archive `ac0dbcad-4329-4194-8360-0e7c5871eeaa`
+authenticates, with 1,176 media objects and 17 stored archives. Fresh all-nine
+observation starts at 21:29 UTC, with the earlier watcher gap preserved.
+Private evidence is under `artifacts/end-to-end-audit-2026-10-06/`. Hold all
+correction groups from push until native and ordinary health acceptance pass;
+eventual catalog rollout needs the guarded search rebuild and fresh parity.
+Keep Batch 6 open and pause before Batch 7's client clone.
 
 **Batch 5 is release-accepted at `960fe7b`.** Full revision:
 `960fe7bbc47b912770c8357c148f5bd6cb75b3f8`. Continue **batch 6: exhaustive
@@ -24,7 +71,7 @@ pause before Batch 7. Do not create or configure the client staging environment
 until the user resumes that work.** This supersedes earlier automatic
 continuation into the clone.
 
-**Latest local continuation — October 5 UTC:** the responsive/native-drawer
+**Previous local continuation — October 5 UTC:** the responsive/native-drawer
 correction is committed at `283052b5ef39d2232561361cdd56166fc6388723` and
 remains unpushed. Further real Catalog/Discography checks find missing CD and
 Cassette format results, mobile paging stopping at 120 near the footer, and

@@ -132,7 +132,14 @@ pnpm run release:staging:readiness -- --sha <pushed-full-SHA>
 
 The command checks all 23 exact GitHub-App-bound check names and the expected
 staging protection policy, rejecting failed/skipped/missing/latest incomplete
-checks. Full readiness also checks the exact deployment pair and uncached
+checks from each workflow's latest verified `push` run. Required checks must
+belong to that run's check suite; scheduled or manually dispatched checks on
+the same SHA cannot replace them. It reads complete bounded suite pages and
+rechecks the selected run IDs, suite IDs and attempt numbers before returning,
+so a concurrent rerun fails closed. GitHub exposes the association through
+[workflow-run check suite IDs](https://docs.github.com/en/rest/actions/workflow-runs)
+and [check-run suite IDs](https://docs.github.com/en/rest/checks/runs).
+Full readiness also checks the exact deployment pair and uncached
 `/live` and `/ready` responses plus the pinned PostgreSQL/Redis/Bucket backup
 freshness gate, then rechecks branch/deployment identities. See the
 [infrastructure recovery guide](INFRASTRUCTURE_RECOVERY.md#repeatable-staging-backup-freshness-gate)

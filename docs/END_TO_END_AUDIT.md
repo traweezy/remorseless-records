@@ -1,5 +1,106 @@
 # Storefront, Admin and Stripe end-to-end audit
 
+### Public bundles, release check identity and scheduler incident — October 6 UTC
+
+Batch 6 remains open at deployed `c290b7b0c521cfabedf136a4881a2f9262eaf2bf`.
+The responsive/native-drawer correction is local at
+`283052b5ef39d2232561361cdd56166fc6388723`; the catalog/history correction is
+local at `fab7d618e3271d8c43ff5b1c2e77ba38b1da94b8`. Neither is pushed.
+The current Admin tab still presents native Login with blank fields. Existing
+authorization does not supply a current authenticated session; keep native
+order/refund and new stage-notification acceptance open without bypassing
+authentication or repeating routine permission/login questions. The owned
+order #9 remains captured for $9.07 with no refunds and its unchanged inbound
+exchange draft; fresh read-only Medusa/Stripe reconciliation and the sandbox
+payment page agree. Do not create more paid audit orders while their native
+reconciliation and cleanup cannot be completed. The client clone remains paused.
+
+**B6-CI-PUSH-SUITE:** Monday's scheduled workflows created skipped dependency
+review checks on the same SHA. The readiness tool incorrectly preferred these
+newer check IDs over successful staging push jobs. The local correction selects
+the latest exact-SHA staging push run for each of the four workflows, reads its
+complete check-suite page and binds each of the same 23 required jobs to its
+owning suite. Other events cannot displace a passing push job or repair a
+missing/failing one. The final snapshot also rejects a changed run, suite or
+attempt. All 62 release-policy cases pass, including skipped/failing/missing
+jobs, unrelated successful suites, incomplete/wrong-suite pages and concurrent
+reruns. Fresh corrected read-only readiness passes all four workflows/23 jobs,
+both exact application deployments, basic health and backup schedules. This
+does not establish ordinary scheduler or native financial acceptance. The
+original false-negative receipt is retained; no CI job was rerun or waived.
+
+The public merchandise/bundle sweep covers 20 published products in desktop,
+Pixel 7 and iPhone 15 Pro Chromium: 14 fixed bundles, one mystery bundle and
+five merchandise products. The latest unique ledger passes **60/60 cases**,
+with 78 option observations (57 enabled, 21 disabled), quantity clamping,
+native prices, selected-component availability and **126 actual component
+link/Back visits**. Fixed contents agree with fresh public Medusa projections;
+the mystery bundle correctly has no fixed composition. Rendered phone bundle
+screenshots were inspected. The earlier unhydrated drawer attempt is retained.
+The hydrated attempt passes 48 and fails 12 phone cases because repeated cart
+reads hit the existing rate limit. Only those 12 cases were rerun with cart
+reads paced to approximately 55/minute; all pass without changing server
+policy. These are page/control passes, not purchases or Admin acceptance.
+
+The subsequent real fixed/mystery guest-cart audit passes **all three primary
+profiles**, with 64 validated native responses. The $8 fixed bundle exposes
+its three native zine components and an actual component-link/Back visit;
+the $27 mystery CD line explains packing without inventing fixed contents.
+Quantity changes preserve native prices/subtotals, both separate lines survive
+reload with the $35 item subtotal, and actual Checkout opens an untouched
+contact form. All six cart lines are removed through the UI. The bounded
+read-only database comparison confirms unchanged stock/reservations for eight
+inventory rows, three carts without email/completion/billing data, no active
+lines, order links, reservations or payment sessions. Native Medusa creates a
+US-only shipping placeholder for this single-country region; recipient and
+delivery fields remain empty. Retain the initial helper's incorrect no-address
+assertion and the following explicit placeholder-field verification. One
+navigation-canceled GET response-body read is retained separately. These are
+unpaid functional passes; the previously documented live drawer accessibility
+and short-viewport fixes remain local, and paid product-family acceptance stays
+open. Private browser rows are in `browser/bundle-native-cart/`, with before,
+original after and explicit observed-boundary receipts under `receipts/`.
+
+**Ordinary live acceptance currently fails:** the scheduler recorded an
+attention incident at `2026-10-06T14:18:40.644Z`. Its 14:18 job started
+40,604 ms late against the existing 30-second limit, then completed its work
+in 39.845 ms, scanned 68 carts with zero eligible/failed/held/completed carts,
+and released its lock. The preceding and following jobs completed normally.
+Fresh heartbeats pass, but the normal 24-hour incident latch keeps scheduler
+and operations health at 503. Keep the latch and thresholds intact. It cannot
+age out before October 7 at 14:18:40.644 UTC, and a fresh healthy observation
+is still required. The existing
+[staging monitor issue #21](https://github.com/traweezy/remorseless-records/issues/21)
+is preserved without new comments or notifications.
+
+Bounded surrounding Backend/Redis/Postgres metrics show no measured CPU or
+memory saturation; 30-second platform averages cannot establish the cause of
+the 40-second delay. The fresh operations diagnostic verifies all 11
+dependencies/capabilities, completed retention jobs and catalog counts before
+retaining the scheduler failure. Application-log acceptance also retains its
+failure. A separate bounded review identifies its sole Backend 5xx as this
+audit's `GET /health/scheduler` diagnostic and finds zero Storefront 5xx; that
+classification does not override the ordinary acceptance gate.
+
+Fresh Redis inspection passes at 21:29:58 UTC on the same deployment/instance
+and run identity, with **260,051 seconds uptime**, healthy AOF/RDB, zero OOM,
+high/max/kill events, evictions and rejected connections. The failed 237
+scheduled plus one event job remain untouched. Fresh volume schedules pass.
+The latest authenticated encrypted archive is October 6's automatic
+`ac0dbcad-4329-4194-8360-0e7c5871eeaa`, containing 1,176 media objects;
+17 authenticated archives are present. This is not a new restore, PITR or
+off-site recovery proof. Fresh all-nine-service observation starts at 21:29
+UTC; preserve the gap since the preceding October 5 watcher instead of claiming
+continuous monitoring.
+
+Private evidence is in `artifacts/end-to-end-audit-2026-10-06/`: the
+`public-bundle-merch-completion.json` receipt, separate original/rerun browser
+ledgers, push-suite readiness/policy logs, scheduler incident/metrics reports,
+ordinary-observation failures, owned-order reconciliation, Redis and archive
+receipts. Keep all corrective commits local until native financial/notification
+acceptance and ordinary scheduler health pass. Eventual catalog deployment
+still requires the guarded versioned search rebuild and fresh parity checks.
+
 ### Catalog filters, mobile paging and Discography history — October 5 UTC
 
 Batch 6 continues at deployed `c290b7b`. The preceding responsive/native

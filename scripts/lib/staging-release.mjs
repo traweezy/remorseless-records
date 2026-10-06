@@ -34,31 +34,40 @@ export const STAGING = Object.freeze({
   ],
 })
 export const WORKFLOWS = ["root", "backend", "storefront", "runtime-images"]
-export const REQUIRED_CHECKS = [
-  "Security & Audit",
-  "Secret scan",
-  "SBOM & Production Licenses",
-  "Backend Security & Audit (Shai-Hulud, pnpm audit)",
-  "Backend Secret Scan (TruffleHog)",
-  "Backend CodeQL Analyze (JS/TS, security-extended)",
-  "Typecheck + Trivy FS (backend)",
-  "Lint (backend)",
-  "Unit Tests (backend)",
-  "Disposable PostgreSQL & Redis Integration",
-  "Build (backend)",
-  "Storefront Security & Audit (Shai-Hulud, pnpm audit)",
-  "Storefront Secret Scan (TruffleHog)",
-  "Storefront CodeQL Analyze (JS/TS, security-extended)",
-  "Typecheck + Trivy FS (storefront)",
-  "Lint (storefront)",
-  "Unit Tests (storefront)",
-  "Build (storefront)",
-  "Validate runtime image (backend)",
-  "Validate runtime image (storefront)",
-  "dependency-review",
-  "Backend Dependency Review (push/PR)",
-  "Storefront Dependency Review (push/PR)",
-]
+export const WORKFLOW_CHECKS = {
+  root: [
+    "Security & Audit",
+    "Secret scan",
+    "SBOM & Production Licenses",
+    "dependency-review",
+  ],
+  backend: [
+    "Backend Security & Audit (Shai-Hulud, pnpm audit)",
+    "Backend Secret Scan (TruffleHog)",
+    "Backend CodeQL Analyze (JS/TS, security-extended)",
+    "Typecheck + Trivy FS (backend)",
+    "Lint (backend)",
+    "Unit Tests (backend)",
+    "Disposable PostgreSQL & Redis Integration",
+    "Build (backend)",
+    "Backend Dependency Review (push/PR)",
+  ],
+  storefront: [
+    "Storefront Security & Audit (Shai-Hulud, pnpm audit)",
+    "Storefront Secret Scan (TruffleHog)",
+    "Storefront CodeQL Analyze (JS/TS, security-extended)",
+    "Typecheck + Trivy FS (storefront)",
+    "Lint (storefront)",
+    "Unit Tests (storefront)",
+    "Build (storefront)",
+    "Storefront Dependency Review (push/PR)",
+  ],
+  "runtime-images": [
+    "Validate runtime image (backend)",
+    "Validate runtime image (storefront)",
+  ],
+}
+export const REQUIRED_CHECKS = Object.values(WORKFLOW_CHECKS).flat()
 
 export const assertRevision = (value) => {
   assert.equal(typeof value, "string")
@@ -92,40 +101,8 @@ export const verifyStagingProtection = (protection) => {
   assert.ok(!protection.required_pull_request_reviews)
 }
 
-export const evaluateReleaseCi = ({
-  sha,
-  branch,
-  protection,
-  checks,
-  workflows,
-}) => {
+export const selectReleaseWorkflowRuns = (workflows, sha) => {
   assertRevision(sha)
-  assert.equal(branch.name, "staging")
-  assert.equal(branch.commit.sha, sha)
-  verifyStagingProtection(protection)
-  const ref = "refs/heads/staging"
-  assert.ok(
-    Array.isArray(checks.check_runs) &&
-      checks.total_count === checks.check_runs.length &&
-      checks.total_count < 100
-  )
-  const required = REQUIRED_CHECKS.map((name) => {
-    const matching = checks.check_runs
-      .filter(
-        (row) =>
-          row.name === name && row.app?.id === 15368 && row.head_sha === sha
-      )
-      .sort((a, b) => b.id - a.id)
-    const latest = matching[0]
-    return {
-      name,
-      passed:
-        Number.isSafeInteger(latest?.id) &&
-        latest.id > 0 &&
-        latest.status === "completed" &&
-        latest.conclusion === "success",
-    }
-  })
   const runs = WORKFLOWS.map((workflow) => {
     const response = workflows[workflow]
     assert.ok(
@@ -139,7 +116,7 @@ export const evaluateReleaseCi = ({
           run.path === `.github/workflows/${workflow}.yml` &&
           run.head_sha === sha &&
           run.event === "push" &&
-          run.head_branch === ref.replace(/^refs\/(?:heads|tags)\//u, "") &&
+          run.head_branch === "staging" &&
           run.head_repository?.full_name === STAGING.repository
       )
       .sort((a, b) => b.id - a.id)
@@ -147,16 +124,73 @@ export const evaluateReleaseCi = ({
     return {
       workflow,
       runId: Number.isSafeInteger(latest?.id) ? latest.id : null,
+      checkSuiteId: Number.isSafeInteger(latest?.check_suite_id)
+        ? latest.check_suite_id
+        : null,
+      runAttempt: Number.isSafeInteger(latest?.run_attempt)
+        ? latest.run_attempt
+        : null,
       passed:
         Number.isSafeInteger(latest?.id) &&
         latest.id > 0 &&
+        Number.isSafeInteger(latest.check_suite_id) &&
+        latest.check_suite_id > 0 &&
+        Number.isSafeInteger(latest.run_attempt) &&
+        latest.run_attempt > 0 &&
         latest.status === "completed" &&
         latest.conclusion === "success",
     }
   })
+  const suiteIds = runs
+    .map((run) => run.checkSuiteId)
+    .filter((value) => Number.isSafeInteger(value) && value > 0)
+  assert.equal(new Set(suiteIds).size, suiteIds.length)
+  return runs
+}
+
+export const evaluateReleaseCi = ({
+  sha,
+  branch,
+  protection,
+  checks,
+  workflows,
+}) => {
+  assertRevision(sha)
+  assert.equal(branch.name, "staging")
+  assert.equal(branch.commit.sha, sha)
+  verifyStagingProtection(protection)
+  const runs = selectReleaseWorkflowRuns(workflows, sha)
+  assert.ok(
+    Array.isArray(checks.check_runs) &&
+      checks.total_count === checks.check_runs.length &&
+      checks.total_count < 100
+  )
+  const required = runs.flatMap((run) =>
+    WORKFLOW_CHECKS[run.workflow].map((name) => {
+      const matching = checks.check_runs
+        .filter(
+          (row) =>
+            row.name === name &&
+            row.app?.id === 15368 &&
+            row.head_sha === sha &&
+            row.check_suite?.id === run.checkSuiteId &&
+            run.checkSuiteId > 0
+        )
+        .sort((a, b) => b.id - a.id)
+      const latest = matching[0]
+      return {
+        name,
+        passed:
+          Number.isSafeInteger(latest?.id) &&
+          latest.id > 0 &&
+          latest.status === "completed" &&
+          latest.conclusion === "success",
+      }
+    })
+  )
   return {
     sha,
-    ref,
+    ref: "refs/heads/staging",
     requiredChecks: required,
     workflows: runs,
     passed:
