@@ -72,7 +72,11 @@ JavaScript.
 ### Fulfillment status notifications
 
 `fulfillment-status.ts` consumes the pinned native `order.fulfillment_created`,
-`shipment.created` and `delivery.created` workflow events. The notification
+`shipment.created` and `delivery.created` workflow events. Creation supplies
+`order_id` and `fulfillment_id`; shipment and delivery supply the fulfillment's
+`id`. Creation does not accept an `id` alias for its order. The actual pinned
+fulfillment workflow is covered by the disposable native integration case.
+The notification
 checkbox maps to `no_notification`; a true opt-out skips the query and send.
 Native Query resolves the fulfillment's order link and the persisted timestamp
 for the requested stage. Wrong IDs, missing/duplicate rows, malformed states
@@ -92,6 +96,12 @@ left-to-right attributes on the document and body containers, and provides a
 head title. The fulfillment template uses its specific stage title and one
 semantic heading. Local render/fixture checks do not establish compatibility
 with every recipient email client or actual inbox delivery.
+
+Native return, exchange and claim forms also expose notification options, but
+those lifecycle events currently have no registered subscriber or template in
+this application. Selecting an option does not establish delivery. The Batch 6
+audit tracks this unsupported contract separately; refund notices and outbound
+fulfillment updates still use their registered events above.
 
 ### Trigger an email notification
 

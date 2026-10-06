@@ -1,4 +1,5 @@
 import {
+  createOrderFulfillmentWorkflow,
   createShippingOptionsWorkflow,
   createApiKeysWorkflow,
   linkSalesChannelsToApiKeyWorkflow,
@@ -1170,30 +1171,106 @@ medusaIntegrationTestRunner({
         const order = await orders.createOrders({
           currency_code: "usd",
           email: "delivered@resend.dev",
-          items: [],
-        })
-        const fulfillment = await fulfillments.createFulfillment({
-          location_id: location.id,
-          provider_id: "per_item_standard",
-          delivery_address: {
+          shipping_address: {
             address_1: "Synthetic fixture",
             country_code: "us",
           },
           items: [
             {
               title: "Synthetic shipment",
-              sku: "NOTIFICATION-TEST",
-              barcode: "TEST",
               quantity: 1,
+              unit_price: 2.34,
+              requires_shipping: false,
             },
           ],
         })
-        await container.resolve(ContainerRegistrationKeys.LINK).create({
-          [Modules.ORDER]: { order_id: order.id },
-          [Modules.FULFILLMENT]: { fulfillment_id: fulfillment.id },
+        const shippingProfile = await fulfillments.createShippingProfiles({
+          name: "Notification fixture",
+          type: "default",
         })
-        // Only outbound email is stubbed. Graph, native relations and stage
-        // timestamps use the actual disposable Medusa/PostgreSQL modules.
+        const set = await fulfillments.createFulfillmentSets({
+          name: "Notification fixture",
+          type: "shipping",
+          service_zones: [
+            {
+              name: "US",
+              geo_zones: [{ country_code: "us", type: "country" }],
+            },
+          ],
+        })
+        const link = container.resolve(ContainerRegistrationKeys.LINK)
+        await link.create({
+          [Modules.STOCK_LOCATION]: { stock_location_id: location.id },
+          [Modules.FULFILLMENT]: { fulfillment_set_id: set.id },
+        })
+        await link.create({
+          [Modules.STOCK_LOCATION]: { stock_location_id: location.id },
+          [Modules.FULFILLMENT]: {
+            fulfillment_provider_id: "per_item_standard",
+          },
+        })
+        const { result: shippingOptions } = await createShippingOptionsWorkflow(
+          container
+        ).run({
+          input: [
+            {
+              name: "Notification fixture",
+              price_type: "calculated",
+              provider_id: "per_item_standard",
+              service_zone_id: set.service_zones![0]!.id,
+              shipping_profile_id: shippingProfile.id,
+              type: {
+                label: "Standard",
+                code: "standard",
+                description: "Synthetic delivery",
+              },
+              data: {
+                base_amount: 5,
+                additional_amount: 0.5,
+                currency_code: "usd",
+              },
+            },
+          ],
+        })
+        const events = container.resolve<IEventBusModuleService>(
+          Modules.EVENT_BUS
+        )
+        let nativeCreated: Record<string, unknown> | undefined
+        const emit = jest
+          .spyOn(events, "emit")
+          .mockImplementation(async (input) => {
+            for (const event of Array.isArray(input) ? input : [input]) {
+              if (event.name !== "order.fulfillment_created") continue
+              expect(nativeCreated).toBeUndefined()
+              nativeCreated = recordFrom(event.data, "Fulfillment event")
+            }
+          })
+        let fulfillment: Awaited<
+          ReturnType<typeof fulfillments.retrieveFulfillment>
+        >
+        try {
+          const { result } = await createOrderFulfillmentWorkflow(
+            container
+          ).run({
+            input: {
+              order_id: order.id,
+              items: [{ id: order.items![0]!.id, quantity: 1 }],
+              location_id: location.id,
+              shipping_option_id: shippingOptions[0]!.id,
+              no_notification: false,
+            },
+          })
+          fulfillment = result
+        } finally {
+          emit.mockRestore()
+        }
+        expect(nativeCreated).toEqual({
+          order_id: order.id,
+          fulfillment_id: fulfillment.id,
+          no_notification: false,
+        })
+        // Capture the actual workflow event and stub outbound email delivery.
+        // Graph, native relations and timestamps use the disposable modules.
         const rows = new Map<string, Record<string, unknown>>()
         const notification = {
           createNotifications: async (payloads: CreateNotificationDTO[]) => {
@@ -1235,11 +1312,7 @@ medusaIntegrationTestRunner({
               name,
               data:
                 name === "order.fulfillment_created"
-                  ? {
-                      id: order.id,
-                      fulfillment_id: fulfillment.id,
-                      no_notification,
-                    }
+                  ? { ...nativeCreated, no_notification }
                   : { id: fulfillment.id, no_notification },
             },
           } as unknown as Parameters<typeof fulfillmentStatusHandler>[0])
@@ -1303,7 +1376,7 @@ medusaIntegrationTestRunner({
           event: {
             name: "order.fulfillment_created",
             data: {
-              id: order.id,
+              order_id: order.id,
               fulfillment_id: canceled.id,
               no_notification: false,
             },

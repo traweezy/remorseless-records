@@ -61,7 +61,11 @@ const fixture = (name = "order.fulfillment_created") => {
       name,
       data:
         name === "order.fulfillment_created"
-          ? { id: "order_01", fulfillment_id: "ful_01", no_notification: false }
+          ? {
+              order_id: "order_01",
+              fulfillment_id: "ful_01",
+              no_notification: false,
+            }
           : { id: "ful_01", no_notification: false },
     },
   } as unknown as Parameters<typeof handler>[0]
@@ -74,6 +78,22 @@ describe("native fulfillment notifications", () => {
       "order.fulfillment_created",
       "shipment.created",
       "delivery.created",
+    ])
+  })
+
+  it("reads the order_id emitted by the native fulfillment workflow", async () => {
+    const subject = fixture()
+    subject.input.event.data = {
+      order_id: "order_01",
+      fulfillment_id: "ful_01",
+      no_notification: false,
+    }
+    await handler(subject.input)
+    expect(subject.createNotifications).toHaveBeenCalledWith([
+      expect.objectContaining({
+        resource_id: "order_01",
+        idempotency_key: "fulfillment-status:ful_01:prepared",
+      }),
     ])
   })
 
@@ -225,7 +245,7 @@ describe("native fulfillment notifications", () => {
 
   it("rejects a creation event linked to a different order", async () => {
     const subject = fixture()
-    subject.input.event.data.id = "order_02"
+    subject.input.event.data.order_id = "order_02"
     await expect(handler(subject.input)).rejects.toThrow(
       /Fulfillment notification/
     )
@@ -246,8 +266,13 @@ describe("native fulfillment notifications", () => {
 
   it.each([
     { id: "ful_01" },
-    { id: "order_01", fulfillment_id: "ful_01", no_notification: "false" },
-    { id: "order_01", fulfillment_id: "wrong" },
+    { id: "order_01", fulfillment_id: "ful_01", no_notification: false },
+    {
+      order_id: "order_01",
+      fulfillment_id: "ful_01",
+      no_notification: "false",
+    },
+    { order_id: "order_01", fulfillment_id: "wrong" },
     null,
   ])("rejects malformed event data before querying", async (data) => {
     const subject = fixture()

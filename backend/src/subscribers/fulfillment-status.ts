@@ -28,7 +28,8 @@ import {
 } from "../modules/email-notifications/templates/fulfillment-status"
 
 type FulfillmentEvent = {
-  id: string
+  id?: string
+  order_id?: string
   fulfillment_id?: string
   no_notification?: boolean
 }
@@ -69,7 +70,9 @@ export default async function fulfillmentStatusHandler({
     "ful"
   )
   const expectedOrderId =
-    status === "prepared" ? readNotificationEntityId(data.id, "order") : null
+    status === "prepared"
+      ? readNotificationEntityId(data.order_id, "order")
+      : null
   if (!fulfillmentId || (status === "prepared" && !expectedOrderId)) {
     throw malformed()
   }
