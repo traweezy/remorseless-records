@@ -106,27 +106,21 @@ contracts before applying generic framework examples from those files.
 ## Verified continuation boundary
 
 Latest fully accepted hardening batch is Batch 5 at
-`960fe7bbc47b912770c8357c148f5bd6cb75b3f8`. Batch 6's exhaustive
-Storefront/Admin/Stripe audit is still open. Its deployed correction is
-`c290b7b0c521cfabedf136a4881a2f9262eaf2bf`, with passing exact CI,
-runtime bundles and dated all-nine app/service/job observations. Native
-financial/notification acceptance remains incomplete. An authenticated Admin
-tab is now verified; outbound exchange save exposes a native partial-order
-tax quantity/history defect, locally repaired with full coverage, native
-service integration and both builds passing. Its corrective staging release
-and native retests remain pending;
-October 6 ordinary health also fails on the scheduler's intact 24-hour
-incident latch. Responsive/native-drawer corrections are local at `283052b`,
-and format-filter, mobile-paging and Discography-history corrections are
-local at `fab7d61`, all unpushed. The latest readiness correction binds the
-same 23 required jobs to their verified push suites; fresh read-only readiness
-and 62 release-policy cases pass without closing native/ordinary acceptance.
-Public merchandise/bundle pages have 60 latest desktop/phone passes, with
-earlier hydration/rate-limit failures retained. Three unpaid bundle-cart
-profiles also pass, with native boundaries and UI cleanup verified; those
-checks do not close paid product-family acceptance. Follow the opening handoff/audit
-for current evidence, unresolved checks and guarded search rebuild requirements.
-The user requires a pause before Batch 7's client clone; do not create it.
+`960fe7bbc47b912770c8357c148f5bd6cb75b3f8`. Batch 6's exhaustive audit stays
+open. The active application pair remains `c290b7b`; the corrective push
+`1b09546974bd73713031c1f0a5f9fa3ff09d500d` groups UI, catalog, readiness
+and native tax-context fixes, but all four workflows fail new dependency scans.
+Railway holds that candidate. Its narrow dependency repair passes local frozen
+installation, full gates, coverage, native service integration, both builds and
+source/dependency scans; runtime verification and corrective exact CI/rollout
+remain pending. Follow the opening handoff and dependency audit. Native owned
+exchange/refund/notification and paid-family acceptance, guarded search rebuild,
+and ordinary health remain open. The October 6 scheduler's 24-hour incident
+latch stays intact. The Admin session is authenticated, so do not repeat routine
+login questions. The public merchandise/bundle ledger has 60 latest page passes;
+three unpaid cart profiles also pass and are cleaned through the UI. These are
+not paid-family acceptance. The user requires a pause before Batch 7's client
+clone; do not create it.
 Production approval remains separately in Batch 8. Earlier recovery/support
 limits remain in the carryover register. The snapshots below are historical.
 

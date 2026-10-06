@@ -100,6 +100,15 @@
         "storefront/package.json",
         "storefront/scripts/image-optimizer.runtime.test.mjs"
       ]
+    },
+    {
+      "selector": "source-map-js@1.2.2",
+      "publishedAt": "2026-09-30T14:08:09.382Z",
+      "reason": "Reviewed on October 6 under the user's standing authorization to choose and complete hardening corrections without routine permission requests: this exact patch release fixes High indexed-source-map event-loop denial of service GHSA-68fv-2mgg-jv7q. Ordinary seven-day maturity is October 7 at 14:08:09.382 UTC; all other release aging remains strict.",
+      "evidence": [
+        "docs/DEPENDENCY_MIGRATION_AUDIT_2026-07-23.md",
+        "scripts/october-dependency-security.test.mjs"
+      ]
     }
   ],
   "auditIgnores": [

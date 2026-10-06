@@ -17,6 +17,9 @@ allowBuilds:
 resolvePeersFromWorkspaceRoot: false
 
 packageExtensions:
+  "argparse@1.0.10":
+    dependencies:
+      argparse-format: npm:argparse@2.0.1
   "@medusajs/icons@2.18.0":
     peerDependencies:
       "@types/react": "*"
@@ -49,6 +52,13 @@ packageExtensions:
         optional: true
 
 overrides:
+  "source-map-js@<1.2.2": 1.2.2
+  "argparse@1.0.10>sprintf-js": "-"
+  "@graphql-tools/utils@<12.0.1": 12.0.1
+  "@opentelemetry/instrumentation-pg@<0.73.0": 0.73.0
+  "compression@<1.8.2": 1.8.2
+  "proxy-addr@<2.0.8": 2.0.8
+  "postcss-selector-parser@<7.1.6": 7.1.6
   "@babel/core": 7.29.7
   "@grpc/grpc-js@<1.14.5": 1.14.5
   "@mikro-orm/cli": 6.6.14
@@ -106,7 +116,7 @@ overrides:
   react-router-dom: 6.30.6
   rollup: ^4.60.4
   semver: ^7.5.2
-  sharp: 0.35.4
+  sharp: 0.35.5
   tmp: 0.2.7
   "undici@>=7.0.0 <7.30.0": 7.30.0
   uuid: ^11.1.1
@@ -134,3 +144,4 @@ minimumReleaseAgeExclude:
   - "@next/swc-linux-arm64-gnu@16.3.8"
   - "@next/swc-linux-arm64-musl@16.3.8"
   - "@next/swc-win32-arm64-msvc@16.3.8"
+  - "source-map-js@1.2.2"

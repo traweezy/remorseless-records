@@ -53,6 +53,29 @@ describe("dependency supply-chain policy", () => {
     missingCompiler.coolingWindowExceptions.pop()
     assert.throws(() => validatePolicyManifest(missingCompiler))
   })
+  it("binds the source-map security cooling exception to its exact release and publication", () => {
+    const policy = JSON.parse(
+      readFileSync(
+        new URL(
+          "./security/dependency-supply-chain-policy.json",
+          import.meta.url
+        ),
+        "utf8"
+      )
+    )
+    for (const selector of ["source-map-js@*", "source-map-js@1.2.3"]) {
+      const changed = structuredClone(policy)
+      changed.coolingWindowExceptions.find(
+        (entry) => entry.selector === "source-map-js@1.2.2"
+      ).selector = selector
+      assert.throws(() => validatePolicyManifest(changed))
+    }
+    const wrongTime = structuredClone(policy)
+    wrongTime.coolingWindowExceptions.find(
+      (entry) => entry.selector === "source-map-js@1.2.2"
+    ).publishedAt = "2026-09-30T14:08:09.381Z"
+    assert.throws(() => validatePolicyManifest(wrongTime))
+  })
   it("reads top-level scalars and nested lists without widening YAML scope", () => {
     assert.equal(
       readTopLevelScalar(hardenedWorkspace, "minimumReleaseAge"),

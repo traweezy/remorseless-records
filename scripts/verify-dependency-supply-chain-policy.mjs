@@ -24,7 +24,11 @@ const approvedNextCoolingSelectors = [
   "@next/swc-linux-arm64-musl@16.3.8",
   "@next/swc-win32-arm64-msvc@16.3.8",
 ]
-const approvedCoolingSelectors = approvedNextCoolingSelectors
+const reviewedSourceMapSelector = "source-map-js@1.2.2"
+const approvedCoolingSelectors = [
+  ...approvedNextCoolingSelectors,
+  reviewedSourceMapSelector,
+]
 
 const parseYamlScalar = (source) => {
   const value = source.trim()
@@ -110,6 +114,8 @@ export const validatePolicyManifest = (policy) => {
     assert.ok(entry.reason.length >= 80)
     assert.equal(typeof entry.publishedAt, "string")
     assert.equal(new Date(entry.publishedAt).toISOString(), entry.publishedAt)
+    if (entry.selector === reviewedSourceMapSelector)
+      assert.equal(entry.publishedAt, "2026-09-30T14:08:09.382Z")
     return entry.selector
   })
   assert.equal(new Set(selectors).size, selectors.length)
@@ -266,7 +272,7 @@ export const verifyDependencySupplyChainPolicy = () => {
     "utf8"
   )
   validateWorkspacePolicy(rootWorkspace, selectors, "root workspace")
-  const applicationCoolingExceptions = approvedNextCoolingSelectors
+  const applicationCoolingExceptions = approvedCoolingSelectors
   validateWorkspacePolicy(
     backendWorkspace,
     applicationCoolingExceptions,
@@ -313,7 +319,7 @@ export const verifyDependencySupplyChainPolicy = () => {
   )
   assert.equal(
     packageJson.scripts?.["qa:network-dependency-security"],
-    "node --test scripts/network-dependency-security.test.mjs scripts/glob-dependency-security.test.mjs scripts/braces-dependency-security.test.mjs scripts/braces-backport-policy.test.mjs scripts/transport-dependency-security.test.mjs scripts/ftp-dependency-security.test.mjs"
+    "node --test scripts/network-dependency-security.test.mjs scripts/glob-dependency-security.test.mjs scripts/braces-dependency-security.test.mjs scripts/braces-backport-policy.test.mjs scripts/transport-dependency-security.test.mjs scripts/ftp-dependency-security.test.mjs scripts/october-dependency-security.test.mjs"
   )
   assert.equal(packageJson.scripts?.["qa:qs-security"], undefined)
   assert.doesNotMatch(packageJson.scripts?.["qa:lint"] ?? "", /qs-security/u)

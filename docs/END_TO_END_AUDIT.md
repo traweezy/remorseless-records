@@ -1271,6 +1271,27 @@ the expected sandbox. No fresh payment/refund has run. The initial shelf failure
 was repaired; the owned shelf now exists and is archived. One owned product was created successfully after the second repair group;
 its editor and native summary exposed further issues documented below.
 
+**Failed-release correction — October 6, 22:32 UTC:** the grouped Batch 6
+push is `1b09546974bd73713031c1f0a5f9fa3ff09d500d`. All four exact workflows
+fail on eight newly reviewed/revised dependency advisories; Runtime Images
+also fails its security scans. Railway holds the candidate and the active
+pair remains `c290b7b`. This failure is retained and repaired within Batch 6.
+The narrow local dependency correction removes vulnerable `sprintf-js` while
+keeping legacy CLI APIs, installs mature fixes for the other affected families
+and records only the exact Source Map 1.2.2 cooling exception under delegated
+hardening authority. Frozen installation, full lint/type/policy gates, both
+builds, Backend 2,423 tests, 75 native/44 payment integration cases, the full
+recovery aggregate and full/prod audit plus complete source scanning pass.
+See the opening dependency audit for identities, license/age review and retained
+failures. Runtime-image verification and corrective push/CI remain pending;
+no release acceptance is claimed. All nine services/jobs remain stable.
+Native tax report filters and the transaction export pass; the destination
+export passes a bounded retry with one owned $9.07 destination and matching
+period totals. Preserve the first download timeout and the excluded older file.
+The owned order #9 exchange, financial/notification cleanup, paid-family checks,
+guarded search rebuild and ordinary scheduler acceptance remain open. Preserve
+the 24-hour incident latch and pause before the client clone.
+
 ## Initial repair group — deployment and live retests pending
 
 These fixes are part of batch 6, not acceptance of the exhaustive audit. They

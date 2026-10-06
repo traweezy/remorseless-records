@@ -1,0 +1,39 @@
+diff --git a/lib/argument_parser.js b/lib/argument_parser.js
+index bd9a59a453c946f47032be60f4b26ca0430fbe0f..a9e4dfb4f73e9fed4b36cd143790b4918ec6e697 100644
+--- a/lib/argument_parser.js
++++ b/lib/argument_parser.js
+@@ -10,7 +10,7 @@
+ var util    = require('util');
+ var format  = require('util').format;
+ var Path    = require('path');
+-var sprintf = require('sprintf-js').sprintf;
++var sprintf = require('argparse-format/lib/sub');
+ 
+ // Constants
+ var c = require('./const');
+diff --git a/lib/help/formatter.js b/lib/help/formatter.js
+index 29036c14b2e156e4287e8136a545ec0be17fc5b4..a0db6a45f20a5940ee144a1cab7e47e7229f504d 100644
+--- a/lib/help/formatter.js
++++ b/lib/help/formatter.js
+@@ -13,7 +13,7 @@
+  **/
+ 'use strict';
+ 
+-var sprintf = require('sprintf-js').sprintf;
++var sprintf = require('argparse-format/lib/sub');
+ 
+ // Constants
+ var c = require('../const');
+diff --git a/package.json b/package.json
+index 62fba0a9fcfc87c9a43eddb159767ec906a9d2d2..39d57b5aae8ce76ea11ab4fe0dc43f97cb8dd575 100644
+--- a/package.json
++++ b/package.json
+@@ -23,7 +23,7 @@
+     "test": "make test"
+   },
+   "dependencies": {
+-    "sprintf-js": "~1.0.2"
++    "argparse-format": "npm:argparse@2.0.1"
+   },
+   "devDependencies": {
+     "eslint": "^2.13.1",

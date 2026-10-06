@@ -1,5 +1,59 @@
 # Dependency Migration Audit — 2026-07-23
 
+## Batch 6 failed-release security correction — October 6, 2026 UTC
+
+The exact staging push `1b09546974bd73713031c1f0a5f9fa3ff09d500d`
+failed all four workflows on eight newly reviewed/revised dependency advisories.
+Runtime scans also failed; Railway holds the candidate while `c290b7b` stays
+active. Preserve the raw findings and failed run receipts. This is repair of
+the current Batch 6 release, with native acceptance still open.
+
+Reviewed replacements are compression 1.8.2, proxy-addr 2.0.8,
+GraphQL Tools Utils 12.0.1, selector-parser 7.1.6, PostgreSQL instrumentation
+0.73.0 and Sharp 0.35.5 with its matching native artifacts. Each published
+release is beyond seven days. Keep the Medusa, React 18/19, Stripe and Next
+versions and the existing patches. The two GraphQL consumer lines are checked
+through native schema tooling and disposable Medusa integration. The Medusa
+PostgreSQL wrapper now resolves the already reviewed application instrumentation;
+no exporter or extra instrumentation is enabled.
+
+`sprintf-js` has no published fixed release. A full Argparse 2 override exposed
+legacy version/flag incompatibilities and is rejected. Preserve Argparse
+1.0.10's APIs, substitute only the mature Argparse 2.0.1 formatter through an
+exact registry alias and remove its `sprintf-js` dependency. Verify actual
+YAML CLI, migration parameters/help and malformed precision templates. This
+removes the vulnerable implementation; no advisory or severity ignore is added.
+
+The [source-map-js advisory](https://github.com/advisories/GHSA-68fv-2mgg-jv7q)
+has one published fix, 1.2.2. Official registry publication is
+`2026-09-30T14:08:09.382Z`; seven-day maturity is October 7 at the same time.
+Its BSD-3-Clause license, unchanged dependencies and patch API are reviewed,
+and the integrity-verified candidate rejects invalid, oversized and cumulative
+indexed offsets while retaining ordinary mappings. Use only this exact security
+cooling exception, selected under the user's standing delegated authority for
+hardening decisions; this is not a claim that the user separately approved this
+package version. The manifest, validator and all workspace policies bind the
+same exact selector and timestamp. Keep frozen revalidation and every other
+cooling/scanning control. Remove this temporary exclusion once it is mature.
+
+The final reviewed lockfile adds only 32 security-family packages and removes
+38 obsolete records. The unrelated `third-party-web` resolution is restored to
+0.29.2. All pre-existing patch hashes remain unchanged; Argparse's new patch
+SHA-256 is `f7d3b433e7b532f6480216cdcfaa7e8dab2ce07d2e65073e654b17930bbec646`.
+Official publication times and tarball integrities pass; all new versions are
+mature except the single reviewed Source Map exception. Sharp's native LGPL
+and composite license declarations match their preceding platform artifacts.
+
+Frozen installation, 20 focused cases, full lint/type/policy gates, Backend
+2,423-test coverage, 75 native/44 payment integration cases, the complete
+recovery aggregate and both builds pass. Full/prod npm audit and the complete
+1,683-file source scan have zero unmitigated findings; retain the two existing
+Router backports and the exact byte/behavior-verified Braces mitigation. The
+partial source-copy failure and original regression/harness failures stay in
+private evidence. Exact runtime-image checks, the corrective staging push and
+CI/deployment acceptance remain pending. Do not treat local results as release
+acceptance or resume the paused client clone.
+
 ## Native item presentation and picker states — October 4, 2026 UTC
 
 Extend only the existing MIT Dashboard 2.18.0 patch. Purchased native line

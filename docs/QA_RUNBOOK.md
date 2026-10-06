@@ -276,13 +276,20 @@ lockfile revalidation. Reviewed exceptions live only in
 `scripts/security/dependency-supply-chain-policy.json` and must use exact
 selectors with regular, non-symlink evidence files. Do not add a broad package
 range or copy an exception into a nested workspace to make an install pass.
-Choose the newest mature release instead unless the user approves a specific
-security exception. The thirteen current exact cooling exceptions are the
-locally hardened Railway CLI 5.45.0, Multer 2.4.0, Morgan 1.12.1, and the ten
+Choose the newest mature release unless the user's current instructions
+specifically authorize a reviewed security exception. In the ongoing hardening
+task, the user explicitly delegated implementation decisions without repeated
+permission requests. The October 6 review uses that authority for exactly
+`source-map-js@1.2.2`, fixing High indexed-source-map event-loop denial of
+service. Its ordinary maturity is October 7 at 14:08:09.382 UTC. This is a
+recorded delegated decision, not a claim of separate user approval of the
+package. The eleven current exact exceptions are this release and the ten
 Next.js 16.3.8 runtime/compiler artifacts explicitly approved on October 2:
-`next`, `@next/env`, and eight platform SWC packages. The Next release ordinarily
-finishes cooling on October 7 at 16:07:21.198 UTC; its DNS rebinding correction
-is needed by the configured remote-image optimizer. The policy binds the exact
+`next`, `@next/env`, and eight platform SWC packages. The three older CLI,
+Multer and Morgan exceptions have matured and are absent from the manifest.
+The Next release ordinarily finishes cooling on October 7 at 16:07:21.198 UTC;
+its DNS rebinding correction is needed by the configured remote-image optimizer.
+The policy binds the exact
 selectors, publication times, reasons, and evidence and rejects broader or
 incomplete cohorts. The only audit ignores remain the two behaviorally verified
 React Router 6 backports required by Medusa.
