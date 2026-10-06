@@ -307,9 +307,105 @@ const listKeyByPath = new Map([
 const fixtureFor = (url) => {
   const { pathname } = url
   if (pathname === "/admin/orders/order_acceptance") {
+    if (setup === "native-refund-controls") {
+      return {
+        order: {
+          ...rmaOrder,
+          payment_collections: [
+            {
+              id: "paycol_acceptance",
+              payments: [
+                {
+                  id: "pay_acceptance",
+                  amount: 2.34,
+                  currency_code: "usd",
+                  provider_id: "pp_stripe_stripe",
+                  created_at: timestamp,
+                  updated_at: timestamp,
+                  canceled_at: null,
+                  captured_at: timestamp,
+                  captures: [
+                    {
+                      id: "cap_acceptance",
+                      amount: 2.34,
+                      created_at: timestamp,
+                    },
+                  ],
+                  refunds: [],
+                },
+              ],
+            },
+          ],
+        },
+      }
+    }
+    if (setup === "native-allocation" || setup === "native-allocation-kit") {
+      return {
+        order: {
+          ...rmaOrder,
+          fulfillment_status: "not_fulfilled",
+          items: [
+            {
+              ...rmaItem,
+              detail: {
+                ...rmaItem.detail,
+                fulfilled_quantity: 0,
+                shipped_quantity: 0,
+                delivered_quantity: 0,
+              },
+              variant: {
+                ...rmaItem.variant,
+                manage_inventory: true,
+                inventory: [
+                  {
+                    id: "iitem_acceptance",
+                    title: "Acceptance Shirt M",
+                    location_levels: [
+                      {
+                        location_id: "sloc_acceptance",
+                        available_quantity: 3,
+                        stocked_quantity: 3,
+                        reserved_quantity: 0,
+                      },
+                    ],
+                  },
+                ],
+                inventory_items: [
+                  {
+                    inventory_item_id: "iitem_acceptance",
+                    required_quantity:
+                      setup === "native-allocation-kit" ? 2 : 1,
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      }
+    }
     return { order: rmaOrder }
   }
   if (pathname === "/admin/orders/order_acceptance/preview") {
+    if (setup === "native-return-receive") {
+      return {
+        order: {
+          ...rmaOrder,
+          order_change: { ...rmaChange, change_type: "return_receive" },
+          items: [
+            {
+              ...rmaItem,
+              actions: [
+                {
+                  id: "ordchact_receive",
+                  action: "RECEIVE_RETURN_ITEM",
+                  details: { quantity: 1 },
+                },
+              ],
+            },
+          ],
+        },
+      }
+    }
     return { order: rmaPreview }
   }
   if (pathname === "/admin/exchanges/oexc_acceptance") {
@@ -333,8 +429,12 @@ const fixtureFor = (url) => {
         id: "return_acceptance",
         order_id: "order_acceptance",
         status: "requested",
-        location_id: null,
-        items: [],
+        location_id:
+          setup === "native-return-receive" ? "sloc_acceptance" : null,
+        items:
+          setup === "native-return-receive"
+            ? [{ item_id: rmaItem.id, quantity: 1 }]
+            : [],
         shipping_methods: [],
       },
     }
@@ -346,6 +446,9 @@ const fixtureFor = (url) => {
     return paged("stock_locations", [
       { id: "sloc_acceptance", name: "Acceptance HQ" },
     ])
+  }
+  if (pathname === "/admin/stock-locations/sloc_acceptance") {
+    return { stock_location: { id: "sloc_acceptance", name: "Acceptance HQ" } }
   }
   if (pathname === "/admin/shipping-options") return paged("shipping_options")
   if (pathname === "/admin/users/me") {
@@ -1128,6 +1231,70 @@ try {
       )
     })
   }
+  if (setup === "native-allocation" || setup === "native-allocation-kit") {
+    await page.waitForSelector('[role="dialog"] input[name^="quantity."]')
+    await page.click('[role="dialog"] [role="combobox"]')
+    await page.waitForSelector('[role="option"]')
+    await page.click('[role="option"]')
+    await page.waitForFunction(() => {
+      const quantity = document.querySelector('input[name^="quantity."]')
+      return quantity && !quantity.disabled
+    })
+    await page.focus('input[name^="quantity."]')
+    if (setup === "native-allocation-kit") {
+      await page.focus(
+        '[role="dialog"] button[aria-expanded]:not([role="combobox"])'
+      )
+      await page.keyboard.press("Space")
+      await page.waitForFunction(() =>
+        document.querySelector(
+          '[role="dialog"] button[aria-expanded="true"]:not([role="combobox"])'
+        )
+      )
+      await page.waitForSelector(
+        'input[aria-label="Quantity · Acceptance Shirt · M · Acceptance Shirt M"]'
+      )
+    }
+  }
+  if (setup === "native-return-receive") {
+    await page.waitForSelector('input[name="items.0.quantity"]')
+    const label = await page.$eval('input[name="items.0.quantity"]', (input) =>
+      input.getAttribute("aria-label")
+    )
+    if (label !== "Quantity · Acceptance Shirt · M") {
+      throw new Error(
+        "Native return receive quantity omits the purchased option"
+      )
+    }
+    await page.focus('input[name="items.0.quantity"]')
+    const damagedName =
+      "How many of the items are damaged? · Acceptance Shirt · M"
+    await page.click(`button[aria-label="${damagedName}"]`)
+    await page.waitForSelector('input[name="items.0.dismissed_quantity"]')
+    const damagedLabel = await page.$eval(
+      'input[name="items.0.dismissed_quantity"]',
+      (input) => input.getAttribute("aria-label")
+    )
+    if (damagedLabel !== damagedName) {
+      throw new Error(
+        "Native damaged-item quantity omits its action and option"
+      )
+    }
+    await page.screenshot({
+      path: screenshotPath.replace(/\.png$/u, "-damaged.png"),
+      fullPage: true,
+    })
+    await page.click(`button[aria-label="${damagedName}"]`)
+    await page.waitForSelector('input[name="items.0.dismissed_quantity"]', {
+      hidden: true,
+    })
+    await page.focus('input[name="items.0.quantity"]')
+  }
+  if (setup === "native-refund-controls") {
+    await page.waitForSelector(
+      '[role="dialog"] button[aria-label="Refund Reason"]'
+    )
+  }
   if (setup === "native-exchange-hints" || setup === "native-exchange-picker") {
     await page.waitForFunction(() => {
       const dialog = document.querySelector('[role="dialog"]')
@@ -1481,6 +1648,7 @@ try {
       (heading.textContent ?? "").trim()
     ).filter(Boolean),
     path: location.pathname,
+    search: location.search,
     scrollWidth: document.documentElement.scrollWidth,
   }))
   const hasMain = (await page.$("main")) !== null
@@ -1716,7 +1884,7 @@ try {
 
   const findingCodes = [
     ...(!hasMain ? ["main_landmark_missing"] : []),
-    ...(layout.path !== route ? ["route_mismatch"] : []),
+    ...(`${layout.path}${layout.search}` !== route ? ["route_mismatch"] : []),
     ...(layout.scrollWidth - layout.clientWidth > 1
       ? ["horizontal_overflow"]
       : []),

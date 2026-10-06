@@ -1,5 +1,5 @@
 diff --git a/dist/app.js b/dist/app.js
-index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..a18ce49c8a07f2a14350cde395614f03125c267f 100644
+index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e59642db60 100644
 --- a/dist/app.js
 +++ b/dist/app.js
 @@ -111811,17 +111811,25 @@ var init_layout_composer = __esm({
@@ -544,7 +544,64 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..a18ce49c8a07f2a14350cde395614f03
                                  ref,
                                  children: isShippingOptionsLoading ? /* @__PURE__ */ (0, import_jsx_runtime306.jsxs)("span", { className: "text-right", children: [
                                    t5("labels.loading"),
-@@ -155587,9 +155510,9 @@ function OrderReceiveReturn() {
+@@ -155171,11 +155094,12 @@ function DismissedQuantity({
+     }
+   };
+   return /* @__PURE__ */ (0, import_jsx_runtime308.jsxs)(import_ui205.Popover, { open: isOpen, onOpenChange: setIsOpen, children: [
+-    /* @__PURE__ */ (0, import_jsx_runtime308.jsx)(import_ui205.Popover.Trigger, { asChild: true, children: /* @__PURE__ */ (0, import_jsx_runtime308.jsxs)(import_ui205.Button, { className: "flex gap-2 px-2", variant: "secondary", type: "button", children: [
++    /* @__PURE__ */ (0, import_jsx_runtime308.jsx)(import_ui205.Popover.Trigger, { asChild: true, children: /* @__PURE__ */ (0, import_jsx_runtime308.jsxs)(import_ui205.Button, { className: "flex gap-2 px-2",
++                "aria-label": [t5("orders.returns.receive.writeOffInputLabel"), item.product_title, item.variant_title ?? item.title].filter(Boolean).join(" · "), variant: "secondary", type: "button", children: [
+       /* @__PURE__ */ (0, import_jsx_runtime308.jsx)("div", { children: /* @__PURE__ */ (0, import_jsx_runtime308.jsx)(import_icons91.HeartBroken, {}) }),
+       !!dismissedQuantity && /* @__PURE__ */ (0, import_jsx_runtime308.jsx)("span", { children: dismissedQuantity })
+     ] }) }),
+-    /* @__PURE__ */ (0, import_jsx_runtime308.jsx)(import_ui205.Popover.Content, { align: "center", children: /* @__PURE__ */ (0, import_jsx_runtime308.jsxs)("div", { className: "flex flex-col p-2", children: [
++    /* @__PURE__ */ (0, import_jsx_runtime308.jsx)(import_ui205.Popover.Content, { align: "center", "aria-label": t5("orders.returns.receive.writeOffInputLabel"), children: /* @__PURE__ */ (0, import_jsx_runtime308.jsxs)("div", { className: "flex flex-col p-2", children: [
+       /* @__PURE__ */ (0, import_jsx_runtime308.jsx)("span", { className: "txt-small text-ui-fg-subtle mb-2 font-medium", children: t5("orders.returns.receive.writeOffInputLabel") }),
+       /* @__PURE__ */ (0, import_jsx_runtime308.jsx)(
+         Form.Field,
+@@ -155189,6 +155113,7 @@ function DismissedQuantity({
+                 min: 0,
+                 max: item.quantity,
+                 type: "number",
++                          "aria-label": [t5("orders.returns.receive.writeOffInputLabel"), item.product_title, item.variant_title ?? item.title].filter(Boolean).join(" · "),
+                 value,
+                 className: "bg-ui-bg-field-component text-right [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none",
+                 onChange: (e) => {
+@@ -155333,6 +155258,7 @@ function OrderReceiveReturnForm({
+       import_ui206.toast.error(t5("orders.returns.receive.toast.errorLargeValue"));
+       return;
+     }
++    if (action && typeof value === "number" && value > 0 && action.details?.quantity === value) return;
+     try {
+       if (action) {
+         if (value === null || value === 0) {
+@@ -155402,7 +155328,7 @@ function OrderReceiveReturnForm({
+                           ")"
+                         ] })
+                       ] }),
+-                      /* @__PURE__ */ (0, import_jsx_runtime309.jsx)(import_ui206.Text, { as: "div", className: "text-ui-fg-subtle txt-small", children: originalItem.product_title })
++                      /* @__PURE__ */ (0, import_jsx_runtime309.jsx)(import_ui206.Text, { as: "div", className: "text-ui-fg-subtle txt-small", children: originalItem.variant_title ?? originalItem.title })
+                     ] })
+                   ] }),
+                   /* @__PURE__ */ (0, import_jsx_runtime309.jsxs)("div", { className: "flex flex-1 flex-row items-center gap-2", children: [
+@@ -155428,6 +155354,7 @@ function OrderReceiveReturnForm({
+                               min: 0,
+                               max: item.quantity,
+                               type: "number",
++                              "aria-label": [t5("fields.quantity"), originalItem.product_title, originalItem.variant_title ?? originalItem.title].filter(Boolean).join(" · "),
+                               value: value ?? 0,
+                               className: "bg-ui-bg-field-component text-right [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none",
+                               onChange: (e) => {
+@@ -155480,7 +155407,7 @@ function OrderReceiveReturnForm({
+                       import_ui206.Switch,
+                       {
+                         dir: "ltr",
+-                        className: "mt-1 self-start rtl:rotate-180",
++                        className: "mt-1 min-h-6 cursor-pointer self-start rtl:rotate-180",
+                         checked: !!value,
+                         onCheckedChange: onChange,
+                         ...field
+@@ -155587,9 +155514,9 @@ function OrderReceiveReturn() {
    }, [preview]);
    const ready = order && orderReturn && preview;
    return /* @__PURE__ */ (0, import_jsx_runtime310.jsxs)(RouteDrawer, { children: [
@@ -556,7 +613,191 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..a18ce49c8a07f2a14350cde395614f03
      ready && /* @__PURE__ */ (0, import_jsx_runtime310.jsx)(
        OrderReceiveReturnForm,
        {
-@@ -156275,7 +156198,8 @@ function OrderCreateShipmentForm({
+@@ -155693,13 +155620,13 @@ function OrderAllocateItemsItem({
+     getFulfillableQuantity(item),
+     availableQuantity || Number.MAX_SAFE_INTEGER
+   );
+-  return /* @__PURE__ */ (0, import_jsx_runtime311.jsxs)("div", { className: "bg-ui-bg-subtle shadow-elevation-card-rest my-2 min-w-[720px] divide-y divide-dashed rounded-xl", children: [
+-    /* @__PURE__ */ (0, import_jsx_runtime311.jsxs)("div", { className: "flex items-center gap-x-3 p-3 text-sm", children: [
++  return /* @__PURE__ */ (0, import_jsx_runtime311.jsxs)("div", { className: "bg-ui-bg-subtle shadow-elevation-card-rest my-2 w-full min-w-0 divide-y divide-dashed rounded-xl", children: [
++    /* @__PURE__ */ (0, import_jsx_runtime311.jsxs)("div", { className: "flex flex-col items-stretch gap-3 p-3 text-sm sm:flex-row sm:items-center", children: [
+       /* @__PURE__ */ (0, import_jsx_runtime311.jsx)("div", { className: "flex flex-1 items-center", children: /* @__PURE__ */ (0, import_jsx_runtime311.jsxs)("div", { className: "flex items-center gap-x-3", children: [
+         hasQuantityError && /* @__PURE__ */ (0, import_jsx_runtime311.jsx)(import_icons93.ExclamationCircleSolid, { className: "text-ui-fg-error" }),
+         /* @__PURE__ */ (0, import_jsx_runtime311.jsx)(Thumbnail, { src: item.thumbnail }),
+         /* @__PURE__ */ (0, import_jsx_runtime311.jsxs)("div", { className: "flex flex-col", children: [
+-          /* @__PURE__ */ (0, import_jsx_runtime311.jsxs)("div", { className: "flex flex-row", children: [
++          /* @__PURE__ */ (0, import_jsx_runtime311.jsxs)("div", { className: "flex flex-row flex-wrap gap-x-1", children: [
+             /* @__PURE__ */ (0, import_jsx_runtime311.jsx)(import_ui208.Text, { className: "txt-small flex", as: "span", weight: "plus", children: item.product_title }),
+             item.variant_sku && /* @__PURE__ */ (0, import_jsx_runtime311.jsxs)("span", { className: "text-ui-fg-subtle", children: [
+               " ",
+@@ -155709,7 +155636,7 @@ function OrderAllocateItemsItem({
+             ] }),
+             hasInventoryKit && /* @__PURE__ */ (0, import_jsx_runtime311.jsx)(import_icons93.Component, { className: "text-ui-fg-muted ml-2 overflow-visible pt-[2px]" })
+           ] }),
+-          /* @__PURE__ */ (0, import_jsx_runtime311.jsx)(import_ui208.Text, { as: "div", className: "text-ui-fg-subtle txt-small", children: item.title })
++          /* @__PURE__ */ (0, import_jsx_runtime311.jsx)(import_ui208.Text, { as: "div", className: "text-ui-fg-subtle txt-small", children: item.variant_title ?? item.title })
+         ] })
+       ] }) }),
+       /* @__PURE__ */ (0, import_jsx_runtime311.jsxs)(
+@@ -155726,7 +155653,7 @@ function OrderAllocateItemsItem({
+                 /* @__PURE__ */ (0, import_jsx_runtime311.jsxs)("div", { className: "txt-small flex flex-col", children: [
+                   /* @__PURE__ */ (0, import_jsx_runtime311.jsx)("span", { className: "text-ui-fg-subtle font-medium", children: t5("labels.available") }),
+                   /* @__PURE__ */ (0, import_jsx_runtime311.jsxs)("span", { className: "text-ui-fg-muted", children: [
+-                    availableQuantity || "-",
++                    availableQuantity ?? "-",
+                     availableQuantity && !hasInventoryKit && quantityField[`${item.id}-${item.variant?.inventory?.[0].id}`] && /* @__PURE__ */ (0, import_jsx_runtime311.jsxs)("span", { className: "text-ui-fg-error txt-small ml-1", children: [
+                       "-",
+                       quantityField[`${item.id}-${item.variant?.inventory?.[0].id}`]
+@@ -155738,7 +155665,7 @@ function OrderAllocateItemsItem({
+                 /* @__PURE__ */ (0, import_jsx_runtime311.jsx)("div", { className: "bg-ui-border-strong block h-[12px] w-[1px]" }),
+                 /* @__PURE__ */ (0, import_jsx_runtime311.jsxs)("div", { className: "txt-small flex flex-col", children: [
+                   /* @__PURE__ */ (0, import_jsx_runtime311.jsx)("span", { className: "text-ui-fg-subtle font-medium", children: t5("labels.inStock") }),
+-                  /* @__PURE__ */ (0, import_jsx_runtime311.jsx)("span", { className: "text-ui-fg-muted", children: inStockQuantity || "-" })
++                  /* @__PURE__ */ (0, import_jsx_runtime311.jsx)("span", { className: "text-ui-fg-muted", children: inStockQuantity ?? "-" })
+                 ] })
+               ] })
+             ] }),
+@@ -155761,6 +155688,7 @@ function OrderAllocateItemsItem({
+                         {
+                           className: "bg-ui-bg-base txt-small w-[46px] rounded-lg text-right [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none",
+                           type: "number",
++                          "aria-label": [t5("fields.quantity"), item.product_title, item.variant_title ?? item.title].filter(Boolean).join(" · "),
+                           ...field,
+                           disabled: !locationId,
+                           onChange: (e) => {
+@@ -155793,10 +155721,12 @@ function OrderAllocateItemsItem({
+       )
+     ] }),
+     hasInventoryKit && /* @__PURE__ */ (0, import_jsx_runtime311.jsx)("div", { className: "px-4 py-2", children: /* @__PURE__ */ (0, import_jsx_runtime311.jsxs)(
+-      "div",
++      "button",
+       {
++        type: "button",
++        "aria-expanded": isOpen,
+         onClick: () => setIsOpen((o) => !o),
+-        className: "flex items-center gap-x-2",
++        className: "flex min-h-6 cursor-pointer items-center gap-x-2",
+         children: [
+           /* @__PURE__ */ (0, import_jsx_runtime311.jsx)(
+             import_icons93.TriangleDownMini,
+@@ -155816,7 +155746,7 @@ function OrderAllocateItemsItem({
+         (l) => l.location_id === locationId
+       );
+       const hasQuantityError2 = !!quantityField[`${item.id}-${i.id}`] && quantityField[`${item.id}-${i.id}`] > (location?.available_quantity ?? 0);
+-      return /* @__PURE__ */ (0, import_jsx_runtime311.jsxs)("div", { className: "txt-small flex items-center gap-x-3 p-4", children: [
++      return /* @__PURE__ */ (0, import_jsx_runtime311.jsxs)("div", { className: "txt-small flex flex-col items-stretch gap-3 p-4 sm:flex-row sm:items-center", children: [
+         /* @__PURE__ */ (0, import_jsx_runtime311.jsxs)("div", { className: "flex flex-1 flex-row items-center gap-3", children: [
+           hasQuantityError2 && /* @__PURE__ */ (0, import_jsx_runtime311.jsx)(import_icons93.ExclamationCircleSolid, { className: "text-ui-fg-error" }),
+           /* @__PURE__ */ (0, import_jsx_runtime311.jsxs)("div", { className: "flex flex-col", children: [
+@@ -155832,7 +155762,7 @@ function OrderAllocateItemsItem({
+             /* @__PURE__ */ (0, import_jsx_runtime311.jsxs)("div", { className: "txt-small flex flex-col", children: [
+               /* @__PURE__ */ (0, import_jsx_runtime311.jsx)("span", { className: "text-ui-fg-subtle font-medium", children: t5("labels.available") }),
+               /* @__PURE__ */ (0, import_jsx_runtime311.jsxs)("span", { className: "text-ui-fg-muted", children: [
+-                location?.available_quantity || "-",
++                location?.available_quantity ?? "-",
+                 location?.available_quantity && quantityField[`${item.id}-${i.id}`] && /* @__PURE__ */ (0, import_jsx_runtime311.jsxs)("span", { className: "text-ui-fg-error txt-small ml-1", children: [
+                   "-",
+                   quantityField[`${item.id}-${i.id}`]
+@@ -155844,7 +155774,7 @@ function OrderAllocateItemsItem({
+             /* @__PURE__ */ (0, import_jsx_runtime311.jsx)("div", { className: "bg-ui-border-strong block h-[12px] w-[1px]" }),
+             /* @__PURE__ */ (0, import_jsx_runtime311.jsxs)("div", { className: "txt-small flex flex-col", children: [
+               /* @__PURE__ */ (0, import_jsx_runtime311.jsx)("span", { className: "text-ui-fg-subtle font-medium", children: t5("labels.inStock") }),
+-              /* @__PURE__ */ (0, import_jsx_runtime311.jsx)("span", { className: "text-ui-fg-muted", children: location?.stocked_quantity || "-" })
++              /* @__PURE__ */ (0, import_jsx_runtime311.jsx)("span", { className: "text-ui-fg-muted", children: location?.stocked_quantity ?? "-" })
+             ] })
+           ] }),
+           /* @__PURE__ */ (0, import_jsx_runtime311.jsxs)("div", { className: "flex items-center gap-3", children: [
+@@ -155866,6 +155796,7 @@ function OrderAllocateItemsItem({
+                       {
+                         className: "bg-ui-bg-base txt-small w-[46px] rounded-lg text-right [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none",
+                         type: "number",
++                          "aria-label": [t5("fields.quantity"), item.product_title, item.variant_title ?? item.title, i.title].filter(Boolean).join(" · "),
+                         ...field,
+                         disabled: !locationId,
+                         onChange: (e) => {
+@@ -156033,8 +155964,9 @@ function OrderAllocateItemsForm({ order }) {
+       className: "flex h-full flex-col overflow-hidden",
+       children: [
+         /* @__PURE__ */ (0, import_jsx_runtime312.jsx)(RouteFocusModal.Header, {}),
+-        /* @__PURE__ */ (0, import_jsx_runtime312.jsx)(RouteFocusModal.Body, { className: "flex h-full w-full flex-col items-center divide-y overflow-y-auto", children: /* @__PURE__ */ (0, import_jsx_runtime312.jsx)("div", { className: "flex size-full flex-col items-center overflow-auto p-16", children: /* @__PURE__ */ (0, import_jsx_runtime312.jsx)("div", { className: "flex w-full max-w-[736px] flex-col justify-center px-2 pb-2", children: /* @__PURE__ */ (0, import_jsx_runtime312.jsxs)("div", { className: "flex flex-col gap-8 divide-y divide-dashed", children: [
+-          /* @__PURE__ */ (0, import_jsx_runtime312.jsx)(import_ui209.Heading, { children: t5("orders.allocateItems.title") }),
++        /* @__PURE__ */ (0, import_jsx_runtime312.jsx)(RouteFocusModal.Body, { className: "flex h-full w-full flex-col items-center divide-y overflow-y-auto", children: /* @__PURE__ */ (0, import_jsx_runtime312.jsx)("div", { className: "flex size-full flex-col items-center overflow-auto p-4 sm:p-6 lg:p-16", children: /* @__PURE__ */ (0, import_jsx_runtime312.jsx)("div", { className: "flex w-full max-w-[736px] flex-col justify-center px-2 pb-2", children: /* @__PURE__ */ (0, import_jsx_runtime312.jsxs)("div", { className: "flex flex-col gap-8 divide-y divide-dashed", children: [
++          /* @__PURE__ */ (0, import_jsx_runtime312.jsx)(RouteFocusModal.Title, { asChild: true, children: (0, import_jsx_runtime312.jsx)(import_ui209.Heading, { children: t5("orders.allocateItems.title") }) }),
++          (0, import_jsx_runtime312.jsx)(RouteFocusModal.Description, { className: "sr-only", children: t5("orders.allocateItems.itemsToAllocateDesc") }),
+           /* @__PURE__ */ (0, import_jsx_runtime312.jsxs)("div", { className: "flex-1 divide-y divide-dashed pt-8", children: [
+             /* @__PURE__ */ (0, import_jsx_runtime312.jsx)(
+               Form.Field,
+@@ -156043,30 +155975,30 @@ function OrderAllocateItemsForm({ order }) {
+                 name: "location_id",
+                 render: ({ field: { onChange, ref, ...field } }) => {
+                   return /* @__PURE__ */ (0, import_jsx_runtime312.jsxs)(Form.Item, { children: [
+-                    /* @__PURE__ */ (0, import_jsx_runtime312.jsxs)("div", { className: "flex items-center gap-3", children: [
++                    /* @__PURE__ */ (0, import_jsx_runtime312.jsxs)("div", { className: "flex flex-col items-stretch gap-3 sm:flex-row sm:items-center", children: [
+                       /* @__PURE__ */ (0, import_jsx_runtime312.jsxs)("div", { className: "flex-1", children: [
+                         /* @__PURE__ */ (0, import_jsx_runtime312.jsx)(Form.Label, { children: t5("fields.location") }),
+                         /* @__PURE__ */ (0, import_jsx_runtime312.jsx)(Form.Hint, { children: t5("orders.allocateItems.locationDescription") })
+                       ] }),
+-                      /* @__PURE__ */ (0, import_jsx_runtime312.jsx)("div", { className: "flex-1", children: /* @__PURE__ */ (0, import_jsx_runtime312.jsx)(Form.Control, { children: /* @__PURE__ */ (0, import_jsx_runtime312.jsxs)(
++                      /* @__PURE__ */ (0, import_jsx_runtime312.jsx)("div", { className: "flex-1", children: /* @__PURE__ */ (0, import_jsx_runtime312.jsxs)(
+                         import_ui209.Select,
+                         {
+                           dir: direction,
+                           onValueChange: onChange,
+                           ...field,
+                           children: [
+-                            /* @__PURE__ */ (0, import_jsx_runtime312.jsx)(
++                            /* @__PURE__ */ (0, import_jsx_runtime312.jsx)(Form.Control, { children: (0, import_jsx_runtime312.jsx)(
+                               import_ui209.Select.Trigger,
+                               {
+                                 className: "bg-ui-bg-base",
+                                 ref,
+                                 children: /* @__PURE__ */ (0, import_jsx_runtime312.jsx)(import_ui209.Select.Value, {})
+                               }
+-                            ),
++                            ) }),
+                             /* @__PURE__ */ (0, import_jsx_runtime312.jsx)(import_ui209.Select.Content, { children: stock_locations.map((l) => /* @__PURE__ */ (0, import_jsx_runtime312.jsx)(import_ui209.Select.Item, { value: l.id, children: l.name }, l.id)) })
+                           ]
+                         }
+-                      ) }) })
++                      ) })
+                     ] }),
+                     /* @__PURE__ */ (0, import_jsx_runtime312.jsx)(Form.ErrorMessage, {})
+                   ] });
+@@ -156074,7 +156006,7 @@ function OrderAllocateItemsForm({ order }) {
+               }
+             ),
+             /* @__PURE__ */ (0, import_jsx_runtime312.jsxs)(Form.Item, { className: "mt-8 pt-8", children: [
+-              /* @__PURE__ */ (0, import_jsx_runtime312.jsxs)("div", { className: "flex flex-row items-center", children: [
++              /* @__PURE__ */ (0, import_jsx_runtime312.jsxs)("div", { className: "flex flex-col items-stretch gap-3 sm:flex-row sm:items-center", children: [
+                 /* @__PURE__ */ (0, import_jsx_runtime312.jsxs)("div", { className: "flex-1", children: [
+                   /* @__PURE__ */ (0, import_jsx_runtime312.jsx)(Form.Label, { children: t5("orders.allocateItems.itemsToAllocate") }),
+                   /* @__PURE__ */ (0, import_jsx_runtime312.jsx)(Form.Hint, { children: t5("orders.allocateItems.itemsToAllocateDesc") })
+@@ -156084,6 +156016,7 @@ function OrderAllocateItemsForm({ order }) {
+                   {
+                     value: filterTerm,
+                     onChange: (e) => setFilterTerm(e.target.value),
++                    "aria-label": t5("orders.allocateItems.search"),
+                     placeholder: t5("orders.allocateItems.search"),
+                     autoComplete: "off",
+                     type: "search"
+@@ -156169,6 +156102,7 @@ var init_order_create_fulfillment_form3 = __esm({
+ // src/routes/orders/order-allocate-items/order-allocate-items.tsx
+ function OrderAllocateItems() {
+   const { id: id2 } = (0, import_react_router_dom96.useParams)();
++  const { t } = (0, import_react_i18next219.useTranslation)();
+   const { order, isLoading, isError, error } = useOrder(id2, {
+     fields: "currency_code,*items,*items.variant,+items.variant.product.title,*items.variant.inventory,*items.variant.inventory.location_levels,*items.variant.inventory_items,*shipping_address"
+   });
+@@ -156176,7 +156110,7 @@ function OrderAllocateItems() {
+     throw error;
+   }
+   const ready = !isLoading && order;
+-  return /* @__PURE__ */ (0, import_jsx_runtime313.jsx)(RouteFocusModal, { children: ready && /* @__PURE__ */ (0, import_jsx_runtime313.jsx)(OrderAllocateItemsForm, { order }) });
++  return /* @__PURE__ */ (0, import_jsx_runtime313.jsx)(RouteFocusModal, { children: ready ? /* @__PURE__ */ (0, import_jsx_runtime313.jsx)(OrderAllocateItemsForm, { order }) : (0, import_jsx_runtime313.jsx)("div", { className: "sr-only", children: [(0, import_jsx_runtime313.jsx)(RouteFocusModal.Title, { children: t("orders.allocateItems.title") }, "pending-title"), (0, import_jsx_runtime313.jsx)(RouteFocusModal.Description, { children: t("orders.allocateItems.itemsToAllocateDesc") }, "pending-description")] }) });
+ }
+ var import_react_router_dom96, import_jsx_runtime313;
+ var init_order_allocate_items = __esm({
+@@ -156275,7 +156209,8 @@ function OrderCreateShipmentForm({
          /* @__PURE__ */ (0, import_jsx_runtime314.jsx)(RouteFocusModal.Header, {}),
          /* @__PURE__ */ (0, import_jsx_runtime314.jsx)(RouteFocusModal.Body, { className: "flex h-full w-full flex-col items-center divide-y overflow-y-auto", children: /* @__PURE__ */ (0, import_jsx_runtime314.jsx)("div", { className: "flex size-full flex-col items-center overflow-auto p-16", children: /* @__PURE__ */ (0, import_jsx_runtime314.jsx)("div", { className: "flex w-full max-w-[736px] flex-col justify-center px-2 pb-2", children: /* @__PURE__ */ (0, import_jsx_runtime314.jsxs)("div", { className: "flex flex-col divide-y", children: [
            /* @__PURE__ */ (0, import_jsx_runtime314.jsxs)("div", { className: "flex flex-1 flex-col", children: [
@@ -566,7 +807,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..a18ce49c8a07f2a14350cde395614f03
              /* @__PURE__ */ (0, import_jsx_runtime314.jsx)("div", { className: "flex flex-col max-md:gap-y-2 max-md:divide-y", children: labels.map((label, index) => /* @__PURE__ */ (0, import_jsx_runtime314.jsxs)(
                "div",
                {
-@@ -156543,7 +156467,9 @@ var init_use_return_item_table_columns = __esm({
+@@ -156543,7 +156478,9 @@ var init_use_return_item_table_columns = __esm({
                return /* @__PURE__ */ (0, import_jsx_runtime317.jsx)(
                  import_ui211.Checkbox,
                  {
@@ -577,7 +818,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..a18ce49c8a07f2a14350cde395614f03
                    onCheckedChange: (value) => table.toggleAllPageRowsSelected(!!value)
                  }
                );
-@@ -156553,7 +156479,9 @@ var init_use_return_item_table_columns = __esm({
+@@ -156553,7 +156490,9 @@ var init_use_return_item_table_columns = __esm({
                return /* @__PURE__ */ (0, import_jsx_runtime317.jsx)(
                  import_ui211.Checkbox,
                  {
@@ -588,7 +829,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..a18ce49c8a07f2a14350cde395614f03
                    checked: row.getIsSelected(),
                    onCheckedChange: (value) => row.toggleSelected(!!value),
                    onClick: (e) => {
-@@ -156925,6 +156853,7 @@ function ReturnItem({
+@@ -156925,6 +156864,7 @@ function ReturnItem({
    index
  }) {
    const { t: t5 } = (0, import_react_i18next225.useTranslation)();
@@ -596,7 +837,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..a18ce49c8a07f2a14350cde395614f03
    const { return_reasons = [] } = useReturnReasons({ fields: "+label" });
    const formItem = form.watch(`items.${index}`);
    const showReturnReason = typeof formItem.reason_id === "string";
-@@ -156936,7 +156865,7 @@ function ReturnItem({
+@@ -156936,7 +156876,7 @@ function ReturnItem({
          /* @__PURE__ */ (0, import_jsx_runtime319.jsxs)("div", { className: "flex flex-col", children: [
            /* @__PURE__ */ (0, import_jsx_runtime319.jsxs)("div", { children: [
              /* @__PURE__ */ (0, import_jsx_runtime319.jsxs)(import_ui212.Text, { className: "txt-small", as: "span", weight: "plus", children: [
@@ -605,7 +846,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..a18ce49c8a07f2a14350cde395614f03
                " "
              ] }),
              item.variant_sku && /* @__PURE__ */ (0, import_jsx_runtime319.jsxs)("span", { children: [
-@@ -156945,7 +156874,7 @@ function ReturnItem({
+@@ -156945,7 +156885,7 @@ function ReturnItem({
                ")"
              ] })
            ] }),
@@ -614,7 +855,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..a18ce49c8a07f2a14350cde395614f03
          ] })
        ] }),
        /* @__PURE__ */ (0, import_jsx_runtime319.jsxs)("div", { className: "flex flex-1 justify-between", children: [
-@@ -156960,7 +156889,8 @@ function ReturnItem({
+@@ -156960,7 +156900,8 @@ function ReturnItem({
                    /* @__PURE__ */ (0, import_jsx_runtime319.jsx)(Form.Control, { children: /* @__PURE__ */ (0, import_jsx_runtime319.jsx)(
                      import_ui212.Input,
                      {
@@ -624,7 +865,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..a18ce49c8a07f2a14350cde395614f03
                        min: 1,
                        max: item.quantity,
                        type: "number",
-@@ -156969,7 +156899,7 @@ function ReturnItem({
+@@ -156969,7 +156910,7 @@ function ReturnItem({
                          const val = e.target.value;
                          const payload = val === "" ? null : Number(val);
                          field.onChange(payload);
@@ -633,7 +874,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..a18ce49c8a07f2a14350cde395614f03
                            onUpdate({ quantity: payload });
                          }
                        }
-@@ -157034,7 +156964,8 @@ function ReturnItem({
+@@ -157034,7 +156975,8 @@ function ReturnItem({
                    /* @__PURE__ */ (0, import_jsx_runtime319.jsx)(Form.Control, { children: /* @__PURE__ */ (0, import_jsx_runtime319.jsx)(
                      Combobox,
                      {
@@ -643,7 +884,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..a18ce49c8a07f2a14350cde395614f03
                        value,
                        onChange: (v) => {
                          onUpdate({ reason_id: v });
-@@ -157055,7 +156986,8 @@ function ReturnItem({
+@@ -157055,7 +156997,8 @@ function ReturnItem({
            /* @__PURE__ */ (0, import_jsx_runtime319.jsx)(
              import_ui212.IconButton,
              {
@@ -653,7 +894,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..a18ce49c8a07f2a14350cde395614f03
                className: "flex-shrink",
                variant: "transparent",
                onClick: () => {
-@@ -157085,8 +157017,9 @@ function ReturnItem({
+@@ -157085,8 +157028,9 @@ function ReturnItem({
                      {
                        onChange,
                        ...field,
@@ -665,7 +906,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..a18ce49c8a07f2a14350cde395614f03
                      }
                    ) }),
                    /* @__PURE__ */ (0, import_jsx_runtime319.jsx)(Form.ErrorMessage, {})
-@@ -157097,7 +157030,8 @@ function ReturnItem({
+@@ -157097,7 +157041,8 @@ function ReturnItem({
            /* @__PURE__ */ (0, import_jsx_runtime319.jsx)(
              import_ui212.IconButton,
              {
@@ -675,7 +916,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..a18ce49c8a07f2a14350cde395614f03
                className: "flex-shrink",
                variant: "transparent",
                onClick: () => {
-@@ -157433,13 +157367,14 @@ var init_return_create_form = __esm({
+@@ -157433,13 +157378,14 @@ var init_return_create_form = __esm({
            children: /* @__PURE__ */ (0, import_jsx_runtime320.jsxs)(KeyboundForm, { onSubmit: handleSubmit, className: "flex h-full flex-col", children: [
              /* @__PURE__ */ (0, import_jsx_runtime320.jsx)(RouteFocusModal.Header, {}),
              /* @__PURE__ */ (0, import_jsx_runtime320.jsx)(RouteFocusModal.Body, { className: "flex size-full justify-center overflow-y-auto", children: /* @__PURE__ */ (0, import_jsx_runtime320.jsxs)("div", { className: "mt-16 w-[720px] max-w-[100%] px-4 md:p-0", children: [
@@ -693,7 +934,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..a18ce49c8a07f2a14350cde395614f03
                      /* @__PURE__ */ (0, import_jsx_runtime320.jsx)(
                        AddReturnItemsTable,
                        {
-@@ -157541,6 +157476,7 @@ var init_return_create_form = __esm({
+@@ -157541,6 +157487,7 @@ var init_return_create_form = __esm({
                          return /* @__PURE__ */ (0, import_jsx_runtime320.jsx)(Form.Item, { children: /* @__PURE__ */ (0, import_jsx_runtime320.jsx)(Form.Control, { children: /* @__PURE__ */ (0, import_jsx_runtime320.jsx)(
                            Combobox,
                            {
@@ -701,7 +942,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..a18ce49c8a07f2a14350cde395614f03
                              value,
                              onChange: (v) => {
                                onChange(v);
-@@ -157588,6 +157524,7 @@ var init_return_create_form = __esm({
+@@ -157588,6 +157535,7 @@ var init_return_create_form = __esm({
                          return /* @__PURE__ */ (0, import_jsx_runtime320.jsx)(Form.Item, { children: /* @__PURE__ */ (0, import_jsx_runtime320.jsx)(Form.Control, { children: /* @__PURE__ */ (0, import_jsx_runtime320.jsx)(
                            Combobox,
                            {
@@ -709,7 +950,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..a18ce49c8a07f2a14350cde395614f03
                              allowClear: true,
                              value,
                              onChange: (v) => {
-@@ -157689,7 +157626,7 @@ var init_return_create_form = __esm({
+@@ -157689,7 +157637,7 @@ var init_return_create_form = __esm({
                            import_ui213.Switch,
                            {
                              dir: "ltr",
@@ -718,7 +959,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..a18ce49c8a07f2a14350cde395614f03
                              checked: !!value,
                              onCheckedChange: onChange,
                              ...field
-@@ -157796,14 +157733,14 @@ var init_return_create = __esm({
+@@ -157796,14 +157744,14 @@ var init_return_create = __esm({
          }
          run();
        }, [preview]);
@@ -735,7 +976,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..a18ce49c8a07f2a14350cde395614f03
      };
    }
  });
-@@ -157844,7 +157781,9 @@ var init_use_claim_item_table_columns = __esm({
+@@ -157844,7 +157792,9 @@ var init_use_claim_item_table_columns = __esm({
                return /* @__PURE__ */ (0, import_jsx_runtime322.jsx)(
                  import_ui215.Checkbox,
                  {
@@ -746,7 +987,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..a18ce49c8a07f2a14350cde395614f03
                    onCheckedChange: (value) => table.toggleAllPageRowsSelected(!!value)
                  }
                );
-@@ -157854,7 +157793,9 @@ var init_use_claim_item_table_columns = __esm({
+@@ -157854,7 +157804,9 @@ var init_use_claim_item_table_columns = __esm({
                return /* @__PURE__ */ (0, import_jsx_runtime322.jsx)(
                  import_ui215.Checkbox,
                  {
@@ -757,7 +998,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..a18ce49c8a07f2a14350cde395614f03
                    checked: row.getIsSelected(),
                    onCheckedChange: (value) => row.toggleSelected(!!value),
                    onClick: (e) => {
-@@ -158223,6 +158164,7 @@ function ClaimInboundItem({
+@@ -158223,6 +158175,7 @@ function ClaimInboundItem({
    index
  }) {
    const { t: t5 } = (0, import_react_i18next231.useTranslation)();
@@ -765,7 +1006,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..a18ce49c8a07f2a14350cde395614f03
    const { return_reasons = [] } = useReturnReasons({ fields: "+label" });
    const formItem = form.watch(`inbound_items.${index}`);
    const showReturnReason = typeof formItem.reason_id === "string";
-@@ -158234,7 +158176,7 @@ function ClaimInboundItem({
+@@ -158234,7 +158187,7 @@ function ClaimInboundItem({
          /* @__PURE__ */ (0, import_jsx_runtime324.jsxs)("div", { className: "flex flex-col", children: [
            /* @__PURE__ */ (0, import_jsx_runtime324.jsxs)("div", { children: [
              /* @__PURE__ */ (0, import_jsx_runtime324.jsxs)(import_ui216.Text, { className: "txt-small", as: "span", weight: "plus", children: [
@@ -774,7 +1015,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..a18ce49c8a07f2a14350cde395614f03
                " "
              ] }),
              item.variant_sku && /* @__PURE__ */ (0, import_jsx_runtime324.jsxs)("span", { children: [
-@@ -158243,7 +158185,7 @@ function ClaimInboundItem({
+@@ -158243,7 +158196,7 @@ function ClaimInboundItem({
                ")"
              ] })
            ] }),
@@ -783,7 +1024,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..a18ce49c8a07f2a14350cde395614f03
          ] })
        ] }),
        /* @__PURE__ */ (0, import_jsx_runtime324.jsxs)("div", { className: "flex flex-1 justify-between", children: [
-@@ -158259,7 +158201,8 @@ function ClaimInboundItem({
+@@ -158259,7 +158212,8 @@ function ClaimInboundItem({
                      import_ui216.Input,
                      {
                        ...field,
@@ -793,7 +1034,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..a18ce49c8a07f2a14350cde395614f03
                        min: 1,
                        max: item.quantity,
                        type: "number",
-@@ -158267,7 +158210,7 @@ function ClaimInboundItem({
+@@ -158267,7 +158221,7 @@ function ClaimInboundItem({
                          const val = e.target.value;
                          const payload = val === "" ? null : Number(val);
                          field.onChange(payload);
@@ -802,7 +1043,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..a18ce49c8a07f2a14350cde395614f03
                            onUpdate({ quantity: payload });
                          }
                        }
-@@ -158332,7 +158275,8 @@ function ClaimInboundItem({
+@@ -158332,7 +158286,8 @@ function ClaimInboundItem({
                    /* @__PURE__ */ (0, import_jsx_runtime324.jsx)(Form.Control, { children: /* @__PURE__ */ (0, import_jsx_runtime324.jsx)(
                      Combobox,
                      {
@@ -812,7 +1053,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..a18ce49c8a07f2a14350cde395614f03
                        value,
                        onChange: (v) => {
                          onUpdate({ reason_id: v });
-@@ -158353,7 +158297,8 @@ function ClaimInboundItem({
+@@ -158353,7 +158308,8 @@ function ClaimInboundItem({
            /* @__PURE__ */ (0, import_jsx_runtime324.jsx)(
              import_ui216.IconButton,
              {
@@ -822,7 +1063,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..a18ce49c8a07f2a14350cde395614f03
                className: "flex-shrink",
                variant: "transparent",
                onClick: () => {
-@@ -158384,9 +158329,10 @@ function ClaimInboundItem({
+@@ -158384,9 +158340,10 @@ function ClaimInboundItem({
                        ...field,
                        onBlur: () => {
                          field.onChange(field.value);
@@ -835,7 +1076,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..a18ce49c8a07f2a14350cde395614f03
                      }
                    ) }),
                    /* @__PURE__ */ (0, import_jsx_runtime324.jsx)(Form.ErrorMessage, {})
-@@ -158397,7 +158343,8 @@ function ClaimInboundItem({
+@@ -158397,7 +158354,8 @@ function ClaimInboundItem({
            /* @__PURE__ */ (0, import_jsx_runtime324.jsx)(
              import_ui216.IconButton,
              {
@@ -845,7 +1086,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..a18ce49c8a07f2a14350cde395614f03
                className: "flex-shrink",
                variant: "transparent",
                onClick: () => {
-@@ -158483,7 +158430,9 @@ var init_use_claim_outbound_item_table_columns = __esm({
+@@ -158483,7 +158441,9 @@ var init_use_claim_outbound_item_table_columns = __esm({
                return /* @__PURE__ */ (0, import_jsx_runtime325.jsx)(
                  import_ui217.Checkbox,
                  {
@@ -856,7 +1097,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..a18ce49c8a07f2a14350cde395614f03
                    onCheckedChange: (value) => table.toggleAllPageRowsSelected(!!value)
                  }
                );
-@@ -158493,7 +158442,9 @@ var init_use_claim_outbound_item_table_columns = __esm({
+@@ -158493,7 +158453,9 @@ var init_use_claim_outbound_item_table_columns = __esm({
                return /* @__PURE__ */ (0, import_jsx_runtime325.jsx)(
                  import_ui217.Checkbox,
                  {
@@ -867,7 +1108,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..a18ce49c8a07f2a14350cde395614f03
                    checked: row.getIsSelected(),
                    onCheckedChange: (value) => row.toggleSelected(!!value),
                    onClick: (e) => {
-@@ -158615,7 +158566,7 @@ var init_add_claim_outbound_items_table = __esm({
+@@ -158615,7 +158577,7 @@ var init_add_claim_outbound_items_table = __esm({
          pageSize: PAGE_SIZE16,
          prefix: PREFIX7
        });
@@ -876,7 +1117,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..a18ce49c8a07f2a14350cde395614f03
          ...searchParams,
          fields: "*inventory_items.inventory.location_levels,+inventory_quantity"
        });
-@@ -158636,12 +158587,14 @@ var init_add_claim_outbound_items_table = __esm({
+@@ -158636,12 +158598,14 @@ var init_add_claim_outbound_items_table = __esm({
            updater
          }
        });
@@ -892,7 +1133,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..a18ce49c8a07f2a14350cde395614f03
            count,
            filters,
            pagination: true,
-@@ -158684,7 +158637,7 @@ function ClaimOutboundItem({
+@@ -158684,7 +158648,7 @@ function ClaimOutboundItem({
        /* @__PURE__ */ (0, import_jsx_runtime327.jsxs)("div", { className: "flex flex-col", children: [
          /* @__PURE__ */ (0, import_jsx_runtime327.jsxs)("div", { children: [
            /* @__PURE__ */ (0, import_jsx_runtime327.jsxs)(import_ui218.Text, { className: "txt-small", as: "span", weight: "plus", children: [
@@ -901,7 +1142,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..a18ce49c8a07f2a14350cde395614f03
              " "
            ] }),
            previewItem.variant_sku && /* @__PURE__ */ (0, import_jsx_runtime327.jsxs)("span", { children: [
-@@ -158693,7 +158646,7 @@ function ClaimOutboundItem({
+@@ -158693,7 +158657,7 @@ function ClaimOutboundItem({
              ")"
            ] })
          ] }),
@@ -910,7 +1151,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..a18ce49c8a07f2a14350cde395614f03
        ] })
      ] }),
      /* @__PURE__ */ (0, import_jsx_runtime327.jsxs)("div", { className: "flex flex-1 justify-between", children: [
-@@ -158709,14 +158662,15 @@ function ClaimOutboundItem({
+@@ -158709,14 +158673,15 @@ function ClaimOutboundItem({
                    import_ui218.Input,
                    {
                      ...field,
@@ -928,7 +1169,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..a18ce49c8a07f2a14350cde395614f03
                          onUpdate({ quantity: payload });
                        }
                      }
-@@ -159042,9 +158996,9 @@ var init_claim_outbound_section = __esm({
+@@ -159042,9 +159007,9 @@ var init_claim_outbound_section = __esm({
          /* @__PURE__ */ (0, import_jsx_runtime329.jsxs)("div", { className: "mt-8 flex items-center justify-between", children: [
            /* @__PURE__ */ (0, import_jsx_runtime329.jsx)(import_ui219.Heading, { level: "h2", children: t5("orders.returns.outbound") }),
            /* @__PURE__ */ (0, import_jsx_runtime329.jsxs)(StackedFocusModal, { id: "outbound-items", children: [
@@ -940,7 +1181,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..a18ce49c8a07f2a14350cde395614f03
                /* @__PURE__ */ (0, import_jsx_runtime329.jsx)(
                  AddClaimOutboundItemsTable,
                  {
-@@ -159129,6 +159083,7 @@ var init_claim_outbound_section = __esm({
+@@ -159129,6 +159094,7 @@ var init_claim_outbound_section = __esm({
                  return /* @__PURE__ */ (0, import_jsx_runtime329.jsx)(Form.Item, { children: /* @__PURE__ */ (0, import_jsx_runtime329.jsx)(Form.Control, { children: /* @__PURE__ */ (0, import_jsx_runtime329.jsx)(
                    Combobox,
                    {
@@ -948,7 +1189,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..a18ce49c8a07f2a14350cde395614f03
                      allowClear: true,
                      value: value ?? void 0,
                      onChange: (val) => {
-@@ -159577,13 +159532,14 @@ var init_claim_create_form = __esm({
+@@ -159577,13 +159543,14 @@ var init_claim_create_form = __esm({
        return /* @__PURE__ */ (0, import_jsx_runtime330.jsx)(RouteFocusModal.Form, { form, children: /* @__PURE__ */ (0, import_jsx_runtime330.jsxs)(KeyboundForm, { onSubmit: handleSubmit, className: "flex h-full flex-col", children: [
          /* @__PURE__ */ (0, import_jsx_runtime330.jsx)(RouteFocusModal.Header, {}),
          /* @__PURE__ */ (0, import_jsx_runtime330.jsx)(RouteFocusModal.Body, { className: "flex size-full justify-center overflow-y-auto", children: /* @__PURE__ */ (0, import_jsx_runtime330.jsxs)("div", { className: "mt-16 w-[720px] max-w-[100%] px-4 md:p-0", children: [
@@ -966,7 +1207,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..a18ce49c8a07f2a14350cde395614f03
                  /* @__PURE__ */ (0, import_jsx_runtime330.jsx)(
                    AddClaimItemsTable,
                    {
-@@ -159685,6 +159641,7 @@ var init_claim_create_form = __esm({
+@@ -159685,6 +159652,7 @@ var init_claim_create_form = __esm({
                      return /* @__PURE__ */ (0, import_jsx_runtime330.jsx)(Form.Item, { children: /* @__PURE__ */ (0, import_jsx_runtime330.jsx)(Form.Control, { children: /* @__PURE__ */ (0, import_jsx_runtime330.jsx)(
                        Combobox,
                        {
@@ -974,7 +1215,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..a18ce49c8a07f2a14350cde395614f03
                          ...field,
                          value: value ?? void 0,
                          onChange: (v) => {
-@@ -159732,6 +159689,7 @@ var init_claim_create_form = __esm({
+@@ -159732,6 +159700,7 @@ var init_claim_create_form = __esm({
                      return /* @__PURE__ */ (0, import_jsx_runtime330.jsx)(Form.Item, { children: /* @__PURE__ */ (0, import_jsx_runtime330.jsx)(Form.Control, { children: /* @__PURE__ */ (0, import_jsx_runtime330.jsx)(
                        Combobox,
                        {
@@ -982,7 +1223,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..a18ce49c8a07f2a14350cde395614f03
                          allowClear: true,
                          value: value ?? void 0,
                          onChange: (val) => {
-@@ -159928,7 +159886,7 @@ var init_claim_create_form = __esm({
+@@ -159928,7 +159897,7 @@ var init_claim_create_form = __esm({
                        import_ui220.Switch,
                        {
                          dir: "ltr",
@@ -991,7 +1232,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..a18ce49c8a07f2a14350cde395614f03
                          checked: !!value,
                          onCheckedChange: async (checked) => {
                            onChange(checked);
-@@ -159974,7 +159932,7 @@ var init_claim_create_form = __esm({
+@@ -159974,7 +159943,7 @@ var init_claim_create_form = __esm({
                        import_ui220.Switch,
                        {
                          dir: "ltr",
@@ -1000,7 +1241,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..a18ce49c8a07f2a14350cde395614f03
                          checked: !!value,
                          onCheckedChange: onChange,
                          ...field
-@@ -160093,7 +160051,7 @@ var init_claim_create = __esm({
+@@ -160093,7 +160062,7 @@ var init_claim_create = __esm({
          }
          run();
        }, [preview]);
@@ -1009,7 +1250,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..a18ce49c8a07f2a14350cde395614f03
          ClaimCreateForm,
          {
            order,
-@@ -160101,7 +160059,7 @@ var init_claim_create = __esm({
+@@ -160101,7 +160070,7 @@ var init_claim_create = __esm({
            preview,
            orderReturn
          }
@@ -1018,7 +1259,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..a18ce49c8a07f2a14350cde395614f03
      };
    }
  });
-@@ -160174,7 +160132,9 @@ var init_use_exchange_item_table_columns = __esm({
+@@ -160174,7 +160143,9 @@ var init_use_exchange_item_table_columns = __esm({
                return /* @__PURE__ */ (0, import_jsx_runtime332.jsx)(
                  import_ui222.Checkbox,
                  {
@@ -1029,7 +1270,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..a18ce49c8a07f2a14350cde395614f03
                    onCheckedChange: (value) => table.toggleAllPageRowsSelected(!!value)
                  }
                );
-@@ -160184,7 +160144,9 @@ var init_use_exchange_item_table_columns = __esm({
+@@ -160184,7 +160155,9 @@ var init_use_exchange_item_table_columns = __esm({
                return /* @__PURE__ */ (0, import_jsx_runtime332.jsx)(
                  import_ui222.Checkbox,
                  {
@@ -1040,7 +1281,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..a18ce49c8a07f2a14350cde395614f03
                    checked: row.getIsSelected(),
                    onCheckedChange: (value) => row.toggleSelected(!!value),
                    onClick: (e) => {
-@@ -160451,6 +160413,7 @@ function ExchangeInboundItem({
+@@ -160451,6 +160424,7 @@ function ExchangeInboundItem({
    index
  }) {
    const { t: t5 } = (0, import_react_i18next242.useTranslation)();
@@ -1048,7 +1289,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..a18ce49c8a07f2a14350cde395614f03
    const { return_reasons = [] } = useReturnReasons({ fields: "+label" });
    const formItem = form.watch(`inbound_items.${index}`);
    const showReturnReason = typeof formItem.reason_id === "string";
-@@ -160465,7 +160428,7 @@ function ExchangeInboundItem({
+@@ -160465,7 +160439,7 @@ function ExchangeInboundItem({
          /* @__PURE__ */ (0, import_jsx_runtime334.jsxs)("div", { className: "flex flex-grow flex-col", children: [
            /* @__PURE__ */ (0, import_jsx_runtime334.jsxs)("div", { children: [
              /* @__PURE__ */ (0, import_jsx_runtime334.jsxs)(import_ui223.Text, { className: "txt-small", as: "span", weight: "plus", children: [
@@ -1057,7 +1298,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..a18ce49c8a07f2a14350cde395614f03
                " "
              ] }),
              item.variant_sku && /* @__PURE__ */ (0, import_jsx_runtime334.jsxs)("span", { children: [
-@@ -160474,7 +160437,7 @@ function ExchangeInboundItem({
+@@ -160474,7 +160448,7 @@ function ExchangeInboundItem({
                ")"
              ] })
            ] }),
@@ -1066,7 +1307,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..a18ce49c8a07f2a14350cde395614f03
          ] }),
          appliedPromoCodes.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime334.jsx)("div", { className: "flex flex-shrink", children: /* @__PURE__ */ (0, import_jsx_runtime334.jsx)(
            import_ui223.Tooltip,
-@@ -160497,7 +160460,8 @@ function ExchangeInboundItem({
+@@ -160497,7 +160471,8 @@ function ExchangeInboundItem({
                      import_ui223.Input,
                      {
                        ...field,
@@ -1076,7 +1317,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..a18ce49c8a07f2a14350cde395614f03
                        min: 1,
                        max: item.quantity,
                        type: "number",
-@@ -160505,7 +160469,7 @@ function ExchangeInboundItem({
+@@ -160505,7 +160480,7 @@ function ExchangeInboundItem({
                          const val = e.target.value;
                          const payload = val === "" ? null : Number(val);
                          field.onChange(payload);
@@ -1085,7 +1326,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..a18ce49c8a07f2a14350cde395614f03
                            onUpdate({ quantity: payload });
                          }
                        }
-@@ -160570,7 +160534,8 @@ function ExchangeInboundItem({
+@@ -160570,7 +160545,8 @@ function ExchangeInboundItem({
                    /* @__PURE__ */ (0, import_jsx_runtime334.jsx)(Form.Control, { children: /* @__PURE__ */ (0, import_jsx_runtime334.jsx)(
                      Combobox,
                      {
@@ -1095,7 +1336,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..a18ce49c8a07f2a14350cde395614f03
                        value,
                        onChange: (v) => {
                          onUpdate({ reason_id: v });
-@@ -160591,7 +160556,8 @@ function ExchangeInboundItem({
+@@ -160591,7 +160567,8 @@ function ExchangeInboundItem({
            /* @__PURE__ */ (0, import_jsx_runtime334.jsx)(
              import_ui223.IconButton,
              {
@@ -1105,7 +1346,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..a18ce49c8a07f2a14350cde395614f03
                className: "flex-shrink",
                variant: "transparent",
                onClick: () => {
-@@ -160622,9 +160588,10 @@ function ExchangeInboundItem({
+@@ -160622,9 +160599,10 @@ function ExchangeInboundItem({
                        ...field,
                        onBlur: () => {
                          field.onChange(field.value);
@@ -1118,7 +1359,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..a18ce49c8a07f2a14350cde395614f03
                      }
                    ) }),
                    /* @__PURE__ */ (0, import_jsx_runtime334.jsx)(Form.ErrorMessage, {})
-@@ -160635,7 +160602,8 @@ function ExchangeInboundItem({
+@@ -160635,7 +160613,8 @@ function ExchangeInboundItem({
            /* @__PURE__ */ (0, import_jsx_runtime334.jsx)(
              import_ui223.IconButton,
              {
@@ -1128,7 +1369,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..a18ce49c8a07f2a14350cde395614f03
                className: "flex-shrink",
                variant: "transparent",
                onClick: () => {
-@@ -160906,9 +160874,9 @@ var init_exchange_inbound_section = __esm({
+@@ -160906,9 +160885,9 @@ var init_exchange_inbound_section = __esm({
          /* @__PURE__ */ (0, import_jsx_runtime335.jsxs)("div", { className: "mt-8 flex items-center justify-between", children: [
            /* @__PURE__ */ (0, import_jsx_runtime335.jsx)(import_ui224.Heading, { level: "h2", children: t5("orders.returns.inbound") }),
            /* @__PURE__ */ (0, import_jsx_runtime335.jsxs)(StackedFocusModal, { id: "inbound-items", children: [
@@ -1140,7 +1381,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..a18ce49c8a07f2a14350cde395614f03
                /* @__PURE__ */ (0, import_jsx_runtime335.jsx)(
                  AddExchangeInboundItemsTable,
                  {
-@@ -161002,6 +160970,7 @@ var init_exchange_inbound_section = __esm({
+@@ -161002,6 +160981,7 @@ var init_exchange_inbound_section = __esm({
                    return /* @__PURE__ */ (0, import_jsx_runtime335.jsx)(Form.Item, { children: /* @__PURE__ */ (0, import_jsx_runtime335.jsx)(Form.Control, { children: /* @__PURE__ */ (0, import_jsx_runtime335.jsx)(
                      Combobox,
                      {
@@ -1148,7 +1389,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..a18ce49c8a07f2a14350cde395614f03
                        ...field,
                        value: value ?? void 0,
                        onChange: (v) => {
-@@ -161049,6 +161018,7 @@ var init_exchange_inbound_section = __esm({
+@@ -161049,6 +161029,7 @@ var init_exchange_inbound_section = __esm({
                    return /* @__PURE__ */ (0, import_jsx_runtime335.jsx)(Form.Item, { children: /* @__PURE__ */ (0, import_jsx_runtime335.jsx)(Form.Control, { children: /* @__PURE__ */ (0, import_jsx_runtime335.jsx)(
                      Combobox,
                      {
@@ -1156,7 +1397,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..a18ce49c8a07f2a14350cde395614f03
                        allowClear: true,
                        value: value ?? void 0,
                        onChange: (val) => {
-@@ -161100,7 +161070,9 @@ var init_use_exchange_outbound_item_table_columns = __esm({
+@@ -161100,7 +161081,9 @@ var init_use_exchange_outbound_item_table_columns = __esm({
                return /* @__PURE__ */ (0, import_jsx_runtime336.jsx)(
                  import_ui225.Checkbox,
                  {
@@ -1167,7 +1408,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..a18ce49c8a07f2a14350cde395614f03
                    onCheckedChange: (value) => table.toggleAllPageRowsSelected(!!value)
                  }
                );
-@@ -161110,7 +161082,9 @@ var init_use_exchange_outbound_item_table_columns = __esm({
+@@ -161110,7 +161093,9 @@ var init_use_exchange_outbound_item_table_columns = __esm({
                return /* @__PURE__ */ (0, import_jsx_runtime336.jsx)(
                  import_ui225.Checkbox,
                  {
@@ -1178,7 +1419,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..a18ce49c8a07f2a14350cde395614f03
                    checked: row.getIsSelected(),
                    onCheckedChange: (value) => row.toggleSelected(!!value),
                    onClick: (e) => {
-@@ -161232,7 +161206,7 @@ var init_add_exchange_outbound_items_table = __esm({
+@@ -161232,7 +161217,7 @@ var init_add_exchange_outbound_items_table = __esm({
          pageSize: PAGE_SIZE18,
          prefix: PREFIX9
        });
@@ -1187,7 +1428,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..a18ce49c8a07f2a14350cde395614f03
          ...searchParams,
          fields: "*inventory_items.inventory.location_levels,+inventory_quantity"
        });
-@@ -161253,12 +161227,14 @@ var init_add_exchange_outbound_items_table = __esm({
+@@ -161253,12 +161238,14 @@ var init_add_exchange_outbound_items_table = __esm({
            updater
          }
        });
@@ -1203,7 +1444,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..a18ce49c8a07f2a14350cde395614f03
            count,
            filters,
            pagination: true,
-@@ -161304,7 +161280,7 @@ function ExchangeOutboundItem({
+@@ -161304,7 +161291,7 @@ function ExchangeOutboundItem({
        /* @__PURE__ */ (0, import_jsx_runtime338.jsxs)("div", { className: "flex flex-grow flex-col", children: [
          /* @__PURE__ */ (0, import_jsx_runtime338.jsxs)("div", { children: [
            /* @__PURE__ */ (0, import_jsx_runtime338.jsxs)(import_ui226.Text, { className: "txt-small", as: "span", weight: "plus", children: [
@@ -1212,7 +1453,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..a18ce49c8a07f2a14350cde395614f03
              " "
            ] }),
            previewItem.variant_sku && /* @__PURE__ */ (0, import_jsx_runtime338.jsxs)("span", { children: [
-@@ -161313,7 +161289,7 @@ function ExchangeOutboundItem({
+@@ -161313,7 +161300,7 @@ function ExchangeOutboundItem({
              ")"
            ] })
          ] }),
@@ -1221,7 +1462,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..a18ce49c8a07f2a14350cde395614f03
        ] }),
        appliedPromoCodes.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime338.jsx)("div", { className: "flex flex-shrink", children: /* @__PURE__ */ (0, import_jsx_runtime338.jsx)(
          import_ui226.Tooltip,
-@@ -161336,14 +161312,15 @@ function ExchangeOutboundItem({
+@@ -161336,14 +161323,15 @@ function ExchangeOutboundItem({
                    import_ui226.Input,
                    {
                      ...field,
@@ -1239,7 +1480,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..a18ce49c8a07f2a14350cde395614f03
                          onUpdate({ quantity: payload });
                        }
                      }
-@@ -161611,9 +161588,9 @@ var init_exchange_outbound_section = __esm({
+@@ -161611,9 +161599,9 @@ var init_exchange_outbound_section = __esm({
          /* @__PURE__ */ (0, import_jsx_runtime339.jsxs)("div", { className: "mt-8 flex items-center justify-between", children: [
            /* @__PURE__ */ (0, import_jsx_runtime339.jsx)(import_ui227.Heading, { level: "h2", children: t5("orders.returns.outbound") }),
            /* @__PURE__ */ (0, import_jsx_runtime339.jsxs)(StackedFocusModal, { id: "outbound-items", children: [
@@ -1251,7 +1492,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..a18ce49c8a07f2a14350cde395614f03
                /* @__PURE__ */ (0, import_jsx_runtime339.jsx)(
                  AddExchangeOutboundItemsTable,
                  {
-@@ -161698,6 +161675,7 @@ var init_exchange_outbound_section = __esm({
+@@ -161698,6 +161686,7 @@ var init_exchange_outbound_section = __esm({
                  return /* @__PURE__ */ (0, import_jsx_runtime339.jsx)(Form.Item, { children: /* @__PURE__ */ (0, import_jsx_runtime339.jsx)(Form.Control, { children: /* @__PURE__ */ (0, import_jsx_runtime339.jsx)(
                    Combobox,
                    {
@@ -1259,7 +1500,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..a18ce49c8a07f2a14350cde395614f03
                      allowClear: true,
                      noResultsPlaceholder: /* @__PURE__ */ (0, import_jsx_runtime339.jsx)(OutboundShippingPlaceholder, {}),
                      value: value ?? void 0,
-@@ -161932,7 +161910,8 @@ var init_exchange_create_form = __esm({
+@@ -161932,7 +161921,8 @@ var init_exchange_create_form = __esm({
        return /* @__PURE__ */ (0, import_jsx_runtime340.jsx)(RouteFocusModal.Form, { form, children: /* @__PURE__ */ (0, import_jsx_runtime340.jsxs)(KeyboundForm, { onSubmit: handleSubmit, className: "flex h-full flex-col", children: [
          /* @__PURE__ */ (0, import_jsx_runtime340.jsx)(RouteFocusModal.Header, {}),
          /* @__PURE__ */ (0, import_jsx_runtime340.jsx)(RouteFocusModal.Body, { className: "flex size-full justify-center overflow-y-auto", children: /* @__PURE__ */ (0, import_jsx_runtime340.jsxs)("div", { className: "mt-16 w-[720px] max-w-[100%] px-4 md:p-0", children: [
@@ -1269,7 +1510,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..a18ce49c8a07f2a14350cde395614f03
            /* @__PURE__ */ (0, import_jsx_runtime340.jsx)(
              ExchangeInboundSection,
              {
-@@ -161982,7 +161961,8 @@ var init_exchange_create_form = __esm({
+@@ -161982,7 +161972,8 @@ var init_exchange_create_form = __esm({
                  !isInboundShippingPriceEdit && /* @__PURE__ */ (0, import_jsx_runtime340.jsx)(
                    import_ui228.IconButton,
                    {
@@ -1279,7 +1520,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..a18ce49c8a07f2a14350cde395614f03
                      variant: "transparent",
                      className: "text-ui-fg-muted",
                      disabled: !inboundPreviewItems?.length || !inboundShippingOptionId,
-@@ -161993,6 +161973,7 @@ var init_exchange_create_form = __esm({
+@@ -161993,6 +161984,7 @@ var init_exchange_create_form = __esm({
                    import_ui228.CurrencyInput,
                    {
                      id: "js-inbound-shipping-input",
@@ -1287,7 +1528,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..a18ce49c8a07f2a14350cde395614f03
                      onBlur: () => {
                        let actionId;
                        preview.shipping_methods.forEach((s) => {
-@@ -162038,7 +162019,8 @@ var init_exchange_create_form = __esm({
+@@ -162038,7 +162030,8 @@ var init_exchange_create_form = __esm({
                  !isOutboundShippingPriceEdit && /* @__PURE__ */ (0, import_jsx_runtime340.jsx)(
                    import_ui228.IconButton,
                    {
@@ -1297,7 +1538,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..a18ce49c8a07f2a14350cde395614f03
                      variant: "transparent",
                      className: "text-ui-fg-muted",
                      disabled: !outboundPreviewItems?.length || !outboundShippingOptionId,
-@@ -162049,6 +162031,7 @@ var init_exchange_create_form = __esm({
+@@ -162049,6 +162042,7 @@ var init_exchange_create_form = __esm({
                    import_ui228.CurrencyInput,
                    {
                      id: "js-outbound-shipping-input",
@@ -1305,7 +1546,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..a18ce49c8a07f2a14350cde395614f03
                      onBlur: () => {
                        let actionId;
                        preview.shipping_methods.forEach((s) => {
-@@ -162108,7 +162091,7 @@ var init_exchange_create_form = __esm({
+@@ -162108,7 +162102,7 @@ var init_exchange_create_form = __esm({
                        import_ui228.Switch,
                        {
                          dir: "ltr",
@@ -1314,7 +1555,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..a18ce49c8a07f2a14350cde395614f03
                          checked: !!value,
                          onCheckedChange: async (checked) => {
                            onChange(checked);
-@@ -162154,7 +162137,7 @@ var init_exchange_create_form = __esm({
+@@ -162154,7 +162148,7 @@ var init_exchange_create_form = __esm({
                        import_ui228.Switch,
                        {
                          dir: "ltr",
@@ -1323,7 +1564,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..a18ce49c8a07f2a14350cde395614f03
                          checked: !!value,
                          onCheckedChange: onChange,
                          ...field
-@@ -162272,7 +162255,7 @@ var init_exchange_create = __esm({
+@@ -162272,7 +162266,7 @@ var init_exchange_create = __esm({
          }
          run();
        }, [preview]);
@@ -1332,7 +1573,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..a18ce49c8a07f2a14350cde395614f03
          ExchangeCreateForm,
          {
            order,
-@@ -162280,7 +162263,7 @@ var init_exchange_create = __esm({
+@@ -162280,7 +162274,7 @@ var init_exchange_create = __esm({
            preview,
            orderReturn
          }
@@ -1341,7 +1582,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..a18ce49c8a07f2a14350cde395614f03
      };
    }
  });
-@@ -162445,7 +162428,7 @@ var init_add_order_edit_items_table = __esm({
+@@ -162445,7 +162439,7 @@ var init_add_order_edit_items_table = __esm({
          pageSize: PAGE_SIZE19,
          prefix: PREFIX10
        });
@@ -1350,7 +1591,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..a18ce49c8a07f2a14350cde395614f03
          ...searchParams,
          fields: "*inventory_items.inventory.location_levels,+inventory_quantity"
        });
-@@ -162466,12 +162449,14 @@ var init_add_order_edit_items_table = __esm({
+@@ -162466,12 +162460,14 @@ var init_add_order_edit_items_table = __esm({
            updater
          }
        });
@@ -1366,7 +1607,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..a18ce49c8a07f2a14350cde395614f03
            count,
            filters,
            pagination: true,
-@@ -163482,7 +163467,9 @@ var init_create_refund_form = __esm({
+@@ -163482,7 +163478,9 @@ var init_create_refund_form = __esm({
        );
        const payments = getPaymentsFromOrder(order);
        const payment = payments.find((p) => p.id === paymentId);
@@ -1377,7 +1618,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..a18ce49c8a07f2a14350cde395614f03
        const currency = (0, import_react238.useMemo)(
          () => currencies[order.currency_code.toUpperCase()],
          [order.currency_code]
-@@ -163505,16 +163492,21 @@ var init_create_refund_form = __esm({
+@@ -163505,16 +163503,21 @@ var init_create_refund_form = __esm({
        });
        (0, import_react238.useEffect)(() => {
          const pendingDifference = order.summary.pending_difference;
@@ -1402,7 +1643,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..a18ce49c8a07f2a14350cde395614f03
          await mutateAsync(
            {
              amount: data.amount.float,
-@@ -163556,7 +163548,7 @@ var init_create_refund_form = __esm({
+@@ -163556,7 +163559,7 @@ var init_create_refund_form = __esm({
                    },
                    children: [
                      /* @__PURE__ */ (0, import_jsx_runtime349.jsx)(import_ui236.Label, { className: "txt-compact-small mb-[-6px] font-sans font-medium", children: t5("orders.payment.selectPaymentToRefund") }),
@@ -1411,7 +1652,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..a18ce49c8a07f2a14350cde395614f03
                        import_ui236.Select.Value,
                        {
                          placeholder: t5("orders.payment.selectPaymentToRefund")
-@@ -163633,10 +163625,10 @@ var init_create_refund_form = __esm({
+@@ -163633,10 +163636,10 @@ var init_create_refund_form = __esm({
                            symbol: currency.symbol_native,
                            code: currency.code,
                            value: field.value.value,
@@ -1426,7 +1667,16 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..a18ce49c8a07f2a14350cde395614f03
                            autoFocus: true
                          }
                        ) }),
-@@ -163738,7 +163730,7 @@ var init_order_create_refund = __esm({
+@@ -163660,7 +163663,7 @@ var init_create_refund_form = __esm({
+                           value: field.value,
+                           onValueChange: field.onChange,
+                           children: [
+-                            /* @__PURE__ */ (0, import_jsx_runtime349.jsx)(import_ui236.Select.Trigger, { children: /* @__PURE__ */ (0, import_jsx_runtime349.jsx)(import_ui236.Select.Value, {}) }),
++                            /* @__PURE__ */ (0, import_jsx_runtime349.jsx)(import_ui236.Select.Trigger, { "aria-label": t5("fields.refundReason"), children: /* @__PURE__ */ (0, import_jsx_runtime349.jsx)(import_ui236.Select.Value, {}) }),
+                             /* @__PURE__ */ (0, import_jsx_runtime349.jsx)(import_ui236.Select.Content, { children: refund_reasons?.map((reason) => /* @__PURE__ */ (0, import_jsx_runtime349.jsx)(import_ui236.Select.Item, { value: reason.id, children: reason.label }, reason.id)) })
+                           ]
+                         }
+@@ -163738,7 +163741,7 @@ var init_order_create_refund = __esm({
        const { plugins = [] } = usePlugins();
        const loyaltyPlugin = getLoyaltyPlugin(plugins);
        return /* @__PURE__ */ (0, import_jsx_runtime350.jsxs)(RouteDrawer, { children: [
@@ -1435,7 +1685,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..a18ce49c8a07f2a14350cde395614f03
          order && !loyaltyPlugin && /* @__PURE__ */ (0, import_jsx_runtime350.jsx)(CreateRefundForm, { order }),
          order && loyaltyPlugin && /* @__PURE__ */ (0, import_jsx_runtime350.jsx)(OrderBalanceSettlementForm, { order })
        ] });
-@@ -218597,14 +218589,6 @@ function getRouteMap({
+@@ -218597,14 +218600,6 @@ function getRouteMap({
                    path: "",
                    lazy: () => Promise.resolve().then(() => (init_product_list2(), product_list_exports)),
                    children: [
@@ -1450,7 +1700,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..a18ce49c8a07f2a14350cde395614f03
                      {
                        path: "export",
                        lazy: () => Promise.resolve().then(() => (init_product_export2(), product_export_exports))
-@@ -221160,9 +221144,10 @@ var init_dashboard_app = __esm({
+@@ -221160,9 +221155,10 @@ var init_dashboard_app = __esm({
        }
        /**
         * Returns widgets for a given base zone grouped by layout section.
@@ -1464,7 +1714,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..a18ce49c8a07f2a14350cde395614f03
         */
        getWidgetsForSections(route, sections) {
          const result = {};
-@@ -221170,7 +221155,9 @@ var init_dashboard_app = __esm({
+@@ -221170,7 +221166,9 @@ var init_dashboard_app = __esm({
            if (!zone.startsWith(route)) {
              continue;
            }
@@ -1475,7 +1725,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..a18ce49c8a07f2a14350cde395614f03
            const mainSection = sections.includes("main") ? "main" : sections[0];
            const section = suffix || mainSection;
            if (!result[section]) {
-@@ -221180,6 +221167,7 @@ var init_dashboard_app = __esm({
+@@ -221180,6 +221178,7 @@ var init_dashboard_app = __esm({
              const sourceId = ext.widgetId ?? `${zone}:${i}`;
              result[section].push({
                Component: ext.Component,
@@ -1858,6 +2108,194 @@ index c5e00d8ee8258b0a64c95975948c21402ec98ce5..0cca0c2a3fb2a179fdda9b216a090b02
      const validSectionIds2 = new Set(layout?.sections.map((s) => s.id) ?? []);
      const entriesBySection2 = buildDisplayEntries(
        rawEntries,
+diff --git a/dist/order-allocate-items-LRSTJNOD.mjs b/dist/order-allocate-items-LRSTJNOD.mjs
+index 7b683f6d27f9ff90edb8d80664313ea4d7cf16fd..9c36466b92c0e66edba8585e0daade8cadbf09d7 100644
+--- a/dist/order-allocate-items-LRSTJNOD.mjs
++++ b/dist/order-allocate-items-LRSTJNOD.mjs
+@@ -112,13 +112,13 @@ function OrderAllocateItemsItem({
+     getFulfillableQuantity(item),
+     availableQuantity || Number.MAX_SAFE_INTEGER
+   );
+-  return /* @__PURE__ */ jsxs("div", { className: "bg-ui-bg-subtle shadow-elevation-card-rest my-2 min-w-[720px] divide-y divide-dashed rounded-xl", children: [
+-    /* @__PURE__ */ jsxs("div", { className: "flex items-center gap-x-3 p-3 text-sm", children: [
++  return /* @__PURE__ */ jsxs("div", { className: "bg-ui-bg-subtle shadow-elevation-card-rest my-2 w-full min-w-0 divide-y divide-dashed rounded-xl", children: [
++    /* @__PURE__ */ jsxs("div", { className: "flex flex-col items-stretch gap-3 p-3 text-sm sm:flex-row sm:items-center", children: [
+       /* @__PURE__ */ jsx("div", { className: "flex flex-1 items-center", children: /* @__PURE__ */ jsxs("div", { className: "flex items-center gap-x-3", children: [
+         hasQuantityError && /* @__PURE__ */ jsx(ExclamationCircleSolid, { className: "text-ui-fg-error" }),
+         /* @__PURE__ */ jsx(Thumbnail, { src: item.thumbnail }),
+         /* @__PURE__ */ jsxs("div", { className: "flex flex-col", children: [
+-          /* @__PURE__ */ jsxs("div", { className: "flex flex-row", children: [
++          /* @__PURE__ */ jsxs("div", { className: "flex flex-row flex-wrap gap-x-1", children: [
+             /* @__PURE__ */ jsx(Text, { className: "txt-small flex", as: "span", weight: "plus", children: item.product_title }),
+             item.variant_sku && /* @__PURE__ */ jsxs("span", { className: "text-ui-fg-subtle", children: [
+               " ",
+@@ -128,7 +128,7 @@ function OrderAllocateItemsItem({
+             ] }),
+             hasInventoryKit && /* @__PURE__ */ jsx(Component, { className: "text-ui-fg-muted ml-2 overflow-visible pt-[2px]" })
+           ] }),
+-          /* @__PURE__ */ jsx(Text, { as: "div", className: "text-ui-fg-subtle txt-small", children: item.title })
++          /* @__PURE__ */ jsx(Text, { as: "div", className: "text-ui-fg-subtle txt-small", children: item.variant_title ?? item.title })
+         ] })
+       ] }) }),
+       /* @__PURE__ */ jsxs(
+@@ -145,7 +145,7 @@ function OrderAllocateItemsItem({
+                 /* @__PURE__ */ jsxs("div", { className: "txt-small flex flex-col", children: [
+                   /* @__PURE__ */ jsx("span", { className: "text-ui-fg-subtle font-medium", children: t("labels.available") }),
+                   /* @__PURE__ */ jsxs("span", { className: "text-ui-fg-muted", children: [
+-                    availableQuantity || "-",
++                    availableQuantity ?? "-",
+                     availableQuantity && !hasInventoryKit && quantityField[`${item.id}-${item.variant?.inventory?.[0].id}`] && /* @__PURE__ */ jsxs("span", { className: "text-ui-fg-error txt-small ml-1", children: [
+                       "-",
+                       quantityField[`${item.id}-${item.variant?.inventory?.[0].id}`]
+@@ -157,7 +157,7 @@ function OrderAllocateItemsItem({
+                 /* @__PURE__ */ jsx("div", { className: "bg-ui-border-strong block h-[12px] w-[1px]" }),
+                 /* @__PURE__ */ jsxs("div", { className: "txt-small flex flex-col", children: [
+                   /* @__PURE__ */ jsx("span", { className: "text-ui-fg-subtle font-medium", children: t("labels.inStock") }),
+-                  /* @__PURE__ */ jsx("span", { className: "text-ui-fg-muted", children: inStockQuantity || "-" })
++                  /* @__PURE__ */ jsx("span", { className: "text-ui-fg-muted", children: inStockQuantity ?? "-" })
+                 ] })
+               ] })
+             ] }),
+@@ -180,6 +180,7 @@ function OrderAllocateItemsItem({
+                         {
+                           className: "bg-ui-bg-base txt-small w-[46px] rounded-lg text-right [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none",
+                           type: "number",
++                          "aria-label": [t("fields.quantity"), item.product_title, item.variant_title ?? item.title].filter(Boolean).join(" · "),
+                           ...field,
+                           disabled: !locationId,
+                           onChange: (e) => {
+@@ -212,10 +213,12 @@ function OrderAllocateItemsItem({
+       )
+     ] }),
+     hasInventoryKit && /* @__PURE__ */ jsx("div", { className: "px-4 py-2", children: /* @__PURE__ */ jsxs(
+-      "div",
++      "button",
+       {
++        type: "button",
++        "aria-expanded": isOpen,
+         onClick: () => setIsOpen((o) => !o),
+-        className: "flex items-center gap-x-2",
++        className: "flex min-h-6 cursor-pointer items-center gap-x-2",
+         children: [
+           /* @__PURE__ */ jsx(
+             TriangleDownMini,
+@@ -235,7 +238,7 @@ function OrderAllocateItemsItem({
+         (l) => l.location_id === locationId
+       );
+       const hasQuantityError2 = !!quantityField[`${item.id}-${i.id}`] && quantityField[`${item.id}-${i.id}`] > (location?.available_quantity ?? 0);
+-      return /* @__PURE__ */ jsxs("div", { className: "txt-small flex items-center gap-x-3 p-4", children: [
++      return /* @__PURE__ */ jsxs("div", { className: "txt-small flex flex-col items-stretch gap-3 p-4 sm:flex-row sm:items-center", children: [
+         /* @__PURE__ */ jsxs("div", { className: "flex flex-1 flex-row items-center gap-3", children: [
+           hasQuantityError2 && /* @__PURE__ */ jsx(ExclamationCircleSolid, { className: "text-ui-fg-error" }),
+           /* @__PURE__ */ jsxs("div", { className: "flex flex-col", children: [
+@@ -251,7 +254,7 @@ function OrderAllocateItemsItem({
+             /* @__PURE__ */ jsxs("div", { className: "txt-small flex flex-col", children: [
+               /* @__PURE__ */ jsx("span", { className: "text-ui-fg-subtle font-medium", children: t("labels.available") }),
+               /* @__PURE__ */ jsxs("span", { className: "text-ui-fg-muted", children: [
+-                location?.available_quantity || "-",
++                location?.available_quantity ?? "-",
+                 location?.available_quantity && quantityField[`${item.id}-${i.id}`] && /* @__PURE__ */ jsxs("span", { className: "text-ui-fg-error txt-small ml-1", children: [
+                   "-",
+                   quantityField[`${item.id}-${i.id}`]
+@@ -263,7 +266,7 @@ function OrderAllocateItemsItem({
+             /* @__PURE__ */ jsx("div", { className: "bg-ui-border-strong block h-[12px] w-[1px]" }),
+             /* @__PURE__ */ jsxs("div", { className: "txt-small flex flex-col", children: [
+               /* @__PURE__ */ jsx("span", { className: "text-ui-fg-subtle font-medium", children: t("labels.inStock") }),
+-              /* @__PURE__ */ jsx("span", { className: "text-ui-fg-muted", children: location?.stocked_quantity || "-" })
++              /* @__PURE__ */ jsx("span", { className: "text-ui-fg-muted", children: location?.stocked_quantity ?? "-" })
+             ] })
+           ] }),
+           /* @__PURE__ */ jsxs("div", { className: "flex items-center gap-3", children: [
+@@ -285,6 +288,7 @@ function OrderAllocateItemsItem({
+                       {
+                         className: "bg-ui-bg-base txt-small w-[46px] rounded-lg text-right [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none",
+                         type: "number",
++                          "aria-label": [t("fields.quantity"), item.product_title, item.variant_title ?? item.title, i.title].filter(Boolean).join(" · "),
+                         ...field,
+                         disabled: !locationId,
+                         onChange: (e) => {
+@@ -437,8 +441,9 @@ function OrderAllocateItemsForm({ order }) {
+       className: "flex h-full flex-col overflow-hidden",
+       children: [
+         /* @__PURE__ */ jsx2(RouteFocusModal.Header, {}),
+-        /* @__PURE__ */ jsx2(RouteFocusModal.Body, { className: "flex h-full w-full flex-col items-center divide-y overflow-y-auto", children: /* @__PURE__ */ jsx2("div", { className: "flex size-full flex-col items-center overflow-auto p-16", children: /* @__PURE__ */ jsx2("div", { className: "flex w-full max-w-[736px] flex-col justify-center px-2 pb-2", children: /* @__PURE__ */ jsxs2("div", { className: "flex flex-col gap-8 divide-y divide-dashed", children: [
+-          /* @__PURE__ */ jsx2(Heading, { children: t("orders.allocateItems.title") }),
++        /* @__PURE__ */ jsx2(RouteFocusModal.Body, { className: "flex h-full w-full flex-col items-center divide-y overflow-y-auto", children: /* @__PURE__ */ jsx2("div", { className: "flex size-full flex-col items-center overflow-auto p-4 sm:p-6 lg:p-16", children: /* @__PURE__ */ jsx2("div", { className: "flex w-full max-w-[736px] flex-col justify-center px-2 pb-2", children: /* @__PURE__ */ jsxs2("div", { className: "flex flex-col gap-8 divide-y divide-dashed", children: [
++          /* @__PURE__ */ jsx2(RouteFocusModal.Title, { asChild: true, children: jsx2(Heading, { children: t("orders.allocateItems.title") }) }),
++          jsx2(RouteFocusModal.Description, { className: "sr-only", children: t("orders.allocateItems.itemsToAllocateDesc") }),
+           /* @__PURE__ */ jsxs2("div", { className: "flex-1 divide-y divide-dashed pt-8", children: [
+             /* @__PURE__ */ jsx2(
+               Form.Field,
+@@ -447,30 +452,30 @@ function OrderAllocateItemsForm({ order }) {
+                 name: "location_id",
+                 render: ({ field: { onChange, ref, ...field } }) => {
+                   return /* @__PURE__ */ jsxs2(Form.Item, { children: [
+-                    /* @__PURE__ */ jsxs2("div", { className: "flex items-center gap-3", children: [
++                    /* @__PURE__ */ jsxs2("div", { className: "flex flex-col items-stretch gap-3 sm:flex-row sm:items-center", children: [
+                       /* @__PURE__ */ jsxs2("div", { className: "flex-1", children: [
+                         /* @__PURE__ */ jsx2(Form.Label, { children: t("fields.location") }),
+                         /* @__PURE__ */ jsx2(Form.Hint, { children: t("orders.allocateItems.locationDescription") })
+                       ] }),
+-                      /* @__PURE__ */ jsx2("div", { className: "flex-1", children: /* @__PURE__ */ jsx2(Form.Control, { children: /* @__PURE__ */ jsxs2(
++                      /* @__PURE__ */ jsx2("div", { className: "flex-1", children: /* @__PURE__ */ jsxs2(
+                         Select,
+                         {
+                           dir: direction,
+                           onValueChange: onChange,
+                           ...field,
+                           children: [
+-                            /* @__PURE__ */ jsx2(
++                            /* @__PURE__ */ jsx2(Form.Control, { children: jsx2(
+                               Select.Trigger,
+                               {
+                                 className: "bg-ui-bg-base",
+                                 ref,
+                                 children: /* @__PURE__ */ jsx2(Select.Value, {})
+                               }
+-                            ),
++                            ) }),
+                             /* @__PURE__ */ jsx2(Select.Content, { children: stock_locations.map((l) => /* @__PURE__ */ jsx2(Select.Item, { value: l.id, children: l.name }, l.id)) })
+                           ]
+                         }
+-                      ) }) })
++                      ) })
+                     ] }),
+                     /* @__PURE__ */ jsx2(Form.ErrorMessage, {})
+                   ] });
+@@ -478,7 +483,7 @@ function OrderAllocateItemsForm({ order }) {
+               }
+             ),
+             /* @__PURE__ */ jsxs2(Form.Item, { className: "mt-8 pt-8", children: [
+-              /* @__PURE__ */ jsxs2("div", { className: "flex flex-row items-center", children: [
++              /* @__PURE__ */ jsxs2("div", { className: "flex flex-col items-stretch gap-3 sm:flex-row sm:items-center", children: [
+                 /* @__PURE__ */ jsxs2("div", { className: "flex-1", children: [
+                   /* @__PURE__ */ jsx2(Form.Label, { children: t("orders.allocateItems.itemsToAllocate") }),
+                   /* @__PURE__ */ jsx2(Form.Hint, { children: t("orders.allocateItems.itemsToAllocateDesc") })
+@@ -488,6 +493,7 @@ function OrderAllocateItemsForm({ order }) {
+                   {
+                     value: filterTerm,
+                     onChange: (e) => setFilterTerm(e.target.value),
++                    "aria-label": t("orders.allocateItems.search"),
+                     placeholder: t("orders.allocateItems.search"),
+                     autoComplete: "off",
+                     type: "search"
+@@ -543,6 +549,7 @@ function defaultAllocations(items) {
+ import { jsx as jsx3 } from "react/jsx-runtime";
+ function OrderAllocateItems() {
+   const { id } = useParams();
++  const { t } = useTranslation2();
+   const { order, isLoading, isError, error } = useOrder(id, {
+     fields: "currency_code,*items,*items.variant,+items.variant.product.title,*items.variant.inventory,*items.variant.inventory.location_levels,*items.variant.inventory_items,*shipping_address"
+   });
+@@ -550,7 +557,7 @@ function OrderAllocateItems() {
+     throw error;
+   }
+   const ready = !isLoading && order;
+-  return /* @__PURE__ */ jsx3(RouteFocusModal, { children: ready && /* @__PURE__ */ jsx3(OrderAllocateItemsForm, { order }) });
++  return /* @__PURE__ */ jsx3(RouteFocusModal, { children: ready ? /* @__PURE__ */ jsx3(OrderAllocateItemsForm, { order }) : jsx3("div", { className: "sr-only", children: [jsx3(RouteFocusModal.Title, { children: t("orders.allocateItems.title") }, "pending-title"), jsx3(RouteFocusModal.Description, { children: t("orders.allocateItems.itemsToAllocateDesc") }, "pending-description")] }) });
+ }
+ export {
+   OrderAllocateItems as Component
 diff --git a/dist/order-create-claim-ZMJRSB2U.mjs b/dist/order-create-claim-ZMJRSB2U.mjs
 index 675d55c5face56e3a5e2362de690aad0f2109785..3a4b31d328e102f8779c07702d2c44db51d9327f 100644
 --- a/dist/order-create-claim-ZMJRSB2U.mjs
@@ -2536,7 +2974,7 @@ index 0ad484ed6d22acb7fac69865e014b05c0dd2d9a1..7c163f774a28868a5f84fef89716cf70
                                  children: isShippingOptionsLoading ? /* @__PURE__ */ jsxs2("span", { className: "text-right", children: [
                                    t("labels.loading"),
 diff --git a/dist/order-create-refund-YSSM7BEM.mjs b/dist/order-create-refund-YSSM7BEM.mjs
-index 194742b565cd47c3b1d7602f60e377dd0733c4e5..9449fb8be47affdb08fff38f0a77a65232f58661 100644
+index 194742b565cd47c3b1d7602f60e377dd0733c4e5..c8a48b223ccd26aec4e84a142c462b891f9f8f90 100644
 --- a/dist/order-create-refund-YSSM7BEM.mjs
 +++ b/dist/order-create-refund-YSSM7BEM.mjs
 @@ -79,7 +79,6 @@ import "./chunk-NFEK63OE.mjs";
@@ -2607,6 +3045,15 @@ index 194742b565cd47c3b1d7602f60e377dd0733c4e5..9449fb8be47affdb08fff38f0a77a652
                        autoFocus: true
                      }
                    ) }),
+@@ -633,7 +639,7 @@ var CreateRefundForm = ({ order }) => {
+                       value: field.value,
+                       onValueChange: field.onChange,
+                       children: [
+-                        /* @__PURE__ */ jsx2(Select2.Trigger, { children: /* @__PURE__ */ jsx2(Select2.Value, {}) }),
++                        /* @__PURE__ */ jsx2(Select2.Trigger, { "aria-label": t("fields.refundReason"), children: /* @__PURE__ */ jsx2(Select2.Value, {}) }),
+                         /* @__PURE__ */ jsx2(Select2.Content, { children: refund_reasons?.map((reason) => /* @__PURE__ */ jsx2(Select2.Item, { value: reason.id, children: reason.label }, reason.id)) })
+                       ]
+                     }
 @@ -688,7 +694,7 @@ var OrderCreateRefund = () => {
    const { plugins = [] } = usePlugins();
    const loyaltyPlugin = getLoyaltyPlugin(plugins);
@@ -2813,10 +3260,67 @@ index 10a323ae2c1345c42f39dc4c5a9a050925fbd0a8..81d1d0cb5b60e27cb60b18de18541ead
      " ",
      tooltip
 diff --git a/dist/order-receive-return-HEIGUW3S.mjs b/dist/order-receive-return-HEIGUW3S.mjs
-index 586579c875807331e08c192758c906930535f297..50f9e48b6969d5b62723829293d38ed01ae64879 100644
+index 586579c875807331e08c192758c906930535f297..bbd334d998a4307c0e5a53ca1fab581346f98b7e 100644
 --- a/dist/order-receive-return-HEIGUW3S.mjs
 +++ b/dist/order-receive-return-HEIGUW3S.mjs
-@@ -547,9 +547,9 @@ function OrderReceiveReturn() {
+@@ -171,11 +171,12 @@ function DismissedQuantity({
+     }
+   };
+   return /* @__PURE__ */ jsxs(Popover, { open: isOpen, onOpenChange: setIsOpen, children: [
+-    /* @__PURE__ */ jsx(Popover.Trigger, { asChild: true, children: /* @__PURE__ */ jsxs(Button, { className: "flex gap-2 px-2", variant: "secondary", type: "button", children: [
++    /* @__PURE__ */ jsx(Popover.Trigger, { asChild: true, children: /* @__PURE__ */ jsxs(Button, { className: "flex gap-2 px-2",
++                "aria-label": [t("orders.returns.receive.writeOffInputLabel"), item.product_title, item.variant_title ?? item.title].filter(Boolean).join(" · "), variant: "secondary", type: "button", children: [
+       /* @__PURE__ */ jsx("div", { children: /* @__PURE__ */ jsx(HeartBroken, {}) }),
+       !!dismissedQuantity && /* @__PURE__ */ jsx("span", { children: dismissedQuantity })
+     ] }) }),
+-    /* @__PURE__ */ jsx(Popover.Content, { align: "center", children: /* @__PURE__ */ jsxs("div", { className: "flex flex-col p-2", children: [
++    /* @__PURE__ */ jsx(Popover.Content, { align: "center", "aria-label": t("orders.returns.receive.writeOffInputLabel"), children: /* @__PURE__ */ jsxs("div", { className: "flex flex-col p-2", children: [
+       /* @__PURE__ */ jsx("span", { className: "txt-small text-ui-fg-subtle mb-2 font-medium", children: t("orders.returns.receive.writeOffInputLabel") }),
+       /* @__PURE__ */ jsx(
+         Form.Field,
+@@ -189,6 +190,7 @@ function DismissedQuantity({
+                 min: 0,
+                 max: item.quantity,
+                 type: "number",
++                          "aria-label": [t("orders.returns.receive.writeOffInputLabel"), item.product_title, item.variant_title ?? item.title].filter(Boolean).join(" · "),
+                 value,
+                 className: "bg-ui-bg-field-component text-right [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none",
+                 onChange: (e) => {
+@@ -321,6 +323,7 @@ function OrderReceiveReturnForm({
+       toast2.error(t("orders.returns.receive.toast.errorLargeValue"));
+       return;
+     }
++    if (action && typeof value === "number" && value > 0 && action.details?.quantity === value) return;
+     try {
+       if (action) {
+         if (value === null || value === 0) {
+@@ -390,7 +393,7 @@ function OrderReceiveReturnForm({
+                           ")"
+                         ] })
+                       ] }),
+-                      /* @__PURE__ */ jsx2(Text, { as: "div", className: "text-ui-fg-subtle txt-small", children: originalItem.product_title })
++                      /* @__PURE__ */ jsx2(Text, { as: "div", className: "text-ui-fg-subtle txt-small", children: originalItem.variant_title ?? originalItem.title })
+                     ] })
+                   ] }),
+                   /* @__PURE__ */ jsxs2("div", { className: "flex flex-1 flex-row items-center gap-2", children: [
+@@ -416,6 +419,7 @@ function OrderReceiveReturnForm({
+                               min: 0,
+                               max: item.quantity,
+                               type: "number",
++                              "aria-label": [t("fields.quantity"), originalItem.product_title, originalItem.variant_title ?? originalItem.title].filter(Boolean).join(" · "),
+                               value: value ?? 0,
+                               className: "bg-ui-bg-field-component text-right [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none",
+                               onChange: (e) => {
+@@ -468,7 +472,7 @@ function OrderReceiveReturnForm({
+                       Switch,
+                       {
+                         dir: "ltr",
+-                        className: "mt-1 self-start rtl:rotate-180",
++                        className: "mt-1 min-h-6 cursor-pointer self-start rtl:rotate-180",
+                         checked: !!value,
+                         onCheckedChange: onChange,
+                         ...field
+@@ -547,9 +551,9 @@ function OrderReceiveReturn() {
    }, [preview]);
    const ready = order && orderReturn && preview;
    return /* @__PURE__ */ jsxs3(RouteDrawer, { children: [
@@ -3566,6 +4070,233 @@ index a2b3dc5ddea120bab6c99eb40b3d0c3c068285de..8284a7ad41530ba115e8b5b6cbf4a795
                      {
                        path: "export",
                        lazy: () =>
+diff --git a/src/routes/orders/order-allocate-items/components/order-create-fulfillment-form/order-allocate-items-form.tsx b/src/routes/orders/order-allocate-items/components/order-create-fulfillment-form/order-allocate-items-form.tsx
+index 69b700f1ac62ce1523a09a0140311b193342c070..9a0e035c4676707dd585471c843a3543107d27f6 100644
+--- a/src/routes/orders/order-allocate-items/components/order-create-fulfillment-form/order-allocate-items-form.tsx
++++ b/src/routes/orders/order-allocate-items/components/order-create-fulfillment-form/order-allocate-items-form.tsx
+@@ -225,10 +225,15 @@ export function OrderAllocateItemsForm({ order }: OrderAllocateItemsFormProps) {
+       >
+         <RouteFocusModal.Header />
+         <RouteFocusModal.Body className="flex h-full w-full flex-col items-center divide-y overflow-y-auto">
+-          <div className="flex size-full flex-col items-center overflow-auto p-16">
++          <div className="flex size-full flex-col items-center overflow-auto p-4 sm:p-6 lg:p-16">
+             <div className="flex w-full max-w-[736px] flex-col justify-center px-2 pb-2">
+               <div className="flex flex-col gap-8 divide-y divide-dashed">
+-                <Heading>{t("orders.allocateItems.title")}</Heading>
++                <RouteFocusModal.Title asChild>
++                  <Heading>{t("orders.allocateItems.title")}</Heading>
++                </RouteFocusModal.Title>
++                <RouteFocusModal.Description className="sr-only">
++                  {t("orders.allocateItems.itemsToAllocateDesc")}
++                </RouteFocusModal.Description>
+                 <div className="flex-1 divide-y divide-dashed pt-8">
+                   <Form.Field
+                     control={form.control}
+@@ -236,7 +241,7 @@ export function OrderAllocateItemsForm({ order }: OrderAllocateItemsFormProps) {
+                     render={({ field: { onChange, ref, ...field } }) => {
+                       return (
+                         <Form.Item>
+-                          <div className="flex items-center gap-3">
++                          <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center">
+                             <div className="flex-1">
+                               <Form.Label>{t("fields.location")}</Form.Label>
+                               <Form.Hint>
+@@ -244,18 +249,19 @@ export function OrderAllocateItemsForm({ order }: OrderAllocateItemsFormProps) {
+                               </Form.Hint>
+                             </div>
+                             <div className="flex-1">
+-                              <Form.Control>
+-                                <Select
++                              <Select
+                                   dir={direction}
+                                   onValueChange={onChange}
+                                   {...field}
+                                 >
++                                  <Form.Control>
+                                   <Select.Trigger
+                                     className="bg-ui-bg-base"
+                                     ref={ref}
+                                   >
+                                     <Select.Value />
+                                   </Select.Trigger>
++                                  </Form.Control>
+                                   <Select.Content>
+                                     {stock_locations.map((l) => (
+                                       <Select.Item key={l.id} value={l.id}>
+@@ -264,7 +270,6 @@ export function OrderAllocateItemsForm({ order }: OrderAllocateItemsFormProps) {
+                                     ))}
+                                   </Select.Content>
+                                 </Select>
+-                              </Form.Control>
+                             </div>
+                           </div>
+                           <Form.ErrorMessage />
+@@ -274,7 +279,7 @@ export function OrderAllocateItemsForm({ order }: OrderAllocateItemsFormProps) {
+                   />
+ 
+                   <Form.Item className="mt-8 pt-8">
+-                    <div className="flex flex-row items-center">
++                    <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center">
+                       <div className="flex-1">
+                         <Form.Label>
+                           {t("orders.allocateItems.itemsToAllocate")}
+@@ -287,6 +292,7 @@ export function OrderAllocateItemsForm({ order }: OrderAllocateItemsFormProps) {
+                         <Input
+                           value={filterTerm}
+                           onChange={(e) => setFilterTerm(e.target.value)}
++                          aria-label={t("orders.allocateItems.search")}
+                           placeholder={t("orders.allocateItems.search")}
+                           autoComplete="off"
+                           type="search"
+diff --git a/src/routes/orders/order-allocate-items/components/order-create-fulfillment-form/order-allocate-items-item.tsx b/src/routes/orders/order-allocate-items/components/order-create-fulfillment-form/order-allocate-items-item.tsx
+index abc2fb2ddade608e9da4e53954a3d40b75180782..106831a56a6baa92bd5d2b2a98828d386a4022f1 100644
+--- a/src/routes/orders/order-allocate-items/components/order-create-fulfillment-form/order-allocate-items-item.tsx
++++ b/src/routes/orders/order-allocate-items/components/order-create-fulfillment-form/order-allocate-items-item.tsx
+@@ -89,8 +89,8 @@ export function OrderAllocateItemsItem({
+   )
+ 
+   return (
+-    <div className="bg-ui-bg-subtle shadow-elevation-card-rest my-2 min-w-[720px] divide-y divide-dashed rounded-xl">
+-      <div className="flex items-center gap-x-3 p-3 text-sm">
++    <div className="bg-ui-bg-subtle shadow-elevation-card-rest my-2 w-full min-w-0 divide-y divide-dashed rounded-xl">
++      <div className="flex flex-col items-stretch gap-3 p-3 text-sm sm:flex-row sm:items-center">
+         <div className="flex flex-1 items-center">
+           <div className="flex items-center gap-x-3">
+             {hasQuantityError && (
+@@ -98,7 +98,7 @@ export function OrderAllocateItemsItem({
+             )}
+             <Thumbnail src={item.thumbnail} />
+             <div className="flex flex-col">
+-              <div className="flex flex-row">
++              <div className="flex flex-row flex-wrap gap-x-1">
+                 <Text className="txt-small flex" as="span" weight="plus">
+                   {item.product_title}
+                 </Text>
+@@ -113,7 +113,7 @@ export function OrderAllocateItemsItem({
+                 )}
+               </div>
+               <Text as="div" className="text-ui-fg-subtle txt-small">
+-                {item.title}
++                {item.variant_title ?? item.title}
+               </Text>
+             </div>
+           </div>
+@@ -135,7 +135,7 @@ export function OrderAllocateItemsItem({
+                     {t("labels.available")}
+                   </span>
+                   <span className="text-ui-fg-muted">
+-                    {availableQuantity || "-"}
++                    {availableQuantity ?? "-"}
+                     {availableQuantity &&
+                       !hasInventoryKit &&
+                       quantityField[
+@@ -162,7 +162,7 @@ export function OrderAllocateItemsItem({
+                     {t("labels.inStock")}
+                   </span>
+                   <span className="text-ui-fg-muted">
+-                    {inStockQuantity || "-"}
++                    {inStockQuantity ?? "-"}
+                   </span>
+                 </div>
+               </div>
+@@ -192,6 +192,7 @@ export function OrderAllocateItemsItem({
+                         <Input
+                           className="bg-ui-bg-base txt-small w-[46px] rounded-lg text-right [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                           type="number"
++                          aria-label={[t("fields.quantity"), item.product_title, item.variant_title ?? item.title].filter(Boolean).join(" · ")}
+                           {...field}
+                           disabled={!locationId}
+                           onChange={(e) => {
+@@ -226,9 +227,11 @@ export function OrderAllocateItemsItem({
+ 
+       {hasInventoryKit && (
+         <div className="px-4 py-2">
+-          <div
++          <button
++            type="button"
++            aria-expanded={isOpen}
+             onClick={() => setIsOpen((o) => !o)}
+-            className="flex items-center gap-x-2"
++            className="flex min-h-6 cursor-pointer items-center gap-x-2"
+           >
+             <TriangleDownMini
+               style={{ transform: `rotate(${isOpen ? -90 : 0}deg)` }}
+@@ -239,7 +242,7 @@ export function OrderAllocateItemsItem({
+                 num: inventory.length,
+               })}
+             </span>
+-          </div>
++          </button>
+         </div>
+       )}
+ 
+@@ -255,7 +258,7 @@ export function OrderAllocateItemsItem({
+               (location?.available_quantity ?? 0)
+ 
+           return (
+-            <div key={i.id} className="txt-small flex items-center gap-x-3 p-4">
++            <div key={i.id} className="txt-small flex flex-col items-stretch gap-3 p-4 sm:flex-row sm:items-center">
+               <div className="flex flex-1 flex-row items-center gap-3">
+                 {hasQuantityError && (
+                   <ExclamationCircleSolid className="text-ui-fg-error" />
+@@ -279,7 +282,7 @@ export function OrderAllocateItemsItem({
+                       {t("labels.available")}
+                     </span>
+                     <span className="text-ui-fg-muted">
+-                      {location?.available_quantity || "-"}
++                      {location?.available_quantity ?? "-"}
+                       {location?.available_quantity &&
+                         quantityField[`${item.id}-${i.id}`] && (
+                           <span className="text-ui-fg-error txt-small ml-1">
+@@ -298,7 +301,7 @@ export function OrderAllocateItemsItem({
+                       {t("labels.inStock")}
+                     </span>
+                     <span className="text-ui-fg-muted">
+-                      {location?.stocked_quantity || "-"}
++                      {location?.stocked_quantity ?? "-"}
+                     </span>
+                   </div>
+                 </div>
+@@ -322,6 +325,7 @@ export function OrderAllocateItemsItem({
+                               <Input
+                                 className="bg-ui-bg-base txt-small w-[46px] rounded-lg text-right [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                                 type="number"
++                          aria-label={[t("fields.quantity"), item.product_title, item.variant_title ?? item.title, i.title].filter(Boolean).join(" · ")}
+                                 {...field}
+                                 disabled={!locationId}
+                                 onChange={(e) => {
+diff --git a/src/routes/orders/order-allocate-items/order-allocate-items.tsx b/src/routes/orders/order-allocate-items/order-allocate-items.tsx
+index 4616eccad5a0fd0116cbd9f8e0e1b86a70e44026..672edd4f27f33ef65c5fa7f0086ff5a430cb0da3 100644
+--- a/src/routes/orders/order-allocate-items/order-allocate-items.tsx
++++ b/src/routes/orders/order-allocate-items/order-allocate-items.tsx
+@@ -1,4 +1,5 @@
+ import { useParams } from "react-router-dom"
++import { useTranslation } from "react-i18next"
+ 
+ import { useOrder } from "../../../hooks/api/orders"
+ import { RouteFocusModal } from "../../../components/modals"
+@@ -6,6 +7,7 @@ import { OrderAllocateItemsForm } from "./components/order-create-fulfillment-fo
+ 
+ export function OrderAllocateItems() {
+   const { id } = useParams()
++  const { t } = useTranslation()
+ 
+   const { order, isLoading, isError, error } = useOrder(id!, {
+     fields:
+@@ -20,7 +22,12 @@ export function OrderAllocateItems() {
+ 
+   return (
+     <RouteFocusModal>
+-      {ready && <OrderAllocateItemsForm order={order} />}
++      {ready ? <OrderAllocateItemsForm order={order} /> : (
++        <div className="sr-only">
++          <RouteFocusModal.Title>{t("orders.allocateItems.title")}</RouteFocusModal.Title>
++          <RouteFocusModal.Description>{t("orders.allocateItems.itemsToAllocateDesc")}</RouteFocusModal.Description>
++        </div>
++      )}
+     </RouteFocusModal>
+   )
+ }
 diff --git a/src/routes/orders/order-create-claim/claim-create.tsx b/src/routes/orders/order-create-claim/claim-create.tsx
 index 0744578b617963ef156fdcb7bd1beaed46de07d5..0e999aed5d2a6df0c16e4e2340bab23f6f249925 100644
 --- a/src/routes/orders/order-create-claim/claim-create.tsx
@@ -4364,7 +5095,7 @@ index bbbc6ea8146dc6447b0881acc687ee4c066ef4e0..569957f17130348112ae1c2ab1476fcd
                              if (val !== null && !isNaN(val)) {
                                if (val < minValue || val > maxValue) {
 diff --git a/src/routes/orders/order-create-refund/components/create-refund-form/create-refund-form.tsx b/src/routes/orders/order-create-refund/components/create-refund-form/create-refund-form.tsx
-index 5fdfd8a3725c074b18105c28c42ee93b9ca9c53d..f85736a0b3f4f37cb967a0c75cf53dde04bb4ce9 100644
+index 5fdfd8a3725c074b18105c28c42ee93b9ca9c53d..5717c89ad2e07affabbfbe7c517664ced3de5f54 100644
 --- a/src/routes/orders/order-create-refund/components/create-refund-form/create-refund-form.tsx
 +++ b/src/routes/orders/order-create-refund/components/create-refund-form/create-refund-form.tsx
 @@ -53,7 +53,9 @@ export const CreateRefundForm = ({ order }: CreateRefundFormProps) => {
@@ -4431,6 +5162,15 @@ index 5fdfd8a3725c074b18105c28c42ee93b9ca9c53d..f85736a0b3f4f37cb967a0c75cf53dde
                          autoFocus
                        />
                      </Form.Control>
+@@ -254,7 +259,7 @@ export const CreateRefundForm = ({ order }: CreateRefundFormProps) => {
+                         value={field.value}
+                         onValueChange={field.onChange}
+                       >
+-                        <Select.Trigger>
++                        <Select.Trigger aria-label={t("fields.refundReason")}>
+                           <Select.Value />
+                         </Select.Trigger>
+ 
 diff --git a/src/routes/orders/order-create-refund/order-create-refund.tsx b/src/routes/orders/order-create-refund/order-create-refund.tsx
 index aade6cb06c2d8bd23d8a21ad74dc54030f1175a8..bb9ebd656af0fbdf5a227791862c292294e6eefe 100644
 --- a/src/routes/orders/order-create-refund/order-create-refund.tsx
@@ -4687,6 +5427,74 @@ index 805de140d4de367c6f44138cfc65a118e5dd92b5..c7814613392d619b7515e2a7854ef7b6
    "*payment_collections.payments.refunds",
    "*payment_collections.payments.refunds.refund_reason",
    "region.automatic_taxes",
+diff --git a/src/routes/orders/order-receive-return/components/order-receive-return-form/dismissed-quantity.tsx b/src/routes/orders/order-receive-return/components/order-receive-return-form/dismissed-quantity.tsx
+index 3535fb5c89c7ce690567ba8ef87fff9ae0af733b..1868765d6a3e146165776a62b217e35778ca36c0 100644
+--- a/src/routes/orders/order-receive-return/components/order-receive-return-form/dismissed-quantity.tsx
++++ b/src/routes/orders/order-receive-return/components/order-receive-return-form/dismissed-quantity.tsx
+@@ -125,14 +125,14 @@ function DismissedQuantity({
+   return (
+     <Popover open={isOpen} onOpenChange={setIsOpen}>
+       <Popover.Trigger asChild>
+-        <Button className="flex gap-2 px-2" variant="secondary" type="button">
++        <Button className="flex gap-2 px-2" variant="secondary" type="button" aria-label={[t("orders.returns.receive.writeOffInputLabel"), item.product_title, item.variant_title ?? item.title].filter(Boolean).join(" · ")}>
+           <div>
+             <HeartBroken />
+           </div>
+           {!!dismissedQuantity && <span>{dismissedQuantity}</span>}
+         </Button>
+       </Popover.Trigger>
+-      <Popover.Content align="center">
++      <Popover.Content align="center" aria-label={t("orders.returns.receive.writeOffInputLabel")}>
+         <div className="flex flex-col p-2">
+           <span className="txt-small text-ui-fg-subtle mb-2 font-medium">
+             {t("orders.returns.receive.writeOffInputLabel")}
+@@ -148,6 +148,7 @@ function DismissedQuantity({
+                       min={0}
+                       max={item.quantity}
+                       type="number"
++                      aria-label={[t("orders.returns.receive.writeOffInputLabel"), item.product_title, item.variant_title ?? item.title].filter(Boolean).join(" · ")}
+                       value={value}
+                       className="bg-ui-bg-field-component text-right [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                       onChange={(e) => {
+diff --git a/src/routes/orders/order-receive-return/components/order-receive-return-form/order-receive-return-form.tsx b/src/routes/orders/order-receive-return/components/order-receive-return-form/order-receive-return-form.tsx
+index cc709a5e4f6c10ff6d0aef4aafb71408a15a8e1c..7d08a6c72da8d59e0a4f10b733d25357e372df4c 100644
+--- a/src/routes/orders/order-receive-return/components/order-receive-return-form/order-receive-return-form.tsx
++++ b/src/routes/orders/order-receive-return/components/order-receive-return-form/order-receive-return-form.tsx
+@@ -183,6 +183,8 @@ export function OrderReceiveReturnForm({
+       return
+     }
+ 
++    if (action && typeof value === "number" && value > 0 && action.details?.quantity === value) return
++
+     try {
+       if (action) {
+         if (value === null || value === 0) {
+@@ -268,7 +270,7 @@ export function OrderReceiveReturnForm({
+                         )}
+                       </div>
+                       <Text as="div" className="text-ui-fg-subtle txt-small">
+-                        {originalItem.product_title}
++                        {originalItem.variant_title ?? originalItem.title}
+                       </Text>
+                     </div>
+                   </div>
+@@ -292,6 +294,7 @@ export function OrderReceiveReturnForm({
+                                 min={0}
+                                 max={item.quantity}
+                                 type="number"
++                                aria-label={[t("fields.quantity"), originalItem.product_title, originalItem.variant_title ?? originalItem.title].filter(Boolean).join(" · ")}
+                                 value={value ?? 0}
+                                 className="bg-ui-bg-field-component text-right [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                                 onChange={(e) => {
+@@ -363,7 +366,7 @@ export function OrderReceiveReturnForm({
+                       <Form.Control>
+                         <Switch
+                           dir="ltr"
+-                          className="mt-1 self-start rtl:rotate-180"
++                          className="mt-1 min-h-6 cursor-pointer self-start rtl:rotate-180"
+                           checked={!!value}
+                           onCheckedChange={onChange}
+                           {...field}
 diff --git a/src/routes/orders/order-receive-return/order-receive-return.tsx b/src/routes/orders/order-receive-return/order-receive-return.tsx
 index c0aa9569d0008a1039925cf45f7b3c438a6f410b..055213763b66b6e9488fe59d9df14e495896ee42 100644
 --- a/src/routes/orders/order-receive-return/order-receive-return.tsx

@@ -9,6 +9,38 @@ routine audit work. The client environment clone remains paused behind the
 separate Batch 7 stop boundary below. Latest evidence and remaining work are
 recorded at the top of `docs/END_TO_END_AUDIT.md`.
 
+**Latest continuation — October 6, 23:32 UTC:** exact `3873c85` now runs
+on both applications. Fresh read-only readiness passes all 23 checks, exact
+deployments, basic probes and backup freshness; final Batch 6 acceptance stays
+open. All nine services/jobs are successful in sampled monitoring; Redis has
+healthy AOF and 266,145-second uptime at 23:11 UTC. Failed queues stay untouched.
+An initially removed Backend instance still needs its cause checked.
+
+Owned order #9's native M-to-S exchange, M receipt/restock, S allocation,
+synthetic shipment/delivery and controlled shipped/delivered notices succeed.
+The CD claim is received/restocked and its native $1.23 refund is independently
+confirmed in Stripe, including the durable controlled refund notice. The order
+is partly refunded; return/restock S, refund $2.34, then refund shipping $5.50
+to reconcile the owned $9.07 payment and restore the baseline inventory.
+Use native Admin for mutations and Stripe only for independent reads.
+
+Local bundle-stock commit `ed85c8e` is unpushed. Group it with the prepared
+notification correction (`order_id` from the actual native workflow) and the
+native allocation/receiving/refund controls into one corrective Batch 6 push.
+Subscriber checks pass 33, Backend coverage 2,432, native/payment integration
+75/44 plus the full aggregate, installed forms 36 and both builds/full lint
+pass. All 27 Admin matrix cases pass with no axe/layout/browser findings.
+Changed rendered screenshots are inspected. Retain earlier failures;
+require exact CI/all deployments and deployed retests before another push.
+
+Keep native false claim inventory guidance and unsupported RMA notification
+options explicitly open. Paid families, owned media, guarded search rebuild,
+full executed-control ledger and ordinary scheduler acceptance remain open.
+Preserve the incident latch until at least October 7, 14:18:40.644 UTC plus
+fresh healthy observation. The Admin session works; no repeated login request
+is needed. Batch 7's client clone remains paused. See the opening audit for
+identities, evidence paths and precise remaining work.
+
 **Current correction — October 6, 22:58 UTC:** direct staging push
 `3873c8511e75c21388f250b757fad2f3490fc6b3` repairs the failed dependency
 scans. Normal commit/pre-push gates pass. All four exact push workflows and

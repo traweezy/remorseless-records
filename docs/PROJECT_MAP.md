@@ -108,21 +108,19 @@ contracts before applying generic framework examples from those files.
 Latest fully accepted hardening batch is Batch 5 at
 `960fe7bbc47b912770c8357c148f5bd6cb75b3f8`. Batch 6's exhaustive audit stays
 open. Security correction `3873c8511e75c21388f250b757fad2f3490fc6b3`
-is pushed directly to staging; all four exact workflows / 23 checks and local
-runtime/packaged-decoder boundaries pass. Migrations and RecoveryBackups
-succeed; Backend and Storefront are still building at the latest observation.
-The active pair remains `c290b7b` until fresh deployment verification. Preserve
-the failed `1b09546` evidence. A further native bundle-creation stock preview
-repair is local, with focused/browser/database integration and full Backend
-coverage passing; do not push it during the preceding application's rollout.
-Follow the opening handoff, audit and dependency records. Native owned
-exchange/refund/notification and paid-family acceptance, guarded search rebuild,
-and ordinary health remain open. The October 6 scheduler's 24-hour incident
-latch stays intact. The Admin session is authenticated, so do not repeat routine
-login questions. The public merchandise/bundle ledger has 60 latest page passes;
-three unpaid cart profiles also pass and are cleaned through the UI. These are
-not paid-family acceptance. The user requires a pause before Batch 7's client
-clone; do not create it.
+runs on both applications with all four exact workflows / 23 checks passing.
+Fresh basic/readiness and backup gates pass; all nine services/jobs are watched.
+Preserve failed `1b09546`, observer gaps and the removed Backend instance for
+investigation. Local bundle-stock, prepared-event and native after-sales fixes
+are grouped for the next corrective staging push within Batch 6; follow the
+opening handoff, audit and dependency records for exact verification.
+Owned exchange and CD claim/refund succeed, but order #9's financial/inventory
+cleanup, paid families, owned media, guarded search rebuild and executed-control
+ledger remain open. Native claim stock guidance and RMA notification options
+have separate unresolved findings. The scheduler's 24-hour incident latch stays
+intact until its documented window passes and fresh normal observation succeeds.
+The Admin session is authenticated. Public pages and unpaid carts do not prove
+paid-family acceptance. Pause before Batch 7's client clone; do not create it.
 Production approval remains separately in Batch 8. Earlier recovery/support
 limits remain in the carryover register. The snapshots below are historical.
 

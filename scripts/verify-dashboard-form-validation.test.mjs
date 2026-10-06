@@ -27,10 +27,92 @@ const draftOrderRoot = dirname(
   backendRequire.resolve("@medusajs/draft-order/package.json")
 )
 
+for (const entry of ["order-receive-return-HEIGUW3S.mjs", "app.js"]) {
+  test(`${entry}: receiving skips unchanged quantities and preserves native mutations`, async () => {
+    const source = readFileSync(join(dashboardRoot, "dist", entry), "utf8")
+    const start = source.indexOf("function OrderReceiveReturnForm(")
+    const end = source.indexOf("  return /* @__PURE__ */", start)
+    assert.ok(start >= 0 && end > start)
+    const component = `${source.slice(start, end)}return { handleQuantityChange }; } OrderReceiveReturnForm;`
+    const submitted = []
+    const errors = []
+    const form = { setValue: () => {}, handleSubmit: (handler) => handler }
+    const mutation = (kind) => ({
+      mutateAsync: async (input) => submitted.push({ kind, input }),
+    })
+    const context = {
+      useRouteModal: () => ({}),
+      useConfirmReturnReceive: () => mutation("confirm"),
+      useCancelReceiveReturn: () => mutation("cancel"),
+      useAddReceiveItems: () => mutation("add"),
+      useUpdateReceiveItem: () => mutation("update"),
+      useRemoveReceiveItems: () => mutation("remove"),
+      useStockLocation: () => ({}),
+      ReceiveReturnSchema: {},
+    }
+    for (const token of new Set(component.match(/[A-Za-z_]\w*/gu))) {
+      if (/^import_react\d*$/u.test(token))
+        context[token] = { useMemo: (read) => read(), useEffect: () => {} }
+      if (/^import_react_i18next\d*$/u.test(token))
+        context[token] = { useTranslation: () => ({ t: (key) => key }) }
+      if (/^import_react_hook_form\d*$/u.test(token))
+        context[token] = { useForm: () => form }
+      if (/^import_zod\d*$/u.test(token))
+        context[token] = { zodResolver: () => {} }
+      if (/^import_ui\d*$/u.test(token))
+        context[token] = { toast: { error: (error) => errors.push(error) } }
+      if (/^useMemo\d*$/u.test(token)) context[token] = (read) => read()
+      if (/^useEffect\d*$/u.test(token)) context[token] = () => {}
+      if (/^useTranslation\d*$/u.test(token))
+        context[token] = () => ({ t: (key) => key })
+      if (/^useForm\d*$/u.test(token)) context[token] = () => form
+      if (/^zodResolver\d*$/u.test(token)) context[token] = () => {}
+      if (/^toast\d*$/u.test(token))
+        context[token] = { error: (error) => errors.push(error) }
+    }
+    const item = {
+      id: "ordli_fixture",
+      quantity: 3,
+      detail: { return_received_quantity: 0 },
+      actions: [
+        {
+          id: "ordchact_fixture",
+          action: "RECEIVE_RETURN_ITEM",
+          details: { quantity: 1 },
+        },
+      ],
+    }
+    const nativeForm = vm.runInNewContext(
+      component,
+      context
+    )({
+      order: { id: "order_fixture", items: [item] },
+      preview: { items: [item] },
+      orderReturn: {
+        id: "return_fixture",
+        items: [{ item_id: item.id }],
+      },
+    })
+    await nativeForm.handleQuantityChange(item.id, 1, 0)
+    assert.equal(submitted.length, 0)
+    await nativeForm.handleQuantityChange(item.id, -1, 0)
+    await nativeForm.handleQuantityChange(item.id, 4, 0)
+    assert.equal(submitted.length, 0)
+    assert.equal(errors.length, 2)
+    await nativeForm.handleQuantityChange(item.id, 2, 0)
+    await nativeForm.handleQuantityChange(item.id, 0, 0)
+    assert.deepEqual(JSON.parse(JSON.stringify(submitted)), [
+      { kind: "update", input: { actionId: "ordchact_fixture", quantity: 2 } },
+      { kind: "remove", input: "ordchact_fixture" },
+    ])
+  })
+}
+
 for (const [component, artifact, kind] of [
   ["ExchangeCreate", "order-create-exchange-QETUJ3ER.mjs", "exchanges"],
   ["ClaimCreate", "order-create-claim-ZMJRSB2U.mjs", "claims"],
   ["ReturnCreate", "order-create-return-CZVXDD6A.mjs", "returns"],
+  ["OrderAllocateItems", "order-allocate-items-LRSTJNOD.mjs", "allocateItems"],
 ]) {
   for (const entry of [artifact, "app.js"]) {
     test(`${component} ${entry}: name and describe the pending native dialog`, () => {
@@ -44,6 +126,11 @@ for (const [component, artifact, kind] of [
       )
       const matches = []
       const visit = (node) => {
+        if (
+          ts.isFunctionDeclaration(node) &&
+          node.name?.getText(parsed) === component
+        )
+          matches.push(node)
         if (
           ts.isVariableDeclaration(node) &&
           node.name.getText(parsed) === component &&
@@ -125,7 +212,7 @@ for (const [component, artifact, kind] of [
       assert.equal(pending.props.children[0].type, "title")
       assert.equal(
         pending.props.children[0].props.children,
-        `orders.${kind}.create`
+        `orders.${kind}.${kind === "allocateItems" ? "title" : "create"}`
       )
       assert.equal(pending.props.children[1].type, "description")
       assert.match(pending.props.children[1].props.children, /\S/u)

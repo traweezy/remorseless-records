@@ -1,5 +1,76 @@
 # Storefront, Admin and Stripe end-to-end audit
 
+### Native after-sales workflows and prepared notices — October 6, 23:32 UTC
+
+The active Backend/Storefront pair now serves exact `3873c85`: deployment
+`5a734c55-0070-4ad6-87df-e18c83298bef` and
+`745c8be8-75f2-4636-b96b-f328744e55ad`. Fresh read-only readiness passes
+all 23 exact push checks, both deployments, uncached basic probes and backup
+freshness. This is readiness for acceptance, not final Batch 6 acceptance.
+All nine services/jobs remain successful in sampled observations; persistent
+services retain their previous process/deployment identities. Redis uptime is
+266,145 seconds at 23:11 UTC with healthy AOF, no OOM/eviction/rejection and
+unchanged 237 scheduled plus one event failed job. No queues are replayed.
+A bounded 215-line rollout read records start, stop and subsequent readiness,
+with no application error/crash signal in that window. The removed initial
+Backend instance has no verified stop reason; retain it for investigation and
+do not infer zero restarts from its successful deployment label.
+
+Owned order #9's native M-to-S exchange is confirmed. Medusa receives and
+restocks M, allocates S at HQ, then records its synthetic fulfillment, shipment
+and delivery. The controlled shipped/delivered notices have durable successful
+Resend evidence. The prepared notice fails because the native creation event
+supplies `order_id`, while the subscriber expected `id`. Repair only that
+version-matched boundary; creation IDs, order linkage, persisted timestamps,
+opt-out, stable keys, durable acknowledgements and retry errors remain strict.
+The disposable integration captures the actual `createOrderFulfillmentWorkflow`
+event instead of constructing an assumed payload. Focused subscriber checks
+pass 33 cases, full Backend coverage passes 293 suites / 2,432 tests, and all
+75 native / 44 payment cases plus the recovery/session aggregate pass.
+Prepared-notice live acceptance remains pending the corrective deployment.
+
+The native CD claim is confirmed and received at HQ at 23:17:50.789 UTC;
+CD stock returns from 19 to 20 with no reservation. A native $1.23 sandbox
+refund succeeds at 23:19:02.681 UTC, leaving $7.84 paid and zero outstanding.
+Independent Stripe test-account reads and its dashboard confirm the exact
+successful refund; the registered refund notice has durable successful Resend
+acknowledgement for the controlled audit recipient. The order remains partly
+refunded. Return/restock of the outbound S and its $2.34 refund, followed by
+shipping's $5.50 refund, remain required owned-data cleanup. Do not call this
+order financially reconciled yet or issue refunds through Stripe directly.
+
+**B6-NATIVE-AFTER-SALES-CONTROLS:** extend the existing MIT Dashboard 2.18.0
+patch in source, main and lazy distributions. Allocation dialogs now retain a
+name/description while loading, associate the location label with the actual
+trigger, name search and quantities, show purchased variants and true zero
+stock, and fit narrow layouts. Kit expansion uses a keyboard button. Return
+receiving names quantities and damaged-item controls, displays the purchased
+variant and gives its notification switch a 24-pixel target. An unchanged
+positive action quantity no longer sends a redundant blur mutation; existing
+bounds and edited/add/remove/confirm operations remain native. Refund reasons
+name their actual trigger. Installed-form execution passes all 36 cases; both
+builds and final full lint/type/policy gates pass. All 27 Admin matrix cases pass with zero axe violations, layout findings
+or browser issues; the changed rendered screenshots are inspected. Preserve the earlier small-target/browser failures, the missing
+refund fixture dates and the local Storefront fixture-secret setup failures.
+No gate, browser sandbox, native authorization or inventory mutation is waived.
+
+Two further native findings stay open: **B6-CLAIM-LOCATION-HINT** displays
+"No inventory level" for the owned CD despite verified HQ stock and successful
+restocking; investigate the actual native variant projection before changing
+inventory. **B6-RMA-NOTIFICATION-OPTIONS** exposes return/exchange/claim options
+without registered lifecycle subscribers/templates. Checked options are not
+email delivery evidence. Refund and outbound fulfillment events are separate.
+
+Bundle stock commit `ed85c8e` and the after-sales/notice corrections are local,
+unpushed. Group their logical commits into one corrective staging push within
+Batch 6 after final local gates. Then require exact CI, every deployment and
+applicable deployed retests before the next push. Private evidence remains in
+`artifacts/end-to-end-audit-2026-10-06-resume/`; earlier evidence is immutable.
+The complete audit ledger, paid product families, owned media lifecycle and
+guarded search rebuild/parity remain open. Preserve the scheduler incident's
+24-hour latch until at least October 7, 14:18:40.644 UTC plus fresh healthy
+observation. Batch 7's client clone remains paused.
+
 ### Native stock preview and exact security CI — October 6, 22:58 UTC
 
 The security correction is pushed directly to staging at

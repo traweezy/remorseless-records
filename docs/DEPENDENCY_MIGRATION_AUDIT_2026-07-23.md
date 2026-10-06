@@ -1,5 +1,24 @@
 # Dependency Migration Audit — 2026-07-23
 
+## Native allocation and receiving controls — October 6, 2026 UTC
+
+Extend only the existing MIT Medusa Dashboard 2.18.0 patch. Allocation loading,
+form labels, purchased variants, managed zero stock and keyboard kit controls
+agree in source/main/lazy distributions. Receiving preserves native bounds
+and actual mutations while skipping an unchanged positive action quantity on
+blur. Quantity/damaged-item names, the 24-pixel notification target and the
+actual refund-reason trigger follow the rendered native forms. Authentication,
+RBAC, reservation, return/claim/exchange and payment authority remain native.
+
+Dashboard patch SHA-256 is
+`e3f6771cd745b8619c19f0a1dfec6e22db4afd58afecc3c2de2d9d0bf44b680f`.
+Frozen installation and a complete lockfile comparison verify only this patch
+identity and its existing dependent peer keys changed. No package version or
+cooling exception changes; retain third-party-web 0.29.2 and all other patches.
+Installed-form execution passes 36 cases and the Backend build passes. Full
+Admin matrix and live acceptance are tracked in the opening Batch 6 audit.
+The earlier Dashboard hashes below are historical, not the current patch.
+
 ## Batch 6 failed-release security correction — October 6, 2026 UTC
 
 The exact staging push `1b09546974bd73713031c1f0a5f9fa3ff09d500d`
