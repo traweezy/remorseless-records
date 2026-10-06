@@ -53,10 +53,13 @@ const availabilityPolicyHints = {
 } as const
 
 const stockLabel = (quantity: number | null, managed: boolean): string => {
-  if (!managed || quantity === null) {
+  if (!managed) {
+    return "Inventory not tracked"
+  }
+  if (quantity === null) {
     return "Stock unavailable"
   }
-  if (quantity === 0) {
+  if (quantity <= 0) {
     return "Sold out"
   }
   return `${quantity} in stock`

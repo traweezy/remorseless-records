@@ -86,6 +86,20 @@ const cases = [
     width: 1440,
   },
   {
+    height: 900,
+    name: "fixed-bundle-native-stock-laptop",
+    route: "/app/products/create",
+    setup: "catalog-create-bundle-stock",
+    width: 1440,
+  },
+  {
+    height: 900,
+    name: "fixed-bundle-native-stock-mobile",
+    route: "/app/products/create",
+    setup: "catalog-create-bundle-stock",
+    width: 760,
+  },
+  {
     height: 1080,
     name: "product-authoring-wide",
     route: "/app/catalog/products/product_acceptance",

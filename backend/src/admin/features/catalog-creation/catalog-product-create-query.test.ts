@@ -1,11 +1,16 @@
 import { z } from "zod"
 
+import { requestAdminJson } from "../../lib/admin-request"
+
 import {
   catalogProductCreateResponseSchema,
   createCatalogProduct,
   decideCatalogProductCreationRetry,
   getCatalogProductCreationStatus,
   loadCatalogCreationVocabulary,
+  loadCatalogCreationComponentInventory,
+  withCatalogCreationComponentInventory,
+  type CatalogCreationProductChoiceWithStock,
 } from "./catalog-product-create-query"
 
 jest.mock("../../lib/admin-request", () => ({
@@ -125,4 +130,160 @@ describe("catalog product creation query", () => {
       ],
     })
   })
+})
+
+describe("native bundle component availability", () => {
+  const request = jest.mocked(requestAdminJson)
+  const choices: CatalogCreationProductChoiceWithStock[] = [
+    {
+      id: "prod_owned",
+      title: "Owned release",
+      variants: [
+        {
+          id: "variant_owned",
+          title: "CD",
+          sku: "OWNED-CD",
+          managesInventory: true,
+          inventoryQuantity: 999,
+        },
+      ],
+    },
+  ]
+
+  it("requests native computed stock only for the selected product", async () => {
+    const signal = new AbortController().signal
+    request.mockImplementationOnce(async (input) => {
+      expect(input).toMatchObject({
+        path: "/admin/products/prod_owned/variants",
+        query: {
+          fields: "id,manage_inventory,inventory_quantity",
+          limit: 200,
+          offset: 0,
+        },
+        signal,
+      })
+      return input.schema.parse({
+        count: 1,
+        variants: [
+          {
+            id: "variant_owned",
+            manage_inventory: true,
+            inventory_quantity: 19,
+          },
+        ],
+      })
+    })
+    const native = await loadCatalogCreationComponentInventory(
+      "prod_owned",
+      signal
+    )
+    expect(
+      withCatalogCreationComponentInventory(choices, [native])?.[0]?.variants[0]
+    ).toMatchObject({ inventoryQuantity: 19, managesInventory: true })
+  })
+
+  it("keeps missing or unrelated native evidence unknown", () => {
+    for (const evidence of [
+      undefined,
+      {
+        productId: "prod_other",
+        variants: [{ id: "variant_owned", manage_inventory: false }],
+      },
+      {
+        productId: "prod_owned",
+        variants: [{ id: "variant_other", manage_inventory: false }],
+      },
+    ]) {
+      expect(
+        withCatalogCreationComponentInventory(choices, [evidence])?.[0]
+          ?.variants[0]
+      ).toMatchObject({ inventoryQuantity: null, managesInventory: true })
+    }
+  })
+
+  it("preserves real sold-out, backordered and unmanaged native states", () => {
+    for (const quantity of [0, -3]) {
+      expect(
+        withCatalogCreationComponentInventory(choices, [
+          {
+            productId: "prod_owned",
+            variants: [
+              {
+                id: "variant_owned",
+                manage_inventory: true,
+                inventory_quantity: quantity,
+              },
+            ],
+          },
+        ])?.[0]?.variants[0]
+      ).toMatchObject({ inventoryQuantity: quantity, managesInventory: true })
+    }
+    expect(
+      withCatalogCreationComponentInventory(choices, [
+        {
+          productId: "prod_owned",
+          variants: [{ id: "variant_owned", manage_inventory: false }],
+        },
+      ])?.[0]?.variants[0]
+    ).toMatchObject({ inventoryQuantity: null, managesInventory: false })
+  })
+
+  it("reads every native variant page with the caller's abort signal", async () => {
+    const signal = new AbortController().signal
+    for (let offset = 0; offset <= 200; offset += 200) {
+      request.mockImplementationOnce(async (input) => {
+        expect(input).toMatchObject({ query: { offset }, signal })
+        return input.schema.parse({
+          count: 201,
+          variants: Array.from({ length: offset ? 1 : 200 }, (_, index) => ({
+            id: `variant_${offset + index}`,
+            manage_inventory: true,
+            inventory_quantity: index,
+          })),
+        })
+      })
+    }
+    expect(
+      (await loadCatalogCreationComponentInventory("prod_owned", signal))
+        .variants
+    ).toHaveLength(201)
+  })
+
+  it.each(["missing", "duplicate", "changed-count"])(
+    "rejects %s native stock pages without inventing availability",
+    async (failure) => {
+      request.mockImplementationOnce(async (input) =>
+        input.schema.parse({
+          count: failure === "missing" ? 2 : 201,
+          variants: Array.from(
+            { length: failure === "missing" ? 1 : 200 },
+            (_, index) => ({
+              id: `variant_${index}`,
+              manage_inventory: true,
+              inventory_quantity: 19,
+            })
+          ),
+        })
+      )
+      if (failure !== "missing")
+        request.mockImplementationOnce(async (input) =>
+          input.schema.parse({
+            count: failure === "changed-count" ? 202 : 201,
+            variants: [
+              {
+                id: "variant_0",
+                manage_inventory: true,
+                inventory_quantity: 19,
+              },
+            ],
+          })
+        )
+      await expect(
+        loadCatalogCreationComponentInventory(
+          "prod_owned",
+          new AbortController().signal
+        )
+      ).rejects.toThrow(/Component (inventory|variants)/)
+    }
+  )
 })

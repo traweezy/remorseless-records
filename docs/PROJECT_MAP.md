@@ -107,13 +107,15 @@ contracts before applying generic framework examples from those files.
 
 Latest fully accepted hardening batch is Batch 5 at
 `960fe7bbc47b912770c8357c148f5bd6cb75b3f8`. Batch 6's exhaustive audit stays
-open. The active application pair remains `c290b7b`; the corrective push
-`1b09546974bd73713031c1f0a5f9fa3ff09d500d` groups UI, catalog, readiness
-and native tax-context fixes, but all four workflows fail new dependency scans.
-Railway holds that candidate. Its narrow dependency repair passes local frozen
-installation, full gates, coverage, native service integration, both builds and
-source/dependency scans; runtime verification and corrective exact CI/rollout
-remain pending. Follow the opening handoff and dependency audit. Native owned
+open. Security correction `3873c8511e75c21388f250b757fad2f3490fc6b3`
+is pushed directly to staging; all four exact workflows / 23 checks and local
+runtime/packaged-decoder boundaries pass. Migrations and RecoveryBackups
+succeed; Backend and Storefront are still building at the latest observation.
+The active pair remains `c290b7b` until fresh deployment verification. Preserve
+the failed `1b09546` evidence. A further native bundle-creation stock preview
+repair is local, with focused/browser/database integration and full Backend
+coverage passing; do not push it during the preceding application's rollout.
+Follow the opening handoff, audit and dependency records. Native owned
 exchange/refund/notification and paid-family acceptance, guarded search rebuild,
 and ordinary health remain open. The October 6 scheduler's 24-hour incident
 latch stays intact. The Admin session is authenticated, so do not repeat routine

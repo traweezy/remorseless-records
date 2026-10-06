@@ -1,5 +1,69 @@
 # Storefront, Admin and Stripe end-to-end audit
 
+### Native stock preview and exact security CI — October 6, 22:58 UTC
+
+The security correction is pushed directly to staging at
+`3873c8511e75c21388f250b757fad2f3490fc6b3`, with normal local hooks and
+pre-push lint/coverage gates. Root, Backend, Storefront and Runtime Images
+all pass on the exact revision: 23 required jobs, four push suites, attempt 1,
+at 22:50 UTC. Both exact local runtime scans also pass. The Storefront's
+packaged Next 16.3.8 / Sharp 0.35.5 boundary verifies real AVIF decoding and
+encoding, malformed-image fallback, SVG rejection, private-address rejection
+and DNS pinning in a bounded, isolated container. Preserve failed `1b09546`
+and the initial source-copy/build/environment failures; no scan is waived.
+Migrations and RecoveryBackups succeed on `3873c85`; both applications are
+still building at the latest all-nine snapshot. CI is not live acceptance.
+
+**B6-BUNDLE-CREATE-STOCK:** creating an owned fixed-bundle draft displays
+"Stock unavailable" for its owned CD even though independent native inventory
+shows 19 available and zero reserved. Installed Medusa 2.18.0 computes
+`inventory_quantity` on `/admin/products/:id/variants`, not the product list's
+`*variants` projection. Read only distinct selected component products through
+that native endpoint. Paginate its variants, propagate aborts, cache bounded
+reads and reject missing, duplicate or changed-count pages. Merge exact product
+and variant IDs; absent/error evidence remains unknown and cannot imply
+unlimited stock. Preserve native unmanaged stock explicitly and label all
+nonpositive managed stock as sold out. These reads do not change native
+inventory, checkout calculations, creation mutations or authorization.
+
+The actual old compiled Admin fails the new stock-preview regression. The
+corrected laptop and narrow rendered cases show 18 available components,
+then nine complete bundles when component quantity changes to two, with one
+selected native request and no horizontal overflow. Both screenshots are
+inspected. Focused verification passes 21 cases; Backend coverage passes
+293 suites / 2,430 tests. Real disposable Medusa proves the product list lacks
+computed stock while its variants endpoint returns actual availability; all
+75 native/44 payment cases and the recovery/session aggregate pass. Both
+production builds and final full lint/type/policy gates pass. All 22 full
+Admin matrix cases pass with zero axe violations or layout findings; the new
+matrix screenshots are inspected. Final commit/push is pending.
+Keep this repair local until the preceding application rollout succeeds.
+The owned native fixed-bundle draft remains browser-saved, unsubmitted.
+
+Native tax controls pass real controlled date input, missing/reversed range
+validation with accessible errors/focus, applying CT/NY reporting periods and
+PA half-year periods, search/clear and all report filters. All six native CSV
+downloads pass: CT's owned $9.07 sale and destination/period totals agree;
+NY/PA empty reports have correct zero totals and actual state/period sections.
+All retain UTF-8 BOM, real CRLF and contact-field exclusions. Table filters do
+not silently narrow the full filing export. Retain the first destination
+download timeout, excluded older file and date-input harness failures.
+Media cleanup paginates 25 plus three distinct historical assets, returns to
+the first page and shows an empty quarantined view. No historical asset is
+mutated. Eight legacy Admin links redirect to their current destinations;
+this proves redirects, not all destination workflows.
+
+Private receipts are under `artifacts/end-to-end-audit-2026-10-06-resume/`;
+the original October 6 evidence directory stays unchanged. The all-nine
+watcher transition records a 310.495-second gap before 22:51 UTC. No sampled
+service fault is found; this is not continuous coverage across the gap.
+Owned order #9 cleanup, paid product families, owned media lifecycle, guarded
+search rebuild/parity and final audit-ledger reconciliation remain open.
+Ordinary scheduler acceptance also remains blocked by its untouched 24-hour
+incident latch until at least October 7, 14:18:40.644 UTC, then a fresh healthy
+observation. Failed Redis queues remain untouched. Keep Batch 6 open and
+pause before the Batch 7 client environment clone.
+
 ### Native Admin resumption and exchange tax repair — October 6, 22:07 UTC
 
 An existing authenticated Admin tab successfully reloads owned order #9.

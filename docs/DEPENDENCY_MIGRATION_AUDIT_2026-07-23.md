@@ -54,6 +54,21 @@ private evidence. Exact runtime-image checks, the corrective staging push and
 CI/deployment acceptance remain pending. Do not treat local results as release
 acceptance or resume the paused client clone.
 
+**Later verification — October 6, 22:58 UTC:** corrective staging push
+`3873c8511e75c21388f250b757fad2f3490fc6b3` completes the normal commit
+and pre-push gates. All four exact push workflows / 23 required checks pass
+at 22:50 UTC, including both strict runtime scans. Local Trivy 0.70.0 scans
+also pass on exact labeled images: Backend
+`sha256:ba0d911fc1a7d775a6d8aae7b26f5785c828f51de0b10d579eb2e8b437ff8d36`
+and Storefront
+`sha256:6bf02ab95c1ce6b5f40690d4b56e957b5027d3ec9efdfdd9ff19da6ecfe8ff85`.
+The Backend's one High is the retained exact byte/behavior-verified Braces
+mitigation; the Storefront has no High/Critical finding. All seven packaged
+Next/Sharp image/optimizer boundary cases pass with read-only filesystem,
+no network and bounded resources; the owned loopback health smoke also passes
+and cleans up. No gate or finding is waived. Railway application deployment
+and native/live acceptance remain pending; earlier failures above are retained.
+
 ## Native item presentation and picker states — October 4, 2026 UTC
 
 Extend only the existing MIT Dashboard 2.18.0 patch. Purchased native line

@@ -219,6 +219,30 @@ describe("catalog creation step components", () => {
     expect(bundleMarkup).toContain("Existing release")
     expect(bundleMarkup).toContain("CD · CD-1")
     expect(bundleMarkup).toContain("Used by bundle formats")
+    for (const [quantity, managed, label] of [
+      [-3, true, "Sold out"],
+      [null, true, "Stock unavailable"],
+      [null, false, "Inventory not tracked"],
+    ] as const) {
+      choices[0]!.variants[0]!.inventoryQuantity = quantity
+      choices[0]!.variants[0]!.managesInventory = managed
+      const markup = renderToStaticMarkup(
+        <CatalogCreationOfferingsStep
+          {...offeringsHandlers}
+          availabilityByOfferingId={availabilityMap(bundle, choices)}
+          choicesData={choices}
+          choicesError={null}
+          choicesFetching={false}
+          choicesIsError={false}
+          choicesPending={false}
+          formatDetailOptions={[]}
+          formatOptions={[]}
+          values={bundle}
+        />
+      )
+      expect(markup).toContain(label)
+      expect(markup).not.toContain("-3 in stock")
+    }
   })
 
   it("renders catalog-derived release accelerators and controlled choices", () => {

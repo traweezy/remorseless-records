@@ -9,6 +9,44 @@ routine audit work. The client environment clone remains paused behind the
 separate Batch 7 stop boundary below. Latest evidence and remaining work are
 recorded at the top of `docs/END_TO_END_AUDIT.md`.
 
+**Current correction — October 6, 22:58 UTC:** direct staging push
+`3873c8511e75c21388f250b757fad2f3490fc6b3` repairs the failed dependency
+scans. Normal commit/pre-push gates pass. All four exact push workflows and
+all 23 required checks pass at 22:50 UTC; both exact local runtime scans and
+seven packaged Next/Sharp decoder/optimizer boundary cases also pass. The
+Migrations and RecoveryBackups deployments succeed on this SHA; Backend and
+Storefront are still building at the latest all-nine observation. Do not
+claim deployed acceptance from CI or these local checks.
+
+Native Admin checks now cover all six CT/NY/PA transaction/destination CSV
+downloads, actual controlled date validation and applied reporting periods,
+tax/refund filters and search, both media-cleanup pages (28 historical assets)
+and eight legacy redirects. No historical media was quarantined. Exports
+retain full filing scope, correct empty-period totals, UTF-8 BOM/CRLF and
+contact-field exclusions. Retain the download and date-input harness failures.
+
+**B6-BUNDLE-CREATE-STOCK:** the owned fixed-bundle draft exposes a new native
+preview defect: `/admin/products` does not compute variant inventory. The
+local repair reads only selected products through Medusa's native variants
+endpoint, paginates and rejects incomplete/changed evidence. Missing stock
+stays unknown; unmanaged inventory is explicit. Medusa retains all mutation
+and checkout authority. The browser draft is saved locally; no bundle has
+been submitted. Focused 21-case verification, Backend 2,430-test coverage,
+75 native/44 payment integration cases and both builds pass. The browser
+regression fails on the preceding build and passes on laptop and narrow
+layouts. The full Admin matrix passes all 22 cases with no axe violations or
+layout findings, and final full lint/type/policy gates pass. This corrective
+commit/push is still pending; keep it local while the preceding rollout builds.
+
+All-nine monitoring resumes at 22:51 UTC after a recorded 310.495-second
+observer gap. Preserve both watcher histories and the gap receipt; do not
+claim continuous observation across it. No sampled service fault is found.
+Owned order #9 exchange/financial/notification cleanup, paid-family checks,
+guarded search rebuild and ordinary scheduler acceptance remain open. The
+24-hour scheduler incident latch stays intact until at least October 7,
+14:18:40.644 UTC, followed by fresh healthy observation. Keep Batch 6 open
+and the client clone paused.
+
 **Failed-release correction — October 6, 22:32 UTC:** the grouped Batch 6
 push is `1b09546974bd73713031c1f0a5f9fa3ff09d500d`. All four exact workflows
 fail on eight newly reviewed/revised dependency advisories; Runtime Images

@@ -32,6 +32,8 @@ import { knex, type Knex } from "@mikro-orm/knex"
 import { createClient } from "redis"
 import { randomUUID } from "node:crypto"
 import type { MedusaRequest } from "@medusajs/framework"
+import { GET as nativeProductList } from "@medusajs/medusa/api/admin/products/route"
+import { GET as nativeVariantList } from "@medusajs/medusa/api/admin/products/[id]/variants/route"
 
 import {
   setShelfArchived,
@@ -373,6 +375,62 @@ medusaIntegrationTestRunner({
         )
         expect(authoring.commerce.id).toBe(created.productId)
         expect(authoring.catalog.variants).toHaveLength(2)
+        // The creation picker cannot read computed stock from *variants on
+        // the native product list. Its selected-product request must use the
+        // variants handler, which calculates real inventory availability.
+        let listedProducts: unknown
+        await nativeProductList(
+          {
+            scope: container,
+            filterableFields: { id: created.productId },
+            queryConfig: {
+              fields: ["id", "title", "variants.*"],
+              pagination: { skip: 0, take: 200 },
+            },
+          } as unknown as Parameters<typeof nativeProductList>[0],
+          {
+            json: (data: unknown) => {
+              listedProducts = data
+            },
+          } as unknown as Parameters<typeof nativeProductList>[1]
+        )
+        const listed = recordFrom(
+          listedProducts,
+          "Native product list"
+        ).products
+        expect(Array.isArray(listed)).toBe(true)
+        const listedProduct = recordFrom(
+          (listed as unknown[])[0],
+          "Native product"
+        )
+        for (const variant of listedProduct.variants as unknown[]) {
+          expect(variant).not.toHaveProperty("inventory_quantity")
+        }
+        let computedVariants: unknown
+        await nativeVariantList(
+          {
+            scope: container,
+            params: { id: created.productId },
+            filterableFields: {},
+            queryConfig: {
+              fields: ["id", "manage_inventory", "inventory_quantity"],
+              pagination: { skip: 0, take: 200 },
+            },
+          } as unknown as Parameters<typeof nativeVariantList>[0],
+          {
+            json: (data: unknown) => {
+              computedVariants = data
+            },
+          } as unknown as Parameters<typeof nativeVariantList>[1]
+        )
+        expect(computedVariants).toMatchObject({ count: 2 })
+        for (const variant of recordFrom(computedVariants, "Native variants")
+          .variants as unknown[]) {
+          expect(variant).toMatchObject({
+            manage_inventory: true,
+            inventory_quantity: 20,
+          })
+        }
         const presentation = await loadStoreCatalogPresentations(
           container.resolve<CatalogService>("catalog"),
           [created.productId]

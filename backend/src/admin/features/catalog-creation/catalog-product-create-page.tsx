@@ -11,7 +11,7 @@ import {
   type MouseEvent,
 } from "react"
 import { useForm, useStore } from "@tanstack/react-form"
-import { useMutation, useQuery } from "@tanstack/react-query"
+import { useMutation, useQueries, useQuery } from "@tanstack/react-query"
 import { Badge, Button, Text } from "@medusajs/ui"
 import { useBlocker, useNavigate } from "react-router-dom"
 
@@ -69,11 +69,13 @@ import {
   type CatalogCreationReleaseDatePrecision,
 } from "./catalog-product-create-form"
 import {
+  catalogCreationComponentInventoryQueryOptions,
   catalogCreationVocabularyQueryOptions,
   catalogProductChoicesQueryOptions,
   createCatalogProduct,
   decideCatalogProductCreationRetry,
   getCatalogProductCreationStatus,
+  withCatalogCreationComponentInventory,
   type CatalogCreationProductChoiceWithStock,
 } from "./catalog-product-create-query"
 
@@ -283,6 +285,30 @@ const CatalogProductCreatePageContent = memo(() => {
     values: state.values,
   }))
   const values = formState.values
+  const componentProductIds = useMemo(
+    () =>
+      values.kind === "fixed_bundle"
+        ? [
+            ...new Set(
+              values.bundleComponents
+                .map(({ productId }) => productId)
+                .filter(Boolean)
+            ),
+          ]
+        : [],
+    [values.bundleComponents, values.kind]
+  )
+  const componentInventoryQueries = useQueries({
+    queries: componentProductIds.map(
+      catalogCreationComponentInventoryQueryOptions
+    ),
+  })
+  const stockChoicesData = withCatalogCreationComponentInventory(
+    choicesData,
+    componentInventoryQueries.map((query) =>
+      query.isError ? undefined : query.data
+    )
+  )
   const creationIsError = creationMutation.isError
   const resetCreationMutation = creationMutation.reset
   const inspectRetryStatus = retryStatusMutation.mutateAsync
@@ -328,7 +354,7 @@ const CatalogProductCreatePageContent = memo(() => {
           offering.id,
           resolveCatalogCreationAvailability({
             bundleComponents: values.bundleComponents,
-            choices: choicesData ?? [],
+            choices: stockChoicesData ?? [],
             kind: values.kind,
             offering,
             releaseDate: values.releaseDate,
@@ -336,7 +362,7 @@ const CatalogProductCreatePageContent = memo(() => {
           }),
         ])
       ),
-    [choicesData, values]
+    [stockChoicesData, values]
   )
 
   useEffect(() => {
@@ -876,7 +902,8 @@ const CatalogProductCreatePageContent = memo(() => {
 
   const handleChoicesRetry = useCallback(() => {
     void refetchChoices()
-  }, [refetchChoices])
+    for (const query of componentInventoryQueries) void query.refetch()
+  }, [componentInventoryQueries, refetchChoices])
 
   const handleVocabularyRetry = useCallback(() => {
     void refetchVocabulary()
@@ -967,10 +994,19 @@ const CatalogProductCreatePageContent = memo(() => {
       {step === 2 ? (
         <CatalogCreationOfferingsStep
           availabilityByOfferingId={availabilityByOfferingId}
-          choicesData={choicesData}
-          choicesError={choicesQuery.error}
-          choicesFetching={choicesQuery.isFetching}
-          choicesIsError={choicesQuery.isError}
+          choicesData={stockChoicesData}
+          choicesError={
+            choicesQuery.error ??
+            componentInventoryQueries.find((query) => query.isError)?.error
+          }
+          choicesFetching={
+            choicesQuery.isFetching ||
+            componentInventoryQueries.some((query) => query.isFetching)
+          }
+          choicesIsError={
+            choicesQuery.isError ||
+            componentInventoryQueries.some((query) => query.isError)
+          }
           choicesPending={choicesQuery.isPending}
           formatDetailOptions={referenceOptions.formatDetail}
           formatOptions={referenceOptions.format}

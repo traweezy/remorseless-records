@@ -395,11 +395,36 @@ const fixtureFor = (url) => {
     return { columns: [], configurations: [], view: null, views: [] }
   }
   if (
+    setup === "catalog-create-bundle-stock" &&
+    pathname === "/admin/products/product_acceptance/variants"
+  ) {
+    const withStock = (url.searchParams.get("fields") ?? "").includes(
+      "inventory_quantity"
+    )
+    return paged(
+      "variants",
+      product.variants.map((variant) => ({
+        id: variant.id,
+        manage_inventory: variant.manage_inventory,
+        ...(withStock ? { inventory_quantity: 18 } : {}),
+      }))
+    )
+  }
+  if (
     pathname === "/admin/products" ||
     pathname === "/admin/products/product_acceptance"
   ) {
     return pathname === "/admin/products"
-      ? paged("products", [product])
+      ? paged("products", [
+          setup === "catalog-create-bundle-stock"
+            ? {
+                ...product,
+                variants: product.variants.map(
+                  ({ inventory_quantity: _stock, ...variant }) => variant
+                ),
+              }
+            : product,
+        ])
       : { product }
   }
   if (pathname === "/admin/catalog/artists") {
@@ -1195,6 +1220,57 @@ try {
     await clickButton("Continue")
     await page.waitForSelector("#catalog-create-add-offering")
     await new Promise((resolve) => setTimeout(resolve, 1_000))
+  }
+  if (setup === "catalog-create-bundle-stock") {
+    const kindButtons = await page.$$("button")
+    let selected = false
+    for (const button of kindButtons) {
+      if (
+        (await button.evaluate((element) => element.textContent)).startsWith(
+          "Fixed bundle"
+        )
+      ) {
+        await button.click()
+        selected = true
+        break
+      }
+    }
+    if (!selected) throw new Error("Fixed bundle kind is unavailable")
+    await clickButton("Continue")
+    await page.waitForSelector("#catalog-create-title")
+    await page.type("#catalog-create-title", "Acceptance Fixed Bundle")
+    await clickButton("Continue")
+    await page.waitForSelector("#catalog-create-add-bundle-component")
+    await clickButton("Add included product")
+    await page.waitForFunction(
+      () =>
+        document
+          .querySelector(
+            '[aria-label="Customer availability after publish: In stock"]'
+          )
+          ?.textContent.includes("18 complete bundles"),
+      { timeout: 10000 }
+    )
+    const quantity = 'input[id^="component-"][id$="-quantity"]'
+    await page.click(quantity)
+    await page.keyboard.down("Control")
+    await page.keyboard.press("KeyA")
+    await page.keyboard.up("Control")
+    await page.type(quantity, "2")
+    await page.waitForFunction(
+      () =>
+        document
+          .querySelector(
+            '[aria-label="Customer availability after publish: In stock"]'
+          )
+          ?.textContent.includes("9 complete bundles"),
+      { timeout: 10000 }
+    )
+    if (
+      fixtureRequests.get("/admin/products/product_acceptance/variants") !== 1
+    ) {
+      throw new Error("Component stock did not use one selected native read")
+    }
   }
   if (setup === "catalog-create-validation") {
     await clickButton("Continue")

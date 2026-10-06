@@ -256,6 +256,92 @@ export const catalogProductChoicesQueryOptions = () =>
     staleTime: 60_000,
   })
 
+const componentInventorySchema = z.object({
+  count: z.number().int().nonnegative(),
+  variants: z.array(
+    z.object({
+      id: z.string().min(1),
+      inventory_quantity: z.number().finite().nullable().optional(),
+      manage_inventory: z.boolean(),
+    })
+  ),
+})
+
+export type CatalogCreationComponentInventory = {
+  productId: string
+  variants: z.infer<typeof componentInventorySchema>["variants"]
+}
+
+export const loadCatalogCreationComponentInventory = async (
+  productId: string,
+  signal: AbortSignal
+): Promise<CatalogCreationComponentInventory> => {
+  const readPage = (offset: number) =>
+    requestAdminJson({
+      path: `/admin/products/${encodeURIComponent(productId)}/variants`,
+      query: {
+        fields: "id,manage_inventory,inventory_quantity",
+        limit: PAGE_SIZE,
+        offset,
+      },
+      schema: componentInventorySchema,
+      signal,
+    })
+  // Medusa computes inventory_quantity only on its native variants route.
+  // Read selected products, not one extra stock request for every choice.
+  const first = await readPage(0)
+  const pages = [first]
+  for (let offset = PAGE_SIZE; offset < first.count; offset += PAGE_SIZE) {
+    const next = await readPage(offset)
+    if (next.count !== first.count) {
+      throw new Error("Component variants changed. Refresh product choices.")
+    }
+    pages.push(next)
+  }
+  const variants = pages.flatMap((page) => page.variants)
+  if (
+    variants.length !== first.count ||
+    new Set(variants.map((variant) => variant.id)).size !== first.count
+  ) {
+    throw new Error(
+      "Component inventory is incomplete. Refresh product choices."
+    )
+  }
+  return { productId, variants }
+}
+
+export const catalogCreationComponentInventoryQueryOptions = (
+  productId: string
+) =>
+  queryOptions({
+    queryFn: ({ signal }) =>
+      loadCatalogCreationComponentInventory(productId, signal),
+    queryKey: [...catalogProductChoicesQueryKey, "native-inventory", productId],
+    refetchOnWindowFocus: false,
+    retry: 1,
+    staleTime: 60_000,
+  })
+
+export const withCatalogCreationComponentInventory = (
+  choices: CatalogCreationProductChoiceWithStock[] | undefined,
+  inventory: Array<CatalogCreationComponentInventory | undefined>
+): CatalogCreationProductChoiceWithStock[] | undefined =>
+  choices?.map((product) => {
+    const stock = inventory.find((entry) => entry?.productId === product.id)
+    return {
+      ...product,
+      variants: product.variants.map((variant) => {
+        const native = stock?.variants.find((entry) => entry.id === variant.id)
+        return {
+          ...variant,
+          inventoryQuantity: native?.inventory_quantity ?? null,
+          // Missing native evidence must not imply unlimited inventory.
+          managesInventory: native?.manage_inventory !== false,
+        }
+      }),
+    }
+  })
+
 export const createCatalogProduct = async (
   request: CatalogProductCreateRequest
 ): Promise<CatalogProductCreateResponse> =>
