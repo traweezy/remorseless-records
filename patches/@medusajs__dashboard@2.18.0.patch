@@ -1,8 +1,8 @@
 diff --git a/dist/app.css b/dist/app.css
-index 914b674205accf11063d4145e7b21dd53c783ba4..36242e26261566cc711a909f10a44d1e6cbd80f1 100644
+index 914b674205accf11063d4145e7b21dd53c783ba4..4c7b4375508846613808fe784a822f6e92e55b23 100644
 --- a/dist/app.css
 +++ b/dist/app.css
-@@ -5459,3 +5459,13 @@ video {
+@@ -5459,3 +5459,16 @@ video {
  .\[\&_tr\]\:hover\:bg-ui-bg-subtle:hover tr {
    background-color: var(--bg-subtle);
  }
@@ -16,8 +16,11 @@ index 914b674205accf11063d4145e7b21dd53c783ba4..36242e26261566cc711a909f10a44d1e
 +.rr-native-auth-link:focus-visible { outline: 2px solid var(--border-interactive); outline-offset: 2px; border-radius: 2px; }
 +
 +.rr-native-auth input + div > button[type="button"] { min-width: 24px; min-height: 24px; }
++
++.rr-native-order-link { display: inline-flex; align-items: center; min-width: 24px; min-height: 24px; cursor: pointer; }
++.rr-native-order-link:focus-visible { outline: 2px solid var(--border-interactive); outline-offset: -2px; border-radius: 2px; }
 diff --git a/dist/app.js b/dist/app.js
-index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd93ea25a55 100644
+index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..1a1bfa9320565a42e350a6e430ed460abad69dfc 100644
 --- a/dist/app.js
 +++ b/dist/app.js
 @@ -1,3 +1,66 @@
@@ -166,6 +169,15 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
            autoComplete: "off",
            name: "q",
            type: "search",
+@@ -116588,7 +116663,7 @@ var init_data_table_root = __esm({
+                                 "start-[68px]": isStickyHeader && hasSelect && !isSelectHeader,
+                                 "after:bg-ui-border-base": showStickyBorder && isStickyHeader && !isSpecialHeader
+                               }),
+-                              children: (0, import_react_table.flexRender)(
++                              children: header.id === "country" ? (0, import_jsx_runtime53.jsx)("span", { className: "sr-only", children: t5("fields.country") }) : (0, import_react_table.flexRender)(
+                                 header.column.columnDef.header,
+                                 header.getContext()
+                               )
 @@ -116634,7 +116709,7 @@ var init_data_table_root = __esm({
                              cell.getContext()
                            );
@@ -175,6 +187,15 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
                            return /* @__PURE__ */ (0, import_jsx_runtime53.jsx)(
                              import_ui35.Table.Cell,
                              {
+@@ -116653,7 +116728,7 @@ var init_data_table_root = __esm({
+                                 import_react_router_dom23.Link,
+                                 {
+                                   to,
+-                                  className: "size-full outline-none",
++                                  className: cell.column.id === "display_id" ? "size-full outline-none rr-native-order-link" : "size-full outline-none",
+                                   "data-row-link": true,
+                                   tabIndex: isTabableLink ? 0 : -1,
+                                   children: /* @__PURE__ */ (0, import_jsx_runtime53.jsx)(
 @@ -116865,36 +116940,7 @@ var init_product_list_table_actions = __esm({
        product
      }) => {
@@ -246,7 +267,39 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
              cell: ({ row }) => {
                return /* @__PURE__ */ (0, import_jsx_runtime65.jsx)(ProductActions, { product: row.original });
              }
-@@ -123459,7 +123496,6 @@ var init_configurable_product_list_table = __esm({
+@@ -120993,18 +121030,19 @@ var init_date_cell2 = __esm({
+ });
+ 
+ // src/components/table/table-cells/order/display-id-cell/display-id-cell.tsx
+-var import_react_i18next43, import_jsx_runtime72, DisplayIdCell, DisplayIdHeader;
++var rrOrderLinkRouter, import_react_i18next43, import_jsx_runtime72, DisplayIdCell, DisplayIdHeader;
+ var init_display_id_cell = __esm({
+   "src/components/table/table-cells/order/display-id-cell/display-id-cell.tsx"() {
+     "use strict";
+     import_react_i18next43 = require("react-i18next");
+     init_placeholder_cell2();
+     import_jsx_runtime72 = require("react/jsx-runtime");
+-    DisplayIdCell = ({ displayId }) => {
++    rrOrderLinkRouter = require("react-router-dom");
++    DisplayIdCell = ({ displayId, orderId }) => {
+       if (!displayId) {
+         return /* @__PURE__ */ (0, import_jsx_runtime72.jsx)(PlaceholderCell, {});
+       }
+-      return /* @__PURE__ */ (0, import_jsx_runtime72.jsx)("div", { className: "text-ui-fg-subtle txt-compact-small flex h-full w-full items-center overflow-hidden", children: /* @__PURE__ */ (0, import_jsx_runtime72.jsxs)("span", { className: "truncate", children: [
++      return /* @__PURE__ */ (0, import_jsx_runtime72.jsx)("div", { className: "text-ui-fg-subtle txt-compact-small flex h-full w-full items-center overflow-hidden", children: /* @__PURE__ */ (0, import_jsx_runtime72.jsxs)(orderId ? rrOrderLinkRouter.Link : "span", { className: orderId ? "rr-native-order-link truncate" : "truncate", ...(orderId ? {to: `/orders/${orderId}`, onClick: (event) => event.stopPropagation()} : {}), children: [
+         "#",
+         displayId
+       ] }) });
+@@ -122252,7 +122290,7 @@ var init_cell_renderers = __esm({
+       return /* @__PURE__ */ (0, import_jsx_runtime75.jsx)(DateCell, { date: value });
+     };
+     DisplayIdRenderer = (value, _row, _column, _t) => {
+-      return /* @__PURE__ */ (0, import_jsx_runtime75.jsx)(DisplayIdCell, { displayId: value });
++      return /* @__PURE__ */ (0, import_jsx_runtime75.jsx)(DisplayIdCell, { displayId: value, orderId: typeof _row?.id === "string" && _row.id.startsWith("order_") && _row.status !== "draft" ? _row.id : void 0 });
+     };
+     CurrencyRenderer = (value, row, _column, _t) => {
+       return /* @__PURE__ */ (0, import_jsx_runtime75.jsx)(TotalCell, { currencyCode: row.currency_code || "USD", total: value });
+@@ -123459,7 +123497,6 @@ var init_configurable_product_list_table = __esm({
              heading: t5("products.domain"),
              actions: [
                { label: t5("actions.export"), to: `export${location.search}` },
@@ -254,7 +307,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
                { label: t5("actions.create"), to: "create" }
              ]
            }
-@@ -123571,21 +123607,25 @@ var init_form = __esm({
+@@ -123571,21 +123608,25 @@ var init_form = __esm({
        if (!fieldContext) {
          throw new Error("useFormField should be used within a FormField");
        }
@@ -286,7 +339,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
            "div",
            {
              ref,
-@@ -123597,7 +123637,8 @@ var init_form = __esm({
+@@ -123597,7 +123638,8 @@ var init_form = __esm({
      );
      Item.displayName = "Form.Item";
      Label4 = (0, import_react78.forwardRef)(({ className, optional = false, tooltip, icon, ...props }, ref) => {
@@ -296,7 +349,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
        const { t: t5 } = (0, import_react_i18next48.useTranslation)();
        return /* @__PURE__ */ (0, import_jsx_runtime81.jsxs)("div", { className: "flex items-center gap-x-1", children: [
          /* @__PURE__ */ (0, import_jsx_runtime81.jsx)(
-@@ -123624,7 +123665,7 @@ var init_form = __esm({
+@@ -123624,7 +123666,7 @@ var init_form = __esm({
      Label4.displayName = "Form.Label";
      Control = (0, import_react78.forwardRef)(({ ...props }, ref) => {
        const {
@@ -305,7 +358,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
          formItemId,
          formDescriptionId,
          formErrorMessageId,
-@@ -123635,16 +123676,17 @@ var init_form = __esm({
+@@ -123635,16 +123677,17 @@ var init_form = __esm({
          {
            ref,
            id: formItemId,
@@ -326,7 +379,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
        return /* @__PURE__ */ (0, import_jsx_runtime81.jsx)(
          import_ui54.Hint,
          {
-@@ -123657,8 +123699,10 @@ var init_form = __esm({
+@@ -123657,8 +123700,10 @@ var init_form = __esm({
      });
      Hint.displayName = "Form.Hint";
      ErrorMessage = (0, import_react78.forwardRef)(({ className, children, ...props }, ref) => {
@@ -338,7 +391,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
        if (!msg || msg === "undefined") {
          return null;
        }
-@@ -124062,9 +124106,10 @@ var init_route_focus_modal = __esm({
+@@ -124062,9 +124107,10 @@ var init_route_focus_modal = __esm({
        return /* @__PURE__ */ (0, import_jsx_runtime86.jsx)(
          import_ui57.FocusModal.Content,
          {
@@ -352,7 +405,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
            className: (0, import_ui57.clx)({
              "!bg-ui-bg-disabled !inset-x-5 !inset-y-3": stackedModalOpen
            }),
-@@ -126016,7 +126061,16 @@ var init_combobox = __esm({
+@@ -126016,7 +126062,16 @@ var init_combobox = __esm({
                          "txt-compact-small text-ui-fg-base !placeholder:text-ui-fg-muted transition-fg size-full cursor-pointer bg-transparent pe-8 ps-1 outline-none focus:cursor-text"
                        ),
                        placeholder: Array.isArray(selectedValues) && selectedValues.length > 0 ? void 0 : placeholder,
@@ -370,7 +423,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
                      }
                    ) }),
                    /* @__PURE__ */ (0, import_jsx_runtime98.jsx)(
-@@ -126027,6 +126081,7 @@ var init_combobox = __esm({
+@@ -126027,6 +126082,7 @@ var init_combobox = __esm({
                            "button",
                            {
                              ...props,
@@ -378,7 +431,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
                              type: "button",
                              className: "text-ui-fg-muted transition-fg hover:bg-ui-bg-field-hover absolute end-0 top-0 flex h-8 w-8 items-center justify-center rounded-r outline-none",
                              children: /* @__PURE__ */ (0, import_jsx_runtime98.jsx)(import_icons35.TrianglesMini, {})
-@@ -126112,7 +126167,16 @@ var init_combobox = __esm({
+@@ -126112,7 +126168,16 @@ var init_combobox = __esm({
                            }
                          ),
                          placeholder: hidePlaceholder ? void 0 : placeholder,
@@ -396,7 +449,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
                        }
                      )
                    ] }),
-@@ -126136,6 +126200,7 @@ var init_combobox = __esm({
+@@ -126136,6 +126201,7 @@ var init_combobox = __esm({
                            "button",
                            {
                              ...props,
@@ -404,7 +457,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
                              type: "button",
                              className: "text-ui-fg-muted transition-fg hover:bg-ui-bg-field-hover absolute end-0 flex size-8 items-center justify-center rounded-r outline-none",
                              children: /* @__PURE__ */ (0, import_jsx_runtime98.jsx)(import_icons35.TrianglesMini, {})
-@@ -126150,7 +126215,14 @@ var init_combobox = __esm({
+@@ -126150,7 +126216,14 @@ var init_combobox = __esm({
              /* @__PURE__ */ (0, import_jsx_runtime98.jsxs)(
                import_react98.ComboboxPopover,
                {
@@ -420,7 +473,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
                  sameWidth: true,
                  ref: listboxRef,
                  role: "listbox",
-@@ -126162,7 +126234,7 @@ var init_combobox = __esm({
+@@ -126162,7 +126235,7 @@ var init_combobox = __esm({
                    "data-[side=bottom]:slide-in-from-top-2 data-[side=start]:slide-in-from-end-2 data-[side=end]:slide-in-from-start-2 data-[side=top]:slide-in-from-bottom-2"
                  ),
                  style: {
@@ -429,7 +482,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
                  },
                  children: [
                    results.map(({ value, label, disabled }) => /* @__PURE__ */ (0, import_jsx_runtime98.jsxs)(
-@@ -134419,35 +134491,9 @@ var init_product_general_section = __esm({
+@@ -134419,35 +134492,9 @@ var init_product_general_section = __esm({
        product
      }) => {
        const { t: t5 } = (0, import_react_i18next88.useTranslation)();
@@ -465,7 +518,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
        return /* @__PURE__ */ (0, import_jsx_runtime136.jsxs)(import_ui99.Container, { className: "divide-y p-0", children: [
          /* @__PURE__ */ (0, import_jsx_runtime136.jsxs)("div", { className: "flex items-center justify-between px-6 py-4", children: [
            /* @__PURE__ */ (0, import_jsx_runtime136.jsx)(import_ui99.Heading, { children: product.title }),
-@@ -134476,16 +134522,7 @@ var init_product_general_section = __esm({
+@@ -134476,16 +134523,7 @@ var init_product_general_section = __esm({
                          }
                        ]
                      }
@@ -483,7 +536,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
                  ]
                }
              )
-@@ -135147,8 +135184,6 @@ var init_product_variant_section = __esm({
+@@ -135147,8 +135185,6 @@ var init_product_variant_section = __esm({
      useColumns4 = (product) => {
        const { t: t5 } = (0, import_react_i18next93.useTranslation)();
        const navigate = (0, import_react_router_dom38.useNavigate)();
@@ -492,7 +545,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
        const [searchParams] = (0, import_react_router_dom38.useSearchParams)();
        const tableSearchParams = (0, import_react140.useMemo)(() => {
          const filtered = new URLSearchParams();
-@@ -135159,23 +135194,6 @@ var init_product_variant_section = __esm({
+@@ -135159,23 +135195,6 @@ var init_product_variant_section = __esm({
          }
          return filtered;
        }, [searchParams]);
@@ -516,7 +569,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
        const optionColumns = (0, import_react140.useMemo)(() => {
          if (!product?.options) {
            return [];
-@@ -135232,13 +135250,6 @@ var init_product_variant_section = __esm({
+@@ -135232,13 +135251,6 @@ var init_product_variant_section = __esm({
                }
              }
            ];
@@ -530,7 +583,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
            const inventoryItemsCount = variant.inventory_items?.length || 0;
            switch (inventoryItemsCount) {
              case 0:
-@@ -135271,9 +135282,9 @@ var init_product_variant_section = __esm({
+@@ -135271,9 +135283,9 @@ var init_product_variant_section = __esm({
                });
              }
            }
@@ -542,7 +595,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
        );
        const getInventory = (0, import_react140.useCallback)(
          (variant) => {
-@@ -141169,29 +141180,8 @@ var init_loader5 = __esm({
+@@ -141169,29 +141181,8 @@ var init_loader5 = __esm({
  // src/routes/product-variants/product-variant-detail/components/variant-general-section/variant-general-section.tsx
  function VariantGeneralSection({ variant }) {
    const { t: t5 } = (0, import_react_i18next124.useTranslation)();
@@ -572,7 +625,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
    return /* @__PURE__ */ (0, import_jsx_runtime183.jsxs)(import_ui133.Container, { className: "divide-y p-0", children: [
      /* @__PURE__ */ (0, import_jsx_runtime183.jsxs)("div", { className: "flex items-center justify-between px-6 py-4", children: [
        /* @__PURE__ */ (0, import_jsx_runtime183.jsxs)("div", { children: [
-@@ -141224,16 +141214,7 @@ function VariantGeneralSection({ variant }) {
+@@ -141224,16 +141215,7 @@ function VariantGeneralSection({ variant }) {
                    }
                  ]
                }
@@ -590,7 +643,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
            ]
          }
        ) })
-@@ -149209,6 +149190,7 @@ var init_constants10 = __esm({
+@@ -149209,6 +149191,7 @@ var init_constants10 = __esm({
        "*payment_collections",
        "*payment_collections.payment_sessions",
        "*payment_collections.payments",
@@ -598,7 +651,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
        "*payment_collections.payments.refunds",
        "*payment_collections.payments.refunds.refund_reason",
        "region.automatic_taxes"
-@@ -152000,10 +151982,10 @@ var init_customer_info = __esm({
+@@ -152000,10 +151983,10 @@ var init_customer_info = __esm({
        return /* @__PURE__ */ (0, import_jsx_runtime294.jsxs)("div", { className: "text-ui-fg-subtle grid grid-cols-2 items-center px-6 py-4", children: [
          /* @__PURE__ */ (0, import_jsx_runtime294.jsx)(import_ui193.Text, { size: "small", leading: "compact", weight: "plus", children: t5("fields.id") }),
          /* @__PURE__ */ (0, import_jsx_runtime294.jsx)(
@@ -613,7 +666,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
              children: /* @__PURE__ */ (0, import_jsx_runtime294.jsxs)("div", { className: "flex items-center gap-x-2 overflow-hidden", children: [
                /* @__PURE__ */ (0, import_jsx_runtime294.jsx)(import_ui193.Avatar, { size: "2xsmall", fallback }),
                /* @__PURE__ */ (0, import_jsx_runtime294.jsx)(
-@@ -152038,7 +152020,7 @@ var init_customer_info = __esm({
+@@ -152038,7 +152021,7 @@ var init_customer_info = __esm({
        return /* @__PURE__ */ (0, import_jsx_runtime294.jsxs)("div", { className: "text-ui-fg-subtle grid grid-cols-2 items-start px-6 py-4", children: [
          /* @__PURE__ */ (0, import_jsx_runtime294.jsx)(import_ui193.Text, { size: "small", leading: "compact", weight: "plus", children: t5("orders.customer.contactLabel") }),
          /* @__PURE__ */ (0, import_jsx_runtime294.jsxs)("div", { className: "flex flex-col gap-y-2", children: [
@@ -622,7 +675,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
              /* @__PURE__ */ (0, import_jsx_runtime294.jsx)(
                import_ui193.Text,
                {
-@@ -152050,7 +152032,7 @@ var init_customer_info = __esm({
+@@ -152050,7 +152033,7 @@ var init_customer_info = __esm({
              ),
              /* @__PURE__ */ (0, import_jsx_runtime294.jsx)("div", { className: "flex justify-end", children: /* @__PURE__ */ (0, import_jsx_runtime294.jsx)(import_ui193.Copy, { content: email, className: "text-ui-fg-muted" }) })
            ] }),
@@ -631,7 +684,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
              /* @__PURE__ */ (0, import_jsx_runtime294.jsx)(
                import_ui193.Text,
                {
-@@ -152072,7 +152054,7 @@ var init_customer_info = __esm({
+@@ -152072,7 +152055,7 @@ var init_customer_info = __esm({
        const { t: t5 } = (0, import_react_i18next203.useTranslation)();
        return /* @__PURE__ */ (0, import_jsx_runtime294.jsxs)("div", { className: "text-ui-fg-subtle grid grid-cols-2 items-start px-6 py-4", children: [
          /* @__PURE__ */ (0, import_jsx_runtime294.jsx)(import_ui193.Text, { size: "small", leading: "compact", weight: "plus", children: type === "shipping" ? t5("addresses.shippingAddress.label") : t5("addresses.billingAddress.label") }),
@@ -640,7 +693,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
            /* @__PURE__ */ (0, import_jsx_runtime294.jsx)(import_ui193.Text, { size: "small", leading: "compact", children: getFormattedAddress({ address }).map((line, i) => {
              return /* @__PURE__ */ (0, import_jsx_runtime294.jsxs)("span", { className: "break-words", children: [
                line,
-@@ -153471,7 +153453,7 @@ var init_order_summary_section = __esm({
+@@ -153471,7 +153454,7 @@ var init_order_summary_section = __esm({
        );
        const { order: orderPreview } = useOrderPreview(order.id);
        const { returns = [] } = useReturns({
@@ -649,7 +702,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
          order_id: order.id,
          fields: "+received_at"
        });
-@@ -153690,24 +153672,24 @@ var init_order_summary_section = __esm({
+@@ -153690,24 +153673,24 @@ var init_order_summary_section = __esm({
          /* @__PURE__ */ (0, import_jsx_runtime303.jsxs)(
            "div",
            {
@@ -683,7 +736,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
                    ] })
                  ] }),
                  appliedPromoCodes.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime303.jsx)(
-@@ -153795,7 +153777,7 @@ var init_order_summary_section = __esm({
+@@ -153795,7 +153778,7 @@ var init_order_summary_section = __esm({
        secondaryValue,
        tooltip
      }) => /* @__PURE__ */ (0, import_jsx_runtime303.jsxs)("div", { className: "grid grid-cols-3 items-center", children: [
@@ -692,7 +745,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
          label,
          " ",
          tooltip
-@@ -154649,12 +154631,14 @@ function OrderCreateFulfillmentItem({
+@@ -154649,12 +154632,14 @@ function OrderCreateFulfillmentItem({
                        /* @__PURE__ */ (0, import_jsx_runtime305.jsx)(Form.Control, { children: /* @__PURE__ */ (0, import_jsx_runtime305.jsx)(
                          import_ui203.Input,
                          {
@@ -708,7 +761,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
                              if (val !== null && !isNaN(val)) {
                                if (val < minValue || val > maxValue) {
                                  form.setError(`quantity.${item.id}`, {
-@@ -154789,6 +154773,10 @@ function OrderCreateFulfillmentForm({
+@@ -154789,6 +154774,10 @@ function OrderCreateFulfillmentForm({
          ({ id: id2 }) => itemShippingProfileMap[id2] === selectedShippingProfileId
        );
      }
@@ -719,7 +772,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
      const payload = {
        location_id: selectedLocationId,
        shipping_option_id: shippingOptionId,
-@@ -154852,7 +154840,7 @@ function OrderCreateFulfillmentForm({
+@@ -154852,7 +154841,7 @@ function OrderCreateFulfillmentForm({
        onSubmit: handleSubmit,
        className: "flex h-full flex-col overflow-hidden",
        children: [
@@ -728,7 +781,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
          /* @__PURE__ */ (0, import_jsx_runtime306.jsx)(RouteFocusModal.Body, { className: "flex h-full w-full flex-col items-center divide-y overflow-y-auto", children: /* @__PURE__ */ (0, import_jsx_runtime306.jsx)("div", { className: "flex size-full flex-col items-center overflow-auto p-16", children: /* @__PURE__ */ (0, import_jsx_runtime306.jsx)("div", { className: "flex w-full max-w-[736px] flex-col justify-center px-2 pb-2", children: /* @__PURE__ */ (0, import_jsx_runtime306.jsxs)("div", { className: "flex flex-col divide-y divide-dashed", children: [
            /* @__PURE__ */ (0, import_jsx_runtime306.jsx)("div", { className: "pb-8", children: /* @__PURE__ */ (0, import_jsx_runtime306.jsx)(
              Form.Field,
-@@ -154906,7 +154894,8 @@ function OrderCreateFulfillmentForm({
+@@ -154906,7 +154895,8 @@ function OrderCreateFulfillmentForm({
                              /* @__PURE__ */ (0, import_jsx_runtime306.jsx)(
                                import_ui204.Select.Trigger,
                                {
@@ -738,7 +791,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
                                  ref,
                                  children: isShippingOptionsLoading ? /* @__PURE__ */ (0, import_jsx_runtime306.jsxs)("span", { className: "text-right", children: [
                                    t5("labels.loading"),
-@@ -155171,11 +155160,12 @@ function DismissedQuantity({
+@@ -155171,11 +155161,12 @@ function DismissedQuantity({
      }
    };
    return /* @__PURE__ */ (0, import_jsx_runtime308.jsxs)(import_ui205.Popover, { open: isOpen, onOpenChange: setIsOpen, children: [
@@ -753,7 +806,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
        /* @__PURE__ */ (0, import_jsx_runtime308.jsx)("span", { className: "txt-small text-ui-fg-subtle mb-2 font-medium", children: t5("orders.returns.receive.writeOffInputLabel") }),
        /* @__PURE__ */ (0, import_jsx_runtime308.jsx)(
          Form.Field,
-@@ -155189,6 +155179,7 @@ function DismissedQuantity({
+@@ -155189,6 +155180,7 @@ function DismissedQuantity({
                  min: 0,
                  max: item.quantity,
                  type: "number",
@@ -761,7 +814,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
                  value,
                  className: "bg-ui-bg-field-component text-right [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none",
                  onChange: (e) => {
-@@ -155333,6 +155324,7 @@ function OrderReceiveReturnForm({
+@@ -155333,6 +155325,7 @@ function OrderReceiveReturnForm({
        import_ui206.toast.error(t5("orders.returns.receive.toast.errorLargeValue"));
        return;
      }
@@ -769,7 +822,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
      try {
        if (action) {
          if (value === null || value === 0) {
-@@ -155402,7 +155394,7 @@ function OrderReceiveReturnForm({
+@@ -155402,7 +155395,7 @@ function OrderReceiveReturnForm({
                            ")"
                          ] })
                        ] }),
@@ -778,7 +831,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
                      ] })
                    ] }),
                    /* @__PURE__ */ (0, import_jsx_runtime309.jsxs)("div", { className: "flex flex-1 flex-row items-center gap-2", children: [
-@@ -155428,6 +155420,7 @@ function OrderReceiveReturnForm({
+@@ -155428,6 +155421,7 @@ function OrderReceiveReturnForm({
                                min: 0,
                                max: item.quantity,
                                type: "number",
@@ -786,7 +839,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
                                value: value ?? 0,
                                className: "bg-ui-bg-field-component text-right [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none",
                                onChange: (e) => {
-@@ -155480,7 +155473,7 @@ function OrderReceiveReturnForm({
+@@ -155480,7 +155474,7 @@ function OrderReceiveReturnForm({
                        import_ui206.Switch,
                        {
                          dir: "ltr",
@@ -795,7 +848,27 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
                          checked: !!value,
                          onCheckedChange: onChange,
                          ...field
-@@ -155587,9 +155580,9 @@ function OrderReceiveReturn() {
+@@ -155570,12 +155564,13 @@ function OrderReceiveReturn() {
+       IS_REQUEST_RUNNING = true;
+       try {
+         const { return: _return } = await initiateReceiveReturn({});
+-        await addReceiveItems({
+-          items: _return.items.map((i) => ({
+-            id: i.item_id,
+-            quantity: i.quantity
+-          }))
+-        });
++        const items = _return.items.map((i) => ({
++          id: i.item_id,
++          quantity: Math.max(0, i.quantity - (i.received_quantity ?? 0))
++        })).filter((i) => i.quantity > 0);
++        if (items.length) {
++          await addReceiveItems({ items });
++        }
+       } catch (e) {
+         import_ui207.toast.error(
+           e instanceof Error ? e.message : t5("errorBoundary.defaultTitle")
+@@ -155587,9 +155582,9 @@ function OrderReceiveReturn() {
    }, [preview]);
    const ready = order && orderReturn && preview;
    return /* @__PURE__ */ (0, import_jsx_runtime310.jsxs)(RouteDrawer, { children: [
@@ -807,7 +880,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
      ready && /* @__PURE__ */ (0, import_jsx_runtime310.jsx)(
        OrderReceiveReturnForm,
        {
-@@ -155693,13 +155686,13 @@ function OrderAllocateItemsItem({
+@@ -155693,13 +155688,13 @@ function OrderAllocateItemsItem({
      getFulfillableQuantity(item),
      availableQuantity || Number.MAX_SAFE_INTEGER
    );
@@ -824,7 +897,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
              /* @__PURE__ */ (0, import_jsx_runtime311.jsx)(import_ui208.Text, { className: "txt-small flex", as: "span", weight: "plus", children: item.product_title }),
              item.variant_sku && /* @__PURE__ */ (0, import_jsx_runtime311.jsxs)("span", { className: "text-ui-fg-subtle", children: [
                " ",
-@@ -155709,7 +155702,7 @@ function OrderAllocateItemsItem({
+@@ -155709,7 +155704,7 @@ function OrderAllocateItemsItem({
              ] }),
              hasInventoryKit && /* @__PURE__ */ (0, import_jsx_runtime311.jsx)(import_icons93.Component, { className: "text-ui-fg-muted ml-2 overflow-visible pt-[2px]" })
            ] }),
@@ -833,7 +906,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
          ] })
        ] }) }),
        /* @__PURE__ */ (0, import_jsx_runtime311.jsxs)(
-@@ -155726,7 +155719,7 @@ function OrderAllocateItemsItem({
+@@ -155726,7 +155721,7 @@ function OrderAllocateItemsItem({
                  /* @__PURE__ */ (0, import_jsx_runtime311.jsxs)("div", { className: "txt-small flex flex-col", children: [
                    /* @__PURE__ */ (0, import_jsx_runtime311.jsx)("span", { className: "text-ui-fg-subtle font-medium", children: t5("labels.available") }),
                    /* @__PURE__ */ (0, import_jsx_runtime311.jsxs)("span", { className: "text-ui-fg-muted", children: [
@@ -842,7 +915,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
                      availableQuantity && !hasInventoryKit && quantityField[`${item.id}-${item.variant?.inventory?.[0].id}`] && /* @__PURE__ */ (0, import_jsx_runtime311.jsxs)("span", { className: "text-ui-fg-error txt-small ml-1", children: [
                        "-",
                        quantityField[`${item.id}-${item.variant?.inventory?.[0].id}`]
-@@ -155738,7 +155731,7 @@ function OrderAllocateItemsItem({
+@@ -155738,7 +155733,7 @@ function OrderAllocateItemsItem({
                  /* @__PURE__ */ (0, import_jsx_runtime311.jsx)("div", { className: "bg-ui-border-strong block h-[12px] w-[1px]" }),
                  /* @__PURE__ */ (0, import_jsx_runtime311.jsxs)("div", { className: "txt-small flex flex-col", children: [
                    /* @__PURE__ */ (0, import_jsx_runtime311.jsx)("span", { className: "text-ui-fg-subtle font-medium", children: t5("labels.inStock") }),
@@ -851,7 +924,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
                  ] })
                ] })
              ] }),
-@@ -155761,6 +155754,7 @@ function OrderAllocateItemsItem({
+@@ -155761,6 +155756,7 @@ function OrderAllocateItemsItem({
                          {
                            className: "bg-ui-bg-base txt-small w-[46px] rounded-lg text-right [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none",
                            type: "number",
@@ -859,7 +932,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
                            ...field,
                            disabled: !locationId,
                            onChange: (e) => {
-@@ -155793,10 +155787,12 @@ function OrderAllocateItemsItem({
+@@ -155793,10 +155789,12 @@ function OrderAllocateItemsItem({
        )
      ] }),
      hasInventoryKit && /* @__PURE__ */ (0, import_jsx_runtime311.jsx)("div", { className: "px-4 py-2", children: /* @__PURE__ */ (0, import_jsx_runtime311.jsxs)(
@@ -874,7 +947,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
          children: [
            /* @__PURE__ */ (0, import_jsx_runtime311.jsx)(
              import_icons93.TriangleDownMini,
-@@ -155816,7 +155812,7 @@ function OrderAllocateItemsItem({
+@@ -155816,7 +155814,7 @@ function OrderAllocateItemsItem({
          (l) => l.location_id === locationId
        );
        const hasQuantityError2 = !!quantityField[`${item.id}-${i.id}`] && quantityField[`${item.id}-${i.id}`] > (location?.available_quantity ?? 0);
@@ -883,7 +956,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
          /* @__PURE__ */ (0, import_jsx_runtime311.jsxs)("div", { className: "flex flex-1 flex-row items-center gap-3", children: [
            hasQuantityError2 && /* @__PURE__ */ (0, import_jsx_runtime311.jsx)(import_icons93.ExclamationCircleSolid, { className: "text-ui-fg-error" }),
            /* @__PURE__ */ (0, import_jsx_runtime311.jsxs)("div", { className: "flex flex-col", children: [
-@@ -155832,7 +155828,7 @@ function OrderAllocateItemsItem({
+@@ -155832,7 +155830,7 @@ function OrderAllocateItemsItem({
              /* @__PURE__ */ (0, import_jsx_runtime311.jsxs)("div", { className: "txt-small flex flex-col", children: [
                /* @__PURE__ */ (0, import_jsx_runtime311.jsx)("span", { className: "text-ui-fg-subtle font-medium", children: t5("labels.available") }),
                /* @__PURE__ */ (0, import_jsx_runtime311.jsxs)("span", { className: "text-ui-fg-muted", children: [
@@ -892,7 +965,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
                  location?.available_quantity && quantityField[`${item.id}-${i.id}`] && /* @__PURE__ */ (0, import_jsx_runtime311.jsxs)("span", { className: "text-ui-fg-error txt-small ml-1", children: [
                    "-",
                    quantityField[`${item.id}-${i.id}`]
-@@ -155844,7 +155840,7 @@ function OrderAllocateItemsItem({
+@@ -155844,7 +155842,7 @@ function OrderAllocateItemsItem({
              /* @__PURE__ */ (0, import_jsx_runtime311.jsx)("div", { className: "bg-ui-border-strong block h-[12px] w-[1px]" }),
              /* @__PURE__ */ (0, import_jsx_runtime311.jsxs)("div", { className: "txt-small flex flex-col", children: [
                /* @__PURE__ */ (0, import_jsx_runtime311.jsx)("span", { className: "text-ui-fg-subtle font-medium", children: t5("labels.inStock") }),
@@ -901,7 +974,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
              ] })
            ] }),
            /* @__PURE__ */ (0, import_jsx_runtime311.jsxs)("div", { className: "flex items-center gap-3", children: [
-@@ -155866,6 +155862,7 @@ function OrderAllocateItemsItem({
+@@ -155866,6 +155864,7 @@ function OrderAllocateItemsItem({
                        {
                          className: "bg-ui-bg-base txt-small w-[46px] rounded-lg text-right [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none",
                          type: "number",
@@ -909,7 +982,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
                          ...field,
                          disabled: !locationId,
                          onChange: (e) => {
-@@ -156033,8 +156030,9 @@ function OrderAllocateItemsForm({ order }) {
+@@ -156033,8 +156032,9 @@ function OrderAllocateItemsForm({ order }) {
        className: "flex h-full flex-col overflow-hidden",
        children: [
          /* @__PURE__ */ (0, import_jsx_runtime312.jsx)(RouteFocusModal.Header, {}),
@@ -921,7 +994,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
            /* @__PURE__ */ (0, import_jsx_runtime312.jsxs)("div", { className: "flex-1 divide-y divide-dashed pt-8", children: [
              /* @__PURE__ */ (0, import_jsx_runtime312.jsx)(
                Form.Field,
-@@ -156043,30 +156041,30 @@ function OrderAllocateItemsForm({ order }) {
+@@ -156043,30 +156043,30 @@ function OrderAllocateItemsForm({ order }) {
                  name: "location_id",
                  render: ({ field: { onChange, ref, ...field } }) => {
                    return /* @__PURE__ */ (0, import_jsx_runtime312.jsxs)(Form.Item, { children: [
@@ -957,7 +1030,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
                      ] }),
                      /* @__PURE__ */ (0, import_jsx_runtime312.jsx)(Form.ErrorMessage, {})
                    ] });
-@@ -156074,7 +156072,7 @@ function OrderAllocateItemsForm({ order }) {
+@@ -156074,7 +156074,7 @@ function OrderAllocateItemsForm({ order }) {
                }
              ),
              /* @__PURE__ */ (0, import_jsx_runtime312.jsxs)(Form.Item, { className: "mt-8 pt-8", children: [
@@ -966,7 +1039,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
                  /* @__PURE__ */ (0, import_jsx_runtime312.jsxs)("div", { className: "flex-1", children: [
                    /* @__PURE__ */ (0, import_jsx_runtime312.jsx)(Form.Label, { children: t5("orders.allocateItems.itemsToAllocate") }),
                    /* @__PURE__ */ (0, import_jsx_runtime312.jsx)(Form.Hint, { children: t5("orders.allocateItems.itemsToAllocateDesc") })
-@@ -156084,6 +156082,7 @@ function OrderAllocateItemsForm({ order }) {
+@@ -156084,6 +156084,7 @@ function OrderAllocateItemsForm({ order }) {
                    {
                      value: filterTerm,
                      onChange: (e) => setFilterTerm(e.target.value),
@@ -974,7 +1047,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
                      placeholder: t5("orders.allocateItems.search"),
                      autoComplete: "off",
                      type: "search"
-@@ -156169,6 +156168,7 @@ var init_order_create_fulfillment_form3 = __esm({
+@@ -156169,6 +156170,7 @@ var init_order_create_fulfillment_form3 = __esm({
  // src/routes/orders/order-allocate-items/order-allocate-items.tsx
  function OrderAllocateItems() {
    const { id: id2 } = (0, import_react_router_dom96.useParams)();
@@ -982,7 +1055,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
    const { order, isLoading, isError, error } = useOrder(id2, {
      fields: "currency_code,*items,*items.variant,+items.variant.product.title,*items.variant.inventory,*items.variant.inventory.location_levels,*items.variant.inventory_items,*shipping_address"
    });
-@@ -156176,7 +156176,7 @@ function OrderAllocateItems() {
+@@ -156176,7 +156178,7 @@ function OrderAllocateItems() {
      throw error;
    }
    const ready = !isLoading && order;
@@ -991,7 +1064,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
  }
  var import_react_router_dom96, import_jsx_runtime313;
  var init_order_allocate_items = __esm({
-@@ -156275,7 +156275,8 @@ function OrderCreateShipmentForm({
+@@ -156275,7 +156277,8 @@ function OrderCreateShipmentForm({
          /* @__PURE__ */ (0, import_jsx_runtime314.jsx)(RouteFocusModal.Header, {}),
          /* @__PURE__ */ (0, import_jsx_runtime314.jsx)(RouteFocusModal.Body, { className: "flex h-full w-full flex-col items-center divide-y overflow-y-auto", children: /* @__PURE__ */ (0, import_jsx_runtime314.jsx)("div", { className: "flex size-full flex-col items-center overflow-auto p-16", children: /* @__PURE__ */ (0, import_jsx_runtime314.jsx)("div", { className: "flex w-full max-w-[736px] flex-col justify-center px-2 pb-2", children: /* @__PURE__ */ (0, import_jsx_runtime314.jsxs)("div", { className: "flex flex-col divide-y", children: [
            /* @__PURE__ */ (0, import_jsx_runtime314.jsxs)("div", { className: "flex flex-1 flex-col", children: [
@@ -1001,7 +1074,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
              /* @__PURE__ */ (0, import_jsx_runtime314.jsx)("div", { className: "flex flex-col max-md:gap-y-2 max-md:divide-y", children: labels.map((label, index) => /* @__PURE__ */ (0, import_jsx_runtime314.jsxs)(
                "div",
                {
-@@ -156543,7 +156544,9 @@ var init_use_return_item_table_columns = __esm({
+@@ -156543,7 +156546,9 @@ var init_use_return_item_table_columns = __esm({
                return /* @__PURE__ */ (0, import_jsx_runtime317.jsx)(
                  import_ui211.Checkbox,
                  {
@@ -1012,7 +1085,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
                    onCheckedChange: (value) => table.toggleAllPageRowsSelected(!!value)
                  }
                );
-@@ -156553,7 +156556,9 @@ var init_use_return_item_table_columns = __esm({
+@@ -156553,7 +156558,9 @@ var init_use_return_item_table_columns = __esm({
                return /* @__PURE__ */ (0, import_jsx_runtime317.jsx)(
                  import_ui211.Checkbox,
                  {
@@ -1023,7 +1096,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
                    checked: row.getIsSelected(),
                    onCheckedChange: (value) => row.toggleSelected(!!value),
                    onClick: (e) => {
-@@ -156925,6 +156930,7 @@ function ReturnItem({
+@@ -156925,6 +156932,7 @@ function ReturnItem({
    index
  }) {
    const { t: t5 } = (0, import_react_i18next225.useTranslation)();
@@ -1031,7 +1104,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
    const { return_reasons = [] } = useReturnReasons({ fields: "+label" });
    const formItem = form.watch(`items.${index}`);
    const showReturnReason = typeof formItem.reason_id === "string";
-@@ -156936,7 +156942,7 @@ function ReturnItem({
+@@ -156936,7 +156944,7 @@ function ReturnItem({
          /* @__PURE__ */ (0, import_jsx_runtime319.jsxs)("div", { className: "flex flex-col", children: [
            /* @__PURE__ */ (0, import_jsx_runtime319.jsxs)("div", { children: [
              /* @__PURE__ */ (0, import_jsx_runtime319.jsxs)(import_ui212.Text, { className: "txt-small", as: "span", weight: "plus", children: [
@@ -1040,7 +1113,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
                " "
              ] }),
              item.variant_sku && /* @__PURE__ */ (0, import_jsx_runtime319.jsxs)("span", { children: [
-@@ -156945,7 +156951,7 @@ function ReturnItem({
+@@ -156945,7 +156953,7 @@ function ReturnItem({
                ")"
              ] })
            ] }),
@@ -1049,7 +1122,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
          ] })
        ] }),
        /* @__PURE__ */ (0, import_jsx_runtime319.jsxs)("div", { className: "flex flex-1 justify-between", children: [
-@@ -156960,7 +156966,8 @@ function ReturnItem({
+@@ -156960,7 +156968,8 @@ function ReturnItem({
                    /* @__PURE__ */ (0, import_jsx_runtime319.jsx)(Form.Control, { children: /* @__PURE__ */ (0, import_jsx_runtime319.jsx)(
                      import_ui212.Input,
                      {
@@ -1059,7 +1132,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
                        min: 1,
                        max: item.quantity,
                        type: "number",
-@@ -156969,7 +156976,7 @@ function ReturnItem({
+@@ -156969,7 +156978,7 @@ function ReturnItem({
                          const val = e.target.value;
                          const payload = val === "" ? null : Number(val);
                          field.onChange(payload);
@@ -1068,7 +1141,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
                            onUpdate({ quantity: payload });
                          }
                        }
-@@ -157034,7 +157041,8 @@ function ReturnItem({
+@@ -157034,7 +157043,8 @@ function ReturnItem({
                    /* @__PURE__ */ (0, import_jsx_runtime319.jsx)(Form.Control, { children: /* @__PURE__ */ (0, import_jsx_runtime319.jsx)(
                      Combobox,
                      {
@@ -1078,7 +1151,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
                        value,
                        onChange: (v) => {
                          onUpdate({ reason_id: v });
-@@ -157055,7 +157063,8 @@ function ReturnItem({
+@@ -157055,7 +157065,8 @@ function ReturnItem({
            /* @__PURE__ */ (0, import_jsx_runtime319.jsx)(
              import_ui212.IconButton,
              {
@@ -1088,7 +1161,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
                className: "flex-shrink",
                variant: "transparent",
                onClick: () => {
-@@ -157085,8 +157094,9 @@ function ReturnItem({
+@@ -157085,8 +157096,9 @@ function ReturnItem({
                      {
                        onChange,
                        ...field,
@@ -1100,7 +1173,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
                      }
                    ) }),
                    /* @__PURE__ */ (0, import_jsx_runtime319.jsx)(Form.ErrorMessage, {})
-@@ -157097,7 +157107,8 @@ function ReturnItem({
+@@ -157097,7 +157109,8 @@ function ReturnItem({
            /* @__PURE__ */ (0, import_jsx_runtime319.jsx)(
              import_ui212.IconButton,
              {
@@ -1110,7 +1183,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
                className: "flex-shrink",
                variant: "transparent",
                onClick: () => {
-@@ -157210,7 +157221,7 @@ var init_return_create_form = __esm({
+@@ -157210,7 +157223,7 @@ var init_return_create_form = __esm({
          value: "0",
          float: 0
        });
@@ -1119,7 +1192,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
        const { stock_locations = [] } = useStockLocations({ limit: 999 });
        const { shipping_options = [] } = useShippingOptions({
          limit: 999,
-@@ -157360,57 +157371,31 @@ var init_return_create_form = __esm({
+@@ -157360,57 +157373,31 @@ var init_return_create_form = __esm({
        (0, import_react215.useEffect)(() => {
          form.setValue("location_id", activeReturn?.location_id || "");
        }, [activeReturn]);
@@ -1202,7 +1275,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
        const returnTotal = preview.return_requested_total;
        const shippingTotal = (0, import_react215.useMemo)(() => {
          const method = preview.shipping_methods.find(
-@@ -157433,13 +157418,14 @@ var init_return_create_form = __esm({
+@@ -157433,13 +157420,14 @@ var init_return_create_form = __esm({
            children: /* @__PURE__ */ (0, import_jsx_runtime320.jsxs)(KeyboundForm, { onSubmit: handleSubmit, className: "flex h-full flex-col", children: [
              /* @__PURE__ */ (0, import_jsx_runtime320.jsx)(RouteFocusModal.Header, {}),
              /* @__PURE__ */ (0, import_jsx_runtime320.jsx)(RouteFocusModal.Body, { className: "flex size-full justify-center overflow-y-auto", children: /* @__PURE__ */ (0, import_jsx_runtime320.jsxs)("div", { className: "mt-16 w-[720px] max-w-[100%] px-4 md:p-0", children: [
@@ -1220,7 +1293,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
                      /* @__PURE__ */ (0, import_jsx_runtime320.jsx)(
                        AddReturnItemsTable,
                        {
-@@ -157541,6 +157527,7 @@ var init_return_create_form = __esm({
+@@ -157541,6 +157529,7 @@ var init_return_create_form = __esm({
                          return /* @__PURE__ */ (0, import_jsx_runtime320.jsx)(Form.Item, { children: /* @__PURE__ */ (0, import_jsx_runtime320.jsx)(Form.Control, { children: /* @__PURE__ */ (0, import_jsx_runtime320.jsx)(
                            Combobox,
                            {
@@ -1228,7 +1301,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
                              value,
                              onChange: (v) => {
                                onChange(v);
-@@ -157588,6 +157575,7 @@ var init_return_create_form = __esm({
+@@ -157588,6 +157577,7 @@ var init_return_create_form = __esm({
                          return /* @__PURE__ */ (0, import_jsx_runtime320.jsx)(Form.Item, { children: /* @__PURE__ */ (0, import_jsx_runtime320.jsx)(Form.Control, { children: /* @__PURE__ */ (0, import_jsx_runtime320.jsx)(
                            Combobox,
                            {
@@ -1236,7 +1309,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
                              allowClear: true,
                              value,
                              onChange: (v) => {
-@@ -157612,7 +157600,8 @@ var init_return_create_form = __esm({
+@@ -157612,7 +157602,8 @@ var init_return_create_form = __esm({
                    )
                  ] })
                ] }),
@@ -1246,7 +1319,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
                  /* @__PURE__ */ (0, import_jsx_runtime320.jsx)("div", { className: "text-ui-fg-subtle txt-small pb-2 font-medium leading-[20px]", children: t5("orders.returns.noInventoryLevel") }),
                  /* @__PURE__ */ (0, import_jsx_runtime320.jsx)(import_ui213.Text, { className: "text-ui-fg-subtle txt-small leading-normal", children: t5("orders.returns.noInventoryLevelDesc") })
                ] }),
-@@ -157630,7 +157619,7 @@ var init_return_create_form = __esm({
+@@ -157630,7 +157621,7 @@ var init_return_create_form = __esm({
                      !isShippingPriceEdit && /* @__PURE__ */ (0, import_jsx_runtime320.jsx)(
                        import_ui213.IconButton,
                        {
@@ -1255,7 +1328,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
                          variant: "transparent",
                          className: "text-ui-fg-muted",
                          disabled: showPlaceholder || !shippingOptionId,
-@@ -157689,7 +157678,7 @@ var init_return_create_form = __esm({
+@@ -157689,7 +157680,7 @@ var init_return_create_form = __esm({
                            import_ui213.Switch,
                            {
                              dir: "ltr",
@@ -1264,7 +1337,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
                              checked: !!value,
                              onCheckedChange: onChange,
                              ...field
-@@ -157796,14 +157785,14 @@ var init_return_create = __esm({
+@@ -157796,14 +157787,14 @@ var init_return_create = __esm({
          }
          run();
        }, [preview]);
@@ -1281,7 +1354,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
      };
    }
  });
-@@ -157844,7 +157833,9 @@ var init_use_claim_item_table_columns = __esm({
+@@ -157844,7 +157835,9 @@ var init_use_claim_item_table_columns = __esm({
                return /* @__PURE__ */ (0, import_jsx_runtime322.jsx)(
                  import_ui215.Checkbox,
                  {
@@ -1292,7 +1365,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
                    onCheckedChange: (value) => table.toggleAllPageRowsSelected(!!value)
                  }
                );
-@@ -157854,7 +157845,9 @@ var init_use_claim_item_table_columns = __esm({
+@@ -157854,7 +157847,9 @@ var init_use_claim_item_table_columns = __esm({
                return /* @__PURE__ */ (0, import_jsx_runtime322.jsx)(
                  import_ui215.Checkbox,
                  {
@@ -1303,7 +1376,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
                    checked: row.getIsSelected(),
                    onCheckedChange: (value) => row.toggleSelected(!!value),
                    onClick: (e) => {
-@@ -158223,6 +158216,7 @@ function ClaimInboundItem({
+@@ -158223,6 +158218,7 @@ function ClaimInboundItem({
    index
  }) {
    const { t: t5 } = (0, import_react_i18next231.useTranslation)();
@@ -1311,7 +1384,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
    const { return_reasons = [] } = useReturnReasons({ fields: "+label" });
    const formItem = form.watch(`inbound_items.${index}`);
    const showReturnReason = typeof formItem.reason_id === "string";
-@@ -158234,7 +158228,7 @@ function ClaimInboundItem({
+@@ -158234,7 +158230,7 @@ function ClaimInboundItem({
          /* @__PURE__ */ (0, import_jsx_runtime324.jsxs)("div", { className: "flex flex-col", children: [
            /* @__PURE__ */ (0, import_jsx_runtime324.jsxs)("div", { children: [
              /* @__PURE__ */ (0, import_jsx_runtime324.jsxs)(import_ui216.Text, { className: "txt-small", as: "span", weight: "plus", children: [
@@ -1320,7 +1393,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
                " "
              ] }),
              item.variant_sku && /* @__PURE__ */ (0, import_jsx_runtime324.jsxs)("span", { children: [
-@@ -158243,7 +158237,7 @@ function ClaimInboundItem({
+@@ -158243,7 +158239,7 @@ function ClaimInboundItem({
                ")"
              ] })
            ] }),
@@ -1329,7 +1402,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
          ] })
        ] }),
        /* @__PURE__ */ (0, import_jsx_runtime324.jsxs)("div", { className: "flex flex-1 justify-between", children: [
-@@ -158259,7 +158253,8 @@ function ClaimInboundItem({
+@@ -158259,7 +158255,8 @@ function ClaimInboundItem({
                      import_ui216.Input,
                      {
                        ...field,
@@ -1339,7 +1412,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
                        min: 1,
                        max: item.quantity,
                        type: "number",
-@@ -158267,7 +158262,7 @@ function ClaimInboundItem({
+@@ -158267,7 +158264,7 @@ function ClaimInboundItem({
                          const val = e.target.value;
                          const payload = val === "" ? null : Number(val);
                          field.onChange(payload);
@@ -1348,7 +1421,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
                            onUpdate({ quantity: payload });
                          }
                        }
-@@ -158332,7 +158327,8 @@ function ClaimInboundItem({
+@@ -158332,7 +158329,8 @@ function ClaimInboundItem({
                    /* @__PURE__ */ (0, import_jsx_runtime324.jsx)(Form.Control, { children: /* @__PURE__ */ (0, import_jsx_runtime324.jsx)(
                      Combobox,
                      {
@@ -1358,7 +1431,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
                        value,
                        onChange: (v) => {
                          onUpdate({ reason_id: v });
-@@ -158353,7 +158349,8 @@ function ClaimInboundItem({
+@@ -158353,7 +158351,8 @@ function ClaimInboundItem({
            /* @__PURE__ */ (0, import_jsx_runtime324.jsx)(
              import_ui216.IconButton,
              {
@@ -1368,7 +1441,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
                className: "flex-shrink",
                variant: "transparent",
                onClick: () => {
-@@ -158384,9 +158381,10 @@ function ClaimInboundItem({
+@@ -158384,9 +158383,10 @@ function ClaimInboundItem({
                        ...field,
                        onBlur: () => {
                          field.onChange(field.value);
@@ -1381,7 +1454,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
                      }
                    ) }),
                    /* @__PURE__ */ (0, import_jsx_runtime324.jsx)(Form.ErrorMessage, {})
-@@ -158397,7 +158395,8 @@ function ClaimInboundItem({
+@@ -158397,7 +158397,8 @@ function ClaimInboundItem({
            /* @__PURE__ */ (0, import_jsx_runtime324.jsx)(
              import_ui216.IconButton,
              {
@@ -1391,7 +1464,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
                className: "flex-shrink",
                variant: "transparent",
                onClick: () => {
-@@ -158483,7 +158482,9 @@ var init_use_claim_outbound_item_table_columns = __esm({
+@@ -158483,7 +158484,9 @@ var init_use_claim_outbound_item_table_columns = __esm({
                return /* @__PURE__ */ (0, import_jsx_runtime325.jsx)(
                  import_ui217.Checkbox,
                  {
@@ -1402,7 +1475,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
                    onCheckedChange: (value) => table.toggleAllPageRowsSelected(!!value)
                  }
                );
-@@ -158493,7 +158494,9 @@ var init_use_claim_outbound_item_table_columns = __esm({
+@@ -158493,7 +158496,9 @@ var init_use_claim_outbound_item_table_columns = __esm({
                return /* @__PURE__ */ (0, import_jsx_runtime325.jsx)(
                  import_ui217.Checkbox,
                  {
@@ -1413,7 +1486,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
                    checked: row.getIsSelected(),
                    onCheckedChange: (value) => row.toggleSelected(!!value),
                    onClick: (e) => {
-@@ -158615,7 +158618,7 @@ var init_add_claim_outbound_items_table = __esm({
+@@ -158615,7 +158620,7 @@ var init_add_claim_outbound_items_table = __esm({
          pageSize: PAGE_SIZE16,
          prefix: PREFIX7
        });
@@ -1422,7 +1495,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
          ...searchParams,
          fields: "*inventory_items.inventory.location_levels,+inventory_quantity"
        });
-@@ -158636,12 +158639,14 @@ var init_add_claim_outbound_items_table = __esm({
+@@ -158636,12 +158641,14 @@ var init_add_claim_outbound_items_table = __esm({
            updater
          }
        });
@@ -1438,7 +1511,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
            count,
            filters,
            pagination: true,
-@@ -158684,7 +158689,7 @@ function ClaimOutboundItem({
+@@ -158684,7 +158691,7 @@ function ClaimOutboundItem({
        /* @__PURE__ */ (0, import_jsx_runtime327.jsxs)("div", { className: "flex flex-col", children: [
          /* @__PURE__ */ (0, import_jsx_runtime327.jsxs)("div", { children: [
            /* @__PURE__ */ (0, import_jsx_runtime327.jsxs)(import_ui218.Text, { className: "txt-small", as: "span", weight: "plus", children: [
@@ -1447,7 +1520,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
              " "
            ] }),
            previewItem.variant_sku && /* @__PURE__ */ (0, import_jsx_runtime327.jsxs)("span", { children: [
-@@ -158693,7 +158698,7 @@ function ClaimOutboundItem({
+@@ -158693,7 +158700,7 @@ function ClaimOutboundItem({
              ")"
            ] })
          ] }),
@@ -1456,7 +1529,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
        ] })
      ] }),
      /* @__PURE__ */ (0, import_jsx_runtime327.jsxs)("div", { className: "flex flex-1 justify-between", children: [
-@@ -158709,14 +158714,15 @@ function ClaimOutboundItem({
+@@ -158709,14 +158716,15 @@ function ClaimOutboundItem({
                    import_ui218.Input,
                    {
                      ...field,
@@ -1474,7 +1547,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
                          onUpdate({ quantity: payload });
                        }
                      }
-@@ -159042,9 +159048,9 @@ var init_claim_outbound_section = __esm({
+@@ -159042,9 +159050,9 @@ var init_claim_outbound_section = __esm({
          /* @__PURE__ */ (0, import_jsx_runtime329.jsxs)("div", { className: "mt-8 flex items-center justify-between", children: [
            /* @__PURE__ */ (0, import_jsx_runtime329.jsx)(import_ui219.Heading, { level: "h2", children: t5("orders.returns.outbound") }),
            /* @__PURE__ */ (0, import_jsx_runtime329.jsxs)(StackedFocusModal, { id: "outbound-items", children: [
@@ -1486,7 +1559,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
                /* @__PURE__ */ (0, import_jsx_runtime329.jsx)(
                  AddClaimOutboundItemsTable,
                  {
-@@ -159129,6 +159135,7 @@ var init_claim_outbound_section = __esm({
+@@ -159129,6 +159137,7 @@ var init_claim_outbound_section = __esm({
                  return /* @__PURE__ */ (0, import_jsx_runtime329.jsx)(Form.Item, { children: /* @__PURE__ */ (0, import_jsx_runtime329.jsx)(Form.Control, { children: /* @__PURE__ */ (0, import_jsx_runtime329.jsx)(
                    Combobox,
                    {
@@ -1494,7 +1567,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
                      allowClear: true,
                      value: value ?? void 0,
                      onChange: (val) => {
-@@ -159209,7 +159216,7 @@ var init_claim_create_form = __esm({
+@@ -159209,7 +159218,7 @@ var init_claim_create_form = __esm({
          value: "0",
          float: 0
        });
@@ -1503,7 +1576,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
        const { mutateAsync: confirmClaimRequest, isPending: isConfirming } = useClaimConfirmRequest(claim.id, order.id);
        const { mutateAsync: cancelClaimRequest, isPending: isCanceling } = useCancelClaimRequest(claim.id, order.id);
        const { mutateAsync: updateReturn, isPending: isUpdating } = useUpdateReturn(
-@@ -159506,44 +159513,31 @@ var init_claim_create_form = __esm({
+@@ -159506,44 +159515,31 @@ var init_claim_create_form = __esm({
            document.getElementById("js-shipping-outbound-input")?.focus();
          }
        }, [isShippingOutboundPriceEdit]);
@@ -1573,7 +1646,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
        (0, import_react222.useEffect)(() => {
          return () => {
            if (IS_CANCELING) {
-@@ -159577,13 +159571,14 @@ var init_claim_create_form = __esm({
+@@ -159577,13 +159573,14 @@ var init_claim_create_form = __esm({
        return /* @__PURE__ */ (0, import_jsx_runtime330.jsx)(RouteFocusModal.Form, { form, children: /* @__PURE__ */ (0, import_jsx_runtime330.jsxs)(KeyboundForm, { onSubmit: handleSubmit, className: "flex h-full flex-col", children: [
          /* @__PURE__ */ (0, import_jsx_runtime330.jsx)(RouteFocusModal.Header, {}),
          /* @__PURE__ */ (0, import_jsx_runtime330.jsx)(RouteFocusModal.Body, { className: "flex size-full justify-center overflow-y-auto", children: /* @__PURE__ */ (0, import_jsx_runtime330.jsxs)("div", { className: "mt-16 w-[720px] max-w-[100%] px-4 md:p-0", children: [
@@ -1591,7 +1664,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
                  /* @__PURE__ */ (0, import_jsx_runtime330.jsx)(
                    AddClaimItemsTable,
                    {
-@@ -159685,6 +159680,7 @@ var init_claim_create_form = __esm({
+@@ -159685,6 +159682,7 @@ var init_claim_create_form = __esm({
                      return /* @__PURE__ */ (0, import_jsx_runtime330.jsx)(Form.Item, { children: /* @__PURE__ */ (0, import_jsx_runtime330.jsx)(Form.Control, { children: /* @__PURE__ */ (0, import_jsx_runtime330.jsx)(
                        Combobox,
                        {
@@ -1599,7 +1672,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
                          ...field,
                          value: value ?? void 0,
                          onChange: (v) => {
-@@ -159732,6 +159728,7 @@ var init_claim_create_form = __esm({
+@@ -159732,6 +159730,7 @@ var init_claim_create_form = __esm({
                      return /* @__PURE__ */ (0, import_jsx_runtime330.jsx)(Form.Item, { children: /* @__PURE__ */ (0, import_jsx_runtime330.jsx)(Form.Control, { children: /* @__PURE__ */ (0, import_jsx_runtime330.jsx)(
                        Combobox,
                        {
@@ -1607,7 +1680,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
                          allowClear: true,
                          value: value ?? void 0,
                          onChange: (val) => {
-@@ -159752,7 +159749,8 @@ var init_claim_create_form = __esm({
+@@ -159752,7 +159751,8 @@ var init_claim_create_form = __esm({
                )
              ] })
            ] }),
@@ -1617,7 +1690,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
              /* @__PURE__ */ (0, import_jsx_runtime330.jsx)("div", { className: "text-ui-fg-subtle txt-small pb-2 font-medium leading-[20px]", children: t5("orders.returns.noInventoryLevel") }),
              /* @__PURE__ */ (0, import_jsx_runtime330.jsx)(import_ui220.Text, { className: "text-ui-fg-subtle txt-small leading-normal", children: t5("orders.returns.noInventoryLevelDesc") })
            ] }),
-@@ -159798,7 +159796,7 @@ var init_claim_create_form = __esm({
+@@ -159798,7 +159798,7 @@ var init_claim_create_form = __esm({
                  !isShippingInboundPriceEdit && /* @__PURE__ */ (0, import_jsx_runtime330.jsx)(
                    import_ui220.IconButton,
                    {
@@ -1626,7 +1699,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
                      variant: "transparent",
                      className: "text-ui-fg-muted",
                      disabled: showInboundItemsPlaceholder || !inboundShippingOptionId,
-@@ -159856,7 +159854,7 @@ var init_claim_create_form = __esm({
+@@ -159856,7 +159856,7 @@ var init_claim_create_form = __esm({
                  !isShippingOutboundPriceEdit && /* @__PURE__ */ (0, import_jsx_runtime330.jsx)(
                    import_ui220.IconButton,
                    {
@@ -1635,7 +1708,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
                      variant: "transparent",
                      className: "text-ui-fg-muted",
                      disabled: showOutboundItemsPlaceholder || !outboundShippingOptionId,
-@@ -159928,7 +159926,7 @@ var init_claim_create_form = __esm({
+@@ -159928,7 +159928,7 @@ var init_claim_create_form = __esm({
                        import_ui220.Switch,
                        {
                          dir: "ltr",
@@ -1644,7 +1717,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
                          checked: !!value,
                          onCheckedChange: async (checked) => {
                            onChange(checked);
-@@ -159974,7 +159972,7 @@ var init_claim_create_form = __esm({
+@@ -159974,7 +159974,7 @@ var init_claim_create_form = __esm({
                        import_ui220.Switch,
                        {
                          dir: "ltr",
@@ -1653,7 +1726,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
                          checked: !!value,
                          onCheckedChange: onChange,
                          ...field
-@@ -160093,7 +160091,7 @@ var init_claim_create = __esm({
+@@ -160093,7 +160093,7 @@ var init_claim_create = __esm({
          }
          run();
        }, [preview]);
@@ -1662,7 +1735,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
          ClaimCreateForm,
          {
            order,
-@@ -160101,7 +160099,7 @@ var init_claim_create = __esm({
+@@ -160101,7 +160101,7 @@ var init_claim_create = __esm({
            preview,
            orderReturn
          }
@@ -1671,7 +1744,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
      };
    }
  });
-@@ -160174,7 +160172,9 @@ var init_use_exchange_item_table_columns = __esm({
+@@ -160174,7 +160174,9 @@ var init_use_exchange_item_table_columns = __esm({
                return /* @__PURE__ */ (0, import_jsx_runtime332.jsx)(
                  import_ui222.Checkbox,
                  {
@@ -1682,7 +1755,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
                    onCheckedChange: (value) => table.toggleAllPageRowsSelected(!!value)
                  }
                );
-@@ -160184,7 +160184,9 @@ var init_use_exchange_item_table_columns = __esm({
+@@ -160184,7 +160186,9 @@ var init_use_exchange_item_table_columns = __esm({
                return /* @__PURE__ */ (0, import_jsx_runtime332.jsx)(
                  import_ui222.Checkbox,
                  {
@@ -1693,7 +1766,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
                    checked: row.getIsSelected(),
                    onCheckedChange: (value) => row.toggleSelected(!!value),
                    onClick: (e) => {
-@@ -160451,6 +160453,7 @@ function ExchangeInboundItem({
+@@ -160451,6 +160455,7 @@ function ExchangeInboundItem({
    index
  }) {
    const { t: t5 } = (0, import_react_i18next242.useTranslation)();
@@ -1701,7 +1774,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
    const { return_reasons = [] } = useReturnReasons({ fields: "+label" });
    const formItem = form.watch(`inbound_items.${index}`);
    const showReturnReason = typeof formItem.reason_id === "string";
-@@ -160465,7 +160468,7 @@ function ExchangeInboundItem({
+@@ -160465,7 +160470,7 @@ function ExchangeInboundItem({
          /* @__PURE__ */ (0, import_jsx_runtime334.jsxs)("div", { className: "flex flex-grow flex-col", children: [
            /* @__PURE__ */ (0, import_jsx_runtime334.jsxs)("div", { children: [
              /* @__PURE__ */ (0, import_jsx_runtime334.jsxs)(import_ui223.Text, { className: "txt-small", as: "span", weight: "plus", children: [
@@ -1710,7 +1783,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
                " "
              ] }),
              item.variant_sku && /* @__PURE__ */ (0, import_jsx_runtime334.jsxs)("span", { children: [
-@@ -160474,7 +160477,7 @@ function ExchangeInboundItem({
+@@ -160474,7 +160479,7 @@ function ExchangeInboundItem({
                ")"
              ] })
            ] }),
@@ -1719,7 +1792,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
          ] }),
          appliedPromoCodes.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime334.jsx)("div", { className: "flex flex-shrink", children: /* @__PURE__ */ (0, import_jsx_runtime334.jsx)(
            import_ui223.Tooltip,
-@@ -160497,7 +160500,8 @@ function ExchangeInboundItem({
+@@ -160497,7 +160502,8 @@ function ExchangeInboundItem({
                      import_ui223.Input,
                      {
                        ...field,
@@ -1729,7 +1802,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
                        min: 1,
                        max: item.quantity,
                        type: "number",
-@@ -160505,7 +160509,7 @@ function ExchangeInboundItem({
+@@ -160505,7 +160511,7 @@ function ExchangeInboundItem({
                          const val = e.target.value;
                          const payload = val === "" ? null : Number(val);
                          field.onChange(payload);
@@ -1738,7 +1811,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
                            onUpdate({ quantity: payload });
                          }
                        }
-@@ -160570,7 +160574,8 @@ function ExchangeInboundItem({
+@@ -160570,7 +160576,8 @@ function ExchangeInboundItem({
                    /* @__PURE__ */ (0, import_jsx_runtime334.jsx)(Form.Control, { children: /* @__PURE__ */ (0, import_jsx_runtime334.jsx)(
                      Combobox,
                      {
@@ -1748,7 +1821,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
                        value,
                        onChange: (v) => {
                          onUpdate({ reason_id: v });
-@@ -160591,7 +160596,8 @@ function ExchangeInboundItem({
+@@ -160591,7 +160598,8 @@ function ExchangeInboundItem({
            /* @__PURE__ */ (0, import_jsx_runtime334.jsx)(
              import_ui223.IconButton,
              {
@@ -1758,7 +1831,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
                className: "flex-shrink",
                variant: "transparent",
                onClick: () => {
-@@ -160622,9 +160628,10 @@ function ExchangeInboundItem({
+@@ -160622,9 +160630,10 @@ function ExchangeInboundItem({
                        ...field,
                        onBlur: () => {
                          field.onChange(field.value);
@@ -1771,7 +1844,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
                      }
                    ) }),
                    /* @__PURE__ */ (0, import_jsx_runtime334.jsx)(Form.ErrorMessage, {})
-@@ -160635,7 +160642,8 @@ function ExchangeInboundItem({
+@@ -160635,7 +160644,8 @@ function ExchangeInboundItem({
            /* @__PURE__ */ (0, import_jsx_runtime334.jsx)(
              import_ui223.IconButton,
              {
@@ -1781,7 +1854,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
                className: "flex-shrink",
                variant: "transparent",
                onClick: () => {
-@@ -160906,9 +160914,9 @@ var init_exchange_inbound_section = __esm({
+@@ -160906,9 +160916,9 @@ var init_exchange_inbound_section = __esm({
          /* @__PURE__ */ (0, import_jsx_runtime335.jsxs)("div", { className: "mt-8 flex items-center justify-between", children: [
            /* @__PURE__ */ (0, import_jsx_runtime335.jsx)(import_ui224.Heading, { level: "h2", children: t5("orders.returns.inbound") }),
            /* @__PURE__ */ (0, import_jsx_runtime335.jsxs)(StackedFocusModal, { id: "inbound-items", children: [
@@ -1793,7 +1866,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
                /* @__PURE__ */ (0, import_jsx_runtime335.jsx)(
                  AddExchangeInboundItemsTable,
                  {
-@@ -161002,6 +161010,7 @@ var init_exchange_inbound_section = __esm({
+@@ -161002,6 +161012,7 @@ var init_exchange_inbound_section = __esm({
                    return /* @__PURE__ */ (0, import_jsx_runtime335.jsx)(Form.Item, { children: /* @__PURE__ */ (0, import_jsx_runtime335.jsx)(Form.Control, { children: /* @__PURE__ */ (0, import_jsx_runtime335.jsx)(
                      Combobox,
                      {
@@ -1801,7 +1874,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
                        ...field,
                        value: value ?? void 0,
                        onChange: (v) => {
-@@ -161049,6 +161058,7 @@ var init_exchange_inbound_section = __esm({
+@@ -161049,6 +161060,7 @@ var init_exchange_inbound_section = __esm({
                    return /* @__PURE__ */ (0, import_jsx_runtime335.jsx)(Form.Item, { children: /* @__PURE__ */ (0, import_jsx_runtime335.jsx)(Form.Control, { children: /* @__PURE__ */ (0, import_jsx_runtime335.jsx)(
                      Combobox,
                      {
@@ -1809,7 +1882,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
                        allowClear: true,
                        value: value ?? void 0,
                        onChange: (val) => {
-@@ -161100,7 +161110,9 @@ var init_use_exchange_outbound_item_table_columns = __esm({
+@@ -161100,7 +161112,9 @@ var init_use_exchange_outbound_item_table_columns = __esm({
                return /* @__PURE__ */ (0, import_jsx_runtime336.jsx)(
                  import_ui225.Checkbox,
                  {
@@ -1820,7 +1893,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
                    onCheckedChange: (value) => table.toggleAllPageRowsSelected(!!value)
                  }
                );
-@@ -161110,7 +161122,9 @@ var init_use_exchange_outbound_item_table_columns = __esm({
+@@ -161110,7 +161124,9 @@ var init_use_exchange_outbound_item_table_columns = __esm({
                return /* @__PURE__ */ (0, import_jsx_runtime336.jsx)(
                  import_ui225.Checkbox,
                  {
@@ -1831,7 +1904,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
                    checked: row.getIsSelected(),
                    onCheckedChange: (value) => row.toggleSelected(!!value),
                    onClick: (e) => {
-@@ -161232,7 +161246,7 @@ var init_add_exchange_outbound_items_table = __esm({
+@@ -161232,7 +161248,7 @@ var init_add_exchange_outbound_items_table = __esm({
          pageSize: PAGE_SIZE18,
          prefix: PREFIX9
        });
@@ -1840,7 +1913,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
          ...searchParams,
          fields: "*inventory_items.inventory.location_levels,+inventory_quantity"
        });
-@@ -161253,12 +161267,14 @@ var init_add_exchange_outbound_items_table = __esm({
+@@ -161253,12 +161269,14 @@ var init_add_exchange_outbound_items_table = __esm({
            updater
          }
        });
@@ -1856,7 +1929,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
            count,
            filters,
            pagination: true,
-@@ -161304,7 +161320,7 @@ function ExchangeOutboundItem({
+@@ -161304,7 +161322,7 @@ function ExchangeOutboundItem({
        /* @__PURE__ */ (0, import_jsx_runtime338.jsxs)("div", { className: "flex flex-grow flex-col", children: [
          /* @__PURE__ */ (0, import_jsx_runtime338.jsxs)("div", { children: [
            /* @__PURE__ */ (0, import_jsx_runtime338.jsxs)(import_ui226.Text, { className: "txt-small", as: "span", weight: "plus", children: [
@@ -1865,7 +1938,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
              " "
            ] }),
            previewItem.variant_sku && /* @__PURE__ */ (0, import_jsx_runtime338.jsxs)("span", { children: [
-@@ -161313,7 +161329,7 @@ function ExchangeOutboundItem({
+@@ -161313,7 +161331,7 @@ function ExchangeOutboundItem({
              ")"
            ] })
          ] }),
@@ -1874,7 +1947,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
        ] }),
        appliedPromoCodes.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime338.jsx)("div", { className: "flex flex-shrink", children: /* @__PURE__ */ (0, import_jsx_runtime338.jsx)(
          import_ui226.Tooltip,
-@@ -161336,14 +161352,15 @@ function ExchangeOutboundItem({
+@@ -161336,14 +161354,15 @@ function ExchangeOutboundItem({
                    import_ui226.Input,
                    {
                      ...field,
@@ -1892,7 +1965,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
                          onUpdate({ quantity: payload });
                        }
                      }
-@@ -161611,9 +161628,9 @@ var init_exchange_outbound_section = __esm({
+@@ -161611,9 +161630,9 @@ var init_exchange_outbound_section = __esm({
          /* @__PURE__ */ (0, import_jsx_runtime339.jsxs)("div", { className: "mt-8 flex items-center justify-between", children: [
            /* @__PURE__ */ (0, import_jsx_runtime339.jsx)(import_ui227.Heading, { level: "h2", children: t5("orders.returns.outbound") }),
            /* @__PURE__ */ (0, import_jsx_runtime339.jsxs)(StackedFocusModal, { id: "outbound-items", children: [
@@ -1904,7 +1977,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
                /* @__PURE__ */ (0, import_jsx_runtime339.jsx)(
                  AddExchangeOutboundItemsTable,
                  {
-@@ -161698,6 +161715,7 @@ var init_exchange_outbound_section = __esm({
+@@ -161698,6 +161717,7 @@ var init_exchange_outbound_section = __esm({
                  return /* @__PURE__ */ (0, import_jsx_runtime339.jsx)(Form.Item, { children: /* @__PURE__ */ (0, import_jsx_runtime339.jsx)(Form.Control, { children: /* @__PURE__ */ (0, import_jsx_runtime339.jsx)(
                    Combobox,
                    {
@@ -1912,7 +1985,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
                      allowClear: true,
                      noResultsPlaceholder: /* @__PURE__ */ (0, import_jsx_runtime339.jsx)(OutboundShippingPlaceholder, {}),
                      value: value ?? void 0,
-@@ -161932,7 +161950,8 @@ var init_exchange_create_form = __esm({
+@@ -161932,7 +161952,8 @@ var init_exchange_create_form = __esm({
        return /* @__PURE__ */ (0, import_jsx_runtime340.jsx)(RouteFocusModal.Form, { form, children: /* @__PURE__ */ (0, import_jsx_runtime340.jsxs)(KeyboundForm, { onSubmit: handleSubmit, className: "flex h-full flex-col", children: [
          /* @__PURE__ */ (0, import_jsx_runtime340.jsx)(RouteFocusModal.Header, {}),
          /* @__PURE__ */ (0, import_jsx_runtime340.jsx)(RouteFocusModal.Body, { className: "flex size-full justify-center overflow-y-auto", children: /* @__PURE__ */ (0, import_jsx_runtime340.jsxs)("div", { className: "mt-16 w-[720px] max-w-[100%] px-4 md:p-0", children: [
@@ -1922,7 +1995,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
            /* @__PURE__ */ (0, import_jsx_runtime340.jsx)(
              ExchangeInboundSection,
              {
-@@ -161982,7 +162001,8 @@ var init_exchange_create_form = __esm({
+@@ -161982,7 +162003,8 @@ var init_exchange_create_form = __esm({
                  !isInboundShippingPriceEdit && /* @__PURE__ */ (0, import_jsx_runtime340.jsx)(
                    import_ui228.IconButton,
                    {
@@ -1932,7 +2005,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
                      variant: "transparent",
                      className: "text-ui-fg-muted",
                      disabled: !inboundPreviewItems?.length || !inboundShippingOptionId,
-@@ -161993,6 +162013,7 @@ var init_exchange_create_form = __esm({
+@@ -161993,6 +162015,7 @@ var init_exchange_create_form = __esm({
                    import_ui228.CurrencyInput,
                    {
                      id: "js-inbound-shipping-input",
@@ -1940,7 +2013,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
                      onBlur: () => {
                        let actionId;
                        preview.shipping_methods.forEach((s) => {
-@@ -162038,7 +162059,8 @@ var init_exchange_create_form = __esm({
+@@ -162038,7 +162061,8 @@ var init_exchange_create_form = __esm({
                  !isOutboundShippingPriceEdit && /* @__PURE__ */ (0, import_jsx_runtime340.jsx)(
                    import_ui228.IconButton,
                    {
@@ -1950,7 +2023,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
                      variant: "transparent",
                      className: "text-ui-fg-muted",
                      disabled: !outboundPreviewItems?.length || !outboundShippingOptionId,
-@@ -162049,6 +162071,7 @@ var init_exchange_create_form = __esm({
+@@ -162049,6 +162073,7 @@ var init_exchange_create_form = __esm({
                    import_ui228.CurrencyInput,
                    {
                      id: "js-outbound-shipping-input",
@@ -1958,7 +2031,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
                      onBlur: () => {
                        let actionId;
                        preview.shipping_methods.forEach((s) => {
-@@ -162108,7 +162131,7 @@ var init_exchange_create_form = __esm({
+@@ -162108,7 +162133,7 @@ var init_exchange_create_form = __esm({
                        import_ui228.Switch,
                        {
                          dir: "ltr",
@@ -1967,7 +2040,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
                          checked: !!value,
                          onCheckedChange: async (checked) => {
                            onChange(checked);
-@@ -162154,7 +162177,7 @@ var init_exchange_create_form = __esm({
+@@ -162154,7 +162179,7 @@ var init_exchange_create_form = __esm({
                        import_ui228.Switch,
                        {
                          dir: "ltr",
@@ -1976,7 +2049,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
                          checked: !!value,
                          onCheckedChange: onChange,
                          ...field
-@@ -162272,7 +162295,7 @@ var init_exchange_create = __esm({
+@@ -162272,7 +162297,7 @@ var init_exchange_create = __esm({
          }
          run();
        }, [preview]);
@@ -1985,7 +2058,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
          ExchangeCreateForm,
          {
            order,
-@@ -162280,7 +162303,7 @@ var init_exchange_create = __esm({
+@@ -162280,7 +162305,7 @@ var init_exchange_create = __esm({
            preview,
            orderReturn
          }
@@ -1994,7 +2067,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
      };
    }
  });
-@@ -162445,7 +162468,7 @@ var init_add_order_edit_items_table = __esm({
+@@ -162445,7 +162470,7 @@ var init_add_order_edit_items_table = __esm({
          pageSize: PAGE_SIZE19,
          prefix: PREFIX10
        });
@@ -2003,7 +2076,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
          ...searchParams,
          fields: "*inventory_items.inventory.location_levels,+inventory_quantity"
        });
-@@ -162466,12 +162489,14 @@ var init_add_order_edit_items_table = __esm({
+@@ -162466,12 +162491,14 @@ var init_add_order_edit_items_table = __esm({
            updater
          }
        });
@@ -2019,7 +2092,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
            count,
            filters,
            pagination: true,
-@@ -163482,7 +163507,9 @@ var init_create_refund_form = __esm({
+@@ -163482,7 +163509,9 @@ var init_create_refund_form = __esm({
        );
        const payments = getPaymentsFromOrder(order);
        const payment = payments.find((p) => p.id === paymentId);
@@ -2030,7 +2103,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
        const currency = (0, import_react238.useMemo)(
          () => currencies[order.currency_code.toUpperCase()],
          [order.currency_code]
-@@ -163505,16 +163532,21 @@ var init_create_refund_form = __esm({
+@@ -163505,16 +163534,21 @@ var init_create_refund_form = __esm({
        });
        (0, import_react238.useEffect)(() => {
          const pendingDifference = order.summary.pending_difference;
@@ -2055,7 +2128,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
          await mutateAsync(
            {
              amount: data.amount.float,
-@@ -163556,7 +163588,7 @@ var init_create_refund_form = __esm({
+@@ -163556,7 +163590,7 @@ var init_create_refund_form = __esm({
                    },
                    children: [
                      /* @__PURE__ */ (0, import_jsx_runtime349.jsx)(import_ui236.Label, { className: "txt-compact-small mb-[-6px] font-sans font-medium", children: t5("orders.payment.selectPaymentToRefund") }),
@@ -2064,7 +2137,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
                        import_ui236.Select.Value,
                        {
                          placeholder: t5("orders.payment.selectPaymentToRefund")
-@@ -163633,10 +163665,10 @@ var init_create_refund_form = __esm({
+@@ -163633,10 +163667,10 @@ var init_create_refund_form = __esm({
                            symbol: currency.symbol_native,
                            code: currency.code,
                            value: field.value.value,
@@ -2079,7 +2152,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
                            autoFocus: true
                          }
                        ) }),
-@@ -163660,7 +163692,7 @@ var init_create_refund_form = __esm({
+@@ -163660,7 +163694,7 @@ var init_create_refund_form = __esm({
                            value: field.value,
                            onValueChange: field.onChange,
                            children: [
@@ -2088,7 +2161,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
                              /* @__PURE__ */ (0, import_jsx_runtime349.jsx)(import_ui236.Select.Content, { children: refund_reasons?.map((reason) => /* @__PURE__ */ (0, import_jsx_runtime349.jsx)(import_ui236.Select.Item, { value: reason.id, children: reason.label }, reason.id)) })
                            ]
                          }
-@@ -163738,7 +163770,7 @@ var init_order_create_refund = __esm({
+@@ -163738,7 +163772,7 @@ var init_order_create_refund = __esm({
        const { plugins = [] } = usePlugins();
        const loyaltyPlugin = getLoyaltyPlugin(plugins);
        return /* @__PURE__ */ (0, import_jsx_runtime350.jsxs)(RouteDrawer, { children: [
@@ -2097,7 +2170,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
          order && !loyaltyPlugin && /* @__PURE__ */ (0, import_jsx_runtime350.jsx)(CreateRefundForm, { order }),
          order && loyaltyPlugin && /* @__PURE__ */ (0, import_jsx_runtime350.jsx)(OrderBalanceSettlementForm, { order })
        ] });
-@@ -218597,14 +218629,6 @@ function getRouteMap({
+@@ -218597,14 +218631,6 @@ function getRouteMap({
                    path: "",
                    lazy: () => Promise.resolve().then(() => (init_product_list2(), product_list_exports)),
                    children: [
@@ -2112,7 +2185,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
                      {
                        path: "export",
                        lazy: () => Promise.resolve().then(() => (init_product_export2(), product_export_exports))
-@@ -221160,9 +221184,10 @@ var init_dashboard_app = __esm({
+@@ -221160,9 +221186,10 @@ var init_dashboard_app = __esm({
        }
        /**
         * Returns widgets for a given base zone grouped by layout section.
@@ -2126,7 +2199,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
         */
        getWidgetsForSections(route, sections) {
          const result = {};
-@@ -221170,7 +221195,9 @@ var init_dashboard_app = __esm({
+@@ -221170,7 +221197,9 @@ var init_dashboard_app = __esm({
            if (!zone.startsWith(route)) {
              continue;
            }
@@ -2137,7 +2210,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd9
            const mainSection = sections.includes("main") ? "main" : sections[0];
            const section = suffix || mainSection;
            if (!result[section]) {
-@@ -221180,6 +221207,7 @@ var init_dashboard_app = __esm({
+@@ -221180,6 +221209,7 @@ var init_dashboard_app = __esm({
              const sourceId = ext.widgetId ?? `${zone}:${i}`;
              result[section].push({
                Component: ext.Component,
@@ -2159,6 +2232,26 @@ index 8e882d799857a076e80524126d2185bb49e0e143..e39f61e66a75e012cbce8135af5c69ee
    "*payment_collections.payments.refunds.refund_reason",
    "region.automatic_taxes"
  ];
+diff --git a/dist/chunk-3DUKCSX3.mjs b/dist/chunk-3DUKCSX3.mjs
+index c6fcc42b6ccfd809160c1b0997a74e59a4262b3c..dc93967b9fe7ff6ae7a4dd70369ba089631a6ca7 100644
+--- a/dist/chunk-3DUKCSX3.mjs
++++ b/dist/chunk-3DUKCSX3.mjs
+@@ -7,12 +7,13 @@ import {
+ 
+ // src/components/table/table-cells/order/display-id-cell/display-id-cell.tsx
+ import { useTranslation } from "react-i18next";
++import { Link as rrOrderLink } from "react-router-dom";
+ import { jsx, jsxs } from "react/jsx-runtime";
+-var DisplayIdCell = ({ displayId }) => {
++var DisplayIdCell = ({ displayId, orderId }) => {
+   if (!displayId) {
+     return /* @__PURE__ */ jsx(PlaceholderCell, {});
+   }
+-  return /* @__PURE__ */ jsx("div", { className: "text-ui-fg-subtle txt-compact-small flex h-full w-full items-center overflow-hidden", children: /* @__PURE__ */ jsxs("span", { className: "truncate", children: [
++  return /* @__PURE__ */ jsx("div", { className: "text-ui-fg-subtle txt-compact-small flex h-full w-full items-center overflow-hidden", children: /* @__PURE__ */ jsxs(orderId ? rrOrderLink : "span", { className: orderId ? "rr-native-order-link truncate" : "truncate", ...(orderId ? {to: `/orders/${orderId}`, onClick: (event) => event.stopPropagation()} : {}), children: [
+     "#",
+     displayId
+   ] }) });
 diff --git a/dist/chunk-53MXUSIR.mjs b/dist/chunk-53MXUSIR.mjs
 index 94afd668efab2d3bbd49ec804796a35077ec772c..8726d8447602b1861e36056ff94b5ad68dfd6faf 100644
 --- a/dist/chunk-53MXUSIR.mjs
@@ -2239,7 +2332,7 @@ index 94afd668efab2d3bbd49ec804796a35077ec772c..8726d8447602b1861e36056ff94b5ad6
              children: [
                results.map(({ value, label, disabled }) => /* @__PURE__ */ jsxs(
 diff --git a/dist/chunk-7TWTWTDT.mjs b/dist/chunk-7TWTWTDT.mjs
-index 5cd0631a4956c01cd1b2cfb9884ba5fc872bdc46..6c4fda8951dfc7ef93f46a44525f6b215fdb1dfc 100644
+index 5cd0631a4956c01cd1b2cfb9884ba5fc872bdc46..67c1279dc312dee1540264d25f6514f6cf46944d 100644
 --- a/dist/chunk-7TWTWTDT.mjs
 +++ b/dist/chunk-7TWTWTDT.mjs
 @@ -55,6 +55,7 @@ var DataTableSearch = ({
@@ -2250,6 +2343,15 @@ index 5cd0631a4956c01cd1b2cfb9884ba5fc872bdc46..6c4fda8951dfc7ef93f46a44525f6b21
        autoComplete: "off",
        name: "q",
        type: "search",
+@@ -187,7 +188,7 @@ var DataTableRoot = ({
+                             "start-[68px]": isStickyHeader && hasSelect && !isSelectHeader,
+                             "after:bg-ui-border-base": showStickyBorder && isStickyHeader && !isSpecialHeader
+                           }),
+-                          children: flexRender(
++                          children: header.id === "country" ? jsx3("span", { className: "sr-only", children: t("fields.country") }) : flexRender(
+                             header.column.columnDef.header,
+                             header.getContext()
+                           )
 @@ -233,7 +234,7 @@ var DataTableRoot = ({
                          cell.getContext()
                        );
@@ -2259,6 +2361,15 @@ index 5cd0631a4956c01cd1b2cfb9884ba5fc872bdc46..6c4fda8951dfc7ef93f46a44525f6b21
                        return /* @__PURE__ */ jsx3(
                          Table.Cell,
                          {
+@@ -252,7 +253,7 @@ var DataTableRoot = ({
+                             Link,
+                             {
+                               to,
+-                              className: "size-full outline-none",
++                              className: cell.column.id === "display_id" ? "size-full outline-none rr-native-order-link" : "size-full outline-none",
+                               "data-row-link": true,
+                               tabIndex: isTabableLink ? 0 : -1,
+                               children: /* @__PURE__ */ jsx3(
 diff --git a/dist/chunk-H7AAHR2V.mjs b/dist/chunk-H7AAHR2V.mjs
 index 4b3693bf2c16ac4720cf3a56d50b12ccf81d321b..131573145111c886c9c946dcdaa177fa68e3131d 100644
 --- a/dist/chunk-H7AAHR2V.mjs
@@ -2290,6 +2401,19 @@ index dc03eeee9046413b7ce3d07eb2c2849dfa3ebd37..ca288289d16d24234350d67080f15ef8
      /* @__PURE__ */ jsxs(DropdownMenu.Content, { className: "z-[1]", align: "end", children: [
        /* @__PURE__ */ jsx(
          DropdownMenu.RadioGroup,
+diff --git a/dist/chunk-IHA2XWHD.mjs b/dist/chunk-IHA2XWHD.mjs
+index e6e3debe1c3306be5147bc2e8f02d25a100f53f3..56885a099ec2155a4827b623a4e4cc060ea76c52 100644
+--- a/dist/chunk-IHA2XWHD.mjs
++++ b/dist/chunk-IHA2XWHD.mjs
+@@ -233,7 +233,7 @@ var DateRenderer = (value, _row, _column, _t) => {
+   return /* @__PURE__ */ jsx(DateCell, { date: value });
+ };
+ var DisplayIdRenderer = (value, _row, _column, _t) => {
+-  return /* @__PURE__ */ jsx(DisplayIdCell, { displayId: value });
++  return /* @__PURE__ */ jsx(DisplayIdCell, { displayId: value, orderId: typeof _row?.id === "string" && _row.id.startsWith("order_") && _row.status !== "draft" ? _row.id : void 0 });
+ };
+ var CurrencyRenderer = (value, row, _column, _t) => {
+   return /* @__PURE__ */ jsx(TotalCell, { currencyCode: row.currency_code || "USD", total: value });
 diff --git a/dist/chunk-OBQI23QM.mjs b/dist/chunk-OBQI23QM.mjs
 index 6f27499862661d77f4a4bddeb1c06f50005d2ee3..6bdfdd61da223ce808c5c61e58dde84bec5c2784 100644
 --- a/dist/chunk-OBQI23QM.mjs
@@ -4193,7 +4317,7 @@ index 10a323ae2c1345c42f39dc4c5a9a050925fbd0a8..ff8c2313a08fade92c6774d3742e9aed
      " ",
      tooltip
 diff --git a/dist/order-receive-return-HEIGUW3S.mjs b/dist/order-receive-return-HEIGUW3S.mjs
-index 586579c875807331e08c192758c906930535f297..bbd334d998a4307c0e5a53ca1fab581346f98b7e 100644
+index 586579c875807331e08c192758c906930535f297..3cb21349a86b75fc2a6355fc7c0f4c629294c667 100644
 --- a/dist/order-receive-return-HEIGUW3S.mjs
 +++ b/dist/order-receive-return-HEIGUW3S.mjs
 @@ -171,11 +171,12 @@ function DismissedQuantity({
@@ -4253,7 +4377,27 @@ index 586579c875807331e08c192758c906930535f297..bbd334d998a4307c0e5a53ca1fab5813
                          checked: !!value,
                          onCheckedChange: onChange,
                          ...field
-@@ -547,9 +551,9 @@ function OrderReceiveReturn() {
+@@ -530,12 +534,13 @@ function OrderReceiveReturn() {
+       IS_REQUEST_RUNNING = true;
+       try {
+         const { return: _return } = await initiateReceiveReturn({});
+-        await addReceiveItems({
+-          items: _return.items.map((i) => ({
+-            id: i.item_id,
+-            quantity: i.quantity
+-          }))
+-        });
++        const items = _return.items.map((i) => ({
++          id: i.item_id,
++          quantity: Math.max(0, i.quantity - (i.received_quantity ?? 0))
++        })).filter((i) => i.quantity > 0);
++        if (items.length) {
++          await addReceiveItems({ items });
++        }
+       } catch (e) {
+         toast3.error(
+           e instanceof Error ? e.message : t("errorBoundary.defaultTitle")
+@@ -547,9 +552,9 @@ function OrderReceiveReturn() {
    }, [preview]);
    const ready = order && orderReturn && preview;
    return /* @__PURE__ */ jsxs3(RouteDrawer, { children: [
@@ -5016,10 +5160,21 @@ index f446d8287bc2d59fbe31e472f5806337eeb72c77..a30c59aa3b57c5bdaea3d50cd10d848b
          </IconButton>
        </DropdownMenu.Trigger>
 diff --git a/src/components/table/data-table/data-table-root/data-table-root.tsx b/src/components/table/data-table/data-table-root/data-table-root.tsx
-index a6ea006960c9098063ccbcfcc8221eda5d49c4e9..cf73f76ca876b0cfc94952ffc8f6fa68dae1d8af 100644
+index a6ea006960c9098063ccbcfcc8221eda5d49c4e9..fb9da1835307b358b67bd7623a6111ecd8caa0e0 100644
 --- a/src/components/table/data-table/data-table-root/data-table-root.tsx
 +++ b/src/components/table/data-table/data-table-root/data-table-root.tsx
-@@ -256,7 +256,8 @@ export const DataTableRoot = <TData,>({
+@@ -186,7 +186,9 @@ export const DataTableRoot = <TData,>({
+                                 !isSpecialHeader,
+                             })}
+                           >
+-                            {flexRender(
++                            {header.id === "country" ? (
++                              <span className="sr-only">{t("fields.country")}</span>
++                            ) : flexRender(
+                               header.column.columnDef.header,
+                               header.getContext()
+                             )}
+@@ -256,7 +258,8 @@ export const DataTableRoot = <TData,>({
                        )
  
                        const isTabableLink = isFirstCell && !!to
@@ -5029,6 +5184,15 @@ index a6ea006960c9098063ccbcfcc8221eda5d49c4e9..cf73f76ca876b0cfc94952ffc8f6fa68
  
                        return (
                          <Table.Cell
+@@ -282,7 +285,7 @@ export const DataTableRoot = <TData,>({
+                           {shouldRenderAsLink ? (
+                             <Link
+                               to={to}
+-                              className="size-full outline-none"
++                              className={cell.column.id === "display_id" ? "size-full outline-none rr-native-order-link" : "size-full outline-none"}
+                               data-row-link
+                               tabIndex={isTabableLink ? 0 : -1}
+                             >
 diff --git a/src/components/table/data-table/data-table-search/data-table-search.tsx b/src/components/table/data-table/data-table-search/data-table-search.tsx
 index a648dbcedd365a4bb72c95f63efe998d17ab92a3..0d52fe6203f2efb9c384f48d8cb76955ae74a04b 100644
 --- a/src/components/table/data-table/data-table-search/data-table-search.tsx
@@ -5041,6 +5205,32 @@ index a648dbcedd365a4bb72c95f63efe998d17ab92a3..0d52fe6203f2efb9c384f48d8cb76955
        autoComplete="off"
        name="q"
        type="search"
+diff --git a/src/components/table/table-cells/order/display-id-cell/display-id-cell.tsx b/src/components/table/table-cells/order/display-id-cell/display-id-cell.tsx
+index 97d7106b4d9ea8ed50d9642115a1a55c4af6d636..0d7752db859faf913ea955bc55134f6ce00c84fa 100644
+--- a/src/components/table/table-cells/order/display-id-cell/display-id-cell.tsx
++++ b/src/components/table/table-cells/order/display-id-cell/display-id-cell.tsx
+@@ -1,14 +1,19 @@
+ import { useTranslation } from "react-i18next"
++import { Link } from "react-router-dom"
+ import { PlaceholderCell } from "../../common/placeholder-cell"
+ 
+-export const DisplayIdCell = ({ displayId }: { displayId?: number | null }) => {
++export const DisplayIdCell = ({ displayId, orderId }: { displayId?: number | null; orderId?: string }) => {
+   if (!displayId) {
+     return <PlaceholderCell />
+   }
+ 
+   return (
+     <div className="text-ui-fg-subtle txt-compact-small flex h-full w-full items-center overflow-hidden">
+-      <span className="truncate">#{displayId}</span>
++      {orderId ? (
++        <Link className="rr-native-order-link truncate" to={`/orders/${orderId}`} onClick={(event) => event.stopPropagation()}>
++          #{displayId}
++        </Link>
++      ) : <span className="truncate">#{displayId}</span>}
+     </div>
+   )
+ }
 diff --git a/src/dashboard-app/dashboard-app.tsx b/src/dashboard-app/dashboard-app.tsx
 index 5f57c65d6cbc055d0fffec8ab3d289c279a14900..c2b622d9d9ec03eeee9f2b592087dba70f9b16ee 100644
 --- a/src/dashboard-app/dashboard-app.tsx
@@ -5102,10 +5292,10 @@ index a2b3dc5ddea120bab6c99eb40b3d0c3c068285de..8284a7ad41530ba115e8b5b6cbf4a795
                        path: "export",
                        lazy: () =>
 diff --git a/src/index.css b/src/index.css
-index bc87c9f0be33d8c6a09356fe7c9aec57acba2ba0..9e08d6be65d29e53ef6d7eb27af7cbf9c8ac9fc3 100644
+index bc87c9f0be33d8c6a09356fe7c9aec57acba2ba0..20c157493d6981d45f19c7cd32f95c0a1302304b 100644
 --- a/src/index.css
 +++ b/src/index.css
-@@ -46,3 +46,21 @@
+@@ -46,3 +46,24 @@
    background-size: 40px 40px;
    background: repeat;
  }
@@ -5127,6 +5317,22 @@ index bc87c9f0be33d8c6a09356fe7c9aec57acba2ba0..9e08d6be65d29e53ef6d7eb27af7cbf9
 +  min-width: 24px;
 +  min-height: 24px;
 +}
++
++.rr-native-order-link { display: inline-flex; align-items: center; min-width: 24px; min-height: 24px; cursor: pointer; }
++.rr-native-order-link:focus-visible { outline: 2px solid var(--border-interactive); outline-offset: -2px; border-radius: 2px; }
+diff --git a/src/lib/table/cell-renderers.tsx b/src/lib/table/cell-renderers.tsx
+index 853784033297ad31af3586ad8e64ac281409cff5..f3cbffe1c28e94c5b637636ec56cf4b7ff81e6ff 100644
+--- a/src/lib/table/cell-renderers.tsx
++++ b/src/lib/table/cell-renderers.tsx
+@@ -439,7 +439,7 @@ const DateRenderer: CellRenderer = (value, _row, _column, _t) => {
+ }
+ 
+ const DisplayIdRenderer: CellRenderer = (value, _row, _column, _t) => {
+-  return <DisplayIdCell displayId={value} />
++  return <DisplayIdCell displayId={value} orderId={typeof _row?.id === "string" && _row.id.startsWith("order_") && _row.status !== "draft" ? _row.id : undefined} />
+ }
+ 
+ const CurrencyRenderer: CellRenderer = (value, row, _column, _t) => {
 diff --git a/src/routes/login/components/mfa-challenge-form.tsx b/src/routes/login/components/mfa-challenge-form.tsx
 index 31b1ef5119c82926023748dabe8aa624cd878088..840bce3a6a9666124d0caa3fb99f2532b4907c83 100644
 --- a/src/routes/login/components/mfa-challenge-form.tsx
@@ -7042,10 +7248,33 @@ index cc709a5e4f6c10ff6d0aef4aafb71408a15a8e1c..7d08a6c72da8d59e0a4f10b733d25357
                            onCheckedChange={onChange}
                            {...field}
 diff --git a/src/routes/orders/order-receive-return/order-receive-return.tsx b/src/routes/orders/order-receive-return/order-receive-return.tsx
-index c0aa9569d0008a1039925cf45f7b3c438a6f410b..055213763b66b6e9488fe59d9df14e495896ee42 100644
+index c0aa9569d0008a1039925cf45f7b3c438a6f410b..fa480e086fead0e87eeb3293d8d8156ebc33d08a 100644
 --- a/src/routes/orders/order-receive-return/order-receive-return.tsx
 +++ b/src/routes/orders/order-receive-return/order-receive-return.tsx
-@@ -83,11 +83,13 @@ export function OrderReceiveReturn() {
+@@ -62,12 +62,17 @@ export function OrderReceiveReturn() {
+       try {
+         const { return: _return } = await initiateReceiveReturn({})
+ 
+-        await addReceiveItems({
+-          items: _return.items.map((i) => ({
++        // Damaged units are already included in received_quantity.
++        const items = _return.items
++          .map((i) => ({
+             id: i.item_id,
+-            quantity: i.quantity,
+-          })),
+-        })
++            quantity: Math.max(0, i.quantity - (i.received_quantity ?? 0)),
++          }))
++          .filter((i) => i.quantity > 0)
++
++        if (items.length) {
++          await addReceiveItems({ items })
++        }
+       } catch (e) {
+         toast.error(
+           e instanceof Error ? e.message : t("errorBoundary.defaultTitle")
+@@ -83,11 +88,13 @@ export function OrderReceiveReturn() {
    return (
      <RouteDrawer>
        <RouteDrawer.Header>

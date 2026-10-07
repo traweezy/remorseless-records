@@ -341,6 +341,58 @@ const listKeyByPath = new Map([
 
 const fixtureFor = (url) => {
   const { pathname } = url
+  if (pathname === "/admin/orders" && setup.startsWith("native-order-list-")) {
+    return paged("orders", [{ ...rmaOrder, display_id: 10 }])
+  }
+  if (pathname === "/admin/views/orders/columns") {
+    return {
+      columns: [
+        {
+          id: "display_id",
+          field: "display_id",
+          name: "Order",
+          render_mode: "display_id",
+          data_type: "number",
+          default_visible: true,
+          default_order: 0,
+          sortable: false,
+          hideable: false,
+          filter: { enabled: false },
+          metadata: {},
+        },
+        {
+          id: "created_at",
+          field: "created_at",
+          name: "Date",
+          render_mode: "datetime",
+          data_type: "date",
+          default_visible: true,
+          default_order: 1,
+          sortable: false,
+          hideable: false,
+          filter: { enabled: false },
+          metadata: {},
+        },
+        {
+          id: "payment_status",
+          field: "payment_status",
+          name: "Payment",
+          render_mode: "string",
+          data_type: "string",
+          default_visible: true,
+          default_order: 2,
+          sortable: false,
+          hideable: false,
+          filter: { enabled: false },
+          metadata: {},
+        },
+      ],
+    }
+  }
+  if (pathname === "/admin/views/orders/configurations")
+    return paged("view_configurations")
+  if (pathname === "/admin/views/orders/configurations/active")
+    return { view_configuration: null, is_default_active: true }
   if (pathname === "/admin/orders/order_acceptance") {
     if (inventoryCase) return { order: { ...rmaOrder, items: [inventoryItem] } }
     if (isSummaryCase) return { order: { ...rmaOrder, items: [summaryItem] } }
@@ -601,7 +653,12 @@ const fixtureFor = (url) => {
     }
   }
   if (pathname === "/admin/feature-flags") {
-    return { feature_flags: { rbac: false } }
+    return {
+      feature_flags: {
+        rbac: false,
+        view_configurations: setup === "native-order-list-links",
+      },
+    }
   }
   if (pathname === "/admin/stores") {
     return {
@@ -1363,6 +1420,96 @@ try {
       }
     }
     throw new Error(`Could not find ${label} button.`)
+  }
+  if (setup.startsWith("native-order-list-")) {
+    const selector =
+      'main a.rr-native-order-link[href="/app/orders/order_acceptance"]'
+    await page.waitForSelector(selector)
+    let reached = false
+    for (let step = 0; step < 40; step += 1) {
+      await page.keyboard.press("Tab")
+      if (
+        await page.$eval(
+          selector,
+          (element) => element === document.activeElement
+        )
+      ) {
+        reached = true
+        break
+      }
+    }
+    if (!reached)
+      throw new Error("Owned order link is absent from native Tab navigation")
+    const link = await page.$eval(selector, (element) => {
+      const rect = element.getBoundingClientRect()
+      const style = getComputedStyle(element)
+      const outlineExpansion = Math.max(
+        0,
+        Number.parseFloat(style.outlineWidth) +
+          Number.parseFloat(style.outlineOffset)
+      )
+      let focusClipped = false
+      for (
+        let parent = element.parentElement;
+        parent;
+        parent = parent.parentElement
+      ) {
+        const bounds = parent.getBoundingClientRect()
+        const parentStyle = getComputedStyle(parent)
+        const clips = (overflow) =>
+          ["hidden", "clip", "scroll", "auto"].includes(overflow)
+        if (
+          (clips(parentStyle.overflowX) &&
+            (rect.left - outlineExpansion < bounds.left - 0.5 ||
+              rect.right + outlineExpansion > bounds.right + 0.5)) ||
+          (clips(parentStyle.overflowY) &&
+            (rect.top - outlineExpansion < bounds.top - 0.5 ||
+              rect.bottom + outlineExpansion > bounds.bottom + 0.5))
+        )
+          focusClipped = true
+      }
+      return {
+        name: element.textContent.trim(),
+        cursor: style.cursor,
+        width: rect.width,
+        height: rect.height,
+        tabIndex: element.tabIndex,
+        focusClipped,
+        focusVisible:
+          element.matches(":focus-visible") &&
+          (style.outlineStyle !== "none" || style.boxShadow !== "none"),
+      }
+    })
+    if (
+      link.name !== "#10" ||
+      link.cursor !== "pointer" ||
+      link.width < 24 ||
+      link.height < 24 ||
+      link.tabIndex !== 0 ||
+      link.focusClipped ||
+      !link.focusVisible
+    ) {
+      throw new Error(
+        `Native order link interaction failed: ${JSON.stringify(link)}`
+      )
+    }
+    await page.screenshot({
+      path: screenshotPath.replace(/\.png$/u, "-keyboard.png"),
+      fullPage: true,
+    })
+    await page.keyboard.press("Enter")
+    await page.waitForFunction(
+      () =>
+        location.pathname === "/app/orders/order_acceptance" &&
+        document.querySelector("main h1,h2,h3") &&
+        !document.querySelector("main .animate-pulse")
+    )
+    await page.screenshot({
+      path: screenshotPath.replace(/\.png$/u, "-opened.png"),
+      fullPage: true,
+    })
+    await page.goBack({ waitUntil: "domcontentloaded" })
+    await page.waitForSelector(selector)
   }
   if (route === "/app/catalog/products/product_acceptance") {
     await page.waitForFunction(() =>

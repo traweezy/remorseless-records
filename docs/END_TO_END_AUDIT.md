@@ -1,5 +1,68 @@
 # Storefront, Admin and Stripe end-to-end audit
 
+### Current compensation and native Admin correction — October 7, 13:01 UTC
+
+Exact staging `f910ceface6b0eca14f80eb051a57846fa832ed5` passes all four
+push workflows / 23 checks, both application deployments, exact runtime/
+migration-role/restricted-Resend identity and fresh correlated logs. Basic
+live/readiness/backup gates pass at 12:16:03.328 UTC. All-nine observation
+remains active with retained gaps; the initial Backend instance's removal
+reason remains unverified. Migrations exits successfully and RecoveryBackups
+is idle `CREATED`, not evidence of a new archive. This does not accept Batch 6.
+
+**B6-FIXED-BUNDLE-CREATE — deployed retest passes:** fresh native draft
+creation and publication succeed with three owned uploads. Stripe test 3DS
+cancel leaves zero orders/payments/captured amount and CD stock 20 / reserved
+zero at 12:45:00.859 UTC. Retry authenticates on the same PaymentIntent,
+`pi_3UNuAyIM4tTeFQ3W0dfgjdXU`, creating exactly order #11
+`order_01M4B6HGVMJGPPJJM43M9Z5ETG`. Independent Medusa/Stripe evidence at
+12:49:09.996 UTC agrees on USD 12.64 captured, USD currency, test mode and
+four CD component reservations for two bundles. Native fulfillment contains
+four CDs; synthetic shipment/delivery and return request two complete.
+
+**B6-PARTIAL-RETURN-NAVIGATION — deployed retest passes:** the first usable
+bundle receipt retains received one / damaged zero and returns two components
+to stock (16 → 18), zero reservations. At 12:57:39.734 UTC the native Return
+is partially received and ordinary Summary still offers Receive items. Five
+controlled notices have successful durable acknowledgements; the partial
+receipt correctly emits no full-receipt notice. The initial read verification
+mistakenly includes historical order-item versions; retain its failure and
+corrected exact-current-order-version evidence. Keep the second receipt for
+the next deployed remaining-quantity retest, then complete the USD 12.64 native
+refund and independent Stripe/tax/notification/stock cleanup. Do not recharge.
+
+| Finding | Current correction and evidence |
+| --- | --- |
+| `B6-BUNDLE-DELETE-COMPENSATION` | Restoring native inventory links with new IDs fails strict provenance and prevents profile restoration. Preserve snapshotted IDs verbatim. Real PostgreSQL late-completion compensation and successful delete/replay pass. |
+| `B6-FAILED-CREATE-ORPHANS` | Guarded staging-only Medusa CLI previews a full-row-digested ownership manifest, then requires that unchanged SHA and a new UUID. Atomically soft-delete only proven dangling profiles/media links while retaining assets/history and one repair audit. Nine native cases prove cleanup/replay, completion rollback and seven ambiguous-ownership rejections. Live repair remains pending after deployment. |
+| `B6-REMAINING-RECEIPT-DEFAULT` | Actual second receipts default to original requested quantity and return 400 after one unit already arrived. Use requested minus received (damaged is included), exclude completed lines, retain native mutations/RBAC. Ten installed main/lazy execution cases pass; deployed second receipt remains pending. |
+| `B6-ORDERS-KEYBOARD` | Both native Orders implementations gain keyboard order links, 24-pixel targets, pointer cursors and visible focus while keeping existing outer links in the legacy table. Screenshot review exposes clipping despite the initial matrix passing; a strict ancestor-clipping assertion reproduces it, and the inset outline fixes it. |
+| `B6-ORDERS-TABLE-CONTROLS` | Name the legacy Country header and actual UI column visibility trigger, prevent the trigger from shrinking below 24 pixels, preserve native handlers. Modern/legacy tables at 390/1440 pixels pass keyboard Enter navigation and strict accessibility/layout checks. |
+
+Final frozen installation, both production builds and 88 installed native
+contracts pass. Backend coverage passes 296 suites / 2,514 tests. Full
+native/service integration passes 91 cases plus 44 payment cases, PostgreSQL
+recovery, Redis capacity/AOF/replay/live aggregate, API/session boundaries
+and cleanup. Final 50-case Admin acceptance passes with zero axe violations
+or incomplete checks; mobile/desktop modern/legacy focus screenshots are
+inspected. Full/prod dependency audits and the current 1,693-file candidate
+source scan pass unchanged reviewed backports. Final lint/type/policy passes;
+direct-push hooks and exact staging CI/rollout/retests remain. Only Dashboard/UI patch hashes
+and two dependent peer identities change; registry versions/integrities and
+all other lock content are unchanged. See the dependency audit for exact hashes.
+
+Square/portrait containment is inspected; retain the initial cold landscape
+load failure and finish its final visual proof. Old order #9/#10 payment and
+stock cleanup is complete; do not repeat it. Restricted Resend reads remain
+401, so independent provider delivery events are an explicit evidence gap.
+No extra messages or wider key scope are authorized by that gap. Copy-SKU
+clipboard proof, live MFA, remaining paid families, media lifecycle, search
+parity and executed controls remain open. Preserve the ordinary scheduler
+incident latch through October 7, 14:18:40.644 UTC plus fresh healthy ordinary
+observation. The client clone remains paused; production is untouched.
+
+The following entries are historical where their state differs.
+
 ### Current catalog correction — October 7, 11:56 UTC
 
 Exact `7d224eb3cebf11181248fc3ae0ee7e2e77c3dc26` has all four CI workflows /

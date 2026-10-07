@@ -26,6 +26,284 @@ const dashboardRoot = dirname(
 const draftOrderRoot = dirname(
   backendRequire.resolve("@medusajs/draft-order/package.json")
 )
+const uiRoot = join(dirname(backendRequire.resolve("@medusajs/ui")), "../..")
+
+const nativeArrow = (entry, name, root = dashboardRoot) => {
+  const ts = backendRequire("typescript")
+  const source = readFileSync(join(root, "dist", entry), "utf8")
+  const parsed = ts.createSourceFile(
+    entry,
+    source,
+    ts.ScriptTarget.Latest,
+    true
+  )
+  const matches = []
+  const visit = (node) => {
+    if (
+      ts.isVariableDeclaration(node) &&
+      node.name.getText(parsed) === name &&
+      node.initializer &&
+      ts.isArrowFunction(node.initializer)
+    )
+      matches.push(node.initializer)
+    if (
+      ts.isBinaryExpression(node) &&
+      node.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
+      node.left.getText(parsed) === name &&
+      ts.isArrowFunction(node.right)
+    )
+      matches.push(node.right)
+    ts.forEachChild(node, visit)
+  }
+  visit(parsed)
+  assert.equal(matches.length, 1)
+  return matches[0].getText(parsed)
+}
+
+for (const distribution of ["esm", "cjs"]) {
+  test(`${distribution}: column menu has a name and retains its target width`, () => {
+    const expression = nativeArrow(
+      `${distribution}/blocks/data-table/components/data-table-column-visibility-menu.js`,
+      "DataTableColumnVisibilityMenu",
+      uiRoot
+    )
+    let enabled = true
+    const createElement = (type, props, ...children) => ({
+      type,
+      props: { ...props, children },
+    })
+    const react = { createElement, Fragment: "fragment" }
+    const dropdown = Object.assign("dropdown", {
+      Trigger: "trigger",
+      Content: "content",
+      Label: "label",
+      Separator: "separator",
+      Item: "item",
+    })
+    const useDataTableContext = () => ({
+      enableColumnVisibility: enabled,
+      instance: { getAllColumns: () => [] },
+    })
+    const menu = vm.runInNewContext(`(${expression})`, {
+      React: react,
+      react_1: { default: react },
+      Checkbox: "checkbox",
+      checkbox_1: { Checkbox: "checkbox" },
+      DropdownMenu: dropdown,
+      dropdown_menu_1: { DropdownMenu: dropdown },
+      IconButton: "icon-button",
+      icon_button_1: { IconButton: "icon-button" },
+      Tooltip: "tooltip",
+      tooltip_1: { Tooltip: "tooltip" },
+      Adjustments: "adjustments",
+      icons_1: { Adjustments: "adjustments" },
+      useDataTableContext,
+      use_data_table_context_1: { useDataTableContext },
+    })
+    for (const tooltip of ["Choose columns", undefined, { type: "label" }]) {
+      const rendered = menu({ tooltip, className: "custom" })
+      const trigger =
+        rendered.props.children[0].props.children[0].props.children[0]
+      assert.equal(trigger.type, "icon-button")
+      assert.equal(
+        trigger.props["aria-label"],
+        typeof tooltip === "string" ? tooltip : "Toggle columns"
+      )
+      assert.equal(trigger.props.className, "custom")
+      assert.equal(trigger.props.style.minWidth, 24)
+      assert.equal(trigger.props.style.minHeight, 24)
+      assert.equal(trigger.props.style.flexShrink, 0)
+      assert.equal(trigger.props.style.cursor, "pointer")
+    }
+    enabled = false
+    assert.equal(menu({}), null)
+  })
+}
+
+for (const entry of ["chunk-3DUKCSX3.mjs", "app.js"]) {
+  test(`${entry}: order number is a native router link with a plain fallback`, () => {
+    const expression = nativeArrow(entry, "DisplayIdCell")
+    const jsx = (type, props) => ({ type, props })
+    const context = {
+      PlaceholderCell: "placeholder",
+      rrOrderLink: "router-link",
+      rrOrderLinkRouter: { Link: "router-link" },
+      jsx,
+      jsxs: jsx,
+    }
+    for (const token of new Set(expression.match(/[A-Za-z_]\w*/gu))) {
+      if (/^import_jsx_runtime\d*$/u.test(token))
+        context[token] = { jsx, jsxs: jsx }
+    }
+    const cell = vm.runInNewContext(`(${expression})`, context)
+    const linked = cell({ displayId: 10, orderId: "order_owned" }).props
+      .children
+    assert.equal(linked.type, "router-link")
+    assert.equal(linked.props.to, "/orders/order_owned")
+    assert.ok(linked.props.className.includes("rr-native-order-link"))
+    assert.deepEqual(JSON.parse(JSON.stringify(linked.props.children)), [
+      "#",
+      10,
+    ])
+    let stopped = false
+    linked.props.onClick({
+      stopPropagation: () => {
+        stopped = true
+      },
+    })
+    assert.equal(stopped, true)
+    assert.equal(cell({ displayId: 10 }).props.children.type, "span")
+    assert.equal(cell({ orderId: "order_owned" }).type, "placeholder")
+  })
+}
+
+for (const entry of ["chunk-IHA2XWHD.mjs", "app.js"]) {
+  test(`${entry}: configurable display-id links are confined to orders`, () => {
+    const expression = nativeArrow(entry, "DisplayIdRenderer")
+    const jsx = (type, props) => ({ type, props })
+    const context = {
+      DisplayIdCell: "display-id-cell",
+      jsx,
+      useMemo: (factory) => factory(),
+    }
+    for (const token of new Set(expression.match(/[A-Za-z_]\w*/gu))) {
+      if (/^import_jsx_runtime\d*$/u.test(token)) context[token] = { jsx }
+      if (/^jsx\d*$/u.test(token)) context[token] = jsx
+      if (/^import_react\d*$/u.test(token))
+        context[token] = { useMemo: context.useMemo }
+      if (/^columnHelper\d*$/u.test(token))
+        context[token] = {
+          accessor: (_field, column) => column,
+          display: (column) => column,
+        }
+    }
+    const renderer = vm.runInNewContext(`(${expression})`, context)
+    const rendered = renderer(
+      10,
+      { id: "order_owned", status: "pending" },
+      {},
+      () => {}
+    )
+    assert.equal(rendered.type, "display-id-cell")
+    assert.equal(rendered.props.orderId, "order_owned")
+    assert.equal(rendered.props.displayId, 10)
+    for (const row of [
+      { id: "other_owned" },
+      { id: "order_owned", status: "draft" },
+      {},
+    ]) {
+      assert.equal(renderer(10, row, {}, () => {}).props.orderId, undefined)
+    }
+  })
+}
+
+for (const entry of ["order-receive-return-HEIGUW3S.mjs", "app.js"]) {
+  for (const [name, items, expected] of [
+    [
+      "fresh receipt",
+      [{ item_id: "fresh", quantity: 3 }],
+      [{ id: "fresh", quantity: 3 }],
+    ],
+    [
+      "split receipt",
+      [{ item_id: "split", quantity: 2, received_quantity: 1 }],
+      [{ id: "split", quantity: 1 }],
+    ],
+    [
+      "damaged units included in received total",
+      [
+        {
+          item_id: "damaged",
+          quantity: 2,
+          received_quantity: 1,
+          damaged_quantity: 1,
+        },
+      ],
+      [{ id: "damaged", quantity: 1 }],
+    ],
+    [
+      "mixed complete and pending lines",
+      [
+        { item_id: "complete", quantity: 2, received_quantity: 2 },
+        { item_id: "pending", quantity: 3, received_quantity: 1 },
+      ],
+      [{ id: "pending", quantity: 2 }],
+    ],
+    [
+      "complete receipt",
+      [{ item_id: "complete", quantity: 2, received_quantity: 2 }],
+      [],
+    ],
+  ]) {
+    test(`${entry}: initialize ${name} with only remaining units`, async () => {
+      const source = readFileSync(join(dashboardRoot, "dist", entry), "utf8")
+      const start = source.indexOf("function OrderReceiveReturn() {")
+      const end = source.indexOf("  const ready =", start)
+      assert.ok(start >= 0 && end > start)
+      const component = `${source.slice(start, end)}return null; } OrderReceiveReturn;`
+      const effects = []
+      const submissions = []
+      const errors = []
+      let initiated = 0
+      const context = {
+        Error,
+        useParams: () => ({ id: "order_owned", return_id: "return_owned" }),
+        useNavigate: () => () => assert.fail("unexpected redirect"),
+        useOrder: () => ({ order: { id: "order_owned" } }),
+        useOrderPreview: () => ({ order: {} }),
+        useReturn: () => ({ return: { id: "return_owned", items } }),
+        useInitiateReceiveReturn: () => ({
+          mutateAsync: async (input) => {
+            assert.deepEqual(JSON.parse(JSON.stringify(input)), {})
+            initiated += 1
+            return { return: { id: "return_owned", items } }
+          },
+        }),
+        useAddReceiveItems: () => ({
+          mutateAsync: async (input) => {
+            submissions.push(JSON.parse(JSON.stringify(input)))
+          },
+        }),
+      }
+      for (const token of new Set(component.match(/[A-Za-z_]\w*/gu))) {
+        if (/^IS_REQUEST_RUNNING\d*$/u.test(token)) context[token] = false
+        if (/^import_react_router_dom\d*$/u.test(token))
+          context[token] = {
+            useParams: context.useParams,
+            useNavigate: context.useNavigate,
+          }
+        if (/^import_react\d*$/u.test(token))
+          context[token] = {
+            useEffect: (effect) => effects.push(effect),
+          }
+        if (/^import_react_i18next\d*$/u.test(token))
+          context[token] = {
+            useTranslation: () => ({ t: (key) => key }),
+          }
+        if (/^import_ui\d*$/u.test(token))
+          context[token] = {
+            toast: { error: (error) => errors.push(error) },
+          }
+        if (/^useEffect\d*$/u.test(token))
+          context[token] = (effect) => effects.push(effect)
+        if (/^useTranslation\d*$/u.test(token))
+          context[token] = () => ({ t: (key) => key })
+        if (/^toast\d*$/u.test(token))
+          context[token] = { error: (error) => errors.push(error) }
+      }
+      vm.runInNewContext(component, context)()
+      assert.equal(effects.length, 1)
+      effects[0]()
+      await new Promise((resolve) => setImmediate(resolve))
+      assert.equal(initiated, 1)
+      assert.deepEqual(errors, [])
+      assert.deepEqual(
+        submissions,
+        expected.length ? [{ items: expected }] : []
+      )
+    })
+  }
+}
 
 for (const entry of ["order-receive-return-HEIGUW3S.mjs", "app.js"]) {
   test(`${entry}: receiving skips unchanged quantities and preserves native mutations`, async () => {

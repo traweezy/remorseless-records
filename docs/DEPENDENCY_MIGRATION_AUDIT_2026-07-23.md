@@ -1,5 +1,33 @@
 # Dependency Migration Audit — 2026-07-23
 
+## Native order navigation and remaining receipts — October 7, 2026 UTC
+
+Extend the existing MIT Dashboard 2.18.0 and UI 4.2.0 patches without changing
+registry versions or integrities. Both Orders table implementations retain
+native routing and gain keyboard-reachable order links, 24-pixel targets,
+pointer cursors and an inset focus outline that survives cell clipping. The
+legacy table keeps its existing outer links, avoiding nested anchors, and
+names its Country header. The actual UI column visibility trigger has a
+readable name, a 24-pixel nonshrinking target and its native handlers.
+
+Native receipt forms default to the remaining requested quantity after prior
+receipts and omit completed items; damaged quantities are already included in
+received quantities. Source/main/lazy implementations agree. Authentication,
+RBAC, payment and inventory mutations remain native. The browser matrix now
+has 50 cases, including modern and legacy Orders at 390/1440 pixels and a
+clipping-aware keyboard assertion. Exact rendered and live acceptance state
+is recorded in the opening Batch 6 audit.
+
+Dashboard patch SHA-256 is
+`b9c175c97274672e94f91a3fbb9a4e5fb7154363d768e9f32b5dee31c979d10c`;
+UI patch SHA-256 is
+`daae075db83539ccd6106ef6a6ed583d735eaeeb49f63d341dc670b562e801ae`.
+Frozen installation and a complete lock comparison admit only these two patch
+hashes and two dependent peer identities. All other lock content is unchanged;
+reject the incidental third-party-web 0.30.0 resolution and retain 0.29.2.
+No new license, package upgrade, security ignore or cooling exception is added.
+The following entries describe historical checkpoints and patch hashes.
+
 ## Native login accessibility — October 7, 2026 UTC
 
 Extend only the existing MIT Medusa Dashboard 2.18.0 patch. The native login
@@ -17,7 +45,7 @@ returns, retaining the Receive items action after the first receipt. Completed
 and canceled returns remain excluded. Two rendered navigation regressions
 extend the 44-case matrix to 46; live deployed navigation retesting is pending.
 
-Current Dashboard patch SHA-256 is
+Dashboard patch SHA-256 at that historical checkpoint is
 `6bdd63025a2dfd8913e69e320d8a46bf4a5ee8a4111fbea620ceab84ecf92d68`.
 Frozen root installation and the complete lock comparison permit only this
 patch identity and two existing dependent peer identities. Registry versions,

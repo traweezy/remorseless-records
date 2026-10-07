@@ -19,6 +19,15 @@ production/launch acceptance to batch 8. This supersedes the seven-batch plan.
 pause before the client clone. Batch 7 must not start until the user explicitly
 resumes it; earlier continuation requests do not override this stop point.
 
+**October 7 continuation:** Batch 6 staging is `f910cef` with exact CI,
+application deployment, runtime and fresh-log gates passing. Fixed-bundle
+creation/publish and a real Stripe test 3DS cancellation/retry pass; order #11
+still needs RMA/stock/refund cleanup. A substantive local correction covers
+bundle-delete compensation, guarded failed-creation cleanup and native Admin
+receipt/navigation accessibility. Follow the opening handoff/audit for exact
+revision, tests and live gates. The scheduler incident window and exhaustive
+coverage remain open; this does not accept Batch 6 or resume Batch 7.
+
 1. **Accepted at `849abea`: credential isolation and backup access.** Migration
    authority is isolated in a one-shot service, and restricted backup export is
    integrated. Each subsequent numbered group retains its own batch push.

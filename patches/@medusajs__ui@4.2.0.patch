@@ -1,3 +1,23 @@
+diff --git a/dist/cjs/blocks/data-table/components/data-table-column-visibility-menu.js b/dist/cjs/blocks/data-table/components/data-table-column-visibility-menu.js
+index fe0b5b960504539d7102b15a566020977b37e0e2..3b8087c84d390ca96026c2893b8d5fbced8b4d3c 100644
+--- a/dist/cjs/blocks/data-table/components/data-table-column-visibility-menu.js
++++ b/dist/cjs/blocks/data-table/components/data-table-column-visibility-menu.js
+@@ -30,7 +30,7 @@ const DataTableColumnVisibilityMenu = ({ className, tooltip, }) => {
+     return (react_1.default.createElement(dropdown_menu_1.DropdownMenu, null,
+         react_1.default.createElement(Wrapper, { ...wrapperProps },
+             react_1.default.createElement(dropdown_menu_1.DropdownMenu.Trigger, { asChild: true },
+-                react_1.default.createElement(icon_button_1.IconButton, { size: "small", className: className },
++                react_1.default.createElement(icon_button_1.IconButton, { size: "small", className: className, "aria-label": typeof tooltip === "string" ? tooltip : "Toggle columns", style: { minWidth: 24, minHeight: 24, flexShrink: 0, cursor: "pointer" } },
+                     react_1.default.createElement(icons_1.Adjustments, null)))),
+         react_1.default.createElement(dropdown_menu_1.DropdownMenu.Content, { align: "end", className: "min-w-[200px] max-h-[400px] overflow-hidden" },
+             react_1.default.createElement(dropdown_menu_1.DropdownMenu.Label, null, "Toggle columns"),
+@@ -55,4 +55,3 @@ const DataTableColumnVisibilityMenu = ({ className, tooltip, }) => {
+             })))));
+ };
+ exports.DataTableColumnVisibilityMenu = DataTableColumnVisibilityMenu;
+\ No newline at end of file
+-//# sourceMappingURL=data-table-column-visibility-menu.js.map
+\ No newline at end of file
 diff --git a/dist/cjs/blocks/data-table/components/data-table-search.js b/dist/cjs/blocks/data-table/components/data-table-search.js
 index ad1ab13fca64a5c5872dffe7768ffbddaf7f6dc3..23e448e666e4d16f2debf799dc8d7c614a0eed6a 100644
 --- a/dist/cjs/blocks/data-table/components/data-table-search.js
@@ -90,6 +110,26 @@ index f58e986689e39dd2761f71e8d75c0edbffb5a38b..89ee3d9bf9bd79a592744cbfde4bedb9
              React.createElement(icons_1.MagnifyingGlassMini, null))),
          isPassword && (React.createElement("div", { className: (0, clx_1.clx)("absolute bottom-0 right-0 flex items-center justify-center border-l", {
                  "h-8 w-8": size === "base",
+diff --git a/dist/esm/blocks/data-table/components/data-table-column-visibility-menu.js b/dist/esm/blocks/data-table/components/data-table-column-visibility-menu.js
+index f86fc0d3745d43083bb7cd0ba79b932d279f2616..030fff190a39167c8e23fd3d6efb0a1da0c9143b 100644
+--- a/dist/esm/blocks/data-table/components/data-table-column-visibility-menu.js
++++ b/dist/esm/blocks/data-table/components/data-table-column-visibility-menu.js
+@@ -26,7 +26,7 @@ const DataTableColumnVisibilityMenu = ({ className, tooltip, }) => {
+     return (React.createElement(DropdownMenu, null,
+         React.createElement(Wrapper, { ...wrapperProps },
+             React.createElement(DropdownMenu.Trigger, { asChild: true },
+-                React.createElement(IconButton, { size: "small", className: className },
++                React.createElement(IconButton, { size: "small", className: className, "aria-label": typeof tooltip === "string" ? tooltip : "Toggle columns", style: { minWidth: 24, minHeight: 24, flexShrink: 0, cursor: "pointer" } },
+                     React.createElement(Adjustments, null)))),
+         React.createElement(DropdownMenu.Content, { align: "end", className: "min-w-[200px] max-h-[400px] overflow-hidden" },
+             React.createElement(DropdownMenu.Label, null, "Toggle columns"),
+@@ -51,4 +51,3 @@ const DataTableColumnVisibilityMenu = ({ className, tooltip, }) => {
+             })))));
+ };
+ export { DataTableColumnVisibilityMenu };
+\ No newline at end of file
+-//# sourceMappingURL=data-table-column-visibility-menu.js.map
+\ No newline at end of file
 diff --git a/dist/esm/blocks/data-table/components/data-table-search.js b/dist/esm/blocks/data-table/components/data-table-search.js
 index 0cd5c7c17497fa5ce8dcce28c7b2a8016870acf4..2b397fc5085b128ef2674e62e48fdf9afb421ca1 100644
 --- a/dist/esm/blocks/data-table/components/data-table-search.js

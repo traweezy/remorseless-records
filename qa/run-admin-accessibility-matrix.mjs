@@ -27,6 +27,20 @@ if (!Number.isInteger(concurrency) || concurrency < 1 || concurrency > 4) {
 const cases = [
   ...[390, 1440].map((width) => ({
     height: 1000,
+    name: `native-order-list-links-${width}`,
+    route: "/app/orders",
+    setup: "native-order-list-links",
+    width,
+  })),
+  ...[390, 1440].map((width) => ({
+    height: 1000,
+    name: `native-order-list-legacy-links-${width}`,
+    route: "/app/orders",
+    setup: "native-order-list-legacy-links",
+    width,
+  })),
+  ...[390, 1440].map((width) => ({
+    height: 1000,
     name: `native-order-partial-return-${width}`,
     route: "/app/orders/order_acceptance",
     setup: "native-order-partial-return",

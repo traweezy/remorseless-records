@@ -509,8 +509,11 @@ OPTIONS, regardless of origin. The local static server independently returns
 204 and HEAD never streams a body. A failed browser abort produces only
 `request:mutation_block_failed` and cannot fall through to the network.
 `qa:admin-accessibility-boundary` tests both layers and runs in the local lint
-gate and Root CI. Its 46 cases cover native login in both themes at 390/1440
+gate and Root CI. Its 50 cases cover native login in both themes at 390/1440
 pixels, partial-return Receive items navigation at 390/1440 pixels,
+both native Orders table implementations at 390/1440 pixels, including Tab
+access, an unclipped focus outline, pointer targets and Enter navigation,
+named column visibility controls and the Country header,
 long-SKU order Summary at 390/573/1440 pixels, native managed-kit
 claim/return guidance in ready/missing/pending/unavailable states,
 RMA/receiving/refund controls and native refund-reason required-field validation, guided
