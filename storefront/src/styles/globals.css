@@ -67,7 +67,6 @@
     margin-left: calc(50% - 50vw);
     overflow: hidden;
     padding-inline: 0;
-    --product-card-height: clamp(360px, 40vw, 480px);
   }
 
   .product-carousel__container {
@@ -79,22 +78,20 @@
 
   .product-carousel__splide {
     width: 100%;
-    height: var(--product-card-height);
   }
 
+  /* Slides grow with their square artwork and metadata. A fixed shared height
+     shrinks the artwork into a strip when mobile breakpoints show one card. */
   .product-carousel__splide .splide__track {
-    height: 100%;
     overflow: hidden;
   }
 
   .product-carousel__splide .splide__list {
     display: flex;
     align-items: stretch;
-    height: 100%;
   }
 
   .product-carousel__splide .splide__slide {
-    height: 100%;
     display: flex;
     align-items: stretch;
   }
@@ -102,20 +99,16 @@
   .product-carousel__slide > div,
   .product-carousel__splide .splide__slide > div {
     flex: 1 1 auto;
-    height: 100%;
   }
 
   .product-carousel__card {
     display: flex;
     flex: 1 1 auto;
-    height: var(--product-card-height);
     overflow: hidden;
   }
 
   .product-carousel__card > * {
     flex: 1 1 auto;
-    height: 100%;
-    min-height: 100%;
   }
 
   .product-carousel:hover .product-carousel__arrow {
@@ -159,8 +152,10 @@
     position: absolute;
     top: -0.3rem;
     right: -0.3rem;
-    width: 12.5rem;
-    height: 12.5rem;
+    /* Bound the corner decoration to its painted area so its transparent
+       stacking box does not overlap centered artwork placeholders. */
+    width: 9rem;
+    height: 9rem;
     pointer-events: none;
     overflow: hidden;
     z-index: 45;

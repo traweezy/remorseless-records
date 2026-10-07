@@ -2,9 +2,172 @@
 
 Last updated: 2026-10-07 (America/New_York)
 
-## Current continuation — direct staging only
+## Active continuation — October 7, 21:51 UTC
 
-**Current correction — October 7, 13:01 UTC:** continue Batch 6. The deployed
+The user resumed Store Batch 6. Client cloning remains separately paused;
+production is untouched. Preserve the earlier pause and failed attempts below.
+The accepted deployed baseline is
+`b7014fb4a352a162130687aca4bfbf5e2ea84cac`. The native execution, carousel
+and recovery corrections pass their source gates and remain a local grouped
+release until exact staging CI, deployments and live acceptance are verified.
+
+Fresh read-only readiness at 21:52:30 UTC passes all four workflows / 23
+checks, both exact application deployments, live/ready and backup freshness.
+The all-nine observer resumes at 21:51:46.103 UTC with no faults, recording
+an intentional 29,725.014-second gap from the previous 13:36:21.089 sample.
+Redis deep inspection at 21:52:46 UTC retains the same deployment, instance
+and process, uptime 347,818 seconds, healthy persistence and zero evictions,
+rejected connections or cgroup OOM. Historical 237 + one failures stay intact.
+An ordinary exact-SHA scheduler completion at 21:52:00.057 UTC is healthy,
+with incident null and no reasons. This establishes natural recovery after
+the latch window through fresh evidence; nothing was manually cleared.
+The removed Backend instance's stop reason remains unverified, and idle
+RecoveryBackups does not prove a newly executed archive.
+
+The Medusa wrapper correction preserves its installed bootstrap and native
+exec while forwarding literal flags instead of losing them in yargs. Actual
+installed wrapper/command regressions pass, including source/built paths,
+runtime environment, shell safety and script/container failure exit statuses.
+The owned cleanup still requires a fresh valid manifest, exact deployment,
+before receipt, guarded apply and same-operation replay; none has run.
+
+The carousel fixture omitted canonical presentation rows and cached a missing
+product. Its scoped native/presentation reads are repaired. Cards retain square
+media with contained artwork and size to their metadata; complete titles wrap.
+The corner ribbon retains its painted shape with bounded transparent geometry.
+All 33 final launch cases pass, with all 41 screenshots inspected, including
+five widths and three artwork shapes. Preserve the earlier focus-modality and
+eight Axe background-overlap failures and their documented causes/fixes.
+
+The retained 404 response uses Next's minimal error document, which skips the
+root layout's Zod bootstrap. React then tries to recreate its inline script,
+causing the exact inert-script TrustedHTML failure and secondary Zod Function
+probe. Synchronous `src/instrumentation-client.ts` now configures Zod before
+hydration on every entry; the obsolete React-rendered bootstrap is removed.
+CSP and Trusted Types policies are unchanged. Installed source ordering and
+an independent zero-Function parser check support this correction. All eight
+cold missing-page/history cases and existing structured-data/receipt production
+browsers pass without policy relaxation or runtime violations.
+
+Final source validation passes both builds, shared lint/type/policy gates,
+297 Backend suites / 2,521 tests, Storefront baseline 1,078 tests plus 403
+transactional cases, and all 114 critical cases across Chromium/Firefox/WebKit.
+Ten actual Pixel 7/iPhone 15 Pro card-flow cases and six independent Pixel/
+compact-phone layout/accessibility checks pass with the sandbox enabled.
+Two additional native-width Pixel 7/iPhone 15 Pro artwork cases pass all three
+shapes, geometry, metadata and controls with verified viewport, screen, touch,
+pixel ratio and user-agent context. These are Chrome profiles, not physical
+iOS evidence. Their final framed captures are being completed; the independent
+layout-only Puppeteer fixture screenshots use intentional placeholders.
+These are local fixture gates, not deployed or exhaustive Batch 6 acceptance.
+
+Distinct paid-family coverage remaining is mystery bundles. Music #8, mixed
+#9, standalone merchandise #10 and fixed bundle #11 already have financial
+and inventory cleanup evidence; do not repeat it. Media quarantine/restore,
+search parity, Copy-SKU clipboard, native artwork snapshot projection,
+individually unverified recovery/payment
+controls and final execution-ledger reconciliation remain. Current search
+contains the same 464 published Product IDs as Medusa, but the actual cassette
+filter returns 130 versus 131 advertised by public format definitions. Native
+per-variant facts still need comparison before selecting a correction.
+A fresh Catalog
+workspace request displays Access check could not complete; retained order
+content alone cannot prove current authentication. The existing sign-in tab
+has no filled credentials. Preserve native authentication and continue
+independent work without repeating authorization questions. Restricted Resend
+delivery reads and unsupported live MFA/wallet evidence remain explicit limits.
+Private fresh evidence lives under `artifacts/end-to-end-audit-2026-10-07/`.
+Use pinned Node 26.9.0 / pnpm 11.17.0 and preserve Default and setup paths.
+
+## Earlier pause — direct staging only
+
+**Paused at the user's request — October 7, 13:36 UTC:** Batch 6 remains
+unfinished. Resume its audit and repairs when requested; the separate Batch 7
+client-clone pause remains in force. No production operation has occurred.
+Local HEAD and remote staging are
+`b7014fb4a352a162130687aca4bfbf5e2ea84cac`. The two Conventional Commits
+`e3f9d1f` and `b7014fb` were pushed directly to staging with normal hooks.
+At 13:14:28.217 UTC all four exact push workflows and all 23 required checks
+pass. Backend `63102b44-384e-4612-9ed4-4b064aa8b63b`, Storefront
+`04586c58-1be3-4330-b8eb-f7e841367f46` and Migrations
+`d259b84e-c2d9-4b16-9d7f-c65092c2fdc2` succeed on that revision.
+Readiness/basic live/backup freshness pass at 13:24:29.404 UTC; exact runtime,
+database-role/migration receipt, restricted Resend identity and Next backport
+checks pass. RecoveryBackups is idle `CREATED`, not a fresh archive execution.
+Fresh correlated logs pass for the bounded 13:34:50.495–13:35:01.601 UTC
+window, with both runtime/HTTP correlations, zero HTTP 5xx, unknown errors or
+truncation. Retain the earlier attempts: the longer diagnostic window contains
+two acceptance guard 400s, while its unchanged strict classifier accepts only
+its own single guard. Final all-nine observation at 13:36:21.089 UTC has no
+failed/crashed services or instances. The temporary watcher is stopped at
+13:36:34.010 UTC. Private receipt is
+`artifacts/end-to-end-audit-2026-10-07/receipts/pause-b7014fb-2026-10-07.json`.
+Do not infer exhaustive Batch 6 acceptance from deployment or these basic gates.
+
+**Order #11 is completely cleaned up — do not repeat it:** native Summary
+defaults the second receipt to the remaining one bundle, then receives it
+successfully. Read-only evidence at 13:26:30.788 UTC verifies Return received,
+cumulative quantity two / damaged zero and restored CD stock 20 / reserved
+zero. Native Admin issues one USD 12.64 refund including shipping. At
+13:28:44.194 UTC independent Medusa/Stripe evidence verifies one successful
+full refund, zero remaining paid amount, refunded tax evidence with no failed
+or missing source, processed test-mode refund lifecycle events, and seven
+unique successful controlled notification acknowledgements. Stripe's visible
+sandbox dashboard also shows USD 12.64 Refunded for order #11. Native Summary
+retains original ledger entries. Orders #9/#10 are already cleaned too.
+Square, portrait and final landscape fixed-bundle artwork are inspected.
+
+**First work on resume:** repair the repository Medusa execution argument
+boundary, then preview and apply only the owned failed creation below. The
+deployed guarded repair's preview fails validation before any mutation because
+the current wrapper passes flags after `--`, while installed native yargs
+leaves `exec.args` empty. Neither apply nor replay has run; no valid ownership
+manifest exists. Do not use the failed preview JSON as an apply manifest or
+retry the original browser creation UUID. Preserve native Medusa bootstrap,
+the actual runtime app role and every existing repair guard. Add a regression
+that exercises the real wrapper/installed CLI boundary, not only an argument
+array. Structured logger output also needs decoding before reading the
+private helper's JSON repair result. Owned dangling product is
+`prod_01M4B0T7S6CAEP616JA6C4RMPY`, compensated creation operation
+`catop_01M4B0T7QKSYQ5VNZQAH6J3B9N`; exact profiles, media, assets, original
+UUID and evidence remain in the private receipts. Retain uploads/history.
+
+**Uncommitted Storefront work:** only `storefront/scripts/ci-medusa-fixture.mjs`
+and new `storefront/e2e/launch/carousel-artwork.spec.ts` contain implementation
+work in progress. The five-width regression is not passing: the owned product
+route returns 404 before reaching the carousel, and the trace reproduces
+TrustedHTML `innerHTML` and TrustedScript assignment failures on the error
+fallback. Diagnose fixture/provider/build routing first, then fix the fallback
+under strict CSP; do not add an allow-all Trusted Types policy. Live Mystery
+Bundle's related carousel at 574 pixels crops natural square/portrait artwork
+into 570.4 × 184.8 strips because fixed carousel height shrinks the media.
+No card/CSS or execution-wrapper correction has been implemented yet.
+Preserve these failures as evidence; do not describe them as passing carousel
+regressions or push this unfinished test. Owned private configuration uses
+3017/4027 with the sandbox enabled; unknown port 3000 was left untouched.
+
+Redis deep inspection passes at 13:17:10.964 UTC on the same deployment,
+instance and process, with healthy AOF/RDB, no evictions/rejected connections
+or cgroup OOM. Do not retry its historical 237 scheduled plus one event
+failures. The observer's deliberate pause begins at the final saved sample;
+renew it and record the gap on resume. Retain earlier 131.414-second and
+36,228.518-second gaps and the unverified removed initial Backend instance.
+The scheduler latch remains intact through October 7, 14:18:40.644 UTC plus
+a fresh ordinary healthy observation; elapsed time alone cannot accept it.
+Remaining paid-family coverage, media quarantine/restore, guarded search
+parity, Copy-SKU clipboard proof, MFA availability and the executed-control
+ledger remain open. Resend delivery-event reads remain unavailable under the
+restricted key; do not widen it or resend notices. Local checkpoint docs and
+the two unfinished Storefront paths stay uncommitted for the next substantive
+correction. Preserve unrelated untracked setup paths and keep Default unread.
+Use Node 26.9.0 and pnpm 11.17.0 explicitly: the default shell Node has moved
+to 26.10.0. Browser sizing override is reset; Admin order #11, Storefront
+Mystery Bundle and Stripe order #11 tabs are retained for resumption.
+
+The following correction describes the earlier 13:01 UTC checkpoint and is
+historical where its state differs from the pause above.
+
+**Earlier correction — October 7, 13:01 UTC:** continue Batch 6. The deployed
 baseline before this correction is `f910ceface6b0eca14f80eb051a57846fa832ed5`; the next
 cohesive correction remains local. All four exact push workflows / 23 required
 checks pass. Backend `15ecdf92-8d51-46b3-809d-e26a539538dd` and Storefront

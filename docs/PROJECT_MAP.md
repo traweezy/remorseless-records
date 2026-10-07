@@ -105,23 +105,21 @@ contracts before applying generic framework examples from those files.
 
 ## Verified continuation boundary
 
-**Current October 7 continuation:** Batch 6 remains open. Exact staging
-`f910ceface6b0eca14f80eb051a57846fa832ed5` passes all four workflows / 23
-checks and both application deployments, basic/readiness/backup and exact
-runtime/fresh correlated-log gates. All-nine observation retains documented
-gaps and an unverified removed Backend instance. Fresh native fixed-bundle
-creation/publish and cancel/retry of Stripe test 3DS succeed; one USD 12.64
-order reserves four CDs for two bundles. Its first native
-return receipt restores two component units and retains normal Receive items
-navigation; second receipt/refund cleanup remains in progress. Orders #9/#10 are already cleaned; do not repeat them. The next
-local correction preserves exact bundle-delete rollback IDs, adds a guarded
-failed-creation repair, fixes remaining receipt defaults and native Orders
-keyboard/accessible controls. It passes 91 native + 44 payment/recovery cases,
-296 Backend suites / 2,514 tests, 88 native installed contracts and both builds.
-The final 50-case clipping-aware browser matrix passes; lint/source-scan pass, while direct-push hooks
-and exact staging acceptance remain;
-see the opening handoff and audit for current evidence. Client cloning remains
-paused; production is untouched.
+**Current October 7 continuation:** the user resumed Store Batch 6 at
+21:51 UTC. The accepted deployed baseline is
+`b7014fb4a352a162130687aca4bfbf5e2ea84cac`; fresh exact CI/readiness,
+application deployments, backup freshness, all-nine state and deep Redis pass.
+Ordinary same-SHA scheduler evidence confirms natural recovery after the
+incident window. Preserve observer gaps and the removed Backend instance's
+unverified stop reason. The argument wrapper, carousel sizing/containment and
+pre-hydration Zod recovery corrections pass local builds, coverage, lint/type
+and 33 launch / 114 three-engine / 10 actual phone card-flow cases; grouped
+direct staging acceptance remains. No guarded cleanup has run. Orders #9/#10/#11 are
+already refunded/restocked and must not be repeated; mystery is the remaining
+distinct paid family. Media/search, clipboard and individually unverified
+recovery/control-ledger items remain. The opening handoff/audit retain prior
+failures, exact receipt paths and next steps. Client cloning stays paused;
+production is untouched.
 
 The following continuation description predates that current correction.
 

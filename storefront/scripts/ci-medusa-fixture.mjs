@@ -71,6 +71,26 @@ const galleryRuntimeProduct = {
   })),
 }
 
+// Exact-handle/collection fixtures keep the ordinary catalog and shelves
+// unchanged while rendering real carousel cards with three artwork shapes.
+const carouselRuntimeProduct = {
+  ...fixtureProduct,
+  id: "prod_CICAROUSELARTWORK",
+  handle: "music-release-ci-carousel-artwork",
+  title: "Carousel Artwork Pressing",
+  collection_id: "pcol_CICAROUSELARTWORK",
+}
+const carouselArtworkProducts = ["square", "portrait", "landscape"].map(
+  (shape) => ({
+    ...fixtureProduct,
+    id: `prod_CICAROUSEL_${shape.toUpperCase()}`,
+    handle: `music-release-ci-carousel-${shape}`,
+    title: `Carousel ${shape} artwork`,
+    thumbnail: `/__e2e__/artwork-${shape}.svg`,
+    images: [],
+  })
+)
+
 const numberedTracklistProduct = {
   ...galleryRuntimeProduct,
   id: "prod_CINUMBEREDTRACKLIST",
@@ -228,6 +248,8 @@ const routePayload = (pathname, searchParams) => {
             [
               fixtureProduct.id,
               galleryRuntimeProduct.id,
+              carouselRuntimeProduct.id,
+              ...carouselArtworkProducts.map((product) => product.id),
               numberedTracklistProduct.id,
               presentedRuntimeProduct.id,
             ].includes(id)
@@ -261,16 +283,27 @@ const routePayload = (pathname, searchParams) => {
       return { entry: richTextNews }
     case "/store/products": {
       const requestedHandle = searchParams.get("handle")
+      const carouselArtwork = carouselArtworkProducts.find(
+        (product) => product.handle === requestedHandle
+      )
       const products =
-        requestedHandle === presentedRuntimeProduct.handle
-          ? [presentedRuntimeProduct]
-          : requestedHandle === numberedTracklistProduct.handle
-            ? [numberedTracklistProduct]
-            : requestedHandle === galleryRuntimeProduct.handle
-              ? [galleryRuntimeProduct]
-              : requestedHandle && requestedHandle !== fixtureProduct.handle
-                ? []
-                : [fixtureProduct]
+        searchParams.get("collection_id") ===
+        carouselRuntimeProduct.collection_id
+          ? carouselArtworkProducts
+          : requestedHandle === carouselRuntimeProduct.handle
+            ? [carouselRuntimeProduct]
+            : carouselArtwork
+              ? [carouselArtwork]
+              : requestedHandle === presentedRuntimeProduct.handle
+                ? [presentedRuntimeProduct]
+                : requestedHandle === numberedTracklistProduct.handle
+                  ? [numberedTracklistProduct]
+                  : requestedHandle === galleryRuntimeProduct.handle
+                    ? [galleryRuntimeProduct]
+                    : requestedHandle &&
+                        requestedHandle !== fixtureProduct.handle
+                      ? []
+                      : [fixtureProduct]
       return {
         products,
         count: products.length,

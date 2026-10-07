@@ -12,7 +12,6 @@ import QueryProvider from "@/components/providers/query-provider"
 import { Toaster } from "@/components/ui/sonner"
 import { CartProvider } from "@/providers/cart-provider"
 import JsonLd from "@/components/json-ld"
-import ZodStrictCspBootstrap from "@/components/zod-strict-csp-bootstrap"
 import CookieConsentBanner from "@/components/legal/cookie-consent-banner"
 import { CookieConsentProvider } from "@/components/legal/cookie-consent-provider"
 import ConsentAwareWebVitalsReporter from "@/components/consent-aware-web-vitals-reporter"
@@ -126,7 +125,6 @@ const RootLayout = async ({ children }: RootLayoutProps) => {
             crossOrigin="anonymous"
           />
         ))}
-        <ZodStrictCspBootstrap {...(nonce ? { nonce } : {})} />
       </head>
       <body
         className={[

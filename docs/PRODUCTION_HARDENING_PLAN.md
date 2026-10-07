@@ -1,6 +1,6 @@
 # Production Hardening Plan
 
-Last reviewed: October 3, 2026 UTC
+Last reviewed: October 7, 2026 UTC
 
 This is the authoritative launch-readiness backlog for Remorseless Records. It
 supersedes the local `tmp/HARDENING_NEXT_STEPS.md` working note. Detailed
@@ -19,14 +19,21 @@ production/launch acceptance to batch 8. This supersedes the seven-batch plan.
 pause before the client clone. Batch 7 must not start until the user explicitly
 resumes it; earlier continuation requests do not override this stop point.
 
-**October 7 continuation:** Batch 6 staging is `f910cef` with exact CI,
-application deployment, runtime and fresh-log gates passing. Fixed-bundle
-creation/publish and a real Stripe test 3DS cancellation/retry pass; order #11
-still needs RMA/stock/refund cleanup. A substantive local correction covers
-bundle-delete compensation, guarded failed-creation cleanup and native Admin
-receipt/navigation accessibility. Follow the opening handoff/audit for exact
-revision, tests and live gates. The scheduler incident window and exhaustive
-coverage remain open; this does not accept Batch 6 or resume Batch 7.
+**October 7 resumed audit:** the user resumed Batch 6 at 21:51 UTC.
+Fresh b7014fb readiness, all four workflows / 23 checks, exact app deployments,
+backup freshness and all-nine state pass. Redis retains the same healthy
+process; its historical failures and the intentional 29,725.014-second observer
+gap are retained. Fresh ordinary same-SHA scheduler completion is healthy with
+incident null, proving natural recovery after the latch window. No manual
+latch reset occurred. Orders #9/#10/#11 are cleaned up; do not repeat them.
+The native argument wrapper, carousel containment/metadata and pre-hydration
+Zod recovery corrections pass both builds, coverage, lint/type/policy and
+33 launch / 114 three-engine critical / 10 actual phone card-flow cases. They
+remain local pending grouped staging release acceptance. Owned failed-creation
+repair, mystery payment, native artwork projection, media/search and final
+executed controls remain open. See the opening handoff and audit for exact
+evidence and preserved failures. Batch 6 is unfinished; Batch 7 remains paused.
+Production is untouched.
 
 1. **Accepted at `849abea`: credential isolation and backup access.** Migration
    authority is isolated in a one-shot service, and restricted backup export is

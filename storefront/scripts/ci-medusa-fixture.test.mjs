@@ -157,6 +157,54 @@ test("isolates local gallery artwork behind its exact product handle", async () 
   })
 })
 
+test("retains exact carousel products through their public presentation rows", async () => {
+  await withFixture(async (baseUrl) => {
+    const parent = await fixtureFetch(
+      baseUrl,
+      "/store/products?handle=music-release-ci-carousel-artwork"
+    ).then((response) => response.json())
+    assert.equal(parent.count, 1)
+    const related = await fixtureFetch(
+      baseUrl,
+      `/store/products?collection_id=${parent.products[0].collection_id}`
+    ).then((response) => response.json())
+    assert.equal(related.count, 3)
+    const ids = [...parent.products, ...related.products].map(
+      (product) => product.id
+    )
+    const presentation = await fixtureFetch(
+      baseUrl,
+      `/store/catalog/presentation?product_ids=${ids.join(",")}`
+    ).then((response) => response.json())
+    assert.deepEqual(
+      presentation.presentations.map((row) => row.productId),
+      ids
+    )
+    assert.ok(
+      presentation.presentations.every((row) => row.managedMedia === false)
+    )
+    for (const product of related.products) {
+      const detail = await fixtureFetch(
+        baseUrl,
+        `/store/products?handle=${product.handle}`
+      ).then((response) => response.json())
+      assert.deepEqual(detail.products, [product])
+    }
+    const catalog = await fixtureFetch(baseUrl, "/store/products").then(
+      (response) => response.json()
+    )
+    assert.deepEqual(
+      catalog.products.map((product) => product.id),
+      ["prod_CIPATHOLOGIST"]
+    )
+    const unknown = await fixtureFetch(
+      baseUrl,
+      "/store/products?handle=music-release-ci-carousel-artwork-other"
+    ).then((response) => response.json())
+    assert.deepEqual(unknown.products, [])
+  })
+})
+
 test("calibrates Lighthouse CPU slowdown without changing budgets", () => {
   const localConfig = loadLighthouseConfig(undefined)
   const hostedRunnerConfig = loadLighthouseConfig("2")

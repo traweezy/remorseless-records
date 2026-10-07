@@ -1,5 +1,118 @@
 # Storefront, Admin and Stripe end-to-end audit
 
+### Resumed correction — October 7, 21:51 UTC
+
+The user resumes Batch 6; the client clone remains paused. Fresh b7014fb
+readiness passes all four workflows / 23 checks, exact app deployments,
+live/ready and backup freshness. All nine services are observed without faults.
+The 29,725.014-second deliberate observer gap is retained. Redis remains on
+the same healthy process with historic 237 + one failures untouched. Ordinary
+same-SHA scheduler completion at 21:52:00.057 UTC is healthy with incident
+null, proving natural recovery after its latch window without manual clearing.
+
+| Finding | Current local correction and remaining acceptance |
+| --- | --- |
+| `B6-FAILED-CREATE-ORPHANS` / execution arguments | Native exec bridge retains bootstrap, role/path behavior and literal args; actual installed boundary and script/container-failure regressions pass. Fresh deployed preview, manifest/before review, guarded apply/replay and retained-assets/history proof remain. No live cleanup has run. |
+| `B6-CAROUSEL-ARTWORK-CROP` | Scope the fixture's missing presentation rows, preserve square media with contain, grow cards to metadata and wrap full titles. Five-width, three-shape production screenshots pass; bounded ribbon geometry resolves eight Axe overlap incompletes without rule filtering. Exact deployed acceptance remains. |
+| `B6-ERROR-FALLBACK-TRUSTED-TYPES` | Minimal 404 HTML skips the root Zod script; React recreation hits the exact inert-script HTML sink and Zod later probes Function. Synchronous pre-hydration instrumentation removes the rendered bootstrap and retains all CSP/TT controls. All eight cold missing-page/history and existing structured-data/receipt production regressions pass. Exact deployed acceptance remains. |
+
+Final local gates pass both builds, lint/type/policy, 297 Backend suites /
+2,521 tests, Storefront baseline 1,078 plus transactional 403 tests, all 33
+launch cases and all 114 Chromium/Firefox/WebKit critical cases. All 41 final
+launch screenshots are inspected. Ten Pixel 7/iPhone 15 Pro card-flow cases
+and six independent Pixel/compact layout/accessibility checks pass with actual
+phone emulation and the sandbox enabled. Two separate native-width Pixel 7/
+iPhone 15 Pro artwork cases also pass with verified viewport, screen, touch,
+pixel ratio and user agent; these are Chrome profiles, not physical iOS proof.
+The independent layout fixture uses intentional missing-art placeholders;
+the final framed native artwork captures are being completed. Earlier failed
+fixture/focus/Axe and profile-harness attempts remain intact.
+These checks do not establish a deployed or exhaustive audit pass.
+
+**Additional live finding — `B6-NATIVE-ARTWORK-SNAPSHOT`:** retained native
+order #11 renders a Photo placeholder with no image elements, despite its
+three authored uploads rendering in the Storefront. Source review confirms
+native Catalog creation/media changes never project product/variant thumbnails;
+Medusa snapshots those native fields into order items and the receipt consumes
+the snapshot. Add a compensated projection from authoritative managed media
+before future order snapshots, including variant ownership and unlink/rollback.
+Preserve existing historical orders; do not rewrite #11 or repeat its cleanup.
+
+**Search finding — `B6-CASSETTE-FACET-PARITY`:** live search and native Medusa
+have the same 464 published Product IDs. Built-in document/settings/stock
+checks pass, but current public definitions advertise 131 cassette products
+while the actual Storefront format OR filter returns 130. CD, Vinyl and DVD
+counts agree. Compare current per-variant native/profile facts for the missing
+member before choosing source correction or claiming full facet acceptance.
+No search rebuild/swap or catalog mutation has occurred during these reads.
+
+The native Copy-SKU control shows Copied, but the CUA session clipboard reports
+zero items and no matching bytes. Its previous empty session clipboard is
+restored. This remains unverified rather than a successful clipboard test;
+OS/page/session clipboard parity has not been established. Safe screenshot
+and private receipt are retained in the October 7 directory.
+
+A new Catalog workspace request displays Access check could not complete;
+its retry leaves the same state. The retained order's rendered content does
+not establish fresh authentication. The existing native sign-in tab has no
+filled credentials. Keep authentication intact and continue independent work;
+do not repeat authorization questions or claim live media controls passed.
+
+Music #8, mixed #9, standalone merchandise #10 and fixed bundle #11 already
+have real hosted purchase/cleanup evidence. Mystery bundle is the remaining
+distinct paid family. Media quarantine/restore, guarded search parity,
+clipboard and individual recovery/control-ledger items remain; fixture or
+basic health passes do not close them. Preserve previous failed attempts and
+explicit Resend/live MFA/wallet limits. No new correction push has occurred.
+The opening handoff provides fresh receipt paths and operational boundaries.
+
+
+### User-requested pause — October 7, 13:36 UTC
+
+Batch 6 is unfinished; Batch 7's client clone remains paused. Exact staging
+`b7014fb4a352a162130687aca4bfbf5e2ea84cac` passes all four push workflows /
+23 checks, both application deployments, Migrations, readiness/basic live/
+backup freshness and exact runtime/role/Resend/Next-backport checks. The private
+October 7 directory retains final service and correlated-log evidence, including
+earlier unsuccessful diagnostic attempts. The fresh 13:34:50.495–13:35:01.601
+UTC log window passes both correlations with zero HTTP 5xx, unknown errors or
+truncation. The longer diagnostic includes two intentional acceptance guard
+400s; its unchanged classifier expects only its own one. All-nine snapshot at
+13:36:21.089 UTC has no failed/crashed services or instances; the temporary
+watcher stops at 13:36:34.010 UTC. This does not accept the exhaustive audit.
+No new implementation push follows this checkpoint.
+
+**Order #11 cleanup is complete:** the deployed remaining-quantity default
+shows one bundle after the first receipt. Successful second native receipt
+leaves cumulative received two / damaged zero, Return received and CD stock
+20 / reserved zero at 13:26:30.788 UTC. One native USD 12.64 refund includes
+shipping. Independent Stripe/Medusa verification at 13:28:44.194 UTC agrees
+on full successful refund, reconciled refunded tax evidence, processed refund
+events and seven unique durable successful controlled notice acknowledgements.
+Stripe's visible sandbox dashboard corroborates USD 12.64 Refunded and native
+Admin shows zero remaining paid amount. The fixed bundle's final landscape
+image is also inspected. Do not repeat orders #9, #10 or #11 cleanup.
+
+| Open finding | Evidence and next action |
+| --- | --- |
+| `B6-FAILED-CREATE-ORPHANS` / execution arguments | The deployed guarded preview changes nothing: installed CLI yargs drops flags after the repository wrapper's separator, so required repair arguments are absent. Fix native invocation with an actual boundary regression; decode structured logger output, then obtain a valid owned manifest before guarded apply/replay. No apply or valid manifest exists. |
+| `B6-CAROUSEL-ARTWORK-CROP` | Live Mystery Bundle at 574 pixels renders related image boxes 570.4 × 184.8 with cover, visibly cropping square/portrait art. Fixed carousel height shrinks nominal square media. Repair card/media sizing and containment, then inspect complete frames and metadata across five widths. |
+| `B6-ERROR-FALLBACK-TRUSTED-TYPES` | The new owned carousel fixture currently returns 404 before reaching its carousel. Retained trace reproduces TrustedHTML innerHTML and TrustedScript failures and the global error UI. Resolve fixture routing, then repair/test ordinary not-found/error navigation without weakening CSP or Trusted Types. This is a fallback reproduction, not passing carousel evidence. |
+
+The fixture modification and new five-width browser test remain uncommitted,
+along with these checkpoint docs. No carousel/component/CSS or wrapper repair
+has been implemented. Preserve failed runs and unknown port 3000; owned
+fixtures use 3017/4027 with the browser sandbox enabled. Deep Redis acceptance
+at 13:17:10.964 UTC retains the same process with healthy persistence and zero
+evictions/rejected connections/OOM; historical queue failures are untouched.
+Record the intentional observer pause and renew it on resume. Keep the
+scheduler latch through 14:18:40.644 UTC plus fresh ordinary healthy evidence.
+Paid-family coverage, media lifecycle, search parity, clipboard/MFA and the
+executed-control ledger remain open; restricted Resend delivery events remain
+an evidence limitation. See the opening handoff for ownership and restart steps.
+
+The following entries are historical where their state differs.
+
 ### Current compensation and native Admin correction — October 7, 13:01 UTC
 
 Exact staging `f910ceface6b0eca14f80eb051a57846fa832ed5` passes all four

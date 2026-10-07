@@ -549,7 +549,7 @@ export const ProductCard = ({
               </div>
             ) : null}
             <div className="flex h-full flex-col overflow-hidden rounded-[inherit] bg-surface">
-              <div className="relative z-10 aspect-square overflow-hidden bg-card">
+              <div className="relative z-10 aspect-square shrink-0 overflow-hidden bg-card">
                 {resolvedThumbnail ? (
                   <Image
                     src={resolvedThumbnail}
@@ -557,7 +557,7 @@ export const ProductCard = ({
                     fill
                     sizes="(max-width: 639px) calc(100vw - 3rem), (max-width: 1023px) 45vw, (max-width: 1535px) 30vw, 320px"
                     className={cn(
-                      "h-full w-full object-cover transition duration-300 md:group-hover:scale-[1.06] md:group-hover:rotate-[1.8deg] md:group-hover:brightness-[0.75] group-focus-within:scale-[1.06] group-focus-within:rotate-[1.8deg] group-focus-within:brightness-[0.75]",
+                      "h-full w-full object-contain transition duration-300 md:group-hover:brightness-[0.75] group-focus-within:brightness-[0.75]",
                       (isSoldOut || isUnavailable) && "grayscale brightness-75"
                     )}
                     onLoad={handleMediaLoad}
@@ -594,13 +594,13 @@ export const ProductCard = ({
                   </Button>
                 </div>
               </div>
-              <div className="flex h-[13.5rem] flex-col justify-between px-4 py-4 sm:h-[14rem] sm:px-5 sm:py-6">
+              <div className="flex min-h-[13.5rem] shrink-0 flex-col justify-between px-4 py-4 sm:min-h-[14rem] sm:px-5 sm:py-6">
                 <div className="min-w-0 space-y-2">
                   <p className="line-clamp-2 min-h-8 break-words text-xs uppercase leading-4 tracking-[0.16rem] text-muted-foreground sm:tracking-[0.3rem]">
                     {summary.artist}
                   </p>
                   <h3
-                    className="truncate font-bebas text-xl uppercase tracking-[0.14rem] text-foreground sm:text-2xl sm:tracking-[0.3rem]"
+                    className="break-words font-bebas text-xl uppercase tracking-[0.14rem] text-foreground sm:text-2xl sm:tracking-[0.3rem]"
                     title={summary.album ?? summary.title}
                   >
                     {summary.album ?? summary.title}
