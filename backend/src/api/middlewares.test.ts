@@ -203,6 +203,14 @@ describe("native Admin mutation policy overlays", () => {
       "/ADMIN/PRODUCTS/PROD_01/VARIANTS/VARIANT_01/",
       nativeAdminActions.productVariant.update,
     ],
+    [
+      "/admin/products/prod_01/variants/variant_01/images/batch",
+      nativeAdminActions.productVariant.update,
+    ],
+    [
+      "/admin/products/prod_01/images/img_01/variants/batch",
+      nativeAdminActions.productVariant.update,
+    ],
   ])("protects POST %s with the exact update action", (requestPath, action) => {
     expect(
       policyFor(nativeAdminPolicyOverlayRoutes, "POST", requestPath)
@@ -254,6 +262,14 @@ describe("native Admin mutation policy overlays", () => {
       {
         requestPath: "/admin/products/prod_01/variants/variant_01",
         template: "/admin/products/:id/variants/:variant_id",
+      },
+      {
+        requestPath: "/admin/products/prod_01/variants/variant_01/images/batch",
+        template: "/admin/products/:id/variants/:variant_id/images/batch",
+      },
+      {
+        requestPath: "/admin/products/prod_01/images/img_01/variants/batch",
+        template: "/admin/products/:id/images/:image_id/variants/batch",
       },
     ] as const
 

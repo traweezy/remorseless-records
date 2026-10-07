@@ -34,6 +34,63 @@ export type AdminAuthorizationManifestEntry = Readonly<{
   template: AdminRouteTemplate
 }>
 
+export type NativeAdminDelegationManifestEntry = Readonly<{
+  method: "POST"
+  mutationPolicies: readonly Readonly<{
+    operation: string | readonly [string, ...string[]]
+    resource: string
+  }>[]
+  mutationPolicySource: "installed-native" | "project-overlay"
+  nativeHandler: `@medusajs/medusa/api/admin/${string}/route`
+  template: AdminRouteTemplate
+}>
+
+const nativeDelegate = (
+  template: AdminRouteTemplate,
+  mutationPolicySource: NativeAdminDelegationManifestEntry["mutationPolicySource"],
+  ...mutationPolicies: NativeAdminDelegationManifestEntry["mutationPolicies"]
+): NativeAdminDelegationManifestEntry => ({
+  method: "POST",
+  mutationPolicies,
+  mutationPolicySource,
+  nativeHandler: `@medusajs/medusa/api/admin/${template.slice("/admin/".length).replace(/:([a-z][a-z0-9_]*)/gi, "[$1]")}/route`,
+  template,
+})
+
+// These delegates retain native authentication, validators and read policies.
+// Inventory the installed grouped mutation declarations and project overlays
+// separately; neither belongs in the generated custom middleware policy set.
+export const nativeAdminDelegationManifest = [
+  nativeDelegate(
+    "/admin/products/:id",
+    "project-overlay",
+    nativeAdminActions.product.update
+  ),
+  nativeDelegate("/admin/products/batch", "installed-native", {
+    operation: ["create", "update"],
+    resource: "product",
+  }),
+  nativeDelegate(
+    "/admin/products/:id/variants/:variant_id",
+    "project-overlay",
+    nativeAdminActions.productVariant.update
+  ),
+  nativeDelegate("/admin/products/:id/variants/batch", "installed-native", {
+    operation: ["create", "update", "delete"],
+    resource: "product_variant",
+  }),
+  nativeDelegate(
+    "/admin/products/:id/variants/:variant_id/images/batch",
+    "project-overlay",
+    nativeAdminActions.productVariant.update
+  ),
+  nativeDelegate(
+    "/admin/products/:id/images/:image_id/variants/batch",
+    "project-overlay",
+    nativeAdminActions.productVariant.update
+  ),
+] as const satisfies readonly NativeAdminDelegationManifestEntry[]
+
 const authorize = (
   area: AdminAuthorizationArea,
   method: AdminHttpMethod,

@@ -226,6 +226,57 @@ describe("catalog product media authoring", () => {
     expect(result.createdAssetIds).toEqual(["cmedia_clone"])
   })
 
+  it("rejects an externally appearing implicit source inside the transaction before cloning or relinking", async () => {
+    const service = serviceFixture()
+    const source = assetFixture("cmedia_external")
+    service.listCatalogMediaAssets.mockResolvedValue([source])
+    await expect(
+      mutateCatalogProductMedia(
+        service as never,
+        commandFixture([{ sourceUrl: source.source_url }]),
+        { lockKeys: ["catalog:product-media:prod_1"] }
+      )
+    ).rejects.toThrow("changed while acquiring")
+    expect(service.createCatalogMediaAssets).not.toHaveBeenCalled()
+    expect(service.updateCatalogMediaAssets).not.toHaveBeenCalled()
+    expect(service.deleteCatalogProductMediaItems).not.toHaveBeenCalled()
+    expect(service.createCatalogProductMediaItems).not.toHaveBeenCalled()
+  })
+
+  it("allows a second implicit item to clone a source created by this same transaction", async () => {
+    const service = serviceFixture()
+    const created: CatalogMediaAssetRecord[] = []
+    service.listCatalogMediaAssets.mockImplementation(async () => created)
+    service.createCatalogMediaAssets.mockImplementation(async ([payload]) => {
+      const row = {
+        ...assetFixture(`cmedia_created_${created.length}`),
+        ...payload,
+      }
+      created.push(row)
+      return [row]
+    })
+    const result = await mutateCatalogProductMedia(
+      service as never,
+      commandFixture([
+        {
+          sourceUrl: "https://media.example/own-transaction.webp",
+          altText: "First",
+        },
+        {
+          sourceUrl: "https://media.example/own-transaction.webp",
+          altText: "Second",
+        },
+      ]),
+      { lockKeys: ["catalog:product-media:prod_1"] }
+    )
+    expect(result.createdAssetIds).toEqual([
+      "cmedia_created_0",
+      "cmedia_created_1",
+    ])
+    expect(created.map(({ alt_text }) => alt_text)).toEqual(["First", "Second"])
+    expect(service.updateCatalogMediaAssets).not.toHaveBeenCalled()
+  })
+
   it("never links, edits, or reuses quarantined media", async () => {
     const service = serviceFixture()
     service.retrieveCatalogMediaAsset.mockResolvedValue({
@@ -272,6 +323,45 @@ describe("catalog product media authoring", () => {
       { take: 2 },
       expect.any(Object)
     )
+  })
+
+  it.each([
+    { sourceUrl: "https://media.example/replaced.jpg" },
+    { sourceFileKey: "covers/replaced.jpg" },
+  ])(
+    "rejects changing the source of an existing shared asset: %j",
+    async (patch) => {
+      const service = serviceFixture()
+      service.retrieveCatalogMediaAsset.mockResolvedValue(assetFixture())
+      await expect(
+        mutateCatalogProductMedia(
+          service as never,
+          commandFixture([{ mediaAssetId: "cmedia_1", ...patch }])
+        )
+      ).rejects.toThrow("source URLs and file keys are read-only")
+      expect(service.updateCatalogMediaAssets).not.toHaveBeenCalled()
+      expect(service.deleteCatalogProductMediaItems).not.toHaveBeenCalled()
+      expect(service.createCatalogProductMediaItems).not.toHaveBeenCalled()
+    }
+  )
+
+  it("accepts unchanged source diagnostics for an existing asset", async () => {
+    const service = serviceFixture()
+    const asset = assetFixture()
+    service.retrieveCatalogMediaAsset.mockResolvedValue(asset)
+    await expect(
+      mutateCatalogProductMedia(
+        service as never,
+        commandFixture([
+          {
+            mediaAssetId: asset.id,
+            sourceUrl: asset.source_url,
+            sourceFileKey: asset.source_file_key,
+          },
+        ])
+      )
+    ).resolves.toMatchObject({ createdAssetIds: [], replayed: false })
+    expect(service.updateCatalogMediaAssets).not.toHaveBeenCalled()
   })
 
   it("rejects a stale aggregate version before creating an operation", async () => {

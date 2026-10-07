@@ -29,10 +29,13 @@ import {
 } from "./product-media-state"
 import type { CatalogService } from "./reference-resolution"
 import {
+  assertCatalogMediaAssetLock,
+  findReusableCatalogMediaAsset,
+} from "./product-media-locks"
+import { readCommittedCatalogProductMediaReplay } from "./product-media-replay"
+import {
   readCatalogMediaAsset,
   readCatalogMediaAssetMutation,
-  readCatalogMediaAssets,
-  readCatalogProductMediaOperationResult,
   readCatalogTransactionOperationList,
   readCatalogTransactionOperationMutation,
   readExactCatalogProductMediaItems,
@@ -54,38 +57,6 @@ export type {
   CatalogProductMediaMutationResult,
   CatalogProductMediaSnapshot,
 } from "./product-media-contract"
-
-const findReusableAsset = async (
-  catalogService: CatalogService,
-  input: CatalogProductMediaInput,
-  sharedContext: Context<EntityManager>
-): Promise<CatalogMediaAssetPersistenceRecord | null> => {
-  const sourceFileKey = toCatalogNullableString(input.sourceFileKey)
-  if (sourceFileKey) {
-    const matches = readCatalogMediaAssets(
-      await catalogService.listCatalogMediaAssets(
-        { lifecycle_status: "active", source_file_key: sourceFileKey },
-        { take: 2 },
-        sharedContext
-      ),
-      { maximumRows: 1 }
-    )
-    return matches.at(0) ?? null
-  }
-  const sourceUrl = toCatalogNullableString(input.sourceUrl)
-  if (!sourceUrl) {
-    return null
-  }
-  const matches = readCatalogMediaAssets(
-    await catalogService.listCatalogMediaAssets(
-      { lifecycle_status: "active", source_url: sourceUrl },
-      { take: 2 },
-      sharedContext
-    ),
-    { maximumRows: 1 }
-  )
-  return matches.at(0) ?? null
-}
 
 const buildAssetPatch = (
   input: CatalogProductMediaInput
@@ -143,11 +114,13 @@ const resolveMediaAsset = async (
   input: CatalogProductMediaInput,
   previous: CatalogProductMediaMutationResult["previous"],
   createdAssetIds: Set<string>,
-  sharedContext: Context<EntityManager>
+  sharedContext: Context<EntityManager>,
+  lockKeys?: readonly string[]
 ): Promise<CatalogMediaAssetPersistenceRecord> => {
   const mediaAssetId = toCatalogNullableString(input.mediaAssetId)
   const patch = buildAssetPatch(input)
   if (mediaAssetId) {
+    assertCatalogMediaAssetLock(mediaAssetId, lockKeys)
     const existing = readCatalogMediaAsset(
       await catalogService.retrieveCatalogMediaAsset(
         mediaAssetId,
@@ -162,6 +135,21 @@ const resolveMediaAsset = async (
         "Quarantined catalog media cannot be linked or edited."
       )
     }
+    if (
+      (Object.hasOwn(patch, "source_url") &&
+        patch.source_url !== existing.source_url) ||
+      (Object.hasOwn(patch, "source_file_key") &&
+        patch.source_file_key !== existing.source_file_key)
+    ) {
+      throw new MedusaError(
+        MedusaError.Types.INVALID_DATA,
+        "Existing catalog media source URLs and file keys are read-only. Upload a replacement asset."
+      )
+    }
+    // Source diagnostics may be echoed by older authoring clients, but their
+    // equality must not create a new asset revision or rewrite shared URLs.
+    delete patch.source_url
+    delete patch.source_file_key
     rememberCatalogMediaAsset(previous, existing)
     if (!Object.keys(patch).length) {
       return existing
@@ -177,7 +165,13 @@ const resolveMediaAsset = async (
     )
   }
 
-  const reusable = await findReusableAsset(catalogService, input, sharedContext)
+  const reusable = await findReusableCatalogMediaAsset(
+    catalogService,
+    input,
+    sharedContext
+  )
+  if (reusable)
+    assertCatalogMediaAssetLock(reusable.id, lockKeys, createdAssetIds)
   const sourcePayload = reusable
     ? {
         alt_text: reusable.alt_text,
@@ -310,7 +304,8 @@ export const assertCatalogProductMediaPrimaryShape = (
 
 export const mutateCatalogProductMedia = async (
   catalogService: CatalogService,
-  input: CatalogProductMediaMutationInput
+  input: CatalogProductMediaMutationInput,
+  protection?: { lockKeys: readonly string[] }
 ): Promise<CatalogProductMediaMutationResult> =>
   catalogService.runCatalogTransaction(async (sharedContext) => {
     const operationExpectation: CatalogTransactionOperationExpectation = {
@@ -322,40 +317,12 @@ export const mutateCatalogProductMedia = async (
       requestSha256: input.requestSha256,
       status: "pending",
     }
-    const existingOperation = readCatalogTransactionOperationList(
-      await catalogService.listCatalogAuthoringOperations(
-        { idempotency_key: input.idempotencyKey },
-        { take: 2 },
-        sharedContext
-      )
+    const replay = await readCommittedCatalogProductMediaReplay(
+      catalogService,
+      input,
+      sharedContext
     )
-    if (existingOperation) {
-      const sameCommand =
-        existingOperation.command === input.command &&
-        existingOperation.aggregateId === input.aggregateId &&
-        existingOperation.actorId === input.actorId &&
-        existingOperation.expectedVersion === input.expectedVersion &&
-        existingOperation.requestSha256 === input.requestSha256
-      if (!sameCommand || existingOperation.status !== "succeeded") {
-        throw new MedusaError(
-          MedusaError.Types.CONFLICT,
-          "The catalog idempotency key cannot be replayed for this product media command."
-        )
-      }
-      const result = readCatalogProductMediaOperationResult(
-        existingOperation.result,
-        input.aggregateId
-      )
-      return {
-        createdAssetIds: [],
-        operationId: existingOperation.id,
-        previous: { assets: [], items: [] },
-        productId: input.aggregateId,
-        replayed: true,
-        result,
-        version: result.version,
-      }
-    }
+    if (replay) return replay
 
     const currentVersion = await resolveCatalogProductMediaVersion(
       catalogService,
@@ -373,6 +340,8 @@ export const mutateCatalogProductMedia = async (
       input.aggregateId,
       sharedContext
     )
+    for (const asset of previous.assets)
+      assertCatalogMediaAssetLock(asset.id, protection?.lockKeys)
     const operation = readCatalogTransactionOperationMutation(
       await catalogService.createCatalogAuthoringOperations(
         [
@@ -411,7 +380,8 @@ export const mutateCatalogProductMedia = async (
         media,
         previous,
         createdAssetIds,
-        sharedContext
+        sharedContext,
+        protection?.lockKeys
       )
       const productProfileId =
         media.productProfileId === undefined

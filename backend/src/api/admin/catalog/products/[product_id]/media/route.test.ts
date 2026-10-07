@@ -83,6 +83,27 @@ beforeEach(() => {
 })
 
 describe("PUT /admin/catalog/products/:product_id/media", () => {
+  it("never forwards claimed parent lease ownership from an HTTP payload", async () => {
+    const run = jest
+      .fn()
+      .mockResolvedValue({ result: { productId: "prod_1", version: 1 } })
+    workflowMock.mockReturnValue({ run } as never)
+    const req = requestFixture({
+      expectedVersion: 0,
+      idempotencyKey: "00000000-0000-4000-8000-000000000001",
+      media: [],
+      inheritedMediaLease: {
+        keys: ["catalog:product-media:prod_1"],
+        ownerId: "claimed-parent-owner",
+      },
+    })
+    await PUT(req, responseFixture().res)
+    expect(run).toHaveBeenCalledTimes(1)
+    expect(run.mock.calls[0]![0].input).not.toHaveProperty(
+      "inheritedMediaLease"
+    )
+  })
+
   it("validates variants and runs the locked command contract", async () => {
     const run = jest.fn().mockResolvedValue({
       result: { productId: "prod_1", version: 1 },

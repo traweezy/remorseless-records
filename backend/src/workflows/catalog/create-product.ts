@@ -14,6 +14,8 @@ import {
   WorkflowResponse,
 } from "@medusajs/framework/workflows-sdk"
 import { MedusaError } from "@medusajs/framework/utils"
+import { randomUUID } from "node:crypto"
+import { resolveCatalogProductMediaLockKeys } from "@/lib/catalog/product-media-locks"
 
 import {
   beginCatalogProductCreation,
@@ -44,6 +46,11 @@ import type CatalogModuleService from "@/modules/catalog/service"
 import { mutateCatalogBundleWorkflow } from "./mutate-bundle"
 import { mutateCatalogProductMediaWorkflow } from "./mutate-product-media"
 import { mutateCatalogProductProfileWorkflow } from "./mutate-product-profile"
+import {
+  CATALOG_MEDIA_LEASE_SECONDS,
+  releaseCommittedCatalogMediaLease,
+  type CatalogMediaLease,
+} from "./media-lease"
 
 type CatalogService = InstanceType<typeof CatalogModuleService>
 
@@ -70,6 +77,7 @@ type CompletionInput = {
   inventory: unknown
   managedInventory: unknown
   media: CatalogProductMediaMutationResult | undefined
+  mediaLease: CatalogMediaLease | undefined
   operation: CatalogProductCreateOperation
   profile: CatalogProductProfileMutationResult | undefined
   variants: CatalogProductVariantBatchResult | undefined
@@ -133,6 +141,27 @@ const resolveCatalogCreatedProductStep = createStep(
     new StepResponse(
       await resolveCatalogCreatedProduct(container, command, products)
     )
+)
+
+const resolveCreatedMediaLeaseStep = createStep(
+  "resolve-created-catalog-media-lease",
+  async (
+    {
+      command,
+      created,
+    }: {
+      command: CatalogProductCreateCommandInput
+      created: CatalogCreatedProduct
+    },
+    { container }
+  ) =>
+    new StepResponse({
+      keys: await resolveCatalogProductMediaLockKeys(
+        container.resolve<CatalogService>("catalog"),
+        { aggregateId: created.productId, media: command.media }
+      ),
+      ownerId: randomUUID(),
+    })
 )
 
 const mutateCatalogProductVariantProfilesStep = createStep(
@@ -274,6 +303,8 @@ const completeCatalogProductCreationStep = createStep(
           : []),
       ]
     )
+    if (input.mediaLease)
+      await releaseCommittedCatalogMediaLease(container, input.mediaLease)
     return new StepResponse({ ...result, replayed: false })
   }
 )
@@ -321,13 +352,39 @@ export const createCatalogProductWorkflow = createWorkflow(
       resolveCatalogCreatedProductStep({ command: input, products: products! })
     )
 
+    const mediaLease = when(
+      "lease-new-catalog-product-media",
+      { operation },
+      ({ operation }) => !operation.replayed
+    ).then(() =>
+      resolveCreatedMediaLeaseStep({
+        command: input,
+        created: created!,
+      })
+    )
+    // In the installed SDK, when().then applies .if after .config and restores
+    // the original acquire-lock-step compensation closure. Keep this renamed
+    // native step outside when so rollback reads its own saved keys and UUID.
+    acquireLockStep({
+      key: transform(
+        { mediaLease },
+        ({ mediaLease }) => mediaLease?.keys ?? []
+      ),
+      ownerId: transform(
+        { mediaLease },
+        ({ mediaLease }) => mediaLease?.ownerId
+      ),
+      timeout: 10,
+      ttl: CATALOG_MEDIA_LEASE_SECONDS,
+    }).config({ name: "acquire-created-catalog-media-lease" })
+
     const profile = when(
       "create-new-catalog-product-profile",
       { operation },
       ({ operation }) => !operation.replayed
     ).then(() => {
       const profileInput = transform(
-        { command: input, created },
+        { command: input, created, mediaLease },
         ({ command, created }) =>
           buildCatalogProductProfileMutation(command, created!.productId)
       )
@@ -361,13 +418,15 @@ export const createCatalogProductWorkflow = createWorkflow(
         !operation.replayed && command.media.length > 0
     ).then(() => {
       const mediaInput = transform(
-        { command: input, created, profile },
-        ({ command, created, profile }) =>
-          buildCatalogProductMediaMutation(
+        { command: input, created, profile, mediaLease },
+        ({ command, created, profile, mediaLease }) => ({
+          ...buildCatalogProductMediaMutation(
             command,
             created!.productId,
             profile!.profileId
-          )
+          ),
+          inheritedMediaLease: mediaLease!,
+        })
       )
       return mutateCatalogProductMediaWorkflow.runAsStep({ input: mediaInput })
     })
@@ -442,8 +501,8 @@ export const createCatalogProductWorkflow = createWorkflow(
       return updateProductVariantsWorkflow.runAsStep({ input: variantInput })
     })
 
-    // Release can fail and still compensate pending writes. Completion is the
-    // final commit boundary; no fallible external step follows it.
+    // The separate creation key may fail before commitment; the Product-media
+    // lease remains held through child rollback and final audit persistence.
     releaseLockStep({ key: lockKey })
     const completed = completeCatalogProductCreationStep({
       bundle,
@@ -452,6 +511,7 @@ export const createCatalogProductWorkflow = createWorkflow(
       inventory,
       managedInventory,
       media,
+      mediaLease,
       operation,
       profile,
       variants,

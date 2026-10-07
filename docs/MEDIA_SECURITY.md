@@ -1,6 +1,6 @@
 # Managed media security and lifecycle
 
-Last reviewed: 2026-09-14
+Last reviewed: 2026-10-07
 
 ## Scope and goals
 
@@ -84,6 +84,76 @@ record. News and Catalog normalization emit the low-cardinality
 `managed_image.normalization` event with route class, accepted/rejected result,
 file count, duration, and accepted byte totals. Alert when rejection rate or
 duration changes materially; do not alert on a single invalid client image.
+
+## Native artwork ownership and checkout snapshots
+
+Catalog media is authoritative for managed Product and Variant artwork. The
+Catalog profile, media and creation workflows select only active assets,
+ordered by primary flag, sort order and stable media ID. They project the first
+selected image onto the native Product thumbnail and the first image scoped to
+each Variant onto its native thumbnail. A Variant without scoped artwork has a
+null override and uses the Product fallback. An empty managed gallery clears
+the projection. Shared asset source URLs and storage keys remain immutable;
+editing one Product must not change another Product's shared image.
+
+Native thumbnail writes occur inside the Catalog authoring operation and its
+Product/media locks. The workflow records previous and projected thumbnail
+values, compensates partial failure, and verifies field ownership before
+restoring; it retains unrelated native edits. The supported Medusa event group
+defers search notifications until the enclosing operation succeeds. New cart
+items and orders can use the native artwork snapshot after a successful
+projection. Completed cart/order snapshots are historical records and are not
+rewritten. Existing managed records are not bulk backfilled by deploying the
+code: native-versus-Catalog drift still requires a read-only inventory and a
+guarded, audited reconciliation before claiming catalog-wide parity.
+
+Product creation holds the Product-media and shared asset leases through child
+compensation and final audit persistence. Its media child verifies the internal
+inherited lease; HTTP schemas do not accept lease evidence. Standalone media
+changes resolve previous, explicit and implicitly reused assets before locking,
+then recheck identity under the lease and inside the authoring transaction.
+Implicit source reuse retains its clone semantics. A gallery still permits
+100 links; compensation permits the bounded union of 100 previous and 100
+replacement assets. Provider identity and bounds are checked before restoration.
+
+An exact committed retry verifies the persisted actor, Product, command,
+expected version, request digest and idempotency key before skipping current
+asset/native projection planning. It neither creates another asset nor rewrites
+current artwork. Profile retries retain their existing response-state guard.
+HTTP Product/Variant existence checks remain in place; internal replay tests
+after native deletion do not promise HTTP access to deleted records.
+
+The six native Product/Variant POST delegates preserve installed validation,
+authentication, RBAC and normal handlers. Thumbnail assignments and image
+removals acquire the same Product-media locks, verify existing Variant/image
+parent ownership, and reject managed artwork with
+`catalog_media_authoring_required` (409). A nested new Variant's thumbnail is
+guarded through its parent Product even when the native DTO has no Variant ID.
+CSV import confirmation applies the same guard to the actual validated update
+plan and holds it through the awaited native workflow and acknowledgement.
+Ordinary non-artwork updates and unmanaged legacy artwork remain supported.
+Disconnecting the HTTP client does not release a still-running native write.
+
+Native Product/Variant batch requests with a nonempty `delete` list return
+`catalog_hard_deletion_disabled` (409) before native delegation; an empty list
+does not block ordinary updates. The strict CSV plan rejects deletion fields.
+These checks close the batch/import paths around the existing disabled native
+DELETE boundary; archive, restore and quarantine remain the supported actions.
+
+Artwork leases last 120 seconds and use unique owner tokens. Audit persistence
+and failure compensation run while the lease is held. After committed success,
+release has a two-second deadline; failure emits a warning and falls back to
+expiry without rolling back the committed operation. Owner matching prevents
+a late release from unlocking a later writer. Native HTTP/import acquisition
+uses sorted individual keys, immediate Redis acquisition and conflict-only
+retries within one 120-second deadline. A partial or late acquisition releases
+only its own UUID; uncertain cleanup prevents another acquisition attempt.
+Native handlers remain awaited through client disconnection. The separate CSV
+file lock retains its existing five-second limit and workflow transaction ID;
+this correction does not extend that lock or promise indefinite import
+serialization. These are finite leases, not an unbounded transaction across
+services: direct trusted module writers, expiry, process failure and Redis
+loss remain reconciliation limits.
 
 ## Big Cartel migration
 

@@ -386,6 +386,18 @@ export const nativeAdminPolicyOverlayRoutes = [
     methods: ["POST"],
     policies: [nativeAdminActions.productVariant.update],
   },
+  {
+    matcher:
+      /^\/admin\/products\/prod_[^/]+\/variants\/variant_[^/]+\/images\/batch\/?$/i,
+    methods: ["POST"],
+    policies: [nativeAdminActions.productVariant.update],
+  },
+  {
+    matcher:
+      /^\/admin\/products\/prod_[^/]+\/images\/img_[^/]+\/variants\/batch\/?$/i,
+    methods: ["POST"],
+    policies: [nativeAdminActions.productVariant.update],
+  },
 ] satisfies MiddlewareRoute[]
 
 export const disabledNativeCatalogDeletionAdminRoutes = [

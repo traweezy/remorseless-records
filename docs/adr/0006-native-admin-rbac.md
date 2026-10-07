@@ -125,9 +125,22 @@ it opens when the actor can read at least one workspace and only renders cards
 and navigation for the workspaces that actor can read.
 
 The manifest covers exactly 64 active custom Admin methods once: 41 under
-`/admin/catalog/**` and 23 elsewhere. Its inventory test derives methods from
-the route source and fails on missing,
-duplicate, or stale entries rather than trusting a fixed count alone.
+`/admin/catalog/**` and 23 elsewhere. Six native Product/Variant POST delegates
+are recorded separately in `nativeAdminDelegationManifest`, including their
+installed handler and actual installed or project-overlay mutation policies.
+They do not generate a second custom policy middleware entry. Native grouped
+policy declarations remain conjunctive, and the four existing exact-ID
+overlays remain in force. The inventory test derives every exported method
+from route source and requires an exact union of custom authorization and
+native delegation entries; it fails on missing, duplicate or stale entries.
+
+The six delegates only add the shared Catalog artwork ownership guard and
+disable nonempty Product/Variant batch hard-deletion lists. CSV confirmation
+retains its existing import capability and guards the actual parsed artwork
+update plan before native batch execution. No new thumbnail field is enabled
+in a native creation or import DTO, and ordinary native validation and error
+handling remain unchanged. See [the media boundary](../MEDIA_SECURITY.md) and
+[HTTP error contracts](../API_PROBLEM_CONTRACT.md) for the specific 409 paths.
 
 Catalog authoring and taxonomy each use complete CRUD capability sets.
 Catalog merchandising deliberately has only read/create/update: shelf archive

@@ -360,6 +360,46 @@ const buildProfilePatch = ({
   return payload
 }
 
+export const readCommittedCatalogProductProfileOperation = async (
+  catalogService: CatalogService,
+  input: CatalogProductProfileMutationInput,
+  sharedContext?: Context<EntityManager>
+) => {
+  const existingOperation = readProfileOperationList(
+    await catalogService.listCatalogAuthoringOperations(
+      { idempotency_key: input.idempotencyKey },
+      { take: 2 },
+      sharedContext
+    )
+  )
+  if (!existingOperation) return null
+
+  const sameCommand =
+    existingOperation.command === input.command &&
+    existingOperation.aggregateId === input.aggregateId &&
+    existingOperation.actorId === input.actorId &&
+    existingOperation.expectedVersion === input.expectedVersion &&
+    existingOperation.idempotencyKey === input.idempotencyKey &&
+    existingOperation.requestSha256 === input.requestSha256
+  if (!sameCommand || existingOperation.status !== "succeeded") {
+    throw new MedusaError(
+      MedusaError.Types.CONFLICT,
+      "The catalog idempotency key cannot be replayed for this product profile command."
+    )
+  }
+  const result = readProductProfileOperationResult(existingOperation.result)
+  if (
+    result.productId !== input.aggregateId ||
+    result.version !== input.expectedVersion + 1
+  ) {
+    throw new MedusaError(
+      MedusaError.Types.UNEXPECTED_STATE,
+      "The completed product profile command result did not match the requested write."
+    )
+  }
+  return existingOperation
+}
+
 export const mutateCatalogProductProfile = async (
   catalogService: CatalogService,
   input: CatalogProductProfileMutationInput
@@ -374,37 +414,13 @@ export const mutateCatalogProductProfile = async (
       requestSha256: input.requestSha256,
       status: "pending",
     }
-    const existingOperation = readProfileOperationList(
-      await catalogService.listCatalogAuthoringOperations(
-        { idempotency_key: input.idempotencyKey },
-        { take: 2 },
-        sharedContext
-      )
+    const existingOperation = await readCommittedCatalogProductProfileOperation(
+      catalogService,
+      input,
+      sharedContext
     )
     if (existingOperation) {
-      const sameCommand =
-        existingOperation.command === input.command &&
-        existingOperation.aggregateId === input.aggregateId &&
-        existingOperation.actorId === input.actorId &&
-        existingOperation.expectedVersion === input.expectedVersion &&
-        existingOperation.idempotencyKey === input.idempotencyKey &&
-        existingOperation.requestSha256 === input.requestSha256
-      if (!sameCommand || existingOperation.status !== "succeeded") {
-        throw new MedusaError(
-          MedusaError.Types.CONFLICT,
-          "The catalog idempotency key cannot be replayed for this product profile command."
-        )
-      }
       const result = readProductProfileOperationResult(existingOperation.result)
-      if (
-        result.productId !== input.aggregateId ||
-        result.version !== input.expectedVersion + 1
-      ) {
-        throw new MedusaError(
-          MedusaError.Types.UNEXPECTED_STATE,
-          "The completed product profile command result did not match the requested write."
-        )
-      }
       const retained = await resolveCatalogProductProfile(
         catalogService,
         input.aggregateId,

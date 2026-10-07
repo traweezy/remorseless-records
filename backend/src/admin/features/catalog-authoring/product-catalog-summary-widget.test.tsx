@@ -111,11 +111,48 @@ describe("ProductCatalogSummaryWidget", () => {
     expect(markup).toContain("Catalog completion")
     expect(markup).toContain("Customer availability")
     expect(markup).toContain("Managed media")
+    expect(markup).toContain(
+      "Product and variant artwork is managed in Catalog"
+    )
     expect(markup).toContain("Offerings")
     expect(markup).toContain('href="/catalog/products/prod_01"')
     expect(markup).not.toContain("/app/catalog/products")
     queryClient.clear()
   })
+
+  it.each([true, false])(
+    "only directs Catalog-owned artwork to Catalog (profile=%s)",
+    (hasProfile) => {
+      const queryClient = new QueryClient({
+        defaultOptions: { queries: { retry: false } },
+      })
+      queryClient.setQueryData(adminFeatureFlagsQueryKey, { rbac: true })
+      queryClient.setQueryData(adminPermissionsQueryKey, {
+        permissions: catalogProductSummaryReadActions.map(adminPermissionKey),
+      })
+      queryClient.setQueryData(productAuthoringViewQueryKey(productId), {
+        ...view,
+        catalog: {
+          ...view.catalog,
+          media: [],
+          profile: hasProfile ? view.catalog.profile : null,
+        },
+      } satisfies ProductAuthoringView)
+      const markup = renderToStaticMarkup(
+        <MemoryRouter>
+          <QueryClientProvider client={queryClient}>
+            <ProductCatalogSummaryWidget
+              data={{ id: productId } as AdminProduct}
+            />
+          </QueryClientProvider>
+        </MemoryRouter>
+      )
+      expect(
+        markup.includes("Product and variant artwork is managed in Catalog")
+      ).toBe(hasProfile)
+      queryClient.clear()
+    }
+  )
 
   it("does not register the protected query when a read capability is missing", () => {
     const queryClient = new QueryClient({

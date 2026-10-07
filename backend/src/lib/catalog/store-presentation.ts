@@ -16,6 +16,10 @@ import {
   readCatalogMediaAssets,
   readCatalogProductMediaItems,
 } from "./transaction-persistence-contracts"
+import {
+  compareCatalogMediaItems,
+  selectActiveCatalogMedia,
+} from "./media-presentation"
 
 export const STORE_PRESENTATION_PAGE_LIMIT = 25
 type CatalogService = InstanceType<typeof CatalogModuleService>
@@ -156,17 +160,11 @@ export const loadStoreCatalogPresentations = async (
   )
   if (values.length !== referenceIds.length) invalid()
   const valuesById = new Map(values.map((value) => [value.id, value]))
-  const assetsById = new Map(assets.map((asset) => [asset.id, asset]))
   return ids.map((productId) => {
     const profile = profiles.find((row) => row.product_id === productId)
     const items = media
       .filter((row) => row.product_id === productId)
-      .sort(
-        (left, right) =>
-          Number(right.is_primary) - Number(left.is_primary) ||
-          left.sort_order - right.sort_order ||
-          left.id.localeCompare(right.id)
-      )
+      .sort(compareCatalogMediaItems)
     const reference = (id: string | null | undefined, kind: string) => {
       if (!id) return null
       const value = valuesById.get(id)
@@ -221,19 +219,15 @@ export const loadStoreCatalogPresentations = async (
       // stale native thumbnail. Only products without a catalog profile or
       // media links retain legacy presentation during the cutover.
       managedMedia: Boolean(profile) || items.length > 0,
-      images: items.flatMap((item) => {
-        const asset = assetsById.get(item.media_asset_id)
-        if (!asset || asset.lifecycle_status !== "active") return []
-        return [
-          {
-            id: item.id,
-            url: asset.source_url,
-            alt: asset.alt_text,
-            width: asset.width,
-            height: asset.height,
-          },
-        ]
-      }),
+      images: selectActiveCatalogMedia(items, assets).map(
+        ({ item, asset }) => ({
+          id: item.id,
+          url: asset.source_url,
+          alt: asset.alt_text,
+          width: asset.width,
+          height: asset.height,
+        })
+      ),
     }
   })
 }

@@ -10,6 +10,7 @@ import {
   adminHttpMethods,
   type AdminHttpMethod,
   type AdminRouteTemplate,
+  nativeAdminDelegationManifest,
 } from "./admin-authorization-manifest"
 import { adminPermissionKey } from "./admin-permissions"
 
@@ -266,14 +267,133 @@ describe("Admin authorization manifest", () => {
     ).toEqual(["GET", "POST", "PATCH", "DELETE"])
   })
 
-  it("covers every exported custom Admin method exactly once", () => {
+  it("covers every exported Admin method exactly once, including native delegates", () => {
     const discovered = discoveredAuthorizationKeys()
-    const manifested = adminAuthorizationManifest.map(adminAuthorizationKey)
+    const manifested = [
+      ...adminAuthorizationManifest,
+      ...nativeAdminDelegationManifest,
+    ].map(adminAuthorizationKey)
 
     expect(new Set(discovered).size).toBe(discovered.length)
     expect(new Set(manifested).size).toBe(manifested.length)
     expect(manifested.sort()).toEqual(discovered.sort())
   })
+
+  it.each(nativeAdminDelegationManifest)(
+    "binds $template to its installed native POST through the media guard",
+    (entry) => {
+      const relative = entry.template
+        .slice("/admin/".length)
+        .replace(/:([a-z][a-z0-9_]*)/gi, "[$1]")
+      const file = path.join(adminApiRoot, relative, "route.ts")
+      const source = ts.createSourceFile(
+        file,
+        readFileSync(file, "utf8"),
+        ts.ScriptTarget.ES2022,
+        true,
+        ts.ScriptKind.TS
+      )
+      const namedImport = (moduleName: string, exportName: string) =>
+        source.statements.flatMap((statement) => {
+          if (
+            !ts.isImportDeclaration(statement) ||
+            !ts.isStringLiteral(statement.moduleSpecifier) ||
+            statement.moduleSpecifier.text !== moduleName ||
+            statement.importClause?.isTypeOnly ||
+            !statement.importClause?.namedBindings ||
+            !ts.isNamedImports(statement.importClause.namedBindings)
+          )
+            return []
+          return statement.importClause.namedBindings.elements.flatMap(
+            (specifier) =>
+              !specifier.isTypeOnly &&
+              (specifier.propertyName?.text ?? specifier.name.text) ===
+                exportName
+                ? [specifier.name.text]
+                : []
+          )
+        })
+      const nativeNames = namedImport(entry.nativeHandler, "POST")
+      const guardNames = namedImport(
+        path.posix.join("@", "lib/catalog/native-media-guard"),
+        "guardNativeMediaHandler"
+      )
+      expect(nativeNames).toHaveLength(1)
+      expect(guardNames).toHaveLength(1)
+      expect(exportedHttpMethods(file)).toEqual(["POST"])
+      const declarations = source.statements.flatMap((statement) =>
+        ts.isVariableStatement(statement) && isExported(statement)
+          ? statement.declarationList.declarations.filter(
+              ({ name }) => ts.isIdentifier(name) && name.text === entry.method
+            )
+          : []
+      )
+      expect(declarations).toHaveLength(1)
+      const initializer = declarations[0]?.initializer
+      if (!initializer || !ts.isCallExpression(initializer))
+        throw new Error("Native delegate must export a guarded handler")
+      expect(initializer.expression.getText(source)).toBe(guardNames[0])
+      expect(initializer.arguments).toHaveLength(2)
+      expect(initializer.arguments[1]?.getText(source)).toBe(nativeNames[0])
+      const installed = jest.requireActual<Record<string, unknown>>(
+        entry.nativeHandler
+      )
+      expect(typeof installed[entry.method]).toBe("function")
+    }
+  )
+
+  it.each(nativeAdminDelegationManifest)(
+    "retains the actual mutation policy source for $template",
+    (entry) => {
+      type Policy = { operation: string | string[]; resource: string }
+      type NativeMiddleware = {
+        matcher: string
+        method?: string[]
+        policies?: Policy[]
+      }
+      const { adminProductRoutesMiddlewares } = jest.requireActual<{
+        adminProductRoutesMiddlewares: NativeMiddleware[]
+      }>(
+        path.join(
+          path.dirname(require.resolve("@medusajs/medusa")),
+          "api/admin/products/middlewares.js"
+        )
+      )
+      const native = adminProductRoutesMiddlewares.filter(
+        ({ matcher, method }) =>
+          matcher === entry.template && method?.includes(entry.method)
+      )
+      expect(native).toHaveLength(1)
+      const { nativeAdminPolicyOverlayRoutes } = jest.requireActual<{
+        nativeAdminPolicyOverlayRoutes: {
+          matcher: RegExp
+          methods: string[]
+          policies: Policy[]
+        }[]
+      }>("../api/middlewares")
+      const rendered = entry.template
+        .replace(":id", "prod_01")
+        .replace(":variant_id", "variant_01")
+        .replace(":image_id", "img_01")
+      const overlays = nativeAdminPolicyOverlayRoutes.filter(
+        ({ matcher, methods }) =>
+          methods.includes(entry.method) && matcher.test(rendered)
+      )
+      if (entry.mutationPolicySource === "installed-native") {
+        expect(native[0]?.policies).toEqual(entry.mutationPolicies)
+        expect(overlays).toEqual([])
+      } else {
+        expect(native[0]?.policies).toBeUndefined()
+        expect(overlays).toHaveLength(1)
+        expect(overlays[0]?.policies).toEqual(entry.mutationPolicies)
+      }
+      expect(
+        adminAuthorizationPolicyRoutes.some(
+          ({ matcher }) => matcher instanceof RegExp && matcher.test(rendered)
+        )
+      ).toBe(false)
+    }
+  )
 
   it("compiles Express-equivalent exact matchers with one-segment params", () => {
     adminAuthorizationManifest.forEach((entry, index) => {

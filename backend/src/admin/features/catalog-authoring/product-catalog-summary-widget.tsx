@@ -167,6 +167,12 @@ const ProductCatalogSummaryWidgetContent =
             </AdminStatCard>
           )}
         </div>
+        {query.data.catalog.profile || query.data.catalog.media.length > 0 ? (
+          <Text className="px-6 py-4 text-ui-fg-subtle" size="small">
+            Product and variant artwork is managed in Catalog. Choose primary
+            images there; native thumbnails are synchronized automatically.
+          </Text>
+        ) : null}
       </Container>
     )
   })

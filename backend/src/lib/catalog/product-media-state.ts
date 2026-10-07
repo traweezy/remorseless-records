@@ -1,5 +1,6 @@
 import { EntityManager } from "@medusajs/framework/mikro-orm/knex"
 import type { Context } from "@medusajs/framework/types"
+import { MedusaError } from "@medusajs/framework/utils"
 
 import {
   listProductMediaItems,
@@ -11,6 +12,7 @@ import type {
   CatalogProductMediaSnapshot,
 } from "./product-media-contract"
 import type { CatalogService } from "./reference-resolution"
+import { MAX_CATALOG_PRODUCT_MEDIA_ITEMS } from "./product-media-constraints"
 import {
   readCatalogMediaAssetMutation,
   readCatalogMediaAssets,
@@ -21,6 +23,29 @@ import {
   type CatalogMediaAssetPersistenceRecord,
   type CatalogProductMediaItemPersistenceRecord,
 } from "./transaction-persistence-contracts"
+
+// A replacement can remember every previous link and every different desired
+// asset. Product links still use the separate 100-item limit.
+export const MAX_CATALOG_PRODUCT_MEDIA_SNAPSHOT_ASSETS =
+  MAX_CATALOG_PRODUCT_MEDIA_ITEMS * 2
+
+const invalidSnapshot = (): never => {
+  throw new MedusaError(
+    MedusaError.Types.UNEXPECTED_STATE,
+    "The catalog media compensation snapshot is inconsistent."
+  )
+}
+
+const snapshotAssetIds = (snapshot: CatalogProductMediaSnapshot): string[] => {
+  if (
+    snapshot.assets.length > MAX_CATALOG_PRODUCT_MEDIA_SNAPSHOT_ASSETS ||
+    snapshot.items.length > MAX_CATALOG_PRODUCT_MEDIA_ITEMS
+  )
+    invalidSnapshot()
+  const ids = snapshot.assets.map(({ id }) => id)
+  if (new Set(ids).size !== ids.length) invalidSnapshot()
+  return ids
+}
 
 export const catalogMediaAssetState = (
   asset: CatalogMediaAssetPersistenceRecord
@@ -140,6 +165,8 @@ export const rememberCatalogMediaAsset = (
   asset: CatalogMediaAssetPersistenceRecord
 ): void => {
   if (!snapshot.assets.some(({ id }) => id === asset.id)) {
+    if (snapshot.assets.length >= MAX_CATALOG_PRODUCT_MEDIA_SNAPSHOT_ASSETS)
+      invalidSnapshot()
     snapshot.assets.push(catalogMediaAssetState(asset))
   }
 }
@@ -150,6 +177,22 @@ export const restoreCatalogProductMediaSnapshot = async (
   snapshot: CatalogProductMediaSnapshot,
   sharedContext: Context<EntityManager>
 ): Promise<void> => {
+  const expectedIds = snapshotAssetIds(snapshot)
+  // Validate the complete owned asset response before deleting current links.
+  // Missing owned rows may be recreated; foreign or duplicate rows may not.
+  const existingAssets = expectedIds.length
+    ? readCatalogMediaAssets(
+        await catalogService.listCatalogMediaAssets(
+          { id: expectedIds },
+          { take: MAX_CATALOG_PRODUCT_MEDIA_SNAPSHOT_ASSETS + 1 },
+          sharedContext
+        ),
+        { expectedIds, maximumRows: MAX_CATALOG_PRODUCT_MEDIA_SNAPSHOT_ASSETS }
+      )
+    : []
+  const existingIds = new Set(existingAssets.map(({ id }) => id))
+  const updates = snapshot.assets.filter(({ id }) => existingIds.has(id))
+  const creates = snapshot.assets.filter(({ id }) => !existingIds.has(id))
   const currentItems = await listProductMediaItems(
     catalogService,
     productId,
@@ -163,18 +206,6 @@ export const restoreCatalogProductMediaSnapshot = async (
   }
 
   if (snapshot.assets.length) {
-    const expectedIds = snapshot.assets.map(({ id }) => id)
-    const existingAssets = readCatalogMediaAssets(
-      await catalogService.listCatalogMediaAssets(
-        { id: expectedIds },
-        { take: 101 },
-        sharedContext
-      ),
-      { expectedIds, maximumRows: 100 }
-    )
-    const existingIds = new Set(existingAssets.map(({ id }) => id))
-    const updates = snapshot.assets.filter(({ id }) => existingIds.has(id))
-    const creates = snapshot.assets.filter(({ id }) => !existingIds.has(id))
     if (updates.length) {
       for (const update of updates) {
         readCatalogMediaAssetMutation(

@@ -10,9 +10,9 @@ Medusa's versioned error envelope because the Admin SDK and Dashboard consume
 it. Do not replace the native envelope without a Medusa compatibility test and
 a separate reviewed migration.
 
-The current generated inventory finds 32 Storefront and 58 Backend route
-files. They export 117 operations across both services. The generated document
-contains 115 unique path/method pairs because `/live` and
+The current generated inventory finds 32 Storefront and 65 Backend route
+files. They export 124 operations across both services. The generated document
+contains 122 unique path/method pairs because `/live` and
 `/ready` are deliberately implemented by both services. It records source
 ownership, path parameters, error-envelope ownership, generic success and
 error references, and the bounded Storefront provider matrix. CI reruns the
@@ -40,6 +40,19 @@ source does not declare.
 | Native Medusa Admin/RBAC | forbidden | 403 | `NativeMedusaError` |
 | Native Medusa route | validation, conflict, or not found | mapped 4xx | `NativeMedusaError` |
 | Native Medusa route | unexpected failure | 500 | redacted `NativeMedusaError` |
+| Native artwork POST guard | managed Catalog ownership | 409 | `ApiProblem`, `catalog_media_authoring_required` |
+| Native Product/Variant batch guard | nonempty hard-delete list | 409 | `ApiProblem`, `catalog_hard_deletion_disabled` |
+
+Six native product/variant artwork POST delegates retain Medusa's installed
+validators, authentication, RBAC and handlers. Managed-artwork ownership and
+nonempty batch hard-delete lists use the existing custom 409 problem contract;
+native validation, authorization and handler failures retain their native error
+envelope. CSV import confirmation uses the same artwork guard on its parsed
+update plan, while its strict plan validator rejects delete fields. The
+generated inventory records these exceptions alongside the native JSON 409
+returned by lock acquisition or delegated workflow conflicts. Core GET/DELETE
+routes remain installed Medusa routes, outside the custom source inventory;
+the existing deletion middleware still disables hard deletion.
 
 The Backend regression suite invokes Medusa's installed error handler for
 native unauthenticated, forbidden, invalid-data, and unexpected failures and

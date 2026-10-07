@@ -3,10 +3,13 @@ import {
   type WorkflowStepHandler,
 } from "@medusajs/framework/orchestration"
 import {
+  Modules,
   OrchestrationUtils,
+  TransactionState,
   createMedusaContainer,
 } from "@medusajs/framework/utils"
 import { StepResponse } from "@medusajs/framework/workflows-sdk"
+import { asValue } from "@medusajs/framework/awilix"
 
 import { catalogProductCreateSchema } from "@/lib/catalog/product-create-contract"
 import { createCatalogProductWorkflow } from "./create-product"
@@ -42,6 +45,8 @@ const expectedBoundaries: WorkflowBoundary[] = [
   { action: "resolve-catalog-product-create-context", reversible: false },
   { action: "create-products-as-step", reversible: true },
   { action: "resolve-catalog-created-product", reversible: false },
+  { action: "resolve-created-catalog-media-lease", reversible: false },
+  { action: "acquire-created-catalog-media-lease", reversible: true },
   { action: "mutate-catalog-product-profile-as-step", reversible: true },
   {
     action: "mutate-catalog-product-variant-profiles-as-step",
@@ -190,6 +195,39 @@ describe("catalog product creation workflow contract", () => {
       boundary: "complete-catalog-product-creation",
     })
     expect(compensated).toEqual([])
+  })
+
+  it("releases the renamed native media lease using its own saved UUID after late creation failure", async () => {
+    const action = "acquire-created-catalog-media-lease"
+    const native = workflow.handlers_.get(action)!
+    const lease = {
+      keys: ["catalog:product-media:prod_1", "catalog:media-asset:cmedia_1"],
+      ownerId: "00000000-0000-4000-8000-000000000003",
+    }
+    const locking = { acquire: jest.fn(), release: jest.fn() }
+    const container = createMedusaContainer()
+    container.register(Modules.LOCKING, asValue(locking))
+    installStepDoubles("complete-catalog-product-creation", [])
+    workflow.handlers_.set(action, native)
+    workflow.handlers_.set("resolve-created-catalog-media-lease", {
+      invoke: async () => workflowData(lease),
+    })
+    const execution = await createCatalogProductWorkflow.run({
+      container,
+      input: commandFixture(),
+      throwOnError: false,
+    })
+    expect(execution.transaction.getState()).toBe(TransactionState.REVERTED)
+    expect(locking.acquire).toHaveBeenCalledWith(lease.keys, {
+      expire: 120,
+      ownerId: lease.ownerId,
+      provider: undefined,
+    })
+    expect(locking.release).toHaveBeenCalledTimes(1)
+    expect(locking.release).toHaveBeenCalledWith(lease.keys, {
+      ownerId: lease.ownerId,
+      provider: undefined,
+    })
   })
 
   it.each(expectedBoundaries.map(({ action }) => action))(

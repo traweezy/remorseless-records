@@ -406,6 +406,15 @@ components:
         application/json:
           schema:
             $ref: "#/components/schemas/NativeMedusaError"
+    NativeCatalogMediaConflictResponse:
+      description: A Catalog artwork ownership problem (catalog_media_authoring_required), a disabled hard-deletion problem on native Product/Variant batch routes (catalog_hard_deletion_disabled), or a native Medusa conflict from locking or the delegated workflow. CSV import confirmation uses the artwork guard and rejects delete fields through its strict plan validator.
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ApiProblem"
+        application/json:
+          schema:
+            $ref: "#/components/schemas/NativeMedusaError"
   schemas:
     OkResponse:
       type: object

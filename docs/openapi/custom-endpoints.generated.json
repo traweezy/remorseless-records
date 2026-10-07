@@ -4724,6 +4724,378 @@
         ]
       }
     },
+    "/admin/products/{id}": {
+      "post": {
+        "operationId": "backend_post_admin_products_by_id",
+        "summary": "POST /admin/products/{id}",
+        "tags": [
+          "backend custom routes"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "409": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeCatalogMediaConflictResponse"
+          },
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "native-medusa-with-catalog-media-guard",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "backend/src/api/admin/products/[id]/route.ts"
+        ],
+        "x-services": [
+          "backend"
+        ]
+      }
+    },
+    "/admin/products/{id}/images/{image_id}/variants/batch": {
+      "post": {
+        "operationId": "backend_post_admin_products_by_id_images_by_image_id_variants_batch",
+        "summary": "POST /admin/products/{id}/images/{image_id}/variants/batch",
+        "tags": [
+          "backend custom routes"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "image_id",
+            "required": true,
+            "schema": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "409": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeCatalogMediaConflictResponse"
+          },
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "native-medusa-with-catalog-media-guard",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "backend/src/api/admin/products/[id]/images/[image_id]/variants/batch/route.ts"
+        ],
+        "x-services": [
+          "backend"
+        ]
+      }
+    },
+    "/admin/products/{id}/variants/{variant_id}": {
+      "post": {
+        "operationId": "backend_post_admin_products_by_id_variants_by_variant_id",
+        "summary": "POST /admin/products/{id}/variants/{variant_id}",
+        "tags": [
+          "backend custom routes"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "variant_id",
+            "required": true,
+            "schema": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "409": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeCatalogMediaConflictResponse"
+          },
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "native-medusa-with-catalog-media-guard",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "backend/src/api/admin/products/[id]/variants/[variant_id]/route.ts"
+        ],
+        "x-services": [
+          "backend"
+        ]
+      }
+    },
+    "/admin/products/{id}/variants/{variant_id}/images/batch": {
+      "post": {
+        "operationId": "backend_post_admin_products_by_id_variants_by_variant_id_images_batch",
+        "summary": "POST /admin/products/{id}/variants/{variant_id}/images/batch",
+        "tags": [
+          "backend custom routes"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "variant_id",
+            "required": true,
+            "schema": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "409": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeCatalogMediaConflictResponse"
+          },
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "native-medusa-with-catalog-media-guard",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "backend/src/api/admin/products/[id]/variants/[variant_id]/images/batch/route.ts"
+        ],
+        "x-services": [
+          "backend"
+        ]
+      }
+    },
+    "/admin/products/{id}/variants/batch": {
+      "post": {
+        "operationId": "backend_post_admin_products_by_id_variants_batch",
+        "summary": "POST /admin/products/{id}/variants/batch",
+        "tags": [
+          "backend custom routes"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "409": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeCatalogMediaConflictResponse"
+          },
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "native-medusa-with-catalog-media-guard",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "backend/src/api/admin/products/[id]/variants/batch/route.ts"
+        ],
+        "x-services": [
+          "backend"
+        ]
+      }
+    },
+    "/admin/products/batch": {
+      "post": {
+        "operationId": "backend_post_admin_products_batch",
+        "summary": "POST /admin/products/batch",
+        "tags": [
+          "backend custom routes"
+        ],
+        "responses": {
+          "409": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeCatalogMediaConflictResponse"
+          },
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "native-medusa-with-catalog-media-guard",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "backend/src/api/admin/products/batch/route.ts"
+        ],
+        "x-services": [
+          "backend"
+        ]
+      }
+    },
     "/admin/products/imports": {
       "post": {
         "operationId": "backend_post_admin_products_imports",
@@ -4788,6 +5160,9 @@
           }
         ],
         "responses": {
+          "409": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeCatalogMediaConflictResponse"
+          },
           "2XX": {
             "content": {
               "application/json": {
@@ -4812,7 +5187,7 @@
           }
         },
         "x-error-contract": {
-          "envelope": "native-medusa-error",
+          "envelope": "native-medusa-with-catalog-media-guard",
           "providerFailure": "not-applicable",
           "unexpectedStatus": 500
         },
@@ -5692,12 +6067,12 @@
     }
   },
   "x-inventory": {
-    "routeFileCount": 91,
+    "routeFileCount": 97,
     "routeFileCounts": {
-      "backend": 59,
+      "backend": 65,
       "storefront": 32
     },
-    "routeOperationCount": 118,
-    "uniqueOperationCount": 116
+    "routeOperationCount": 124,
+    "uniqueOperationCount": 122
   }
 }

@@ -129,6 +129,13 @@ const errorEnvelopeFor = ({ routePath, service, source }) => {
   if (HEALTH_PATHS.has(routePath)) {
     return "health-json"
   }
+  if (
+    service === "backend" &&
+    (source.includes("guardNativeMediaHandler") ||
+      source.includes("guardNativeMediaOperation"))
+  ) {
+    return "native-medusa-with-catalog-media-guard"
+  }
   if (service === "storefront" || source.includes("sendApiProblem")) {
     return "api-problem"
   }
@@ -251,6 +258,11 @@ const buildOperation = (entries, method) => {
     const responseReference = responseReferenceFor(envelope)
     responses["4XX"] = { $ref: responseReference }
     responses["5XX"] = { $ref: responseReference }
+    if (envelope === "native-medusa-with-catalog-media-guard") {
+      responses["409"] = {
+        $ref: "./api-problems.yaml#/components/responses/NativeCatalogMediaConflictResponse",
+      }
+    }
   }
 
   return {

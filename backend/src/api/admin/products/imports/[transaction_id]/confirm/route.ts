@@ -4,6 +4,11 @@ import { batchProductsWorkflow } from "@medusajs/core-flows"
 import { MedusaError, Modules } from "@medusajs/framework/utils"
 
 import {
+  guardNativeMediaOperation,
+  nativeProductMediaMutationTargets,
+} from "../../../../../../lib/catalog/native-media-guard"
+import {
+  MAX_PRODUCT_IMPORT_OPERATIONS,
   parseProductImportPlan,
   productImportLockKey,
   productImportWorkflowTransactionId,
@@ -36,36 +41,49 @@ export const POST = async (
   }>(Modules.FILE)
 
   try {
-    const summary = await locking.execute<ConfirmationSummary>(
+    const summary = await locking.execute<ConfirmationSummary | null>(
       productImportLockKey(transactionId),
       async () => {
         const plan = parseProductImportPlan(
           await fileModuleService.getAsBuffer(transactionId)
         )
-        logger.info?.(
-          `[admin][products/imports] import confirmation started (toCreate=${plan.create.length}, toUpdate=${plan.update.length}).`
+        const guarded = await guardNativeMediaOperation(
+          req,
+          res,
+          nativeProductMediaMutationTargets(
+            plan.update,
+            MAX_PRODUCT_IMPORT_OPERATIONS
+          ),
+          async () => {
+            logger.info?.(
+              `[admin][products/imports] import confirmation started (toCreate=${plan.create.length}, toUpdate=${plan.update.length}).`
+            )
+            const workflowResult = await batchProductsWorkflow(req.scope).run({
+              input: {
+                create: plan.create,
+                update: plan.update,
+              },
+              context: {
+                transactionId:
+                  productImportWorkflowTransactionId(transactionId),
+              },
+            })
+            const acknowledgement = validateProductImportWorkflowResult(
+              asUnknownRecord(workflowResult)?.result,
+              plan
+            )
+            await fileModuleService.deleteFiles(transactionId)
+            return {
+              toCreate: acknowledgement.created,
+              toUpdate: acknowledgement.updated,
+            }
+          }
         )
-        const workflowResult = await batchProductsWorkflow(req.scope).run({
-          input: {
-            create: plan.create,
-            update: plan.update,
-          },
-          context: {
-            transactionId: productImportWorkflowTransactionId(transactionId),
-          },
-        })
-        const acknowledgement = validateProductImportWorkflowResult(
-          asUnknownRecord(workflowResult)?.result,
-          plan
-        )
-        await fileModuleService.deleteFiles(transactionId)
-        return {
-          toCreate: acknowledgement.created,
-          toUpdate: acknowledgement.updated,
-        }
+        return guarded.executed ? guarded.value : null
       },
       { timeout: 5 }
     )
+    if (summary === null) return
     logger.info?.(
       `[admin][products/imports] import confirmation completed (toCreate=${summary.toCreate}, toUpdate=${summary.toUpdate}).`
     )
