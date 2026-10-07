@@ -105,6 +105,26 @@ contracts before applying generic framework examples from those files.
 
 ## Verified continuation boundary
 
+**Current October 7 continuation:** Batch 6 remains open. Exact staging
+`7d224eb3cebf11181248fc3ae0ee7e2e77c3dc26` passes all four workflows /
+23 checks and runs on both applications with basic/readiness/backup gates
+passing. All-nine observation is active with documented gaps and an unverified
+removed Backend instance. Owned order #9's refunds and stock cleanup are done;
+its repaired Summary fits the live narrow viewport. A new owned fixed-bundle
+draft exposes insertion-order and incomplete compensation defects; the local
+repair passes real four-kind creation/replay and failure cleanup. Full coverage,
+lint/type/policy, both builds and the 80-native/44-payment recovery aggregate
+pass. The final 46-case Admin matrix passes with zero axe violations/incomplete
+checks after native login and partial-return navigation fixes; earlier failures
+are retained. Owned order #10's cumulative split receipt, restored stock and
+two refunds totaling $10.18 agree in Medusa and independent Stripe evidence.
+Controlled fulfillment/return/refund notices have successful acknowledgements;
+do not repeat its completed cleanup. See the opening handoff
+and audit for exact private evidence and remaining gates. The client clone
+remains paused and production is untouched.
+
+The following continuation description predates that current correction.
+
 Latest fully accepted hardening batch is Batch 5 at
 `960fe7bbc47b912770c8357c148f5bd6cb75b3f8`. Batch 6's exhaustive audit stays
 open and resumed at the user's request on October 7. The earlier 00:11 UTC

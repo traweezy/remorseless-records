@@ -4,6 +4,85 @@ Last updated: 2026-10-07 (America/New_York)
 
 ## Current continuation — direct staging only
 
+**Current correction — October 7, 11:56 UTC:** continue Batch 6. The deployed
+baseline and `origin/staging` are `7d224eb3cebf11181248fc3ae0ee7e2e77c3dc26`.
+The next grouped correction is local; resolve its exact push SHA from Git.
+Its four push workflows and all 23 required checks pass; Backend deployment
+`0dca9076-f1b7-4054-a623-4d3ddf46c8e6` and Storefront deployment
+`120c48af-11b0-4388-9fb4-f6080b46854c` succeed on this exact SHA.
+Read-only readiness at 11:05:36.514 UTC passes basic live/readiness probes and
+backup freshness. Migrations exits successfully; RecoveryBackups is idle
+`CREATED`, which is not evidence of a new backup execution. Exhaustive and
+ordinary scheduler acceptance remain open. All-nine observation is active;
+retain the recorded 131.414-second observer gap. The Backend's initial
+instance is removed and its replacement runs; the stop reason is unverified.
+
+The deployed native order #9 Summary now fits its normal narrow viewport and
+its JSON dialog closes correctly. Payment/stock cleanup below is complete;
+do not repeat it. Copy-SKU clipboard acceptance remains unresolved.
+
+Creating the owned fixed-bundle draft reproduces scalar foreign-key insertion
+ordering and early child completion: the native product is removed, but its
+profile, variant profile and three media links remain. Do not retry the failed
+browser draft or call the rollback complete. The private failure receipts in
+`artifacts/end-to-end-audit-2026-10-07/receipts/owned-bundle-creation-failure*.json`
+identify the exact owned rows; its uploaded assets remain active. Cleanup must
+use guarded Medusa/catalog authority and retain historical audit records.
+
+The next local correction flushes the bundle parent inside its transaction,
+defers child operation completion to one final catalog transaction, and enables
+fixed-bundle native inventory only after its component links exist. It also
+restores an existing bundle parent in place to preserve inventory provenance.
+Actual draft creation/replay passes for all four kinds; a 20-unit component
+at quantity two yields 10 purchasable bundles. Native inventory and final
+completion failure injection prove cleanup, with uploaded media retained.
+The full frozen-graph disposable aggregate passes: 80 native/service and
+44 payment cases, recovery, Redis, API and session gates, with cleanup.
+Backend coverage passes 295 suites / 2,498 tests; full lint/type/policy gates
+and both production builds pass. The final 46-case Admin matrix passes with
+zero axe violations/incomplete checks, including partial-return navigation.
+Full/prod dependency audits and the 1,690-file candidate source scan pass the
+unchanged reviewed backport gates. The wrong scan-output-path invocation is
+retained; the repository's exact canonical-path check passes after correction.
+
+The existing Dashboard patch now improves login contrast, names both fields,
+adds a main landmark and gives Reset/MFA toggle links 24-pixel pointer targets
+and visible focus, including the native password reveal target. The Summary
+return query also retains partially received returns so Receive items remains
+available. Package versions/integrities are unchanged; the exact lock
+review admits only this patch hash and two dependent peer identities. MFA
+challenge live acceptance is not claimed. Bundle-delete compensation remains
+an explicit unverified lane, separate from the proven create/update cases.
+
+Finish rendered acceptance and document the patch, then group logical
+Conventional Commits into one direct staging correction push. Wait all four
+exact CI workflows, all-nine rollout and applicable deployed retests before
+another push. Owned order #10's payment and stock cleanup is complete at
+11:52:37.890 UTC: the two native receipts retain cumulative quantity two,
+Return status received and M stock four, with zero reservations. Medusa and
+independent Stripe agree on two successful refunds ($4.68 and $5.50), totaling
+$10.18. Tax evidence is refunded; controlled prepared/shipped/delivered,
+return-requested/full-received and both refund notices have durable successful
+acknowledgements. The partial receipt correctly sends no full-receipt notice.
+Do not repeat receipt/refund cleanup. Its first receipt reproduced the missing
+Receive items navigation; the second used the already observed native route.
+Retest normal partial-return navigation after deploying the repair. The native
+Summary shows $5.50 credit, zero total after discount and zero outstanding;
+the original shipping charge remains in the order ledger. The audit has IDs.
+Restricted Resend GET returns 401 for the eight owned notification IDs;
+acknowledgements are verified, independently read delivery events are not.
+Do not widen credentials or resend mail to fill this evidence gap. The exact
+7d224eb runtime package/protocol, database-role/migration-receipt and running
+restricted Resend identity audit passes; new-correction runtime acceptance
+still needs its own exact deployed revision.
+Remaining paid families, media lifecycle, guarded search parity, executed
+controls and ordinary scheduler observation remain open. The scheduler latch
+must stay intact through October 7, 14:18:40.644 UTC plus a fresh ordinary
+healthy observation. Client cloning remains paused; production is untouched.
+
+The following October 7 entries describe earlier checkpoints and are
+superseded by the current correction above where their state differs.
+
 **Resumed at the user's request — October 7:** continue Batch 6; Batch 7's
 client environment clone remains paused. The checkpoint below describes the
 previous pause, not a new stop instruction. The previous deployed staging checkpoint is

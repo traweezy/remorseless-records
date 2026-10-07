@@ -1,8 +1,8 @@
 diff --git a/dist/app.css b/dist/app.css
-index 914b674205accf11063d4145e7b21dd53c783ba4..a9a72a7d8d0fc302e0a1a5b0cfd83c6e5403ef2c 100644
+index 914b674205accf11063d4145e7b21dd53c783ba4..36242e26261566cc711a909f10a44d1e6cbd80f1 100644
 --- a/dist/app.css
 +++ b/dist/app.css
-@@ -5459,3 +5459,7 @@ video {
+@@ -5459,3 +5459,13 @@ video {
  .\[\&_tr\]\:hover\:bg-ui-bg-subtle:hover tr {
    background-color: var(--bg-subtle);
  }
@@ -10,8 +10,14 @@ index 914b674205accf11063d4145e7b21dd53c783ba4..a9a72a7d8d0fc302e0a1a5b0cfd83c6e
 +@media (min-width:640px){.sm\:grid-cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}}
 +
 +.grid-cols-\[1fr_24px\]{grid-template-columns:1fr 24px}
++
++/* Keep native authentication links legible, targetable and focused. */
++.rr-native-auth-link { display: inline-flex; align-items: center; min-height: 24px; cursor: pointer; }
++.rr-native-auth-link:focus-visible { outline: 2px solid var(--border-interactive); outline-offset: 2px; border-radius: 2px; }
++
++.rr-native-auth input + div > button[type="button"] { min-width: 24px; min-height: 24px; }
 diff --git a/dist/app.js b/dist/app.js
-index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..6dd985c686f21d5982493829682620f1a6032d52 100644
+index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..314c80db2fd47117fa099bf1abd94dd93ea25a55 100644
 --- a/dist/app.js
 +++ b/dist/app.js
 @@ -1,3 +1,66 @@
@@ -634,6 +640,15 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..6dd985c686f21d5982493829682620f1
            /* @__PURE__ */ (0, import_jsx_runtime294.jsx)(import_ui193.Text, { size: "small", leading: "compact", children: getFormattedAddress({ address }).map((line, i) => {
              return /* @__PURE__ */ (0, import_jsx_runtime294.jsxs)("span", { className: "break-words", children: [
                line,
+@@ -153471,7 +153453,7 @@ var init_order_summary_section = __esm({
+       );
+       const { order: orderPreview } = useOrderPreview(order.id);
+       const { returns = [] } = useReturns({
+-        status: "requested",
++        status: ["requested", "partially_received"],
+         order_id: order.id,
+         fields: "+received_at"
+       });
 @@ -153690,24 +153672,24 @@ var init_order_summary_section = __esm({
          /* @__PURE__ */ (0, import_jsx_runtime303.jsxs)(
            "div",
@@ -2529,6 +2544,73 @@ index c5e00d8ee8258b0a64c95975948c21402ec98ce5..0cca0c2a3fb2a179fdda9b216a090b02
      const validSectionIds2 = new Set(layout?.sections.map((s) => s.id) ?? []);
      const entriesBySection2 = buildDisplayEntries(
        rawEntries,
+diff --git a/dist/login-REAKYYFI.mjs b/dist/login-REAKYYFI.mjs
+index 527aa630ea46f0237cbf6ce458c413c619bfa27a..91d6c39235bafd88697a5c59e2ac6937713b496d 100644
+--- a/dist/login-REAKYYFI.mjs
++++ b/dist/login-REAKYYFI.mjs
+@@ -325,7 +325,7 @@ var MfaChallengeForm = ({
+         "button",
+         {
+           type: "button",
+-          className: "text-ui-fg-interactive transition-fg hover:text-ui-fg-interactive-hover focus-visible:text-ui-fg-interactive-hover font-medium outline-none",
++          className: "rr-native-auth-link text-ui-fg-interactive-hover transition-fg hover:underline font-medium outline-none",
+           onClick: () => handleMethodChange(isRecoveryCode ? "totp" : "recovery_code"),
+           children: isRecoveryCode ? t("login.mfa.useAuthenticator") : t("login.mfa.useRecoveryCode")
+         }
+@@ -414,7 +414,7 @@ var Login = () => {
+   const serverError = form.formState.errors?.root?.serverError?.message;
+   const validationError = form.formState.errors.email?.message || form.formState.errors.password?.message;
+   if (mfaChallenge) {
+-    return /* @__PURE__ */ jsx4("div", { className: "bg-ui-bg-subtle flex min-h-dvh w-dvw items-center justify-center", children: /* @__PURE__ */ jsx4(
++    return /* @__PURE__ */ jsx4("main", { className: "rr-native-auth bg-ui-bg-subtle flex min-h-dvh w-dvw items-center justify-center", children: /* @__PURE__ */ jsx4(
+       MfaChallengeCard,
+       {
+         challenge: mfaChallenge,
+@@ -431,7 +431,7 @@ var Login = () => {
+       }
+     ) });
+   }
+-  return /* @__PURE__ */ jsx4("div", { className: "bg-ui-bg-subtle flex min-h-dvh w-dvw items-center justify-center", children: /* @__PURE__ */ jsxs4("div", { className: "m-4 flex w-full max-w-[280px] flex-col items-center", children: [
++  return /* @__PURE__ */ jsx4("main", { className: "rr-native-auth bg-ui-bg-subtle flex min-h-dvh w-dvw items-center justify-center", children: /* @__PURE__ */ jsxs4("div", { className: "m-4 flex w-full max-w-[280px] flex-col items-center", children: [
+     /* @__PURE__ */ jsx4(AvatarBox, {}),
+     /* @__PURE__ */ jsxs4("div", { className: "mb-4 flex flex-col items-center", children: [
+       /* @__PURE__ */ jsx4(Heading2, { children: t("login.title") }),
+@@ -457,6 +457,7 @@ var Login = () => {
+                     return /* @__PURE__ */ jsx4(Form.Item, { children: /* @__PURE__ */ jsx4(Form.Control, { children: /* @__PURE__ */ jsx4(
+                       Input2,
+                       {
++                        "aria-label": t("fields.email"),
+                         autoComplete: "email",
+                         ...field,
+                         className: "bg-ui-bg-field-component",
+@@ -478,7 +479,8 @@ var Login = () => {
+                         Input2,
+                         {
+                           type: "password",
+-                          autoComplete: "current-password",
++                          "aria-label": t("fields.password"),
++                        autoComplete: "current-password",
+                           ...field,
+                           className: "bg-ui-bg-field-component",
+                           placeholder: t("fields.password")
+@@ -516,7 +518,7 @@ var Login = () => {
+         }
+       )
+     ] }),
+-    /* @__PURE__ */ jsx4("span", { className: "text-ui-fg-muted txt-small my-6", children: /* @__PURE__ */ jsx4(
++    /* @__PURE__ */ jsx4("span", { className: "text-ui-fg-subtle txt-small my-6", children: /* @__PURE__ */ jsx4(
+       Trans,
+       {
+         i18nKey: "login.forgotPassword",
+@@ -525,7 +527,7 @@ var Login = () => {
+             Link2,
+             {
+               to: "/reset-password",
+-              className: "text-ui-fg-interactive transition-fg hover:text-ui-fg-interactive-hover focus-visible:text-ui-fg-interactive-hover font-medium outline-none"
++              className: "rr-native-auth-link text-ui-fg-interactive-hover transition-fg hover:underline font-medium outline-none"
+             },
+             "reset-password-link"
+           )
 diff --git a/dist/order-allocate-items-LRSTJNOD.mjs b/dist/order-allocate-items-LRSTJNOD.mjs
 index 7b683f6d27f9ff90edb8d80664313ea4d7cf16fd..9c36466b92c0e66edba8585e0daade8cadbf09d7 100644
 --- a/dist/order-allocate-items-LRSTJNOD.mjs
@@ -4014,7 +4096,7 @@ index 5207400e3498c0d8c75f3eb1d02db6dc4ac25184..7ffa29e5daefd639e36cdcf24edcf784
                "div",
                {
 diff --git a/dist/order-detail-GZ4ZBWIT.mjs b/dist/order-detail-GZ4ZBWIT.mjs
-index 10a323ae2c1345c42f39dc4c5a9a050925fbd0a8..d8cdbb774bdccdaea192949099821295f8ec46a6 100644
+index 10a323ae2c1345c42f39dc4c5a9a050925fbd0a8..ff8c2313a08fade92c6774d3742e9aed965dd0f6 100644
 --- a/dist/order-detail-GZ4ZBWIT.mjs
 +++ b/dist/order-detail-GZ4ZBWIT.mjs
 @@ -1575,10 +1575,10 @@ var ID = ({ data }) => {
@@ -4058,6 +4140,15 @@ index 10a323ae2c1345c42f39dc4c5a9a050925fbd0a8..d8cdbb774bdccdaea192949099821295
        /* @__PURE__ */ jsx9(Text7, { size: "small", leading: "compact", children: getFormattedAddress({ address }).map((line, i) => {
          return /* @__PURE__ */ jsxs10("span", { className: "break-words", children: [
            line,
+@@ -2863,7 +2863,7 @@ var OrderSummarySection = ({
+   );
+   const { order: orderPreview } = useOrderPreview(order.id);
+   const { returns = [] } = useReturns({
+-    status: "requested",
++    status: ["requested", "partially_received"],
+     order_id: order.id,
+     fields: "+received_at"
+   });
 @@ -3082,24 +3082,24 @@ var Item = ({
      /* @__PURE__ */ jsxs19(
        "div",
@@ -5010,6 +5101,112 @@ index a2b3dc5ddea120bab6c99eb40b3d0c3c068285de..8284a7ad41530ba115e8b5b6cbf4a795
                      {
                        path: "export",
                        lazy: () =>
+diff --git a/src/index.css b/src/index.css
+index bc87c9f0be33d8c6a09356fe7c9aec57acba2ba0..9e08d6be65d29e53ef6d7eb27af7cbf9c8ac9fc3 100644
+--- a/src/index.css
++++ b/src/index.css
+@@ -46,3 +46,21 @@
+   background-size: 40px 40px;
+   background: repeat;
+ }
++
++.rr-native-auth-link {
++  display: inline-flex;
++  align-items: center;
++  min-height: 24px;
++  cursor: pointer;
++}
++
++.rr-native-auth-link:focus-visible {
++  outline: 2px solid var(--border-interactive);
++  outline-offset: 2px;
++  border-radius: 2px;
++}
++
++.rr-native-auth input + div > button[type="button"] {
++  min-width: 24px;
++  min-height: 24px;
++}
+diff --git a/src/routes/login/components/mfa-challenge-form.tsx b/src/routes/login/components/mfa-challenge-form.tsx
+index 31b1ef5119c82926023748dabe8aa624cd878088..840bce3a6a9666124d0caa3fb99f2532b4907c83 100644
+--- a/src/routes/login/components/mfa-challenge-form.tsx
++++ b/src/routes/login/components/mfa-challenge-form.tsx
+@@ -153,7 +153,7 @@ export const MfaChallengeForm = ({
+             : t("login.mfa.useRecoveryCodePrompt")}{" "}
+           <button
+             type="button"
+-            className="text-ui-fg-interactive transition-fg hover:text-ui-fg-interactive-hover focus-visible:text-ui-fg-interactive-hover font-medium outline-none"
++            className="rr-native-auth-link text-ui-fg-interactive-hover transition-fg hover:underline font-medium outline-none"
+             onClick={() =>
+               handleMethodChange(isRecoveryCode ? "totp" : "recovery_code")
+             }
+diff --git a/src/routes/login/login.tsx b/src/routes/login/login.tsx
+index 3328eea16189ef8e6d704247b084d86e48e060ba..f3dc1e4ae827e7d2a92e028c5c4a3f060b04f6f4 100644
+--- a/src/routes/login/login.tsx
++++ b/src/routes/login/login.tsx
+@@ -89,7 +89,7 @@ export const Login = () => {
+ 
+   if (mfaChallenge) {
+     return (
+-      <div className="bg-ui-bg-subtle flex min-h-dvh w-dvw items-center justify-center">
++      <main className="rr-native-auth bg-ui-bg-subtle flex min-h-dvh w-dvw items-center justify-center">
+         <MfaChallengeCard
+           challenge={mfaChallenge}
+           onSuccess={(token) => {
+@@ -104,12 +104,12 @@ export const Login = () => {
+             setMfaSuccessHandler(null)
+           }}
+         />
+-      </div>
++      </main>
+     )
+   }
+ 
+   return (
+-    <div className="bg-ui-bg-subtle flex min-h-dvh w-dvw items-center justify-center">
++    <main className="rr-native-auth bg-ui-bg-subtle flex min-h-dvh w-dvw items-center justify-center">
+       <div className="m-4 flex w-full max-w-[280px] flex-col items-center">
+         <AvatarBox />
+         <div className="mb-4 flex flex-col items-center">
+@@ -136,6 +136,7 @@ export const Login = () => {
+                       <Form.Item>
+                         <Form.Control>
+                           <Input
++                            aria-label={t("fields.email")}
+                             autoComplete="email"
+                             {...field}
+                             className="bg-ui-bg-field-component"
+@@ -156,6 +157,7 @@ export const Login = () => {
+                         <Form.Control>
+                           <Input
+                             type="password"
++                            aria-label={t("fields.password")}
+                             autoComplete="current-password"
+                             {...field}
+                             className="bg-ui-bg-field-component"
+@@ -198,19 +200,19 @@ export const Login = () => {
+             }}
+           />
+         </div>
+-        <span className="text-ui-fg-muted txt-small my-6">
++        <span className="text-ui-fg-subtle txt-small my-6">
+           <Trans
+             i18nKey="login.forgotPassword"
+             components={[
+               <Link
+                 key="reset-password-link"
+                 to="/reset-password"
+-                className="text-ui-fg-interactive transition-fg hover:text-ui-fg-interactive-hover focus-visible:text-ui-fg-interactive-hover font-medium outline-none"
++                className="rr-native-auth-link text-ui-fg-interactive-hover transition-fg hover:underline font-medium outline-none"
+               />,
+             ]}
+           />
+         </span>
+       </div>
+-    </div>
++    </main>
+   )
+ }
 diff --git a/src/routes/orders/common/return-inventory-guidance.ts b/src/routes/orders/common/return-inventory-guidance.ts
 new file mode 100644
 index 0000000000000000000000000000000000000000..2c6adb43c812586e0e43ae811ef8e426a7d8a08d
@@ -6706,9 +6903,18 @@ index 6da5cb651255a2631242f7f7c8e8c7147e1ed0a6..2f971994ef96790bab28ed95aa9ff0d2
                    <div className="flex flex-col max-md:gap-y-2 max-md:divide-y">
                      {labels.map((label, index) => (
 diff --git a/src/routes/orders/order-detail/components/order-summary-section/order-summary-section.tsx b/src/routes/orders/order-detail/components/order-summary-section/order-summary-section.tsx
-index d438830cbc26f3783fd7cb3a5855d71459ed489b..a6290287b0c6b0da0ec8ba5fb1b691d5075e90cf 100644
+index d438830cbc26f3783fd7cb3a5855d71459ed489b..ae5a70787758b57b331e10ae6b7b09fd09c70a6c 100644
 --- a/src/routes/orders/order-detail/components/order-summary-section/order-summary-section.tsx
 +++ b/src/routes/orders/order-detail/components/order-summary-section/order-summary-section.tsx
+@@ -90,7 +90,7 @@ export const OrderSummarySection = ({
+   const { order: orderPreview } = useOrderPreview(order.id!)
+ 
+   const { returns = [] } = useReturns({
+-    status: "requested",
++    status: ["requested", "partially_received"],
+     order_id: order.id,
+     fields: "+received_at",
+   })
 @@ -413,26 +413,27 @@ const Item = ({
      <>
        <div

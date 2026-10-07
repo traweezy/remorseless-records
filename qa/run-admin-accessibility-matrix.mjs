@@ -25,6 +25,22 @@ if (!Number.isInteger(concurrency) || concurrency < 1 || concurrency > 4) {
 }
 
 const cases = [
+  ...[390, 1440].map((width) => ({
+    height: 1000,
+    name: `native-order-partial-return-${width}`,
+    route: "/app/orders/order_acceptance",
+    setup: "native-order-partial-return",
+    width,
+  })),
+  ...["light", "dark"].flatMap((theme) =>
+    [390, 1440].map((width) => ({
+      height: 900,
+      name: `native-login-${theme}-${width}`,
+      route: "/app/login",
+      setup: `native-login-${theme}`,
+      width,
+    }))
+  ),
   {
     axeInclude: "[role=dialog]",
     height: 1000,

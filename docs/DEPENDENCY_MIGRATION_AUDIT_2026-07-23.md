@@ -1,5 +1,32 @@
 # Dependency Migration Audit — 2026-07-23
 
+## Native login accessibility — October 7, 2026 UTC
+
+Extend only the existing MIT Medusa Dashboard 2.18.0 patch. The native login
+and MFA toggle use the reviewed interactive hover color, 24-pixel pointer
+targets and visible keyboard focus. Login has main landmarks and explicitly
+named email/password fields. Source and compiled distributions agree;
+the native password reveal button has a 24-pixel target, and the password
+recovery prompt uses the readable subtle foreground in both themes.
+Authentication, session handling and native RBAC are unchanged. The owned
+native fixture does not reproduce the suspected cached-session loop, so no
+cache workaround is introduced. MFA live acceptance remains open.
+
+The native Summary return query includes both requested and partially received
+returns, retaining the Receive items action after the first receipt. Completed
+and canceled returns remain excluded. Two rendered navigation regressions
+extend the 44-case matrix to 46; live deployed navigation retesting is pending.
+
+Current Dashboard patch SHA-256 is
+`6bdd63025a2dfd8913e69e320d8a46bf4a5ee8a4111fbea620ceab84ecf92d68`.
+Frozen root installation and the complete lock comparison permit only this
+patch identity and two existing dependent peer identities. Registry versions,
+integrities, other patches and third-party-web 0.29.2 are unchanged. No package
+upgrade, license change or cooling exception is introduced. Full lint/type/
+policy checks and both production builds pass. Rendered login/matrix evidence
+and deployed acceptance are tracked in the opening Batch 6 audit. Dashboard
+hashes in older entries below describe their historical checkpoints.
+
 ## Native allocation and receiving controls — October 6, 2026 UTC
 
 Extend only the existing MIT Medusa Dashboard 2.18.0 patch. Allocation loading,

@@ -1,5 +1,106 @@
 # Storefront, Admin and Stripe end-to-end audit
 
+### Current catalog correction — October 7, 11:56 UTC
+
+Exact `7d224eb3cebf11181248fc3ae0ee7e2e77c3dc26` has all four CI workflows /
+23 checks passing, both applications successfully deployed, and basic live/
+readiness/backup gates passing at 11:05:36.514 UTC. This does not complete
+Batch 6. Migrations succeeds; the scheduled RecoveryBackups deployment is
+idle `CREATED`, not a new successful archive run. All nine services/jobs are
+observed. Retain the 131.414-second observer gap and the unverified reason
+for the removed initial Backend instance. Native order #9's repaired Summary
+fits the live narrow viewport and JSON closes; Copy-SKU clipboard proof is
+still unresolved. Do not repeat its completed stock/refund cleanup.
+
+**B6-BUNDLE-CREATE-FK / B6-CREATE-COMPENSATION — live failure, local repair:**
+the owned fixed-bundle draft fails inserting component links before their
+SQL parent exists. Native rollback removes the product, while already
+acknowledged child operations leave one product profile, one variant profile
+and three media links. The exact private failure receipts, screenshot and
+uploaded-byte/hash proofs are retained under the October 7 evidence directory.
+No browser retry or orphan repair has been performed. Keep uploaded assets
+active and use a guarded catalog repair for only these owned dangling rows.
+
+The local correction flushes the parent inside the same SQL transaction,
+defers child acknowledgement until one final completion transaction, and
+enables fixed-bundle inventory after canonical component linkage. Real
+PostgreSQL creation and replay pass for music, merchandise, mystery and fixed
+bundles. The fixed kit exposes 10 units from 20 component units at quantity two.
+Permanent inventory failure and late outer-completion failure remove owned
+native/custom records while retaining uploaded media. An existing-bundle
+rollback restores its parent in place and preserves exact inventory provenance.
+Bundle-delete compensation is not covered by these create/update assertions.
+The full frozen-graph aggregate passes 80 native/service and 44 payment cases
+plus PostgreSQL/Redis recovery, contracts and session rotation; owned fixtures
+are cleaned. Preserve earlier SQL, harness and transient-retry failures.
+
+**B6-NATIVE-LOGIN-CONTRAST — local repair:** the existing Dashboard patch
+improves Reset contrast, field names, main landmarks, 24-pixel link targets
+and keyboard focus, including the MFA toggle. The actual expired-session loop
+was not reproduced in the owned native fixture; authentication/RBAC is unchanged.
+Backend coverage passes 295 suites / 2,498 tests, frozen installation, full
+lint/type/policy gates and both production builds pass. The expanded 44-case
+Admin matrix passes with zero axe violations/incomplete checks; its login
+screenshots have been inspected. The final 46-case matrix below also passes.
+MFA challenge live acceptance is not claimed. The lock review admits only
+the Dashboard hash and two dependent peer identities, with all registry
+versions/integrities unchanged.
+
+Owned order #10 is captured at $10.18 (two M shirts $4.68 plus shipping $5.50,
+no tax). Native order `order_01M4B2BHM2SZPRYHK6F7341FZD` and independent
+Stripe sandbox `pi_3UNt64IM4tTeFQ3W1WTgAWxE` agree. Read-only evidence at
+11:38:19.074 UTC binds its cart/session, payment, inventory and tax record;
+the controlled order-placed receipt has a durable successful acknowledgement.
+Native fulfillment, synthetic shipment and delivery complete. Actual native
+receipts of one usable unit twice leave cumulative received quantity two,
+damaged quantity zero, Return status received and M stock four (2 → 3 → 4),
+with zero reservations. At 11:52:37.890 UTC native/independent Stripe evidence
+confirms successful $4.68 and $5.50 refunds totaling $10.18; tax evidence is
+refunded with no failed/missing tax source. Prepared/shipped/delivered,
+return-requested/full-received and both controlled refund notices have durable
+successful acknowledgements. The partial receipt correctly creates no notice
+claiming complete receipt. Do not repeat this cleanup. The native Summary
+shows $5.50 credit, zero total after discount and zero outstanding; this does
+not remove the original shipping charge from the order ledger.
+
+At 11:57:14.634 UTC, a bounded GET for these eight exact notification IDs
+returns 401 with the unchanged restricted sending key. Keep native/provider
+acknowledgement distinct from independently retrieved delivery events; no
+credential scope is expanded and no extra email is sent. Provider delivery
+inspection remains a documented evidence limitation. The exact 7d224eb
+runtime audit passes package/protocol, migration-receipt/database-role and
+running restricted-Resend identity checks on both applications.
+
+**B6-PARTIAL-RETURN-NAVIGATION — live failure, local repair:** after the first
+receipt, the ordinary Summary loses Receive items even though the Return is
+partially received. A reload retains the failure. The second receipt succeeds
+through the previously observed native receipt URL, preserving Medusa authority.
+The Dashboard query now requests requested and partially received returns;
+completed/canceled returns remain excluded. Two rendered cases enforce that
+the API status filter admits the partial Return and the action is visible at
+390/1440 pixels. The focused mobile case and all 46 final matrix cases pass
+with zero axe violations/incomplete checks. Full lint/type/policy gates, frozen
+installation and the final Backend build pass. Full/prod dependency audits
+and the 1,690-file candidate source scan pass the unchanged reviewed backport
+gates. The rejected noncanonical scan-output-path invocation stays in evidence;
+the corrected canonical-path repository check passes.
+Normal live navigation still needs retesting after deployment.
+
+Continue remaining paid families, owned media lifecycle,
+guarded search rebuild/parity and the executed-control ledger. Direct staging
+correction/CI/rollout retests remain. The ordinary scheduler incident window
+ends no earlier than October 7, 14:18:40.644 UTC plus fresh healthy observation.
+The client clone remains paused and production remains untouched.
+
+The first 44-case rendered matrix retains 40 passes and four login failures:
+password reveal is 15 pixels and the dark recovery prompt has 3.66 contrast.
+Reset itself passes the new target/focus checks. The final patch expands the
+native reveal target and uses subtle foreground for the prompt; its source
+CSS and compiled CSS agree. The final 44-case matrix passes. Preserve the
+diagnostic and avoid attributing these remaining failures to the Reset link.
+
+Earlier continuation entries below are historical where their state differs.
+
 ### Active continuation — October 7
 
 The user resumed Batch 6. The prior pause below is historical; Batch 7's

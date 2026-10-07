@@ -293,6 +293,7 @@ const inventoryCase =
 const selectedInventoryRead = (url) =>
   [...url.searchParams.keys()].some((key) => /^id(?:\[.*\])?$/u.test(key))
 const isSummaryCase = setup === "native-order-summary-long-sku"
+const isPartialReturnCase = setup === "native-order-partial-return"
 const inventoryItem = {
   ...rmaItem,
   variant: { ...rmaItem.variant, manage_inventory: true },
@@ -554,7 +555,28 @@ const fixtureFor = (url) => {
   }
   if (pathname === "/admin/plugins") return { plugins: [] }
   if (pathname === "/admin/reservations") return paged("reservations")
-  if (pathname === "/admin/returns") return paged("returns")
+  if (pathname === "/admin/returns") {
+    const statuses = [...url.searchParams.entries()]
+      .filter(([key]) => /^status(?:\[.*\])?$/u.test(key))
+      .map(([, value]) => value)
+    return paged(
+      "returns",
+      isPartialReturnCase && statuses.includes("partially_received")
+        ? [
+            {
+              id: "return_acceptance",
+              order_id: "order_acceptance",
+              status: "partially_received",
+              canceled_at: null,
+              received_at: null,
+              items: [
+                { item_id: rmaItem.id, quantity: 2, received_quantity: 1 },
+              ],
+            },
+          ]
+        : []
+    )
+  }
   if (pathname === "/admin/stock-locations") {
     return paged("stock_locations", [
       { id: "sloc_acceptance", name: "Acceptance HQ" },
@@ -1143,6 +1165,14 @@ try {
   const page = await browser.newPage()
   await page.emulateMediaFeatures([
     { name: "prefers-reduced-motion", value: "reduce" },
+    ...(setup.startsWith("native-login-")
+      ? [
+          {
+            name: "prefers-color-scheme",
+            value: setup === "native-login-dark" ? "dark" : "light",
+          },
+        ]
+      : []),
   ])
   page.on("framenavigated", (frame) => {
     if (frame === page.mainFrame()) {
@@ -1415,6 +1445,11 @@ try {
       throw new Error(
         "Native inventory guidance omitted the canonical selected variant"
       )
+  }
+  if (isPartialReturnCase) {
+    await page.waitForSelector(
+      'main a[href="/app/orders/order_acceptance/returns/return_acceptance/receive"]'
+    )
   }
   if (isSummaryCase) {
     await page.waitForFunction(
