@@ -2,7 +2,139 @@
 
 Last updated: 2026-10-07 (America/New_York)
 
-## Active continuation — October 7, 21:51 UTC
+## Active continuation — October 7, 23:52 UTC
+
+Batch 6 continues; the client clone remains paused and production is untouched.
+The deployed staging baseline is
+`d3809e54542fef4bce27e8ef6b849873efa4cb35`, pushed directly with normal hooks
+as Conventional Commits `7a14ce0` and `d3809e5`. All four exact push workflows
+and all 23 checks pass. Backend `4b6fda00-8378-4a3a-a83a-42f5fa1a7664`,
+Storefront `5336ae96-877c-4f19-9e7a-ac68e7b13fcc` and Migrations
+`65c45d37-58d4-4971-b9a6-47bcb76fc05c` succeed on that revision.
+Exact runtime packages, role isolation/migration receipt, restricted Resend
+identity, ordinary scheduler/operations and basic live/backup freshness pass.
+Fresh bounded correlated logs from 22:50:23 through 23:00:07.812 UTC pass both
+runtime and provider HTTP identities with zero 5xx, unclassified warnings or
+truncation. The earlier failed windows are retained. GitHub's workflow list
+intermittently omitted the completed Backend run; complete before/after
+snapshots were required after backoff. A bounded deployment/status HTTP read
+found the exact probe omitted by the provider request-ID filter; local exact
+request matching remained mandatory. Neither classifier nor gate was waived.
+
+Eight deployed cold 404/history cases pass at 390/1440 pixels; all eight final
+screenshots are inspected. Five deployed Mystery Bundle carousel cases cover
+all 60 card observations and 97 keyboard advances at 320/574/768/1440/1920.
+Loaded artwork remains square/contained with complete metadata, and all ten
+canonical frames are inspected. Expected sold-out price suppression is
+separately verified. However, manual review resolves an Axe incomplete as
+`B6-SOLD-OUT-METADATA-CONTRAST`: the whole-card black overlay reduces Vorum's
+12px artist text to 2.875:1, below 4.5:1. **This deployed correction is not
+fully visually accepted.** Its next push must include that corrective repair;
+do not treat it as an accepted checkpoint for an unrelated batch.
+
+The cohesive local correction projects canonical active media onto native
+Product/Variant thumbnails for future carts/orders, preserves completed order
+snapshots and shared asset URLs, and guards native artwork ownership. The final
+223-case disposable aggregate passes: 121 native, 44 isolated payment,
+38 PostgreSQL, 11 Redis, three API and six session cases. All 32 final frozen
+hashes match and owned fixture containers/network/volumes are absent. Six
+focused suites / 73 tests also pass. Real native cart-to-order/payment/tax hooks,
+partial-write compensation, actual Redis HTTP/import expired-owner release and
+creation's shared-asset rollback all pass. Unique owners and bounded
+conflict-only acquisition prevent an expired writer from releasing its successor.
+Audit persistence and compensation retain their lease; cleanup failure does not
+roll back committed success. Leases remain finite 120-second leases, with a
+two-second committed release limit. The separate five-second CSV file lock is
+unchanged. Trusted module writers, lease expiry, crash and Redis loss remain
+explicit limits.
+
+The fresh guarded native-format comparison proves the missing cassette member
+has an album-title Format option and canonical Standard profile. The substring
+`cs` in Relics caused the false Cassette match; the word-boundary correction
+agrees with Backend behavior, preserving precedence and real format aliases.
+Full-catalog and format-option cache identities change to avoid old normalized
+rows. The final artwork-only overlay and opaque Unavailable badge pass the
+production build, 1,097 baseline plus 403 transactional tests, ten five-width
+artwork/availability cases and all 114 Chromium/Firefox/WebKit critical cases
+with zero retries. All 30 final frames are inspected; 15 full-card Axe scans
+have zero violations/incompletes, artist contrast 7.36:1 and badge 7.69:1.
+Native keyboard, disabled Quick shop, complete metadata and contain geometry
+pass. The prefix-paint concern was a reviewer interpretation error: old and
+new capture-proof files have identical pixels, with independent readable-prefix
+review. It caused no extra application change. The original browser flake and
+two harness failures are retained. This closes the local contrast correction;
+exact deployed acceptance remains.
+
+Refreshed shared lint/type/policy and Backend build pass on the corrected final
+source. Backend coverage passes all 303 suites / 2,699 tests on that same source. The earlier
+missing-manifest failure is retained; all six native delegates now have a
+separate inventory bound to installed handlers/policy declarations, without
+adding custom RBAC middleware or changing native batch policy grouping. CSV
+import confirmation guards its actual parsed plan through native acknowledgement
+and file consumption; strict DTO rejection, authorization and idempotency
+remain. Nonempty native batch deletes return the existing disabled-deletion
+problem, while empty deletes preserve ordinary native updates. API inventory
+has 65 Backend/32 Storefront files, 124 exported/122 unique operations; its
+guarded 409 documents custom problems and native lock/workflow JSON.
+
+Retain the actual pre-fix shared-asset data-loss reproduction and all three
+subsequent failed diagnostic aggregates. Creation now holds Product and shared
+asset ownership through rollback; its child validates internal inherited lease
+evidence. Explicit and implicit selection are rechecked under the lease and
+inside the transaction. Implicit source reuse still clones a new row. A valid
+100-old/100-new replacement restores its bounded 200-asset union after a real
+late failure. Strict persisted replay binding avoids new asset/projection
+planning after later changes, without accepting a different actor, command,
+request or version. Existing HTTP Product/Variant existence checks and profile
+response-state checks remain. The installed SDK rebinds a configured lock's
+compensation handler when it is placed inside a condition; moving only the
+renamed native acquisition outside that condition fixes the observed leak.
+The real regression proves rollback releases its own UUID and permits the
+other Product's metadata save immediately, without TTL waiting or forced unlock.
+Five negative fixture expectations now assert the SDK's exact serialized
+rejection objects and unchanged persistence instead of requiring an Error
+prototype. Final source acceptance precedes one grouped direct staging push;
+exact CI, rollout and deployed acceptance remain.
+
+The new Catalog guidance widget passes scoped rendered, keyboard, cursor and
+Axe checks at 390/1440 pixels. The full native Product page still fails for two
+unnamed filter/sort buttons; three phone toolbar targets shrink to 18.05px.
+Retain the full-page failures and fix their upstream component/toolbar surface
+in the next substantive correction. Widget proof is not full-page acceptance.
+Existing managed native-thumbnail drift is not backfilled by deployment and
+requires read-only inventory plus a guarded audited reconciliation. An ordinary
+native Variant batch's foreign-parent update remains an unverified source
+hypothesis requiring isolated HTTP proof before choosing a repair.
+
+No owned failed-creation cleanup or new mystery payment has run. The cleanup
+private SHA pin remains unset until corrected deployment acceptance, and the
+original creation key must never be retried. Current native Admin access is
+expired: a fresh native Admin navigation redirects to login. Retained order DOM
+does not establish authentication. Continue
+independent work without repeating authorization questions. Historical orders
+#9/#10/#11 are complete and must not be cleaned up again. Actual clipboard,
+owned media lifecycle, mystery payment, individual recovery/receipt controls,
+native Admin families and final route/control reconciliation remain. The
+private ledger joins 30 dated evidence groups to 21 families/all 44 source
+routes; 493 AST candidates are not executed-control passes.
+
+All-nine monitoring restarts without faults after the prior local observer
+exits with code 143 for an unverified reason. Last old sample 23:29:27.382 UTC
+and first new sample 23:33:59.176 UTC leave a documented 271.794-second gap;
+no continuous service observation or service restart is inferred in that gap.
+A fresh read of Backend's existing search completion directory fails at the
+directory phase. The pre-deploy log retains its completion path and rollback
+index, but its separate-container JSON receipt remains unretrieved; do not
+repeat preparation to obtain it. Fresh Redis inspection at 23:44:38.434 UTC retains the same healthy process,
+uptime 354,530 seconds and historical 237 + one failures. This does not erase
+the local observer gap. The removed Backend instance cause
+remains unknown; idle RecoveryBackups is not a new archive. Private evidence is
+under `artifacts/end-to-end-audit-2026-10-07/`. Preserve Default/setup paths and
+pinned Node 26.9.0 / pnpm 11.17.0. The Nov2 exact Braces exception and separate
+infrastructure/provider carryovers remain documented; no dependency change
+or exception extension occurred.
+
+## Earlier continuation — October 7, 21:51 UTC
 
 The user resumed Store Batch 6. Client cloning remains separately paused;
 production is untouched. Preserve the earlier pause and failed attempts below.

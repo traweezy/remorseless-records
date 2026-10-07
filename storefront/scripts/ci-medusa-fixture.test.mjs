@@ -205,6 +205,63 @@ test("retains exact carousel products through their public presentation rows", a
   })
 })
 
+test("isolates priced, sold-out and unavailable carousel acceptance states", async () => {
+  await withFixture(async (baseUrl) => {
+    const parent = await fixtureFetch(
+      baseUrl,
+      "/store/products?handle=music-release-ci-carousel-availability"
+    ).then((response) => response.json())
+    assert.equal(parent.count, 1)
+    const related = await fixtureFetch(
+      baseUrl,
+      `/store/products?collection_id=${parent.products[0].collection_id}`
+    ).then((response) => response.json())
+    assert.equal(related.count, 3)
+    assert.deepEqual(
+      related.products.map((product) => ({
+        artist: product.metadata.artist_names[0],
+        inventory: product.variants[0].inventory_quantity,
+        price: product.variants[0].calculated_price?.calculated_amount ?? null,
+      })),
+      [
+        { artist: "Fixture available artist", inventory: 10, price: 15 },
+        { artist: "Fixture sold-out artist", inventory: 0, price: 15 },
+        { artist: "Fixture unavailable artist", inventory: 10, price: null },
+      ]
+    )
+    const ids = [...parent.products, ...related.products].map(
+      (product) => product.id
+    )
+    const presentation = await fixtureFetch(
+      baseUrl,
+      `/store/catalog/presentation?product_ids=${ids.join(",")}`
+    ).then((response) => response.json())
+    assert.deepEqual(
+      presentation.presentations.map((row) => row.productId),
+      ids
+    )
+    for (const product of related.products) {
+      const detail = await fixtureFetch(
+        baseUrl,
+        `/store/products?handle=${product.handle}`
+      ).then((response) => response.json())
+      assert.deepEqual(detail.products, [product])
+    }
+    const ordinaryCatalog = await fixtureFetch(baseUrl, "/store/products").then(
+      (response) => response.json()
+    )
+    assert.deepEqual(
+      ordinaryCatalog.products.map((product) => product.id),
+      ["prod_CIPATHOLOGIST"]
+    )
+    const unknown = await fixtureFetch(
+      baseUrl,
+      "/store/products?handle=music-release-ci-carousel-availability-other"
+    ).then((response) => response.json())
+    assert.deepEqual(unknown.products, [])
+  })
+})
+
 test("calibrates Lighthouse CPU slowdown without changing budgets", () => {
   const localConfig = loadLighthouseConfig(undefined)
   const hostedRunnerConfig = loadLighthouseConfig("2")

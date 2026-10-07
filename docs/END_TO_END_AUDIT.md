@@ -1,5 +1,70 @@
 # Storefront, Admin and Stripe end-to-end audit
 
+### Active correction — October 7, 23:52 UTC
+
+The deployed staging baseline `d3809e5` passes all four exact CI workflows/23 checks,
+exact Backend/Storefront/Migrations, runtime/role/migration/notification proof,
+ordinary health and fresh correlated logs. Eight deployed cold 404/history
+cases and all eight final screenshots pass. Five deployed carousel cases
+verify 60 actual cards/97 keyboard advances and ten inspected canonical frames.
+They expose `B6-SOLD-OUT-METADATA-CONTRAST`: the whole-card black 45% overlay
+reduces the sold-out Vorum artist to 2.875:1 at 12px. This correction remains
+visually unaccepted until the artwork-only overlay repair deploys and passes;
+Axe incompletes were manually investigated, not ignored. Sold-out empty price
+is the existing explicit contract, with its badge and disabled Quick shop.
+
+The cohesive local batch includes compensated native Product/Variant artwork
+projection, immutable shared source URLs, native ownership guards and the CSV
+import-confirmation bypass repair. Real cart-to-order snapshots and payment/tax
+hooks pass; historical orders remain unchanged. The final aggregate passes 223
+cases: 121 native, 44 payment, 38 PostgreSQL, 11 Redis, three API and six session
+cases. All 32 final frozen hashes match; owned fixtures are removed. Six focused
+suites / 73 tests pass. Shared QA and Backend build pass; final Backend
+coverage passes all 303 suites / 2,699 tests. Unique owners and bounded cleanup preserve
+committed success; 120-second leases remain finite. The native delegation
+inventory preserves installed authorization and policy grouping. Guarded API409
+allows custom ownership problems and native JSON conflicts; ordinary native
+errors keep their existing contract.
+
+The rendered Catalog guidance widget passes scoped keyboard/cursor/Axe checks
+at 390/1440 pixels, but the full native Product page fails for unnamed native
+filter/sort buttons and shrinking phone toolbar targets. Those failures remain
+open. Existing managed thumbnail drift needs inventory and guarded audited
+reconciliation; deployment does not bulk backfill records. The unrelated
+ordinary Variant batch foreign-parent behavior is an unverified source finding
+awaiting isolated HTTP proof. Current native Admin navigation redirects to login.
+
+Fresh guarded native/profile/index facts confirm the cassette mismatch is a
+false substring match in the album title Relics. The local word-boundary fix
+matches Backend precedence/aliases, with changed cache keys. Final Storefront
+build and 1,097 baseline plus 403 transactional tests pass. After the overlay
+and opaque-badge changes, all ten artwork/availability cases and all 114
+critical cases pass without retries. All 30 final frames are inspected and all
+15 full-card Axe scans have zero violations/incompletes. Artist contrast is
+7.36:1; badge contrast is 7.69:1. Retain the original keyboard-focus flake,
+two harness failures and the independently corrected prefix-reading error.
+Creation's shared-asset rollback race was reproduced in real supported workflows.
+Final native tests now prove parent/shared ownership through compensation,
+inherited child lease coverage and transaction-level drift rejection. Implicit
+reuse retains clone semantics and exact committed retries create no extra asset.
+The 100-old/100-new gallery restores its complete bounded 200-asset snapshot
+after a late failure. Retain the data-loss reproduction and all three failed
+subsequent aggregates. Five negative assertions needed the SDK's exact serialized
+rejection shape. The sixth failure exposed configured native lock compensation
+rebinding inside a condition; moving that acquisition outside the condition
+now releases its actual UUID and permits the second Product's next metadata
+write without waiting for expiry. Exact replay after later catalog/native
+changes remains guarded by the original persisted binding and HTTP existence
+checks. No dependency patch or authorization change is involved.
+The private ledger maps 30 dated evidence groups to 21 families/all 44 routes;
+493 AST candidates remain candidates, not individually executed controls.
+
+The opening handoff records exact deployments, failed provider/fixture checks,
+current source gates and remaining ownership/payment/authentication work.
+No live orphan repair or new mystery purchase has run. Client clone remains
+paused. All-nine/Redis monitoring, completed historical order cleanup and
+restricted Resend/MFA/wallet limits remain intact.
+
 ### Resumed correction — October 7, 21:51 UTC
 
 The user resumes Batch 6; the client clone remains paused. Fresh b7014fb

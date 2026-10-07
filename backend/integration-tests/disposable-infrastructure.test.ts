@@ -19,6 +19,8 @@ import {
   orderExchangeRequestItemReturnWorkflow,
   orderExchangeAddNewItemWorkflow,
   confirmExchangeRequestWorkflow,
+  createPaymentCollectionForCartWorkflow,
+  linkSalesChannelsToStockLocationWorkflow,
 } from "@medusajs/core-flows"
 import { loadStoreCatalogPresentations } from "../src/lib/catalog/store-presentation"
 import { loadProductAuthoringView } from "../src/lib/catalog/product-authoring-view"
@@ -35,8 +37,10 @@ import type {
   IEventBusModuleService,
   IOrderModuleService,
   IInventoryService,
+  IRegionModuleService,
   ITaxModuleService,
   CreateNotificationDTO,
+  Logger,
 } from "@medusajs/framework/types"
 import {
   ContainerRegistrationKeys,
@@ -44,6 +48,10 @@ import {
   PaymentEvents,
 } from "@medusajs/framework/utils"
 import { medusaIntegrationTestRunner } from "@medusajs/test-utils"
+import {
+  TransactionHandlerType,
+  TransactionState,
+} from "@medusajs/framework/utils"
 import { StepResponse } from "@medusajs/framework/workflows-sdk"
 import { knex, type Knex } from "@mikro-orm/knex"
 import { createClient } from "redis"
@@ -51,6 +59,8 @@ import { randomUUID } from "node:crypto"
 import type { MedusaRequest } from "@medusajs/framework"
 import { GET as nativeProductList } from "@medusajs/medusa/api/admin/products/route"
 import { GET as nativeVariantList } from "@medusajs/medusa/api/admin/products/[id]/variants/route"
+import { POST as guardedNativeProductUpdate } from "../src/api/admin/products/[id]/route"
+import { POST as guardedNativeVariantUpdate } from "../src/api/admin/products/[id]/variants/[variant_id]/route"
 
 import {
   setShelfArchived,
@@ -74,6 +84,16 @@ import {
 } from "../src/lib/catalog/transaction-persistence-contracts"
 import { createCatalogProductWorkflow } from "../src/workflows/catalog/create-product"
 import { mutateCatalogBundleWorkflow } from "../src/workflows/catalog/mutate-bundle"
+import { mutateCatalogProductMediaWorkflow } from "../src/workflows/catalog/mutate-product-media"
+import { mutateCatalogMediaLifecycleWorkflow } from "../src/workflows/catalog/mutate-media-lifecycle"
+import { mutateCatalogProductProfileWorkflow } from "../src/workflows/catalog/mutate-product-profile"
+import { releaseCommittedCatalogMediaLease } from "../src/workflows/catalog/media-lease"
+import type { CatalogProductMediaMutationInput } from "../src/lib/catalog/product-media-authoring"
+import { taxQuoteIdentityFromCart } from "../src/lib/tax-control/quote"
+import { installDisposableStripeTransport } from "./helpers/native-artwork-checkout"
+import { registerNativeCatalogBatchHttpTests } from "./helpers/native-catalog-batch-http"
+import { registerNativeArtworkImportIntegration } from "./helpers/native-artwork-import"
+import { registerCatalogSharedMediaIntegration } from "./helpers/catalog-shared-media"
 import { catalogProductCreateSchema } from "../src/lib/catalog/product-create-contract"
 import {
   inspectFailedCatalogCreation,
@@ -177,7 +197,7 @@ medusaIntegrationTestRunner({
       const fulfillment = container.resolve<IFulfillmentModuleService>(
         Modules.FULFILLMENT
       )
-      await fulfillment.createShippingProfiles({
+      const shippingProfile = await fulfillment.createShippingProfiles({
         name: "Disposable bundle shipping",
         type: "default",
       })
@@ -192,7 +212,7 @@ medusaIntegrationTestRunner({
       await stores.updateStores(store.id, {
         default_sales_channel_id: channel.id,
       })
-      await container
+      const location = await container
         .resolve<IStockLocationService>(Modules.STOCK_LOCATION)
         .createStockLocations({ name: "HQ" })
       const componentCommand = catalogProductCreateSchema.parse({
@@ -311,7 +331,16 @@ medusaIntegrationTestRunner({
                 },
               }),
         })
-      return { catalog, command, component, container, mediaAssetId }
+      return {
+        catalog,
+        command,
+        component,
+        container,
+        mediaAssetId,
+        channel,
+        location,
+        shippingProfile,
+      }
     }
 
     // Persist the historical early-completion footprint through native model
@@ -428,6 +457,211 @@ medusaIntegrationTestRunner({
     }
 
     describe("disposable PostgreSQL and Redis integration", () => {
+      registerNativeCatalogBatchHttpTests(api, getContainer)
+      registerNativeArtworkImportIntegration(getContainer)
+      registerCatalogSharedMediaIntegration(
+        getContainer,
+        catalogCreationFixture
+      )
+      it("preserves a second Product's shared-asset edit across creation compensation", async () => {
+        const { catalog, command, component, container, mediaAssetId } =
+          await catalogCreationFixture()
+        const locking = container.resolve<ILockingModule>(Modules.LOCKING)
+        const assetKey = `catalog:media-asset:${mediaAssetId}`
+        const mutateExisting = (expectedVersion: number, altText: string) =>
+          mutateCatalogProductMediaWorkflow(container).run({
+            input: {
+              actorId: "user_disposable_catalog_audit",
+              aggregateId: component.productId,
+              command: "catalog.product-media.replace",
+              expectedVersion,
+              idempotencyKey: randomUUID(),
+              requestSha256: "a".repeat(64),
+              media: [{ mediaAssetId, altText, isPrimary: true }],
+            },
+          })
+        await mutateExisting(0, "Shared asset before creation")
+        const baseline = readCatalogMediaAsset(
+          await catalog.retrieveCatalogMediaAsset(mediaAssetId),
+          mediaAssetId
+        )
+        const parsed = command("merch", "shared-asset-rollback")
+        const completeOriginal =
+          catalog.completeCatalogAuthoringOperation.bind(catalog)
+        const updateOriginal = catalog.updateCatalogMediaAssets.bind(catalog)
+        let paused: () => void = () => undefined
+        const creationPaused = new Promise<void>((resolve) => {
+          paused = resolve
+        })
+        let failCreation: () => void = () => undefined
+        const failureAllowed = new Promise<void>((resolve) => {
+          failCreation = resolve
+        })
+        const failure = new Error(
+          "Owned shared-asset creation completion failure"
+        )
+        const writes: string[] = []
+        const leaseEvents: Array<{
+          action: string
+          owner: unknown
+          keys: unknown
+        }> = []
+        const acquireOriginal = locking.acquire.bind(locking)
+        const releaseOriginal = locking.release.bind(locking)
+        const acquireDiagnostic = jest
+          .spyOn(locking, "acquire")
+          .mockImplementation(async (keys, options) => {
+            leaseEvents.push({
+              action: "acquire",
+              owner: options?.ownerId,
+              keys,
+            })
+            return acquireOriginal(keys, options)
+          })
+        const releaseDiagnostic = jest
+          .spyOn(locking, "release")
+          .mockImplementation(async (keys, options) => {
+            leaseEvents.push({
+              action: "release",
+              owner: options?.ownerId,
+              keys,
+            })
+            return releaseOriginal(keys, options)
+          })
+        const update = jest
+          .spyOn(catalog, "updateCatalogMediaAssets")
+          .mockImplementation(async (rows, context) => {
+            for (const row of Array.isArray(rows) ? rows : [rows]) {
+              if (
+                "id" in row &&
+                row.id === mediaAssetId &&
+                "alt_text" in row &&
+                typeof row.alt_text === "string"
+              )
+                writes.push(row.alt_text)
+            }
+            return updateOriginal(rows, context)
+          })
+        const completion = jest
+          .spyOn(catalog, "completeCatalogAuthoringOperation")
+          .mockImplementation(async (id, result, context) => {
+            const operation = (
+              await catalog.listCatalogAuthoringOperations(
+                { id },
+                { take: 1 },
+                context
+              )
+            )[0]
+            if (operation?.command === "catalog.product.create") {
+              paused()
+              await failureAllowed
+              throw failure
+            }
+            return completeOriginal(id, result, context)
+          })
+        let creation:
+          | ReturnType<ReturnType<typeof createCatalogProductWorkflow>["run"]>
+          | undefined
+        let later: ReturnType<typeof mutateExisting> | undefined
+        try {
+          creation = createCatalogProductWorkflow(container).run({
+            input: {
+              ...parsed,
+              actorId: "user_disposable_catalog_audit",
+              requestSha256: hashCatalogCommand(parsed),
+            },
+            throwOnError: false,
+          })
+          await creationPaused
+          expect(
+            await catalog.retrieveCatalogMediaAsset(mediaAssetId)
+          ).toMatchObject({ alt_text: "Owned disposable artwork" })
+          let parentOwnsSharedAsset = false
+          try {
+            await locking.acquire(assetKey, {
+              ownerId: "disposable-shared-asset-probe",
+              expire: 1,
+            })
+            await locking.release(assetKey, {
+              ownerId: "disposable-shared-asset-probe",
+            })
+          } catch {
+            parentOwnsSharedAsset = true
+          }
+          later = mutateExisting(1, "Later edit from Product A")
+          if (parentOwnsSharedAsset) {
+            await new Promise<void>((resolve) => setTimeout(resolve, 100))
+            expect(writes).not.toContain("Later edit from Product A")
+          } else {
+            // Preserve the concrete pre-fix interleaving: another Product can
+            // commit before this creation rolls its shared snapshot back.
+            await later
+          }
+          failCreation()
+          const failed = await creation
+          expect(failed.transaction.getState()).toBe(TransactionState.REVERTED)
+          expect(
+            failed.transaction.getErrors(TransactionHandlerType.COMPENSATE)
+          ).toEqual([])
+          const parentLease = leaseEvents.find(
+            ({ action, keys }) =>
+              action === "acquire" &&
+              Array.isArray(keys) &&
+              keys.includes(assetKey)
+          )
+          expect(parentLease?.owner).toMatch(/^[0-9a-f-]{36}$/u)
+          expect(leaseEvents).toContainEqual({
+            action: "release",
+            keys: parentLease!.keys,
+            owner: parentLease!.owner,
+          })
+          expect(
+            failed.errors.some(
+              ({ error }) => error?.message === failure.message
+            )
+          ).toBe(true)
+          await later
+          expect(
+            await catalog.retrieveCatalogMediaAsset(mediaAssetId)
+          ).toMatchObject({
+            alt_text: "Later edit from Product A",
+            version: baseline.version + 1,
+          })
+          expect(parentOwnsSharedAsset).toBe(true)
+          expect(writes).toEqual([
+            "Owned disposable artwork",
+            "Shared asset before creation",
+            "Later edit from Product A",
+          ])
+          expect(
+            await container
+              .resolve<IProductModuleService>(Modules.PRODUCT)
+              .listProducts({ handle: parsed.handle! })
+          ).toHaveLength(0)
+          const links = await catalog.listCatalogProductMediaItems({
+            media_asset_id: mediaAssetId,
+          })
+          expect(links).toHaveLength(1)
+          expect(links[0]!.product_id).toBe(component.productId)
+          await locking.acquire(assetKey, {
+            ownerId: "disposable-shared-asset-probe",
+            expire: 1,
+          })
+          await locking.release(assetKey, {
+            ownerId: "disposable-shared-asset-probe",
+          })
+        } finally {
+          failCreation()
+          await Promise.allSettled(
+            [creation, later].filter((pending) => !!pending)
+          )
+          completion.mockRestore()
+          update.mockRestore()
+          acquireDiagnostic.mockRestore()
+          releaseDiagnostic.mockRestore()
+        }
+      })
+
       it("repairs only owned failed-creation links and retains assets/history on replay", async () => {
         const { catalog, container, identity, snapshot } =
           await failedCreationFixture()
@@ -600,7 +834,15 @@ medusaIntegrationTestRunner({
           expect(created).toMatchObject({ kind, replayed: false })
           expect(
             await products.retrieveProduct(created.productId)
-          ).toMatchObject({ status: "draft", handle: parsed.handle })
+          ).toMatchObject({
+            status: "draft",
+            handle: parsed.handle,
+            thumbnail: (await catalog.retrieveCatalogMediaAsset(mediaAssetId))
+              .source_url,
+          })
+          expect(
+            await products.retrieveProductVariant(created.variantIds[0]!)
+          ).toMatchObject({ thumbnail: null })
           const media = await catalog.listCatalogProductMediaItems({
             product_id: created.productId,
           })
@@ -674,6 +916,904 @@ medusaIntegrationTestRunner({
         }
       })
 
+      it("projects variant art, replays it, and clears native art before quarantine without restoring links", async () => {
+        const { catalog, command, container, mediaAssetId } =
+          await catalogCreationFixture()
+        const products = container.resolve<IProductModuleService>(
+          Modules.PRODUCT
+        )
+        const parsed = command("merch", "native-media-lifecycle")
+        const created = (
+          await createCatalogProductWorkflow(container).run({
+            input: {
+              ...parsed,
+              actorId: "user_disposable_catalog_audit",
+              requestSha256: hashCatalogCommand(parsed),
+            },
+          })
+        ).result
+        const replacement = {
+          actorId: "user_disposable_catalog_audit",
+          aggregateId: created.productId,
+          command: "catalog.product-media.replace" as const,
+          expectedVersion: 1,
+          idempotencyKey: randomUUID(),
+          requestSha256: "f".repeat(64),
+          media: [
+            {
+              sourceUrl: "https://media.example.com/native-variant.webp",
+              variantId: created.variantIds[0]!,
+              isPrimary: true,
+            },
+          ],
+        }
+        const changed = (
+          await mutateCatalogProductMediaWorkflow(container).run({
+            input: replacement,
+          })
+        ).result
+        expect(changed).toMatchObject({ version: 2, replayed: false })
+        expect(await products.retrieveProduct(created.productId)).toMatchObject(
+          { thumbnail: replacement.media[0]!.sourceUrl }
+        )
+        expect(
+          await products.retrieveProductVariant(created.variantIds[0]!)
+        ).toMatchObject({ thumbnail: replacement.media[0]!.sourceUrl })
+        const updateProduct = jest.spyOn(products, "updateProducts")
+        const updateVariant = jest.spyOn(products, "updateProductVariants")
+        try {
+          expect(
+            (
+              await mutateCatalogProductMediaWorkflow(container).run({
+                input: replacement,
+              })
+            ).result
+          ).toMatchObject({ replayed: true, version: 2 })
+          expect(updateProduct).not.toHaveBeenCalled()
+          expect(updateVariant).not.toHaveBeenCalled()
+        } finally {
+          updateProduct.mockRestore()
+          updateVariant.mockRestore()
+        }
+        const linked = (
+          await catalog.listCatalogProductMediaItems({
+            product_id: created.productId,
+          })
+        )[0]!
+        const empty: CatalogProductMediaMutationInput = {
+          ...replacement,
+          expectedVersion: 2,
+          idempotencyKey: randomUUID(),
+          requestSha256: "a".repeat(64),
+          media: [],
+        }
+        await mutateCatalogProductMediaWorkflow(container).run({ input: empty })
+        expect(await products.retrieveProduct(created.productId)).toMatchObject(
+          { thumbnail: null }
+        )
+        expect(
+          await products.retrieveProductVariant(created.variantIds[0]!)
+        ).toMatchObject({ thumbnail: null })
+        for (const assetId of [mediaAssetId, linked.media_asset_id]) {
+          const asset = readCatalogMediaAsset(
+            await catalog.retrieveCatalogMediaAsset(assetId),
+            assetId
+          )
+          const quarantined = (
+            await mutateCatalogMediaLifecycleWorkflow(container).run({
+              input: {
+                actorId: "user_disposable_catalog_audit",
+                assetId,
+                command: "catalog.media.quarantine",
+                expectedVersion: asset.version,
+                idempotencyKey: randomUUID(),
+                requestSha256: "b".repeat(64),
+              },
+            })
+          ).result
+          await mutateCatalogMediaLifecycleWorkflow(container).run({
+            input: {
+              actorId: "user_disposable_catalog_audit",
+              assetId,
+              command: "catalog.media.restore",
+              expectedVersion: quarantined.version,
+              idempotencyKey: randomUUID(),
+              requestSha256: "c".repeat(64),
+            },
+          })
+        }
+        expect(
+          await catalog.listCatalogProductMediaItems({
+            product_id: created.productId,
+          })
+        ).toEqual([])
+        expect(await products.retrieveProduct(created.productId)).toMatchObject(
+          { thumbnail: null }
+        )
+        expect(
+          await products.retrieveProductVariant(created.variantIds[0]!)
+        ).toMatchObject({ thumbnail: null })
+      })
+
+      it.each([
+        "before-native-write",
+        "after-native-write",
+        "operation-completion",
+      ] as const)(
+        "restores persisted native art and exact Catalog links when %s fails",
+        async (failureBoundary) => {
+          const { catalog, command, container } = await catalogCreationFixture()
+          const products = container.resolve<IProductModuleService>(
+            Modules.PRODUCT
+          )
+          const parsed = command("merch", `artwork-${failureBoundary}`)
+          const created = (
+            await createCatalogProductWorkflow(container).run({
+              input: {
+                ...parsed,
+                actorId: "user_disposable_catalog_audit",
+                requestSha256: hashCatalogCommand(parsed),
+              },
+            })
+          ).result
+          const priorProduct = await products.retrieveProduct(created.productId)
+          const priorVariant = await products.retrieveProductVariant(
+            created.variantIds[0]!
+          )
+          const priorLinks = await catalog.listCatalogProductMediaItems({
+            product_id: created.productId,
+          })
+          const failure = new Error(
+            `Injected disposable artwork ${failureBoundary}`
+          )
+          const replacement: CatalogProductMediaMutationInput = {
+            actorId: "user_disposable_catalog_audit",
+            aggregateId: created.productId,
+            command: "catalog.product-media.replace",
+            expectedVersion: 1,
+            idempotencyKey: randomUUID(),
+            requestSha256: "f".repeat(64),
+            media: [
+              {
+                sourceUrl: "https://media.example.com/replacement.webp",
+                isPrimary: true,
+                sortOrder: 0,
+              },
+              {
+                sourceUrl: "https://media.example.com/variant.webp",
+                variantId: created.variantIds[0]!,
+                isPrimary: true,
+                sortOrder: 1,
+              },
+            ],
+          }
+          const originalVariant = products.updateProductVariants.bind(products)
+          const originalComplete =
+            catalog.completeCatalogAuthoringOperation.bind(catalog)
+          const locking = container.resolve<ILockingModule>(Modules.LOCKING)
+          const productMediaKey = `catalog:product-media:${created.productId}`
+          const originalProductUpdate = products.updateProducts.bind(products)
+          const originalMediaDelete =
+            catalog.deleteCatalogProductMediaItems.bind(catalog)
+          const protectedRestoration: string[] = []
+          const nativeRestoration = jest
+            .spyOn(products, "updateProducts")
+            .mockImplementation((async (
+              ...args: Parameters<typeof products.updateProducts>
+            ) => {
+              if (
+                args[1] &&
+                "thumbnail" in args[1] &&
+                args[1].thumbnail === priorProduct.thumbnail
+              ) {
+                await expect(
+                  locking.acquire(productMediaKey, {
+                    ownerId: "disposable-probe",
+                    expire: 1,
+                  })
+                ).rejects.toThrow()
+                protectedRestoration.push("native")
+              }
+              return originalProductUpdate(...args)
+            }) as typeof products.updateProducts)
+          const canonicalRestoration = jest
+            .spyOn(catalog, "deleteCatalogProductMediaItems")
+            .mockImplementation(async (ids, context) => {
+              await expect(
+                locking.acquire(productMediaKey, {
+                  ownerId: "disposable-probe",
+                  expire: 1,
+                })
+              ).rejects.toThrow()
+              protectedRestoration.push("canonical")
+              return originalMediaDelete(ids, context)
+            })
+          const injected =
+            failureBoundary === "operation-completion"
+              ? jest
+                  .spyOn(catalog, "completeCatalogAuthoringOperation")
+                  .mockImplementation(async (id, result, context) => {
+                    const operation = (
+                      await catalog.listCatalogAuthoringOperations(
+                        { id },
+                        { take: 1 },
+                        context
+                      )
+                    )[0]
+                    if (operation?.command === "catalog.product-media.replace")
+                      throw failure
+                    return originalComplete(id, result, context)
+                  })
+              : jest
+                  .spyOn(products, "updateProductVariants")
+                  .mockImplementation((async (
+                    ...args: Parameters<typeof products.updateProductVariants>
+                  ) => {
+                    if (
+                      args[1] &&
+                      "thumbnail" in args[1] &&
+                      args[1].thumbnail === replacement.media[1]!.sourceUrl
+                    ) {
+                      if (failureBoundary === "after-native-write")
+                        await originalVariant(...args)
+                      throw failure
+                    }
+                    return originalVariant(...args)
+                  }) as typeof products.updateProductVariants)
+          try {
+            const execution = await mutateCatalogProductMediaWorkflow(
+              container
+            ).run({ input: replacement, throwOnError: false })
+            expect(
+              execution.errors.some(
+                ({ error }) => error?.message === failure.message
+              )
+            ).toBe(true)
+            expect(
+              await products.retrieveProduct(created.productId)
+            ).toMatchObject({
+              thumbnail: priorProduct.thumbnail,
+              title: priorProduct.title,
+            })
+            expect(
+              await products.retrieveProductVariant(created.variantIds[0]!)
+            ).toMatchObject({
+              thumbnail: priorVariant.thumbnail,
+              sku: priorVariant.sku,
+            })
+            expect(
+              (
+                await catalog.listCatalogProductMediaItems({
+                  product_id: created.productId,
+                })
+              ).map(
+                ({
+                  created_at: _createdAt,
+                  updated_at: _updatedAt,
+                  ...state
+                }) => state
+              )
+            ).toEqual(
+              priorLinks.map(
+                ({
+                  created_at: _createdAt,
+                  updated_at: _updatedAt,
+                  ...state
+                }) => state
+              )
+            )
+            expect(
+              await catalog.listCatalogMediaAssets({
+                source_url: replacement.media.map(
+                  ({ sourceUrl }) => sourceUrl!
+                ),
+              })
+            ).toEqual([])
+            expect(
+              await catalog.listCatalogAuthoringOperations({
+                idempotency_key: replacement.idempotencyKey,
+              })
+            ).toMatchObject([{ status: "compensated" }])
+            expect(protectedRestoration).toEqual([
+              "canonical",
+              "native",
+              "canonical",
+            ])
+            await locking.acquire(productMediaKey, {
+              ownerId: "disposable-probe",
+              expire: 1,
+            })
+            await locking.release(productMediaKey, {
+              ownerId: "disposable-probe",
+            })
+          } finally {
+            injected.mockRestore()
+            nativeRestoration.mockRestore()
+            canonicalRestoration.mockRestore()
+          }
+        }
+      )
+
+      it("clears legacy native overrides when an empty managed profile is adopted", async () => {
+        const container = getContainer()
+        const products = container.resolve<IProductModuleService>(
+          Modules.PRODUCT
+        )
+        const legacy = await products.createProducts({
+          title: "Legacy native art",
+          thumbnail: "https://media.example.com/legacy.webp",
+          options: [{ title: "Format", values: ["CD"] }],
+          variants: [
+            {
+              title: "CD",
+              options: { Format: "CD" },
+            },
+          ],
+        })
+        await products.updateProductVariants(legacy.variants[0]!.id, {
+          thumbnail: "https://media.example.com/legacy-variant.webp",
+        })
+        await mutateCatalogProductProfileWorkflow(container).run({
+          input: {
+            actorId: "user_disposable_catalog_audit",
+            aggregateId: legacy.id,
+            command: "catalog.product-profile.upsert",
+            expectedVersion: 0,
+            idempotencyKey: randomUUID(),
+            requestSha256: "a".repeat(64),
+            patch: { releaseTitle: legacy.title },
+          },
+        })
+        expect(await products.retrieveProduct(legacy.id)).toMatchObject({
+          thumbnail: null,
+        })
+        expect(
+          await products.retrieveProductVariant(legacy.variants[0]!.id)
+        ).toMatchObject({ thumbnail: null })
+        for (const [handler, params] of [
+          [guardedNativeProductUpdate, { id: legacy.id }],
+          [
+            guardedNativeVariantUpdate,
+            { id: legacy.id, variant_id: legacy.variants[0]!.id },
+          ],
+        ] as const) {
+          let status: number | undefined
+          let response: unknown
+          const res = {
+            setHeader: jest.fn(),
+            type: jest.fn(),
+            status: (value: number) => {
+              status = value
+              return res
+            },
+            json: (value: unknown) => {
+              response = value
+            },
+          }
+          await handler(
+            {
+              scope: container,
+              params,
+              path: "/admin/products/disposable-artwork",
+              validatedBody: {
+                thumbnail: "https://media.example.com/bypass.webp",
+              },
+            } as unknown as Parameters<typeof handler>[0],
+            res as unknown as Parameters<typeof handler>[1]
+          )
+          expect(status).toBe(409)
+          expect(response).toMatchObject({
+            code: "catalog_media_authoring_required",
+          })
+        }
+        expect(await products.retrieveProduct(legacy.id)).toMatchObject({
+          thumbnail: null,
+        })
+        expect(
+          await products.retrieveProductVariant(legacy.variants[0]!.id)
+        ).toMatchObject({ thumbnail: null })
+      })
+
+      it("holds the real media lease through failed profile completion and both restorations", async () => {
+        const container = getContainer()
+        const catalog = container.resolve<CatalogService>("catalog")
+        const products = container.resolve<IProductModuleService>(
+          Modules.PRODUCT
+        )
+        const locking = container.resolve<ILockingModule>(Modules.LOCKING)
+        const legacy = await products.createProducts({
+          title: "Failed native artwork adoption",
+          thumbnail: "https://media.example.com/legacy.webp",
+        })
+        const key = `catalog:product-media:${legacy.id}`
+        const command = {
+          actorId: "user_disposable_catalog_audit",
+          aggregateId: legacy.id,
+          command: "catalog.product-profile.upsert" as const,
+          expectedVersion: 0,
+          idempotencyKey: randomUUID(),
+          requestSha256: "a".repeat(64),
+          patch: { releaseTitle: legacy.title },
+        }
+        const failure = new Error(
+          "Injected disposable profile completion failure"
+        )
+        const originalUpdate = products.updateProducts.bind(products)
+        const originalDelete =
+          catalog.deleteCatalogProductProfiles.bind(catalog)
+        const restored: string[] = []
+        const native = jest
+          .spyOn(products, "updateProducts")
+          .mockImplementation((async (
+            ...args: Parameters<typeof products.updateProducts>
+          ) => {
+            if (
+              args[1] &&
+              "thumbnail" in args[1] &&
+              args[1].thumbnail === legacy.thumbnail
+            ) {
+              await expect(
+                locking.acquire(key, { ownerId: "disposable-probe", expire: 1 })
+              ).rejects.toThrow()
+              restored.push("native")
+            }
+            return originalUpdate(...args)
+          }) as typeof products.updateProducts)
+        const canonical = jest
+          .spyOn(catalog, "deleteCatalogProductProfiles")
+          .mockImplementation(async (ids, context) => {
+            await expect(
+              locking.acquire(key, { ownerId: "disposable-probe", expire: 1 })
+            ).rejects.toThrow()
+            restored.push("canonical")
+            return originalDelete(ids, context)
+          })
+        const persistence = jest
+          .spyOn(catalog, "completeCatalogAuthoringOperation")
+          .mockRejectedValue(failure)
+        try {
+          const result = await mutateCatalogProductProfileWorkflow(
+            container
+          ).run({ input: command, throwOnError: false })
+          expect(
+            result.errors.some(
+              ({ error }) => error?.message === failure.message
+            )
+          ).toBe(true)
+          expect(await products.retrieveProduct(legacy.id)).toMatchObject({
+            thumbnail: legacy.thumbnail,
+          })
+          expect(
+            await catalog.listCatalogProductProfiles({ product_id: legacy.id })
+          ).toEqual([])
+          expect(
+            await catalog.listCatalogAuthoringOperations({
+              idempotency_key: command.idempotencyKey,
+            })
+          ).toMatchObject([{ status: "compensated" }])
+          expect(restored).toEqual(["native", "canonical"])
+          await locking.acquire(key, { ownerId: "disposable-probe", expire: 1 })
+          await locking.release(key, { ownerId: "disposable-probe" })
+        } finally {
+          native.mockRestore()
+          canonical.mockRestore()
+          persistence.mockRestore()
+        }
+      })
+
+      it("retains committed native and Catalog artwork when successful-operation lease cleanup fails", async () => {
+        const { catalog, command, container } = await catalogCreationFixture()
+        const parsed = command("merch", "committed-artwork-cleanup")
+        const created = (
+          await createCatalogProductWorkflow(container).run({
+            input: {
+              ...parsed,
+              actorId: "user_disposable_catalog_audit",
+              requestSha256: hashCatalogCommand(parsed),
+            },
+          })
+        ).result
+        const locking = container.resolve<ILockingModule>(Modules.LOCKING)
+        const originalRelease = locking.release.bind(locking)
+        let failedLease:
+          | { keys: string | string[]; ownerId: string }
+          | undefined
+        const release = jest
+          .spyOn(locking, "release")
+          .mockImplementation(async (keys, options) => {
+            const list = Array.isArray(keys) ? keys : [keys]
+            if (
+              list.includes(`catalog:product-media:${created.productId}`) &&
+              options?.ownerId
+            ) {
+              failedLease = { keys, ownerId: options.ownerId }
+              throw new Error("Injected disposable committed release failure")
+            }
+            return originalRelease(keys, options)
+          })
+        const warning = jest.spyOn(
+          container.resolve<Logger>(ContainerRegistrationKeys.LOGGER),
+          "warn"
+        )
+        const replacement: CatalogProductMediaMutationInput = {
+          actorId: "user_disposable_catalog_audit",
+          aggregateId: created.productId,
+          command: "catalog.product-media.replace",
+          expectedVersion: 1,
+          idempotencyKey: randomUUID(),
+          requestSha256: "d".repeat(64),
+          media: [
+            {
+              sourceUrl: "https://media.example.com/committed.webp",
+              isPrimary: true,
+            },
+          ],
+        }
+        try {
+          const result = await mutateCatalogProductMediaWorkflow(container).run(
+            { input: replacement }
+          )
+          expect(result.errors).toEqual([])
+          expect(result.result).toMatchObject({ version: 2, replayed: false })
+          expect(
+            await container
+              .resolve<IProductModuleService>(Modules.PRODUCT)
+              .retrieveProduct(created.productId)
+          ).toMatchObject({ thumbnail: replacement.media[0]!.sourceUrl })
+          expect(
+            await catalog.listCatalogProductMediaItems({
+              product_id: created.productId,
+            })
+          ).toHaveLength(1)
+          expect(
+            await catalog.listCatalogAuthoringOperations({
+              idempotency_key: replacement.idempotencyKey,
+            })
+          ).toMatchObject([{ status: "succeeded" }])
+          expect(warning).toHaveBeenCalledWith(
+            expect.stringContaining("120-second lease")
+          )
+          expect(failedLease).toBeDefined()
+        } finally {
+          release.mockRestore()
+          warning.mockRestore()
+          if (failedLease)
+            await originalRelease(failedLease.keys, {
+              ownerId: failedLease.ownerId,
+            })
+        }
+      })
+
+      it("does not release a subsequent owner's real Redis lease after cleanup times out", async () => {
+        const container = getContainer()
+        const locking = container.resolve<ILockingModule>(Modules.LOCKING)
+        const key = `catalog:product-media:prod_disposable_${randomUUID().replaceAll("-", "")}`
+        const oldOwner = randomUUID()
+        const nextOwner = randomUUID()
+        await locking.acquire(key, { ownerId: oldOwner, expire: 1 })
+        const originalRelease = locking.release.bind(locking)
+        let unblock: () => void = () => undefined
+        const gate = new Promise<void>((resolve) => {
+          unblock = resolve
+        })
+        let late: Promise<boolean> | undefined
+        const release = jest
+          .spyOn(locking, "release")
+          .mockImplementation((keys, options) => {
+            if (options?.ownerId === oldOwner) {
+              late = gate.then(() => originalRelease(keys, options))
+              return late
+            }
+            return originalRelease(keys, options)
+          })
+        try {
+          await releaseCommittedCatalogMediaLease(container, {
+            keys: [key],
+            ownerId: oldOwner,
+          })
+          await locking.acquire(key, { ownerId: nextOwner, expire: 120 })
+          unblock()
+          await expect(late).resolves.toBe(false)
+          await expect(
+            locking.acquire(key, { ownerId: "disposable-probe", expire: 1 })
+          ).rejects.toThrow()
+        } finally {
+          unblock()
+          await late?.catch(() => false)
+          release.mockRestore()
+          await originalRelease(key, { ownerId: nextOwner })
+          await originalRelease(key, { ownerId: oldOwner })
+        }
+      })
+
+      it("snapshots managed art through native Store cart completion and preserves completed and historical order artwork", async () => {
+        const {
+          catalog,
+          command,
+          container,
+          channel,
+          location,
+          shippingProfile,
+        } = await catalogCreationFixture()
+        const products = container.resolve<IProductModuleService>(
+          Modules.PRODUCT
+        )
+        const parsed = command("merch", "artwork-checkout")
+        const created = (
+          await createCatalogProductWorkflow(container).run({
+            input: {
+              ...parsed,
+              actorId: "user_disposable_catalog_audit",
+              requestSha256: hashCatalogCommand(parsed),
+            },
+          })
+        ).result
+        const originalArtwork = (
+          await products.retrieveProduct(created.productId)
+        ).thumbnail
+        expect(originalArtwork).toMatch(/^https:\/\/media\.example\.com\//u)
+        await products.updateProducts(created.productId, {
+          status: "published",
+        })
+        const region = await container
+          .resolve<IRegionModuleService>(Modules.REGION)
+          .createRegions({
+            name: "Disposable artwork checkout",
+            currency_code: "usd",
+            countries: ["us"],
+          })
+        const fulfillment = container.resolve<IFulfillmentModuleService>(
+          Modules.FULFILLMENT
+        )
+        const set = await fulfillment.createFulfillmentSets({
+          name: "Disposable artwork delivery",
+          type: "shipping",
+          service_zones: [
+            {
+              name: "US",
+              geo_zones: [{ country_code: "us", type: "country" }],
+            },
+          ],
+        })
+        const link = container.resolve(ContainerRegistrationKeys.LINK)
+        await linkSalesChannelsToStockLocationWorkflow(container).run({
+          input: {
+            id: location.id,
+            add: [channel.id],
+          },
+        })
+        await link.create({
+          [Modules.STOCK_LOCATION]: { stock_location_id: location.id },
+          [Modules.FULFILLMENT]: { fulfillment_set_id: set.id },
+        })
+        await link.create({
+          [Modules.STOCK_LOCATION]: { stock_location_id: location.id },
+          [Modules.FULFILLMENT]: {
+            fulfillment_provider_id: "per_item_standard",
+          },
+        })
+        const { result: options } = await createShippingOptionsWorkflow(
+          container
+        ).run({
+          input: [
+            {
+              name: "Disposable artwork shipping",
+              price_type: "calculated",
+              provider_id: "per_item_standard",
+              service_zone_id: set.service_zones![0]!.id,
+              shipping_profile_id: shippingProfile.id,
+              type: {
+                label: "Standard",
+                code: "standard",
+                description: "Disposable delivery",
+              },
+              data: {
+                base_amount: 1,
+                additional_amount: 0,
+                currency_code: "usd",
+              },
+            },
+          ],
+        })
+        const taxes = container.resolve<ITaxModuleService>(Modules.TAX)
+        const taxProvider = (await taxes.listTaxProviders()).find(({ id }) =>
+          id.includes("rate_lookup")
+        )!
+        await taxes.createTaxRegions({
+          country_code: "us",
+          provider_id: taxProvider.id,
+        })
+        expect(
+          (
+            await container
+              .resolve<TaxControlModuleService>("tax_control")
+              .ensureTaxProviderControl()
+          ).collection_mode
+        ).toBe("disabled")
+        const { result: keys } = await createApiKeysWorkflow(container).run({
+          input: {
+            api_keys: [
+              {
+                type: "publishable",
+                title: "Disposable artwork Store",
+                created_by: "user_disposable_catalog_audit",
+              },
+            ],
+          },
+        })
+        await linkSalesChannelsToApiKeyWorkflow(container).run({
+          input: { id: keys[0]!.id, add: [channel.id] },
+        })
+        const headers = { "x-publishable-api-key": keys[0]!.token }
+        const started = await api.post(
+          "/store/carts",
+          {
+            region_id: region.id,
+            sales_channel_id: channel.id,
+            email: "artwork-checkout@example.test",
+            shipping_address: {
+              first_name: "Disposable",
+              last_name: "Artwork",
+              address_1: "123 Test Street",
+              city: "Los Angeles",
+              province: "ca",
+              postal_code: "90001",
+              country_code: "us",
+            },
+          },
+          { headers }
+        )
+        const cartId = started.data.cart.id as string
+        const added = await api.post(
+          `/store/carts/${cartId}/line-items`,
+          { variant_id: created.variantIds[0]!, quantity: 1 },
+          { headers }
+        )
+        expect(added.data.cart.items).toMatchObject([
+          { thumbnail: originalArtwork, variant_id: created.variantIds[0]! },
+        ])
+        await api.post(
+          `/store/carts/${cartId}/shipping-methods`,
+          { option_id: options[0]!.id },
+          { headers }
+        )
+        // Like checkout payment binding, refresh every tax subject together
+        // after delivery selection so item and shipping fingerprints agree.
+        await api.post(`/store/carts/${cartId}/taxes`, {}, { headers })
+        const cart = (
+          await api.get(
+            `/store/carts/${cartId}?fields=+items.tax_lines.data,+shipping_methods.tax_lines.data`,
+            { headers }
+          )
+        ).data.cart
+        const quote = taxQuoteIdentityFromCart(cart)
+        const payments = container.resolve<IPaymentModuleService>(
+          Modules.PAYMENT
+        )
+        const transport = await installDisposableStripeTransport(payments)
+        try {
+          const { result: collection } =
+            await createPaymentCollectionForCartWorkflow(container).run({
+              input: { cart_id: cartId },
+            })
+          const session = await payments.createPaymentSession(collection.id, {
+            provider_id: "pp_stripe_stripe",
+            currency_code: "usd",
+            amount: cart.total,
+            data: {
+              metadata: {
+                medusa_cart_id: cartId,
+                rr_tax_collection_mode: quote.collectionMode,
+                rr_tax_generation: String(quote.generation),
+                rr_tax_fingerprint: quote.fingerprint,
+                rr_tax_provider: quote.provider ?? "",
+                rr_tax_calculation_id: quote.calculationId ?? "",
+              },
+            },
+          })
+          transport.confirm(session.data.id)
+          const completed = await api.post(
+            `/store/carts/${cartId}/complete`,
+            {},
+            { headers }
+          )
+          expect(completed.data.type).toBe("order")
+          const orderId = completed.data.order.id as string
+          expect(completed.data.order.items).toMatchObject([
+            { thumbnail: originalArtwork, variant_id: created.variantIds[0]! },
+          ])
+          const orders = container.resolve<IOrderModuleService>(Modules.ORDER)
+          const order = await orders.retrieveOrder(orderId, {
+            relations: ["items"],
+          })
+          expect(order.items).toMatchObject([{ thumbnail: originalArtwork }])
+          expect(
+            (
+              await payments.retrievePaymentCollection(collection.id, {
+                relations: ["payments", "payments.captures"],
+              })
+            ).payments
+          ).toMatchObject([
+            {
+              captured_at: expect.any(Date),
+              captures: [expect.objectContaining({ amount: cart.total })],
+            },
+          ])
+          const historical = await orders.createOrders({
+            currency_code: "usd",
+            email: "historical-artwork@example.test",
+            items: [
+              {
+                title: "Historical missing art",
+                quantity: 1,
+                unit_price: 3.57,
+                variant_id: created.variantIds[0]!,
+                product_id: created.productId,
+              },
+            ],
+          })
+          await mutateCatalogProductMediaWorkflow(container).run({
+            input: {
+              actorId: "user_disposable_catalog_audit",
+              aggregateId: created.productId,
+              command: "catalog.product-media.replace",
+              expectedVersion: 1,
+              idempotencyKey: randomUUID(),
+              requestSha256: "d".repeat(64),
+              media: [
+                {
+                  sourceUrl: "https://media.example.com/new-current-cover.webp",
+                  isPrimary: true,
+                },
+              ],
+            },
+          })
+          expect(
+            await products.retrieveProduct(created.productId)
+          ).toMatchObject({
+            thumbnail: "https://media.example.com/new-current-cover.webp",
+          })
+          expect(
+            (await orders.retrieveOrder(orderId, { relations: ["items"] }))
+              .items
+          ).toMatchObject([{ thumbnail: originalArtwork }])
+          expect(
+            (
+              await orders.retrieveOrder(historical.id, {
+                relations: ["items"],
+              })
+            ).items
+          ).toMatchObject([{ thumbnail: null }])
+          expect(
+            (
+              await container
+                .resolve<ICartModuleService>(Modules.CART)
+                .retrieveCart(cartId, { relations: ["items"] })
+            ).items
+          ).toMatchObject([{ thumbnail: originalArtwork }])
+          const replay = await api.post(
+            `/store/carts/${cartId}/complete`,
+            {},
+            { headers }
+          )
+          expect(replay.data).toMatchObject({
+            type: "order",
+            order: { id: orderId },
+          })
+          expect(transport.unexpectedRequests).toEqual([])
+          expect(transport.requests).toContainEqual({
+            method: "POST",
+            path: "/v1/payment_intents",
+          })
+          expect(transport.requests).toContainEqual({
+            method: "GET",
+            path: "/v1/payment_intents/pi_disposable_1",
+          })
+        } finally {
+          transport.restore()
+        }
+      })
+
       it.each(["bundle-inventory", "outer-completion"] as const)(
         "rolls back native draft, profiles and media when %s fails",
         async (failureBoundary) => {
@@ -688,6 +1828,56 @@ medusaIntegrationTestRunner({
             catalog.completeCatalogAuthoringOperation.bind(catalog)
           const originalInventory =
             catalog.replaceBundleInventoryLinks.bind(catalog)
+          const products = container.resolve<IProductModuleService>(
+            Modules.PRODUCT
+          )
+          const locking = container.resolve<ILockingModule>(Modules.LOCKING)
+          const originalProductUpdate = products.updateProducts.bind(products)
+          const originalMediaDelete =
+            catalog.deleteCatalogProductMediaItems.bind(catalog)
+          const protectedRollback: string[] = []
+          const nativeRollback = jest
+            .spyOn(products, "updateProducts")
+            .mockImplementation((async (
+              ...args: Parameters<typeof products.updateProducts>
+            ) => {
+              if (
+                typeof args[0] === "string" &&
+                args[1] &&
+                "thumbnail" in args[1] &&
+                args[1].thumbnail === null
+              ) {
+                await expect(
+                  locking.acquire(`catalog:product-media:${args[0]}`, {
+                    ownerId: "disposable-probe",
+                    expire: 1,
+                  })
+                ).rejects.toThrow()
+                protectedRollback.push("native")
+              }
+              return originalProductUpdate(...args)
+            }) as typeof products.updateProducts)
+          const canonicalRollback = jest
+            .spyOn(catalog, "deleteCatalogProductMediaItems")
+            .mockImplementation(async (ids, context) => {
+              const rows = await catalog.listCatalogProductMediaItems(
+                { id: Array.isArray(ids) ? ids : [ids] },
+                {},
+                context
+              )
+              for (const productId of new Set(
+                rows.map(({ product_id }) => product_id)
+              )) {
+                await expect(
+                  locking.acquire(`catalog:product-media:${productId}`, {
+                    ownerId: "disposable-probe",
+                    expire: 1,
+                  })
+                ).rejects.toThrow()
+              }
+              protectedRollback.push("canonical")
+              return originalMediaDelete(ids, context)
+            })
           const failure = new Error(
             `Injected disposable ${failureBoundary} failure`
           )
@@ -781,8 +1971,11 @@ medusaIntegrationTestRunner({
             expect(
               await catalog.retrieveCatalogMediaAsset(mediaAssetId)
             ).toMatchObject({ lifecycle_status: "active" })
+            expect(protectedRollback).toEqual(["native", "canonical"])
           } finally {
             injected.mockRestore()
+            nativeRollback.mockRestore()
+            canonicalRollback.mockRestore()
             await database.destroy()
           }
         }

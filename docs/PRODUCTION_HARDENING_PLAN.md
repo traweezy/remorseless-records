@@ -19,21 +19,29 @@ production/launch acceptance to batch 8. This supersedes the seven-batch plan.
 pause before the client clone. Batch 7 must not start until the user explicitly
 resumes it; earlier continuation requests do not override this stop point.
 
-**October 7 resumed audit:** the user resumed Batch 6 at 21:51 UTC.
-Fresh b7014fb readiness, all four workflows / 23 checks, exact app deployments,
-backup freshness and all-nine state pass. Redis retains the same healthy
-process; its historical failures and the intentional 29,725.014-second observer
-gap are retained. Fresh ordinary same-SHA scheduler completion is healthy with
-incident null, proving natural recovery after the latch window. No manual
-latch reset occurred. Orders #9/#10/#11 are cleaned up; do not repeat them.
-The native argument wrapper, carousel containment/metadata and pre-hydration
-Zod recovery corrections pass both builds, coverage, lint/type/policy and
-33 launch / 114 three-engine critical / 10 actual phone card-flow cases. They
-remain local pending grouped staging release acceptance. Owned failed-creation
-repair, mystery payment, native artwork projection, media/search and final
-executed controls remain open. See the opening handoff and audit for exact
-evidence and preserved failures. Batch 6 is unfinished; Batch 7 remains paused.
-Production is untouched.
+**October 7 continuing correction:** direct staging `d3809e5` passes all four
+exact workflows/23 checks, exact app/Migrations deployments, runtime/role proof,
+ordinary health and fresh correlated logs. Eight deployed cold 404 cases pass.
+Five live carousel cases verify 60 cards and 97 keyboard advances, but manual
+Axe review finds sold-out artist contrast 2.875:1; visually accepted release
+remains pending the artwork-only overlay correction. The same local batch
+adds canonical native artwork projection/guards, closes the CSV import bypass,
+and corrects false Cassette substring matching with fresh native facts and
+versioned caches. Its final 223-case aggregate passes with native artwork,
+shared-asset creation rollback, strict committed replay, complete 200-asset
+restoration and real Redis expired HTTP/import owner tests. All 32 frozen hashes
+match with clean fixture teardown. Shared lint/type/policy and both builds pass;
+final Backend coverage passes 303 suites / 2,699 tests. The separate six-route
+delegation inventory preserves installed native policy grouping. The full native Product page still fails for unnamed menus
+and shrinking phone targets, despite passing scoped Catalog guidance proof.
+Keep existing thumbnail drift and the unverified foreign-parent Variant source
+finding explicit. Preserve failed attempts and actual-versus-fixture scope.
+Final Storefront artwork/availability and 114 critical browser checks pass;
+exact direct staging CI/deployment and live acceptance remain. Owned repair, mystery
+payment, native media/Admin/clipboard/recovery controls and final executed
+ledger remain open. Orders 9/10/11 are complete; do not repeat them. All-nine
+monitoring retains healthy Redis and historical failures. Client clone remains
+paused; production is untouched. See the opening handoff and audit for evidence.
 
 1. **Accepted at `849abea`: credential isolation and backup access.** Migration
    authority is isolated in a one-shot service, and restricted backup export is

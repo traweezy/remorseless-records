@@ -1412,6 +1412,8 @@ test("UI runtime discography preserves browsing state after a release visit", as
   await page
     .getByRole("option", { name: "Title Z–A", exact: true })
     .press("Enter")
+  await expect(sort).toHaveAttribute("aria-expanded", "false")
+  await expect(sort).toBeFocused()
   const mobile = (page.viewportSize()?.width ?? 0) < 1024
   if (mobile) await page.getByRole("button", { name: /^Show filters/ }).click()
   const filters = mobile
@@ -1424,14 +1426,20 @@ test("UI runtime discography preserves browsing state after a release visit", as
   await page
     .getByRole("option", { name: "In print", exact: true })
     .press("Enter")
+  await expect(availability).toHaveAttribute("aria-expanded", "false")
+  await expect(availability).toBeFocused()
   const format = filters.getByRole("combobox", { name: "Filter by format" })
   await format.press("Enter")
   await page.getByRole("option", { name: "CD", exact: true }).press("Enter")
+  await expect(format).toHaveAttribute("aria-expanded", "false")
+  await expect(format).toBeFocused()
   const tag = filters.getByRole("combobox", { name: "Filter by tag" })
   await tag.press("Enter")
   await page
     .getByRole("option", { name: "CI fixture", exact: true })
     .press("Enter")
+  await expect(tag).toHaveAttribute("aria-expanded", "false")
+  await expect(tag).toBeFocused()
   if (mobile)
     await page
       .getByRole("button", { name: "Close discography filters" })

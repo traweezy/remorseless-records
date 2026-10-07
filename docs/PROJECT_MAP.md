@@ -105,21 +105,29 @@ contracts before applying generic framework examples from those files.
 
 ## Verified continuation boundary
 
-**Current October 7 continuation:** the user resumed Store Batch 6 at
-21:51 UTC. The accepted deployed baseline is
-`b7014fb4a352a162130687aca4bfbf5e2ea84cac`; fresh exact CI/readiness,
-application deployments, backup freshness, all-nine state and deep Redis pass.
-Ordinary same-SHA scheduler evidence confirms natural recovery after the
-incident window. Preserve observer gaps and the removed Backend instance's
-unverified stop reason. The argument wrapper, carousel sizing/containment and
-pre-hydration Zod recovery corrections pass local builds, coverage, lint/type
-and 33 launch / 114 three-engine / 10 actual phone card-flow cases; grouped
-direct staging acceptance remains. No guarded cleanup has run. Orders #9/#10/#11 are
-already refunded/restocked and must not be repeated; mystery is the remaining
-distinct paid family. Media/search, clipboard and individually unverified
-recovery/control-ledger items remain. The opening handoff/audit retain prior
-failures, exact receipt paths and next steps. Client cloning stays paused;
-production is untouched.
+**Current October 7 continuation:** Store Batch 6 continues. Direct staging
+baseline `d3809e54542fef4bce27e8ef6b849873efa4cb35` passes all four CI workflows /
+23 checks, both exact app deployments, Migrations, runtime, scheduler, backup
+freshness and correlated logs. Eight deployed cold 404/history cases pass.
+The carousel review finds sold-out artist text at 2.875:1; this revision remains
+visually unaccepted until the corrective release passes. Its cohesive local
+repair also projects managed artwork into native checkout snapshots, guards
+native/import artwork writes and batch deletion, and corrects the false
+Cassette match in Relics with changed cache identities. Final source gates pass 303 Backend suites / 2,699 tests, all 223 disposable
+checks, both builds, 114 critical browser cases and inspected availability/art
+frames. Shared-asset creation rollback, strict retries and bounded 200-asset
+restoration have actual service proof; failed reproductions remain retained.
+The next grouped direct push still requires exact CI and deployed acceptance.
+Preserve observer gaps and the removed Backend instance's unverified cause.
+All-nine monitoring and deep Redis remain healthy; historical job failures
+are retained. No guarded cleanup or new payment has run. Orders #9/#10/#11
+are already refunded/restocked and must not be repeated; mystery is the
+remaining distinct paid family. Existing managed thumbnail drift, owned
+media/search, native Admin/clipboard and individually unverified recovery
+controls remain. Native Admin currently shows login, not authenticated access.
+The control ledger's 493 AST candidates do not establish executed passes.
+Client cloning stays paused; production is untouched. Follow the opening
+handoff/audit for exact receipts and unfinished work.
 
 The following continuation description predates that current correction.
 

@@ -91,6 +91,34 @@ const carouselArtworkProducts = ["square", "portrait", "landscape"].map(
   })
 )
 
+const availabilityRuntimeProduct = {
+  ...fixtureProduct,
+  id: "prod_CICAROUSELAVAILABILITY",
+  handle: "music-release-ci-carousel-availability",
+  title: "Carousel Availability Pressing",
+  collection_id: "pcol_CICAROUSELAVAILABILITY",
+}
+const availabilityProducts = ["available", "sold-out", "unavailable"].map(
+  (state) => ({
+    ...fixtureProduct,
+    id: `prod_CIAVAILABILITY_${state.toUpperCase()}`,
+    handle: `music-release-ci-availability-${state}`,
+    title: `Carousel ${state} pressing`,
+    thumbnail: "/remorseless-hero-logo.png",
+    metadata: {
+      ...fixtureProduct.metadata,
+      artist_names: [`Fixture ${state} artist`],
+    },
+    variants: fixtureProduct.variants.map((variant) => ({
+      ...variant,
+      id: `variant_CIAVAILABILITY_${state.toUpperCase()}`,
+      inventory_quantity: state === "sold-out" ? 0 : 10,
+      calculated_price:
+        state === "unavailable" ? null : variant.calculated_price,
+    })),
+  })
+)
+
 const numberedTracklistProduct = {
   ...galleryRuntimeProduct,
   id: "prod_CINUMBEREDTRACKLIST",
@@ -250,6 +278,8 @@ const routePayload = (pathname, searchParams) => {
               galleryRuntimeProduct.id,
               carouselRuntimeProduct.id,
               ...carouselArtworkProducts.map((product) => product.id),
+              availabilityRuntimeProduct.id,
+              ...availabilityProducts.map((product) => product.id),
               numberedTracklistProduct.id,
               presentedRuntimeProduct.id,
             ].includes(id)
@@ -286,24 +316,34 @@ const routePayload = (pathname, searchParams) => {
       const carouselArtwork = carouselArtworkProducts.find(
         (product) => product.handle === requestedHandle
       )
+      const availability = availabilityProducts.find(
+        (product) => product.handle === requestedHandle
+      )
       const products =
         searchParams.get("collection_id") ===
-        carouselRuntimeProduct.collection_id
-          ? carouselArtworkProducts
-          : requestedHandle === carouselRuntimeProduct.handle
-            ? [carouselRuntimeProduct]
-            : carouselArtwork
-              ? [carouselArtwork]
-              : requestedHandle === presentedRuntimeProduct.handle
-                ? [presentedRuntimeProduct]
-                : requestedHandle === numberedTracklistProduct.handle
-                  ? [numberedTracklistProduct]
-                  : requestedHandle === galleryRuntimeProduct.handle
-                    ? [galleryRuntimeProduct]
-                    : requestedHandle &&
-                        requestedHandle !== fixtureProduct.handle
-                      ? []
-                      : [fixtureProduct]
+        availabilityRuntimeProduct.collection_id
+          ? availabilityProducts
+          : requestedHandle === availabilityRuntimeProduct.handle
+            ? [availabilityRuntimeProduct]
+            : availability
+              ? [availability]
+              : searchParams.get("collection_id") ===
+                  carouselRuntimeProduct.collection_id
+                ? carouselArtworkProducts
+                : requestedHandle === carouselRuntimeProduct.handle
+                  ? [carouselRuntimeProduct]
+                  : carouselArtwork
+                    ? [carouselArtwork]
+                    : requestedHandle === presentedRuntimeProduct.handle
+                      ? [presentedRuntimeProduct]
+                      : requestedHandle === numberedTracklistProduct.handle
+                        ? [numberedTracklistProduct]
+                        : requestedHandle === galleryRuntimeProduct.handle
+                          ? [galleryRuntimeProduct]
+                          : requestedHandle &&
+                              requestedHandle !== fixtureProduct.handle
+                            ? []
+                            : [fixtureProduct]
       return {
         products,
         count: products.length,
