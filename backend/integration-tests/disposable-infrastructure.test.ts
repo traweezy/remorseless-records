@@ -70,9 +70,15 @@ import {
   readCatalogMediaAsset,
   readCatalogBundleStateProfiles,
   readCatalogBundleComponentStates,
+  readCatalogBundleInventoryLinks,
 } from "../src/lib/catalog/transaction-persistence-contracts"
 import { createCatalogProductWorkflow } from "../src/workflows/catalog/create-product"
+import { mutateCatalogBundleWorkflow } from "../src/workflows/catalog/mutate-bundle"
 import { catalogProductCreateSchema } from "../src/lib/catalog/product-create-contract"
+import {
+  inspectFailedCatalogCreation,
+  repairFailedCatalogCreation,
+} from "../src/lib/catalog/failed-creation-repair"
 import {
   deriveCatalogCommandIdempotencyKey,
   hashCatalogCommand,
@@ -308,7 +314,269 @@ medusaIntegrationTestRunner({
       return { catalog, command, component, container, mediaAssetId }
     }
 
+    // Persist the historical early-completion footprint through native model
+    // APIs. This deliberately differs from the corrected creation workflow.
+    const failedCreationFixture = async () => {
+      const fixture = await catalogCreationFixture()
+      const { catalog, container, mediaAssetId } = fixture
+      const productId = `prod_${randomUUID().replaceAll("-", "")}`
+      const variantId = `variant_${randomUUID().replaceAll("-", "")}`
+      const key = randomUUID()
+      const [profile] = await catalog.createCatalogProductProfiles([
+        { product_id: productId },
+      ])
+      const [variant] = await catalog.createCatalogVariantProfiles([
+        { variant_id: variantId, product_profile_id: profile!.id },
+      ])
+      const [media] = await catalog.createCatalogProductMediaItems([
+        {
+          product_id: productId,
+          product_profile_id: profile!.id,
+          media_asset_id: mediaAssetId,
+          role: "primary",
+          is_primary: true,
+        },
+      ])
+      const [creation] = await catalog.createCatalogAuthoringOperations([
+        {
+          actor_id: "user_disposable_catalog_audit",
+          aggregate_id: `catalog-product-create:${key}`,
+          command: "catalog.product.create",
+          expected_version: 0,
+          idempotency_key: key,
+          request_sha256: "a".repeat(64),
+          status: "compensated",
+          result: {},
+          error_code: "workflow_compensated",
+          error_detail: "Owned historical creation failure",
+          completed_at: new Date(),
+          metadata: { kind: "fixed_bundle" },
+        },
+      ])
+      const children = await catalog.createCatalogAuthoringOperations(
+        [
+          {
+            scope: "product-profile",
+            command: "catalog.product-profile.upsert",
+            aggregate_id: productId,
+            result: {
+              productId,
+              profileId: profile!.id,
+              version: 1,
+              created: true,
+            },
+          },
+          {
+            scope: "variant:0:standard",
+            command: "catalog.variant-profile.upsert",
+            aggregate_id: variantId,
+            result: {
+              variantId,
+              profileId: variant!.id,
+              version: 1,
+              created: true,
+            },
+          },
+          {
+            scope: "product-media",
+            command: "catalog.product-media.replace",
+            aggregate_id: productId,
+            result: { productId, version: 1 },
+          },
+        ].map(({ scope, ...operation }) => ({
+          ...operation,
+          actor_id: "user_disposable_catalog_audit",
+          expected_version: 0,
+          idempotency_key: deriveCatalogCommandIdempotencyKey(key, scope),
+          request_sha256: "b".repeat(64),
+          status: "succeeded" as const,
+          error_code: null,
+          error_detail: null,
+          completed_at: new Date(),
+          metadata: {},
+        }))
+      )
+      const identity = { creationOperationId: creation!.id, productId }
+      const snapshot = async () => ({
+        profiles: await catalog.listCatalogProductProfiles(
+          { product_id: productId },
+          { withDeleted: true }
+        ),
+        variants: await catalog.listCatalogVariantProfiles(
+          { product_profile_id: profile!.id },
+          { withDeleted: true }
+        ),
+        media: await catalog.listCatalogProductMediaItems(
+          { product_id: productId },
+          { withDeleted: true }
+        ),
+        assets: await catalog.listCatalogMediaAssets({ id: mediaAssetId }),
+        history: await catalog.listCatalogAuthoringOperations(
+          { id: [creation!.id, ...children.map((row) => row.id)] },
+          { order: { id: "ASC" } }
+        ),
+      })
+      return {
+        ...fixture,
+        identity,
+        profile: profile!,
+        variant: variant!,
+        media: media!,
+        children,
+        snapshot,
+      }
+    }
+
     describe("disposable PostgreSQL and Redis integration", () => {
+      it("repairs only owned failed-creation links and retains assets/history on replay", async () => {
+        const { catalog, container, identity, snapshot } =
+          await failedCreationFixture()
+        const before = await snapshot()
+        const preview = await inspectFailedCatalogCreation(container, identity)
+        const input = {
+          ...identity,
+          expectedManifestSha256: preview.manifestSha256,
+          idempotencyKey: randomUUID(),
+        }
+        const repaired = await repairFailedCatalogCreation(container, input)
+        expect(repaired.replayed).toBe(false)
+        const after = await snapshot()
+        expect(after.assets).toEqual(before.assets)
+        expect(after.history).toEqual(before.history)
+        for (const rows of [after.profiles, after.variants, after.media]) {
+          expect(rows).toHaveLength(1)
+          expect(rows[0]!.deleted_at).not.toBeNull()
+        }
+        expect(await repairFailedCatalogCreation(container, input)).toEqual({
+          ...repaired,
+          replayed: true,
+        })
+        expect(
+          await catalog.listCatalogAuthoringOperations({
+            command: "catalog.failed-creation.repair",
+          })
+        ).toHaveLength(1)
+        await expect(
+          repairFailedCatalogCreation(container, {
+            ...input,
+            expectedManifestSha256: "f".repeat(64),
+          })
+        ).rejects.toThrow("exclusive ownership")
+      })
+
+      it("rolls back every repair write when final audit completion fails", async () => {
+        const { catalog, container, identity, snapshot } =
+          await failedCreationFixture()
+        const before = await snapshot()
+        const preview = await inspectFailedCatalogCreation(container, identity)
+        const input = {
+          ...identity,
+          expectedManifestSha256: preview.manifestSha256,
+          idempotencyKey: randomUUID(),
+        }
+        const injected = jest
+          .spyOn(catalog, "completeCatalogAuthoringOperation")
+          .mockRejectedValue(
+            new Error("Injected failed-creation repair completion failure")
+          )
+        try {
+          await expect(
+            repairFailedCatalogCreation(container, input)
+          ).rejects.toThrow("Injected failed-creation")
+          expect(await snapshot()).toEqual(before)
+          expect(
+            await catalog.listCatalogAuthoringOperations({
+              idempotency_key: input.idempotencyKey,
+            })
+          ).toHaveLength(0)
+        } finally {
+          injected.mockRestore()
+        }
+        expect(
+          (await inspectFailedCatalogCreation(container, identity))
+            .manifestSha256
+        ).toBe(preview.manifestSha256)
+        expect(
+          (await repairFailedCatalogCreation(container, input)).replayed
+        ).toBe(false)
+      })
+
+      it.each([
+        "manifest",
+        "profile-version",
+        "native-product",
+        "child-actor",
+        "child-key",
+        "extra-operation",
+        "media-owner",
+      ] as const)(
+        "rejects changed or ambiguous failed-creation ownership: %s",
+        async (change) => {
+          const {
+            catalog,
+            container,
+            identity,
+            profile,
+            media,
+            children,
+            snapshot,
+            component,
+          } = await failedCreationFixture()
+          const preview = await inspectFailedCatalogCreation(
+            container,
+            identity
+          )
+          if (change === "profile-version")
+            await catalog.updateCatalogProductProfiles([
+              { id: profile.id, version: 2 },
+            ])
+          if (change === "native-product")
+            await container
+              .resolve<IProductModuleService>(Modules.PRODUCT)
+              .createProducts({
+                id: identity.productId,
+                title: "Owned restored product",
+              })
+          if (change === "child-actor")
+            await catalog.updateCatalogAuthoringOperations([
+              { id: children[0]!.id, actor_id: "user_other" },
+            ])
+          if (change === "child-key")
+            await catalog.updateCatalogAuthoringOperations([
+              { id: children[0]!.id, idempotency_key: randomUUID() },
+            ])
+          if (change === "extra-operation")
+            await catalog.createCatalogAuthoringOperations([
+              {
+                command: "catalog.unrelated",
+                aggregate_id: identity.productId,
+                idempotency_key: randomUUID(),
+                request_sha256: "e".repeat(64),
+                expected_version: 0,
+              },
+            ])
+          if (change === "media-owner")
+            await catalog.updateCatalogProductMediaItems([
+              { id: media.id, product_profile_id: component.profileId },
+            ])
+          const before = await snapshot()
+          await expect(
+            repairFailedCatalogCreation(container, {
+              ...identity,
+              expectedManifestSha256:
+                change === "manifest" ? "f".repeat(64) : preview.manifestSha256,
+              idempotencyKey: randomUUID(),
+            })
+          ).rejects.toThrow("exclusive ownership")
+          expect(await snapshot()).toEqual(before)
+          expect(
+            await catalog.listCatalogAuthoringOperations({
+              command: "catalog.failed-creation.repair",
+            })
+          ).toHaveLength(0)
+        }
+      )
+
       it("creates and replays fixed, mystery and merchandise drafts with real media and inventory", async () => {
         const { catalog, command, container, mediaAssetId } =
           await catalogCreationFixture()
@@ -595,6 +863,144 @@ medusaIntegrationTestRunner({
           })
         ).toEqual(provenance)
       })
+
+      it.each([true, false])(
+        "preserves bundle ownership through deletion (completion failure=%s)",
+        async (failCompletion) => {
+          const { catalog, command, container } = await catalogCreationFixture()
+          const parsed = command("fixed_bundle")
+          const created = (
+            await createCatalogProductWorkflow(container).run({
+              input: {
+                ...parsed,
+                actorId: "user_disposable_catalog_audit",
+                requestSha256: hashCatalogCommand(parsed),
+              },
+            })
+          ).result
+          const profiles = await catalog.listCatalogBundleProfiles({
+            product_id: created.productId,
+          })
+          const profile = profiles[0]!
+          const components = await catalog.listCatalogBundleComponents({
+            bundle_profile_id: profile.id,
+          })
+          const provenance = await catalog.listCatalogBundleInventoryLinks({
+            bundle_profile_id: profile.id,
+          })
+          expect(provenance).toHaveLength(1)
+          const query = container.resolve(ContainerRegistrationKeys.QUERY)
+          const nativeLinks = async () =>
+            (
+              await query.graph({
+                entity: "product_variant",
+                fields: [
+                  "id",
+                  "inventory_items.inventory_item_id",
+                  "inventory_items.required_quantity",
+                ],
+                filters: { id: created.variantIds },
+              })
+            ).data
+          const originalNativeLinks = await nativeLinks()
+          const input = {
+            actorId: "user_disposable_catalog_audit",
+            aggregateId: created.productId,
+            command: "catalog.bundle.delete" as const,
+            expectedVersion: profile.version,
+            idempotencyKey: randomUUID(),
+            requestSha256: "b".repeat(64),
+            profile: null,
+            components: [],
+          }
+          const failure = new Error(
+            "Injected disposable bundle-delete completion failure"
+          )
+          const originalComplete =
+            catalog.completeCatalogAuthoringOperation.bind(catalog)
+          const injected = failCompletion
+            ? jest
+                .spyOn(catalog, "completeCatalogAuthoringOperation")
+                .mockImplementation(async (id, result, context) => {
+                  if (result.deleted === true) throw failure
+                  return originalComplete(id, result, context)
+                })
+            : null
+          try {
+            const execution = await mutateCatalogBundleWorkflow(container).run({
+              input,
+              throwOnError: false,
+            })
+            if (failCompletion) {
+              expect(
+                execution.errors.some(
+                  ({ error }) => error?.message === failure.message
+                )
+              ).toBe(true)
+              expect(
+                readCatalogBundleStateProfiles(
+                  await catalog.listCatalogBundleProfiles({
+                    product_id: created.productId,
+                  }),
+                  created.productId
+                )
+              ).toEqual(
+                readCatalogBundleStateProfiles(profiles, created.productId)
+              )
+              expect(
+                readCatalogBundleComponentStates(
+                  await catalog.listCatalogBundleComponents({
+                    bundle_profile_id: profile.id,
+                  }),
+                  profile.id,
+                  100
+                )
+              ).toEqual(
+                readCatalogBundleComponentStates(components, profile.id, 100)
+              )
+              expect(
+                readCatalogBundleInventoryLinks(
+                  await catalog.listCatalogBundleInventoryLinks({
+                    bundle_profile_id: profile.id,
+                  }),
+                  profile.id
+                )
+              ).toEqual(readCatalogBundleInventoryLinks(provenance, profile.id))
+              expect(await nativeLinks()).toEqual(originalNativeLinks)
+              expect(
+                await catalog.listCatalogAuthoringOperations({
+                  idempotency_key: input.idempotencyKey,
+                })
+              ).toMatchObject([{ status: "compensated" }])
+            } else {
+              expect(execution.errors).toHaveLength(0)
+              expect(execution.result.result).toMatchObject({
+                deleted: true,
+                productId: created.productId,
+              })
+              expect(
+                await catalog.listCatalogBundleProfiles({
+                  product_id: created.productId,
+                })
+              ).toHaveLength(0)
+              expect(
+                await catalog.listCatalogBundleInventoryLinks({
+                  bundle_profile_id: profile.id,
+                })
+              ).toHaveLength(0)
+              expect(await nativeLinks()).toMatchObject([
+                { id: created.variantIds[0], inventory_items: [] },
+              ])
+              expect(
+                (await mutateCatalogBundleWorkflow(container).run({ input }))
+                  .result
+              ).toMatchObject({ replayed: true })
+            }
+          } finally {
+            injected?.mockRestore()
+          }
+        }
+      )
 
       it("persists and replays native tax evidence for every collection mode", async () => {
         const service =

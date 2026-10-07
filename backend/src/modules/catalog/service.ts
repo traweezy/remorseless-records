@@ -426,8 +426,8 @@ class CatalogModuleService extends MedusaService({
         current.profile.id === input.previous.profile.id
     )
     if (preserveProfile) {
-      // Replacing an existing parent's row would cascade-delete the native
-      // inventory provenance that the preceding step has already restored.
+      // Preserve the existing parent identity while restoring its fields and
+      // components; inventory compensation owns the separate provenance rows.
       if (current.components.length) {
         await this.deleteCatalogBundleComponents(
           current.components.map((component) => component.id),
@@ -496,7 +496,9 @@ class CatalogModuleService extends MedusaService({
     if (links.length) {
       readExactCatalogBundleInventoryLinks(
         await this.createCatalogBundleInventoryLinks(
-          links.map(({ id: _id, ...link }) => link),
+          // A rollback snapshot owns its original IDs. Newly planned links
+          // omit IDs and still receive the normal generated identities.
+          links,
           sharedContext
         ),
         bundleProfileId,

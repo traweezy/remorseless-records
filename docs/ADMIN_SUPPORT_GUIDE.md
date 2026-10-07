@@ -76,6 +76,47 @@ version is never overwritten silently.
   presentation. Use **Default Medusa editor** only for its native price and
   inventory authorities.
 
+### Maintainer repair of a proven failed creation
+
+Use this procedure only for an owned failed creation whose native Product and
+Variants are absent, whose parent operation is compensated, and whose exact
+successful child operations prove ownership of the remaining version-one
+profiles and media links. Do not retry the failed browser draft or write SQL
+to remove these records. Other failure shapes require investigation.
+
+After verifying the exact running staging Backend revision and its application
+bootstrap authority, run the built Medusa script in that container:
+
+```bash
+node ./scripts/run-medusa.js ./src/scripts/repair-failed-catalog-creation.ts -- \
+  --sha=<exact-deployed-full-SHA> \
+  --creation-operation-id=<owned-compensated-catop-ID> \
+  --product-id=<owned-absent-prod-ID>
+```
+
+Preview performs no writes and returns an ID-only manifest with full-row
+digests. Review the exact profiles, variants, media, active assets and child
+history. Apply requires that unchanged manifest and a new repair UUID:
+
+```bash
+node ./scripts/run-medusa.js ./src/scripts/repair-failed-catalog-creation.ts -- \
+  --sha=<same-exact-deployed-full-SHA> \
+  --creation-operation-id=<same-owned-catop-ID> \
+  --product-id=<same-owned-prod-ID> \
+  --apply --manifest-sha256=<reviewed-64-character-manifest-SHA> \
+  --idempotency-key=<new-repair-UUID>
+```
+
+The script rejects other projects, environments, services, revisions and
+ambiguous ownership. A serializable catalog transaction soft-deletes only the
+proven dangling media links and profiles, retaining uploaded assets and the
+original operation history. It records one successful
+`catalog.failed-creation.repair` operation. Completion failure rolls back the
+whole repair; an identical successful retry returns that operation's result.
+Independently verify retained assets/history and the absence of active owned
+links afterward. Keep private receipts outside Git and preserve native Medusa
+authorization; this procedure does not grant production or client access.
+
 ### Existing Products and Variants
 
 - A **Needs refresh** state means the loaded version is stale. Refresh before
