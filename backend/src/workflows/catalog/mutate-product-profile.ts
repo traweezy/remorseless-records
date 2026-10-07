@@ -85,9 +85,9 @@ const persistProductProfileOperationStep = createStep(
   "persist-catalog-product-profile-operation",
   async (
     mutation: CatalogProductProfileMutationResult,
-    { container }
+    { container, parentStepIdempotencyKey }
   ): Promise<StepResponse<CatalogProductProfileMutationResult>> => {
-    if (!mutation.replayed) {
+    if (!mutation.replayed && !parentStepIdempotencyKey) {
       const catalogService = container.resolve<CatalogService>("catalog")
       readProfileOperationMutation(
         await catalogService.completeCatalogAuthoringOperation(

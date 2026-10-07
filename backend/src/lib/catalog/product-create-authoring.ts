@@ -72,9 +72,15 @@ const variantMutationDependencies: VariantMutationDependencies = {
 }
 
 export type CatalogProductVariantBatchResult = {
+  completions: CatalogCreationChildCompletion[]
   compensations: VariantMutationCompensation[]
   profileIds: string[]
   variantIds: string[]
+}
+
+export type CatalogCreationChildCompletion = {
+  operationId: string
+  result: Record<string, unknown>
 }
 
 const creationAggregateId = (idempotencyKey: string): string =>
@@ -200,10 +206,25 @@ export const beginCatalogProductCreation = async (
 export const completeCatalogProductCreation = async (
   catalogService: CatalogService,
   operationId: string,
-  result: CatalogProductCreateResult
-): Promise<void> => {
-  await catalogService.completeCatalogAuthoringOperation(operationId, result)
-}
+  result: CatalogProductCreateResult,
+  children: CatalogCreationChildCompletion[] = []
+): Promise<void> =>
+  catalogService.runCatalogTransaction(async (sharedContext) => {
+    // Child writes stay compensatable until the whole native draft succeeds.
+    // A failed final acknowledgement rolls back every completion together.
+    for (const child of children) {
+      await catalogService.completeCatalogAuthoringOperation(
+        child.operationId,
+        child.result,
+        sharedContext
+      )
+    }
+    await catalogService.completeCatalogAuthoringOperation(
+      operationId,
+      result,
+      sharedContext
+    )
+  })
 
 export const compensateCatalogProductCreation = async (
   catalogService: CatalogService,
@@ -299,6 +320,7 @@ export const mutateCatalogProductVariantProfiles = async (
   targets: VariantTarget[],
   dependencies: VariantMutationDependencies = variantMutationDependencies
 ): Promise<CatalogProductVariantBatchResult> => {
+  const completions: CatalogCreationChildCompletion[] = []
   const compensations: VariantMutationCompensation[] = []
   const profileIds: string[] = []
   try {
@@ -315,15 +337,15 @@ export const mutateCatalogProductVariantProfiles = async (
       )
       if (!mutation.replayed) {
         compensations.push(compensationFromMutation(mutation))
-        await catalogService.completeCatalogAuthoringOperation(
-          mutation.operationId,
-          {
+        completions.push({
+          operationId: mutation.operationId,
+          result: {
             created: mutation.created,
             profileId: mutation.profileId,
             variantId: mutation.variantId,
             version: mutation.version,
-          }
-        )
+          },
+        })
       }
       profileIds.push(mutation.profileId)
     }
@@ -344,6 +366,7 @@ export const mutateCatalogProductVariantProfiles = async (
   }
 
   return {
+    completions,
     compensations,
     profileIds,
     variantIds: targets.map((target) => target.variantId),

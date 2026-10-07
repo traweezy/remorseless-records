@@ -7,7 +7,10 @@ import CatalogModuleService from "./service"
 import { catalogOperationFixture } from "../../lib/catalog/transaction-persistence-fixtures.test-helpers"
 
 type MutableRecord = Record<string, unknown>
-const sharedContext = { manager: {}, transactionManager: {} } as never
+const sharedContext = {
+  manager: {},
+  transactionManager: { flush: jest.fn().mockResolvedValue(undefined) },
+} as never
 
 const inputFixture = (
   overrides: Partial<CatalogBundleMutationInput> = {}

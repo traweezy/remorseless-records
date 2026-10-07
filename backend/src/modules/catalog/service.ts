@@ -166,18 +166,30 @@ class CatalogModuleService extends MedusaService({
     )
   }
 
-  private async createBundleSnapshot_(
+  private async restoreBundleSnapshot_(
     snapshot: CatalogBundleStateSnapshot,
-    sharedContext: Context<EntityManager>
+    sharedContext: Context<EntityManager>,
+    existingProfile = false
   ): Promise<void> {
     if (!snapshot.profile) {
       return
     }
     readCatalogBundleProfileMutation(
-      await this.createCatalogBundleProfiles([snapshot.profile], sharedContext),
+      existingProfile
+        ? await this.updateCatalogBundleProfiles(
+            [snapshot.profile],
+            sharedContext
+          )
+        : await this.createCatalogBundleProfiles(
+            [snapshot.profile],
+            sharedContext
+          ),
       snapshot.profile
     )
     if (snapshot.components.length) {
+      // The DML uses scalar IDs, so MikroORM cannot order this foreign-key
+      // dependency. Flush the parent inside the same authoring transaction.
+      await sharedContext.transactionManager!.flush()
       readExactCatalogBundleComponents(
         await this.createCatalogBundleComponents(
           snapshot.components,
@@ -346,6 +358,9 @@ class CatalogModuleService extends MedusaService({
     }))
     let components: CatalogBundleComponentState[] = []
     if (input.components.length) {
+      // Persist the SQL parent before its scalar-ID component links without
+      // committing the encompassing authoring transaction.
+      await sharedContext.transactionManager!.flush()
       components = readExactCatalogBundleComponents(
         await this.createCatalogBundleComponents(
           componentPayloads,
@@ -405,8 +420,28 @@ class CatalogModuleService extends MedusaService({
       )
     }
     const current = await this.snapshotBundle_(input.aggregateId, sharedContext)
-    await this.deleteBundleSnapshot_(current, sharedContext)
-    await this.createBundleSnapshot_(input.previous, sharedContext)
+    const preserveProfile = Boolean(
+      current.profile &&
+        input.previous.profile &&
+        current.profile.id === input.previous.profile.id
+    )
+    if (preserveProfile) {
+      // Replacing an existing parent's row would cascade-delete the native
+      // inventory provenance that the preceding step has already restored.
+      if (current.components.length) {
+        await this.deleteCatalogBundleComponents(
+          current.components.map((component) => component.id),
+          sharedContext
+        )
+      }
+    } else {
+      await this.deleteBundleSnapshot_(current, sharedContext)
+    }
+    await this.restoreBundleSnapshot_(
+      input.previous,
+      sharedContext,
+      preserveProfile
+    )
     readCatalogTransactionOperationMutation(
       await this.updateCatalogAuthoringOperations(
         [

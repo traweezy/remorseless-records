@@ -139,9 +139,9 @@ const persistBundleOperationStep = createStep(
   "persist-catalog-bundle-operation",
   async (
     mutation: CatalogBundleMutationResult,
-    { container }
+    { container, parentStepIdempotencyKey }
   ): Promise<StepResponse<CatalogBundleMutationResult>> => {
-    if (!mutation.replayed) {
+    if (!mutation.replayed && !parentStepIdempotencyKey) {
       const catalogService = container.resolve<CatalogService>("catalog")
       await catalogService.completeCatalogAuthoringOperation(
         mutation.operationId,

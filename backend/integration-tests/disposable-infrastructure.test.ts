@@ -44,6 +44,7 @@ import {
   PaymentEvents,
 } from "@medusajs/framework/utils"
 import { medusaIntegrationTestRunner } from "@medusajs/test-utils"
+import { StepResponse } from "@medusajs/framework/workflows-sdk"
 import { knex, type Knex } from "@mikro-orm/knex"
 import { createClient } from "redis"
 import { randomUUID } from "node:crypto"
@@ -65,10 +66,17 @@ import {
 import { normalizeLegacyCatalogDescriptions } from "../src/lib/catalog/normalize-legacy-descriptions"
 import { performCatalogMediaUpload } from "../src/lib/catalog/product-media-upload"
 import { mutateCatalogProductMedia } from "../src/lib/catalog/product-media-authoring"
-import { readCatalogMediaAsset } from "../src/lib/catalog/transaction-persistence-contracts"
+import {
+  readCatalogMediaAsset,
+  readCatalogBundleStateProfiles,
+  readCatalogBundleComponentStates,
+} from "../src/lib/catalog/transaction-persistence-contracts"
 import { createCatalogProductWorkflow } from "../src/workflows/catalog/create-product"
 import { catalogProductCreateSchema } from "../src/lib/catalog/product-create-contract"
-import { hashCatalogCommand } from "../src/modules/catalog/catalog-command"
+import {
+  deriveCatalogCommandIdempotencyKey,
+  hashCatalogCommand,
+} from "../src/modules/catalog/catalog-command"
 
 import {
   createBackendReadinessProbes,
@@ -157,7 +165,437 @@ medusaIntegrationTestRunner({
   },
   moduleName: "RemorselessDisposableInfrastructure",
   testSuite: ({ api, dbConfig, getContainer }) => {
+    const catalogCreationFixture = async () => {
+      const container = getContainer()
+      const catalog = container.resolve<CatalogService>("catalog")
+      const fulfillment = container.resolve<IFulfillmentModuleService>(
+        Modules.FULFILLMENT
+      )
+      await fulfillment.createShippingProfiles({
+        name: "Disposable bundle shipping",
+        type: "default",
+      })
+      const channels = container.resolve<ISalesChannelModuleService>(
+        Modules.SALES_CHANNEL
+      )
+      const channel = await channels.createSalesChannels({
+        name: "Disposable bundle catalog",
+      })
+      const stores = container.resolve<IStoreModuleService>(Modules.STORE)
+      const store = (await stores.listStores())[0]!
+      await stores.updateStores(store.id, {
+        default_sales_channel_id: channel.id,
+      })
+      await container
+        .resolve<IStockLocationService>(Modules.STOCK_LOCATION)
+        .createStockLocations({ name: "HQ" })
+      const componentCommand = catalogProductCreateSchema.parse({
+        idempotencyKey: randomUUID(),
+        kind: "music_release",
+        title: "Disposable bundle component",
+        handle: "disposable-bundle-component",
+        options: [{ title: "Format", values: ["CD"] }],
+        variants: [
+          {
+            key: "cd",
+            title: "CD",
+            sku: "DISPOSABLE-BUNDLE-CD",
+            options: { Format: "CD" },
+            prices: [{ amount: 1.23, currencyCode: "usd" }],
+            stockQuantity: 20,
+          },
+        ],
+        profile: { artists: [{ name: "Disposable bundle artist" }] },
+      })
+      const component = (
+        await createCatalogProductWorkflow(container).run({
+          input: {
+            ...componentCommand,
+            actorId: "user_disposable_catalog_audit",
+            requestSha256: hashCatalogCommand(componentCommand),
+          },
+        })
+      ).result
+      const uploadKey = randomUUID()
+      const uploaded = await performCatalogMediaUpload(
+        catalog,
+        {
+          createFiles: jest.fn().mockResolvedValue({
+            id: `catalog/disposable-${uploadKey}.webp`,
+            url: `https://media.example.com/disposable-${uploadKey}.webp`,
+          }),
+        } as unknown as FileTypes.IFileModuleService,
+        {
+          actorId: "user_disposable_catalog_audit",
+          idempotencyKey: uploadKey,
+          requestSha256: "c".repeat(64),
+          files: [
+            {
+              content: "isolated-provider-fixture",
+              filename: "disposable.png",
+              remoteFilename: `${uploadKey}-00.webp`,
+              height: 20,
+              width: 40,
+              size: 100,
+              mimeType: "image/webp",
+              sha256: "d".repeat(64),
+              source: {
+                channels: 3,
+                filename: "disposable.png",
+                format: "png",
+                frames: 1,
+                height: 20,
+                width: 40,
+                mimeType: "image/png",
+                size: 120,
+                sha256: "e".repeat(64),
+              },
+            },
+          ],
+        }
+      )
+      const mediaAssetId = uploaded.mutation.files[0]!.mediaAssetId
+      const command = (
+        kind: "fixed_bundle" | "mystery_bundle" | "merch",
+        suffix: string = kind
+      ) =>
+        catalogProductCreateSchema.parse({
+          idempotencyKey: randomUUID(),
+          kind,
+          title: `Disposable ${suffix}`,
+          handle: `disposable-${suffix.replaceAll("_", "-")}`,
+          description: "Owned disposable creation regression.",
+          options: [{ title: "Offering", values: ["Standard"] }],
+          variants: [
+            {
+              key: "standard",
+              title: "Standard",
+              sku: `DISPOSABLE-${suffix.toUpperCase()}`,
+              options: { Offering: "Standard" },
+              prices: [{ amount: 3.57, currencyCode: "usd" }],
+              ...(kind === "fixed_bundle" ? {} : { stockQuantity: 3 }),
+            },
+          ],
+          profile:
+            kind === "merch" ? { productType: { label: "T-shirt" } } : {},
+          media: [
+            {
+              mediaAssetId,
+              altText: "Owned disposable artwork",
+              isPrimary: true,
+              role: "primary",
+              sortOrder: 0,
+            },
+          ],
+          ...(kind === "merch"
+            ? {}
+            : {
+                bundle: {
+                  components:
+                    kind === "fixed_bundle"
+                      ? [
+                          {
+                            componentProductId: component.productId,
+                            componentVariantId: component.variantIds[0]!,
+                            bundleVariantKeys: ["standard"],
+                            quantity: 2,
+                          },
+                        ]
+                      : [],
+                },
+              }),
+        })
+      return { catalog, command, component, container, mediaAssetId }
+    }
+
     describe("disposable PostgreSQL and Redis integration", () => {
+      it("creates and replays fixed, mystery and merchandise drafts with real media and inventory", async () => {
+        const { catalog, command, container, mediaAssetId } =
+          await catalogCreationFixture()
+        const products = container.resolve<IProductModuleService>(
+          Modules.PRODUCT
+        )
+        for (const kind of [
+          "fixed_bundle",
+          "mystery_bundle",
+          "merch",
+        ] as const) {
+          const parsed = command(kind)
+          const input = {
+            ...parsed,
+            actorId: "user_disposable_catalog_audit",
+            requestSha256: hashCatalogCommand(parsed),
+          }
+          const created = (
+            await createCatalogProductWorkflow(container).run({ input })
+          ).result
+          expect(created).toMatchObject({ kind, replayed: false })
+          expect(
+            await products.retrieveProduct(created.productId)
+          ).toMatchObject({ status: "draft", handle: parsed.handle })
+          const media = await catalog.listCatalogProductMediaItems({
+            product_id: created.productId,
+          })
+          expect(media).toHaveLength(1)
+          expect(media[0]).toMatchObject({
+            media_asset_id: mediaAssetId,
+            is_primary: true,
+            sort_order: 0,
+          })
+          let computedVariants: unknown
+          await nativeVariantList(
+            {
+              scope: container,
+              params: { id: created.productId },
+              filterableFields: {},
+              queryConfig: {
+                fields: ["id", "manage_inventory", "inventory_quantity"],
+                pagination: { skip: 0, take: 200 },
+              },
+            } as unknown as Parameters<typeof nativeVariantList>[0],
+            {
+              json: (data: unknown) => {
+                computedVariants = data
+              },
+            } as unknown as Parameters<typeof nativeVariantList>[1]
+          )
+          expect(computedVariants).toMatchObject({
+            count: 1,
+            variants: [
+              {
+                id: created.variantIds[0],
+                manage_inventory: true,
+                inventory_quantity: kind === "fixed_bundle" ? 10 : 3,
+              },
+            ],
+          })
+          const bundle = await catalog.listCatalogBundleProfiles({
+            product_id: created.productId,
+          })
+          expect(bundle).toHaveLength(kind === "merch" ? 0 : 1)
+          if (kind === "fixed_bundle") {
+            expect(
+              await catalog.listCatalogBundleComponents({
+                bundle_profile_id: bundle[0]!.id,
+              })
+            ).toMatchObject([{ quantity: 2 }])
+          }
+          expect(
+            (await createCatalogProductWorkflow(container).run({ input }))
+              .result
+          ).toEqual({ ...created, replayed: true })
+          expect(
+            await products.listProducts({ handle: parsed.handle! })
+          ).toHaveLength(1)
+          expect(
+            await catalog.listCatalogProductMediaItems({
+              product_id: created.productId,
+            })
+          ).toHaveLength(1)
+          const operations = await catalog.listCatalogAuthoringOperations({
+            aggregate_id: [
+              created.productId,
+              ...created.variantIds,
+              `catalog-product-create:${parsed.idempotencyKey}`,
+            ],
+          })
+          expect(operations.length).toBeGreaterThanOrEqual(4)
+          expect(
+            operations.every((operation) => operation.status === "succeeded")
+          ).toBe(true)
+        }
+      })
+
+      it.each(["bundle-inventory", "outer-completion"] as const)(
+        "rolls back native draft, profiles and media when %s fails",
+        async (failureBoundary) => {
+          const { catalog, command, container, mediaAssetId } =
+            await catalogCreationFixture()
+          const parsed = command("fixed_bundle", `failed-${failureBoundary}`)
+          const database = knex({
+            client: "pg",
+            connection: dbConfig.clientUrl,
+          })
+          const originalComplete =
+            catalog.completeCatalogAuthoringOperation.bind(catalog)
+          const originalInventory =
+            catalog.replaceBundleInventoryLinks.bind(catalog)
+          const failure = new Error(
+            `Injected disposable ${failureBoundary} failure`
+          )
+          const injected =
+            failureBoundary === "bundle-inventory"
+              ? jest
+                  .spyOn(catalog, "replaceBundleInventoryLinks")
+                  .mockImplementation(async (id, links, context) => {
+                    // Exhaust the injected boundary deliberately; retain the real
+                    // workflow's retry configuration for ordinary transient errors.
+                    if (links.length)
+                      StepResponse.permanentFailure(failure.message)
+                    return originalInventory(id, links, context)
+                  })
+              : jest
+                  .spyOn(catalog, "completeCatalogAuthoringOperation")
+                  .mockImplementation(async (id, result, context) => {
+                    const operation = (
+                      await catalog.listCatalogAuthoringOperations(
+                        { id },
+                        { take: 1 },
+                        context
+                      )
+                    )[0]
+                    if (operation?.command === "catalog.product.create")
+                      throw failure
+                    return originalComplete(id, result, context)
+                  })
+          try {
+            const execution = await createCatalogProductWorkflow(container).run(
+              {
+                input: {
+                  ...parsed,
+                  actorId: "user_disposable_catalog_audit",
+                  requestSha256: hashCatalogCommand(parsed),
+                },
+                throwOnError: false,
+              }
+            )
+            expect(
+              execution.errors.some(
+                ({ error }) => error?.message === failure.message
+              )
+            ).toBe(true)
+            expect(
+              await container
+                .resolve<IProductModuleService>(Modules.PRODUCT)
+                .listProducts({ handle: parsed.handle! })
+            ).toHaveLength(0)
+            // These are real PostgreSQL rows, not mocked step acknowledgements.
+            expect(
+              await database("catalog_product_media")
+                .where({ media_asset_id: mediaAssetId })
+                .whereNull("deleted_at")
+            ).toHaveLength(0)
+            expect(
+              await database("catalog_bundle_profiles")
+                .where({ display_title: parsed.title })
+                .whereNull("deleted_at")
+            ).toHaveLength(0)
+            expect(
+              await database("catalog_product_profiles")
+                .where({ release_title: parsed.title })
+                .whereNull("deleted_at")
+            ).toHaveLength(0)
+            const profileOperation = await database(
+              "catalog_authoring_operations"
+            )
+              .where({
+                idempotency_key: deriveCatalogCommandIdempotencyKey(
+                  parsed.idempotencyKey,
+                  "product-profile"
+                ),
+              })
+              .first()
+            expect(typeof profileOperation?.aggregate_id).toBe("string")
+            expect(
+              await database("catalog_variant_profiles")
+                .whereIn(
+                  "product_profile_id",
+                  database("catalog_product_profiles")
+                    .select("id")
+                    .where({ product_id: profileOperation.aggregate_id })
+                )
+                .whereNull("deleted_at")
+            ).toHaveLength(0)
+            const creation = await database("catalog_authoring_operations")
+              .where({ idempotency_key: parsed.idempotencyKey })
+              .first()
+            expect(creation).toMatchObject({ status: "compensated" })
+            expect(
+              await catalog.retrieveCatalogMediaAsset(mediaAssetId)
+            ).toMatchObject({ lifecycle_status: "active" })
+          } finally {
+            injected.mockRestore()
+            await database.destroy()
+          }
+        }
+      )
+
+      it("restores an existing bundle without deleting its inventory provenance", async () => {
+        const { catalog, command, container } = await catalogCreationFixture()
+        const parsed = command("fixed_bundle")
+        const created = (
+          await createCatalogProductWorkflow(container).run({
+            input: {
+              ...parsed,
+              actorId: "user_disposable_catalog_audit",
+              requestSha256: hashCatalogCommand(parsed),
+            },
+          })
+        ).result
+        const previous = readCatalogBundleStateProfiles(
+          await catalog.listCatalogBundleProfiles({
+            product_id: created.productId,
+          }),
+          created.productId
+        )[0]!
+        const components = readCatalogBundleComponentStates(
+          await catalog.listCatalogBundleComponents({
+            bundle_profile_id: previous.id,
+          }),
+          previous.id,
+          100
+        )
+        const provenance = await catalog.listCatalogBundleInventoryLinks({
+          bundle_profile_id: previous.id,
+        })
+        expect(provenance).toHaveLength(1)
+        const { id: _id, version: _version, ...profile } = previous
+        const changed = await catalog.mutateBundle({
+          actorId: "user_disposable_catalog_audit",
+          aggregateId: created.productId,
+          command: "catalog.bundle.upsert",
+          expectedVersion: previous.version,
+          idempotencyKey: randomUUID(),
+          requestSha256: "a".repeat(64),
+          profile: { ...profile, display_title: "Disposable changed bundle" },
+          components: components.map(
+            ({
+              id: _componentId,
+              bundle_profile_id: _profileId,
+              ...component
+            }) => ({ ...component, quantity: 3 })
+          ),
+        })
+        expect(changed.version).toBe(2)
+        await catalog.compensateBundleMutation({
+          aggregateId: created.productId,
+          operationId: changed.operationId,
+          previous: changed.previous,
+        })
+        expect(
+          readCatalogBundleStateProfiles(
+            await catalog.listCatalogBundleProfiles({
+              product_id: created.productId,
+            }),
+            created.productId
+          )
+        ).toEqual([previous])
+        expect(
+          readCatalogBundleComponentStates(
+            await catalog.listCatalogBundleComponents({
+              bundle_profile_id: previous.id,
+            }),
+            previous.id,
+            100
+          )
+        ).toEqual(components)
+        expect(
+          await catalog.listCatalogBundleInventoryLinks({
+            bundle_profile_id: previous.id,
+          })
+        ).toEqual(provenance)
+      })
+
       it("persists and replays native tax evidence for every collection mode", async () => {
         const service =
           getContainer().resolve<TaxControlModuleService>("tax_control")

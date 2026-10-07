@@ -51,8 +51,9 @@ const expectedBoundaries: WorkflowBoundary[] = [
   { action: "mutate-catalog-bundle-as-step", reversible: true },
   { action: "resolve-catalog-product-inventory-levels", reversible: false },
   { action: "create-inventory-levels-workflow-as-step", reversible: true },
-  { action: "complete-catalog-product-creation", reversible: false },
+  { action: "update-product-variants-as-step", reversible: true },
   { action: "release-lock-step", reversible: false },
+  { action: "complete-catalog-product-creation", reversible: false },
 ]
 
 const commandFixture = () => ({

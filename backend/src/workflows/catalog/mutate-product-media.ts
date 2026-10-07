@@ -77,9 +77,9 @@ const persistProductMediaOperationStep = createStep(
   "persist-catalog-product-media-operation",
   async (
     mutation: CatalogProductMediaMutationResult,
-    { container }
+    { container, parentStepIdempotencyKey }
   ): Promise<StepResponse<CatalogProductMediaMutationResult>> => {
-    if (!mutation.replayed) {
+    if (!mutation.replayed && !parentStepIdempotencyKey) {
       const catalogService = container.resolve<CatalogService>("catalog")
       await catalogService.completeCatalogAuthoringOperation(
         mutation.operationId,

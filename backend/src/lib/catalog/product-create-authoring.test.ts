@@ -271,7 +271,8 @@ describe("catalog product creation audit", () => {
     await completeCatalogProductCreation(service, "creation_operation", result)
     expect(service.completeCatalogAuthoringOperation).toHaveBeenCalledWith(
       "creation_operation",
-      result
+      result,
+      expect.any(Object)
     )
 
     await compensateCatalogProductCreation(service, "creation_operation")
@@ -315,7 +316,7 @@ describe("catalog product variant profile batch", () => {
     })
   })
 
-  it("completes every variant operation after all profile fields are written", async () => {
+  it("keeps variant operations pending until the outer draft commits", async () => {
     const service = serviceFixture()
     const command = commandFixture()
     const targets = targetsFixture(command)
@@ -337,8 +338,18 @@ describe("catalog product variant profile batch", () => {
     ).resolves.toMatchObject({
       profileIds: ["variant_profile_0", "variant_profile_1"],
       variantIds: ["variant_0", "variant_1"],
+      completions: [
+        {
+          operationId: "operation_0",
+          result: expect.objectContaining({ variantId: "variant_0" }),
+        },
+        {
+          operationId: "operation_1",
+          result: expect.objectContaining({ variantId: "variant_1" }),
+        },
+      ],
     })
-    expect(service.completeCatalogAuthoringOperation).toHaveBeenCalledTimes(2)
+    expect(service.completeCatalogAuthoringOperation).not.toHaveBeenCalled()
     expect(compensate).not.toHaveBeenCalled()
   })
 
@@ -370,28 +381,31 @@ describe("catalog product variant profile batch", () => {
     )
   })
 
-  it("rolls back a mutation when persisting its completion fails", async () => {
+  it("propagates a failed final child acknowledgement to the outer transaction", async () => {
     const service = serviceFixture()
-    const command = commandFixture()
     service.completeCatalogAuthoringOperation.mockRejectedValueOnce(
       new Error("operation persistence failed")
     )
-    const compensate = jest.fn().mockResolvedValue(undefined)
-
     await expect(
-      mutateCatalogProductVariantProfiles(
+      completeCatalogProductCreation(
         service,
-        command,
-        "prod_1",
-        "profile_1",
-        targetsFixture(command).slice(0, 1),
+        "creation_operation",
         {
-          compensate,
-          mutate: jest.fn().mockResolvedValue(mutationFixture("variant_0", 0)),
-        }
+          kind: "music_release",
+          productId: "prod_1",
+          profileId: "profile_1",
+          variantIds: ["variant_0"],
+        },
+        [
+          {
+            operationId: "operation_0",
+            result: { variantId: "variant_0", version: 1 },
+          },
+        ]
       )
     ).rejects.toThrow("operation persistence failed")
-    expect(compensate).toHaveBeenCalledTimes(1)
+    expect(service.completeCatalogAuthoringOperation).toHaveBeenCalledTimes(1)
+    expect(service.runCatalogTransaction).toHaveBeenCalledTimes(1)
   })
 
   it("compensates successful batches in reverse and reports rollback failures", async () => {
@@ -409,6 +423,7 @@ describe("catalog product variant profile batch", () => {
     }
     const compensate = jest.fn().mockResolvedValue(undefined)
     const result = {
+      completions: [],
       compensations: [compensationA, compensationB],
       profileIds: ["profile_0", "profile_1"],
       variantIds: ["variant_0", "variant_1"],

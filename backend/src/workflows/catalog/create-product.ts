@@ -3,6 +3,7 @@ import {
   createInventoryLevelsWorkflow,
   createProductsWorkflow,
   releaseLockStep,
+  updateProductVariantsWorkflow,
 } from "@medusajs/medusa/core-flows"
 import {
   createStep,
@@ -37,6 +38,8 @@ import {
   type CatalogProductCreateContext,
 } from "@/lib/catalog/product-create-planning"
 import type { CatalogProductProfileMutationResult } from "@/lib/catalog/product-profile-contract"
+import type { CatalogProductMediaMutationResult } from "@/lib/catalog/product-media-authoring"
+import type { CatalogBundleMutationResult } from "@/modules/catalog/bundle-authoring"
 import type CatalogModuleService from "@/modules/catalog/service"
 import { mutateCatalogBundleWorkflow } from "./mutate-bundle"
 import { mutateCatalogProductMediaWorkflow } from "./mutate-product-media"
@@ -61,11 +64,12 @@ type InventoryResolutionInput = {
 }
 
 type CompletionInput = {
-  bundle: unknown
+  bundle: CatalogBundleMutationResult | undefined
   command: CatalogProductCreateCommandInput
   created: CatalogCreatedProduct | undefined
   inventory: unknown
-  media: unknown
+  managedInventory: unknown
+  media: CatalogProductMediaMutationResult | undefined
   operation: CatalogProductCreateOperation
   profile: CatalogProductProfileMutationResult | undefined
   variants: CatalogProductVariantBatchResult | undefined
@@ -219,6 +223,22 @@ const completeCatalogProductCreationStep = createStep(
         "The catalog creation workflow did not link its managed media."
       )
     }
+    if (
+      (input.command.kind === "fixed_bundle" ||
+        input.command.kind === "mystery_bundle") &&
+      !input.bundle
+    ) {
+      throw new MedusaError(
+        MedusaError.Types.UNEXPECTED_STATE,
+        "The catalog creation workflow did not complete its bundle."
+      )
+    }
+    if (input.command.kind === "fixed_bundle" && !input.managedInventory) {
+      throw new MedusaError(
+        MedusaError.Types.UNEXPECTED_STATE,
+        "The catalog creation workflow did not enable component inventory."
+      )
+    }
     const result: CatalogProductCreateResult = {
       kind: input.command.kind,
       productId: input.created.productId,
@@ -229,7 +249,30 @@ const completeCatalogProductCreationStep = createStep(
     await completeCatalogProductCreation(
       catalogService,
       input.operation.operationId,
-      result
+      result,
+      [
+        {
+          operationId: input.profile.operationId,
+          result: input.profile.result,
+        },
+        ...input.variants.completions,
+        ...(input.media
+          ? [
+              {
+                operationId: input.media.operationId,
+                result: input.media.result,
+              },
+            ]
+          : []),
+        ...(input.bundle
+          ? [
+              {
+                operationId: input.bundle.operationId,
+                result: input.bundle.result,
+              },
+            ]
+          : []),
+      ]
     )
     return new StepResponse({ ...result, replayed: false })
   }
@@ -373,17 +416,46 @@ export const createCatalogProductWorkflow = createWorkflow(
       return createInventoryLevelsWorkflow.runAsStep({ input: inventoryInput })
     })
 
+    const managedInventory = when(
+      "enable-new-fixed-bundle-inventory",
+      { command: input, operation },
+      ({ command, operation }) =>
+        !operation.replayed && command.kind === "fixed_bundle"
+    ).then(() => {
+      const variantInput = transform(
+        { created, bundle },
+        ({ created, bundle }) => {
+          if (!bundle?.profileId) {
+            throw new MedusaError(
+              MedusaError.Types.UNEXPECTED_STATE,
+              "The new bundle inventory has no confirmed profile."
+            )
+          }
+          return {
+            product_variants: created!.targets.map((target) => ({
+              id: target.variantId,
+              manage_inventory: true,
+            })),
+          }
+        }
+      )
+      return updateProductVariantsWorkflow.runAsStep({ input: variantInput })
+    })
+
+    // Release can fail and still compensate pending writes. Completion is the
+    // final commit boundary; no fallible external step follows it.
+    releaseLockStep({ key: lockKey })
     const completed = completeCatalogProductCreationStep({
       bundle,
       command: input,
       created,
       inventory,
+      managedInventory,
       media,
       operation,
       profile,
       variants,
     })
-    releaseLockStep({ key: lockKey })
     return new WorkflowResponse(completed)
   }
 )
