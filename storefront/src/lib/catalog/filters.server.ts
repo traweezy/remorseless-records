@@ -44,8 +44,8 @@ export const getCatalogFormatOptions = unstable_cache(
     }
     return buildCatalogFilterDefinitions(hits, []).formats
   },
-  ["catalog-format-options-v1"],
-  { revalidate: 900, tags: ["products", "catalog-format-options-v1"] }
+  ["catalog-format-options-v2"],
+  { revalidate: 900, tags: ["products", "catalog-format-options-v2"] }
 )
 
 export const getCatalogPriceRange = unstable_cache(

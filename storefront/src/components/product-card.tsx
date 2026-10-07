@@ -525,7 +525,7 @@ export const ProductCard = ({
             ) : null}
             {isUnavailable ? (
               <div className="absolute left-4 top-4 z-40">
-                <span className="inline-flex items-center rounded-full border border-border/70 bg-background/60 px-3 py-1 text-[0.7rem] font-semibold uppercase tracking-[0.14rem] text-muted-foreground shadow-[0_10px_24px_-18px_rgba(0,0,0,0.8)] sm:tracking-[0.24rem]">
+                <span className="inline-flex items-center rounded-full border border-border/70 bg-background px-3 py-1 text-[0.7rem] font-semibold uppercase tracking-[0.14rem] text-muted-foreground shadow-[0_10px_24px_-18px_rgba(0,0,0,0.8)] sm:tracking-[0.24rem]">
                   Unavailable
                 </span>
               </div>
@@ -569,6 +569,12 @@ export const ProductCard = ({
                 ) : (
                   <MediaPlaceholder label="No artwork" />
                 )}
+                {isSoldOut || isUnavailable ? (
+                  <div
+                    aria-hidden="true"
+                    className="pointer-events-none absolute inset-0 z-30 bg-black/45"
+                  />
+                ) : null}
                 <div className="pointer-events-none absolute inset-0 z-30 flex items-end justify-center p-6 opacity-0 transition-opacity duration-150 md:group-hover:opacity-100 group-focus-within:opacity-100">
                   <Button
                     type="button"
@@ -633,12 +639,6 @@ export const ProductCard = ({
                 </div>
               </div>
             </div>
-            {isSoldOut || isUnavailable ? (
-              <div
-                aria-hidden="true"
-                className="pointer-events-none absolute inset-0 z-30 rounded-[inherit] bg-black/45"
-              />
-            ) : null}
           </Card>
         </SmartLink>
       </div>

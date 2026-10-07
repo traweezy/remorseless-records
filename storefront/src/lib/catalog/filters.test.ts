@@ -33,6 +33,32 @@ const makeHit = (
 })
 
 describe("buildCatalogFilterDefinitions", () => {
+  it("counts actual media formats without treating album titles or sizes as formats", () => {
+    const definitions = buildCatalogFilterDefinitions(
+      [
+        makeHit("album-title", {
+          variantTitles: ["Tears of Fire - Relics of Ancient Love"],
+        }),
+        makeHit("shirt", { variantTitles: ["12", "Colored shirt"] }),
+        makeHit("bundle", {
+          formats: ["3x CDs", "3x Cassettes", "CD", "Cassette"],
+          variantTitles: ["3x CDs", "3x Cassettes"],
+        }),
+        makeHit("cassette-release", {
+          format: "Cassette",
+          formats: ["Black shell", "Cassette"],
+          variantTitles: ["Tears of Fire - Relics of Ancient Love"],
+        }),
+      ],
+      []
+    )
+
+    expect(definitions.formats).toEqual([
+      { value: "CD", label: "CD", count: 1 },
+      { value: "Cassette", label: "Cassette", count: 2 },
+    ])
+  })
+
   it("builds stable catalog-wide options and counts each product once", () => {
     const definitions = buildCatalogFilterDefinitions(
       [

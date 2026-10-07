@@ -150,4 +150,32 @@ describe("product transformers", () => {
     expect(summary.formats).toEqual([])
     expect(hit.priceAmount).toBeNull()
   })
+
+  it("preserves an album variant title without inventing a cassette format", () => {
+    const title = "Tears of Fire - Relics of Ancient Love"
+    const product = makeProduct({
+      title: "Relics of Ancient Love",
+      categories: [],
+      options: [],
+      metadata: null,
+      variants: [
+        {
+          id: "variant_relics",
+          title,
+          calculated_price: {
+            calculated_amount: 12,
+            currency_code: "usd",
+          },
+        },
+      ] as StoreProduct["variants"],
+    })
+
+    expect(mapStoreProductToRelatedSummary(product).formats).toEqual([])
+    expect(mapStoreProductToSearchHit(product)).toMatchObject({
+      format: null,
+      formats: [],
+      variantTitles: [title],
+      defaultVariant: { title },
+    })
+  })
 })

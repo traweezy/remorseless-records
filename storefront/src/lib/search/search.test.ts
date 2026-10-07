@@ -373,6 +373,58 @@ describe("searchProductsWithClient", () => {
     expect(response.hits[0]?.handle).toBe("match")
   })
 
+  it.each([
+    { format: "Cassette", matching: "3x Cassettes" },
+    { format: "Vinyl", matching: '12" vinyl' },
+  ])(
+    "post-filters $format using actual media labels instead of album titles or sizes",
+    async ({ format, matching }) => {
+      const index: MockIndex = {
+        uid: `products-physical-formats-${format}`,
+        getSettings: vi.fn().mockResolvedValue({ filterableAttributes: [] }),
+        search: vi.fn().mockResolvedValue({
+          hits: [
+            makeHit({
+              id: "actual-format",
+              format: matching,
+              formats: [matching],
+              variant_titles: [matching],
+              category_handles: [],
+              category_labels: [],
+            }),
+            makeHit({
+              id: "album-title",
+              format: null,
+              formats: [],
+              variant_titles: ["Tears of Fire - Relics of Ancient Love"],
+              category_handles: [],
+              category_labels: [],
+            }),
+            makeHit({
+              id: "shirt-size",
+              format: null,
+              formats: [],
+              variant_titles: ["12", "Colored shirt"],
+              category_handles: [],
+              category_labels: [],
+            }),
+          ],
+          estimatedTotalHits: 3,
+        }),
+      }
+
+      const response = await searchProductsWithClient(
+        makeClient(index),
+        { query: "", limit: 24, filters: { formats: [format] } },
+        []
+      )
+
+      expect(response.total).toBe(1)
+      expect(response.hits.map((hit) => hit.id)).toEqual(["actual-format"])
+      expect(index.search).toHaveBeenCalledTimes(1)
+    }
+  )
+
   it("post-filters availability and price ranges when they are not filterable", async () => {
     const index: MockIndex = {
       uid: "products-postfilter-price-availability",

@@ -21,6 +21,31 @@ describe("normalizeFormatValue", () => {
     expect(normalizeFormatValue("poster")).toBeNull()
     expect(normalizeFormatValue(null)).toBeNull()
   })
+
+  it.each([
+    "Tears of Fire - Relics of Ancient Love",
+    "12",
+    "Colored shirt",
+    "Help",
+    "Shellshock",
+    "DVDream",
+    "Digital",
+    "Box",
+  ])("does not infer a physical format from unrelated label %s", (label) => {
+    expect(normalizeFormatValue(label)).toBeNull()
+  })
+
+  it.each([
+    ["3x CDs", "CD"],
+    ["3x Cassettes", "Cassette"],
+    ["CS", "Cassette"],
+    ["Black shell", "Cassette"],
+    ['7"', "Vinyl"],
+    ['10"', "Vinyl"],
+    ["12″", "Vinyl"],
+  ])("retains canonical physical format %s", (label, format) => {
+    expect(normalizeFormatValue(label)).toBe(format)
+  })
 })
 
 describe("normalizeSearchHit", () => {
