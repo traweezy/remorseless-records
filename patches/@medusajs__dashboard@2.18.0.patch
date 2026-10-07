@@ -1,8 +1,87 @@
+diff --git a/dist/app.css b/dist/app.css
+index 914b674205accf11063d4145e7b21dd53c783ba4..a9a72a7d8d0fc302e0a1a5b0cfd83c6e5403ef2c 100644
+--- a/dist/app.css
++++ b/dist/app.css
+@@ -5459,3 +5459,7 @@ video {
+ .\[\&_tr\]\:hover\:bg-ui-bg-subtle:hover tr {
+   background-color: var(--bg-subtle);
+ }
++
++@media (min-width:640px){.sm\:grid-cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}}
++
++.grid-cols-\[1fr_24px\]{grid-template-columns:1fr 24px}
 diff --git a/dist/app.js b/dist/app.js
-index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e59642db60 100644
+index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..6dd985c686f21d5982493829682620f1a6032d52 100644
 --- a/dist/app.js
 +++ b/dist/app.js
-@@ -111811,17 +111811,25 @@ var init_layout_composer = __esm({
+@@ -1,3 +1,66 @@
++function getClaimInventoryVariantIds(orderItems, inboundItems) {
++  if (!Array.isArray(orderItems) || !Array.isArray(inboundItems)) throw new Error("Inventory guidance unavailable");
++  const items = new Map(orderItems.map((item) => [item.id, item]));
++  if (items.size !== orderItems.length) throw new Error("Inventory guidance unavailable");
++  const ids = /* @__PURE__ */ new Set();
++  for (const field of inboundItems) {
++    const item = items.get(field.item_id);
++    if (!item) throw new Error("Inventory guidance unavailable");
++    if (item.variant_id == null) continue;
++    if (!item.variant || typeof item.variant.manage_inventory !== "boolean") throw new Error("Inventory guidance unavailable");
++    if (!item.variant.manage_inventory) continue;
++    if (typeof item.variant_id !== "string" || !/^variant_[A-Za-z0-9_-]+$/.test(item.variant_id)) throw new Error("Inventory guidance unavailable");
++    ids.add(item.variant_id);
++  }
++  return [...ids].sort();
++}
++async function readClaimInventoryLocationMap(variantIds, list) {
++  if (variantIds.length > 250 || new Set(variantIds).size !== variantIds.length) throw new Error("Inventory guidance unavailable");
++  const result = {};
++  const seen = /* @__PURE__ */ new Set();
++  const expected = new Set(variantIds);
++  let offset = 0;
++  while (offset < variantIds.length) {
++    const value = await list({
++      id: variantIds,
++      limit: 100,
++      offset,
++      fields: "id,manage_inventory,inventory_items.inventory_item_id,inventory_items.required_quantity,inventory_items.inventory.id,*inventory_items.inventory.location_levels"
++    });
++    if (!value || typeof value !== "object") throw new Error("Inventory guidance unavailable");
++    const page = value;
++    if (!Array.isArray(page.variants) || page.count !== variantIds.length || page.offset !== offset || page.limit !== 100 || page.variants.length === 0 || page.variants.length > 100) throw new Error("Inventory guidance unavailable");
++    for (const variant of page.variants) {
++      if (!variant || !expected.has(variant.id) || seen.has(variant.id)) throw new Error("Inventory guidance unavailable");
++      seen.add(variant.id);
++      if (variant.manage_inventory === false) {
++        result[variant.id] = null;
++        continue;
++      }
++      if (variant.manage_inventory !== true || !Array.isArray(variant.inventory_items)) throw new Error("Inventory guidance unavailable");
++      let common;
++      const components = /* @__PURE__ */ new Set();
++      for (const link of variant.inventory_items) {
++        if (!link || typeof link.inventory_item_id !== "string" || components.has(link.inventory_item_id) || !Number.isFinite(link.required_quantity) || link.required_quantity <= 0 || !link.inventory || link.inventory.id !== link.inventory_item_id || !Array.isArray(link.inventory.location_levels)) throw new Error("Inventory guidance unavailable");
++        components.add(link.inventory_item_id);
++        const locations = [];
++        for (const level of link.inventory.location_levels) {
++          if (!level || typeof level.location_id !== "string" || !/^sloc_[A-Za-z0-9_-]+$/.test(level.location_id) || locations.includes(level.location_id)) throw new Error("Inventory guidance unavailable");
++          locations.push(level.location_id);
++        }
++        common = common === void 0 ? locations : common.filter((location) => locations.includes(location));
++      }
++      result[variant.id] = common ?? [];
++    }
++    offset += page.variants.length;
++  }
++  if (seen.size !== variantIds.length) throw new Error("Inventory guidance unavailable");
++  return result;
++}
++function claimInventoryLocationWarning(context, key, ids, locationId) {
++  return !!locationId && context.key === key && context.status === "ready" && ids.some((id) => context.locations[id] !== null && !context.locations[id]?.includes(locationId));
++}
++
+ "use strict";
+ var __create = Object.create;
+ var __defProp = Object.defineProperty;
+@@ -111811,17 +111874,25 @@ var init_layout_composer = __esm({
            widgetsZonePrefix,
            layout?.sections?.map((s) => s.id) ?? []
          );
@@ -31,7 +110,31 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
          const validSectionIds2 = new Set(layout?.sections.map((s) => s.id) ?? []);
          const entriesBySection2 = buildDisplayEntries(
            rawEntries,
-@@ -113123,7 +113131,7 @@ var init_action_menu = __esm({
+@@ -112192,6 +112263,7 @@ var init_json_view_section = __esm({
+           /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(import_ui12.Drawer.Trigger, { asChild: true, children: /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(
+             import_ui12.IconButton,
+             {
++              "aria-label": "View JSON",
+               size: "small",
+               variant: "transparent",
+               className: "text-ui-fg-muted hover:text-ui-fg-subtle",
+@@ -112223,6 +112295,7 @@ var init_json_view_section = __esm({
+                     /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(import_ui12.Drawer.Close, { asChild: true, children: /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(
+                       import_ui12.IconButton,
+                       {
++                        "aria-label": "Close JSON",
+                         size: "small",
+                         variant: "transparent",
+                         className: "text-ui-contrast-fg-secondary hover:text-ui-contrast-fg-primary hover:bg-ui-contrast-bg-base-hover active:bg-ui-contrast-bg-base-pressed focus-visible:bg-ui-contrast-bg-base-hover focus-visible:shadow-borders-interactive-with-active",
+@@ -112370,6 +112443,7 @@ var init_metadata_section = __esm({
+         /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(
+           import_ui13.IconButton,
+           {
++            "aria-label": "Edit metadata",
+             size: "small",
+             variant: "transparent",
+             className: "text-ui-fg-muted hover:text-ui-fg-subtle",
+@@ -113123,7 +113197,7 @@ var init_action_menu = __esm({
        children
      }) => {
        const direction = useDocumentDirection();
@@ -40,7 +143,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
        return /* @__PURE__ */ (0, import_jsx_runtime32.jsxs)(import_ui17.DropdownMenu, { dir: direction, children: [
          /* @__PURE__ */ (0, import_jsx_runtime32.jsx)(import_ui17.DropdownMenu.Trigger, { asChild: true, children: inner }),
          /* @__PURE__ */ (0, import_jsx_runtime32.jsx)(import_ui17.DropdownMenu.Content, { children: groups.map((group, index) => {
-@@ -116319,7 +116327,7 @@ var init_data_table_order_by = __esm({
+@@ -116319,7 +116393,7 @@ var init_data_table_order_by = __esm({
          });
        };
        return /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)(import_ui33.DropdownMenu, { dir: direction, children: [
@@ -49,7 +152,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
          /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)(import_ui33.DropdownMenu.Content, { className: "z-[1]", align: "end", children: [
            /* @__PURE__ */ (0, import_jsx_runtime50.jsx)(
              import_ui33.DropdownMenu.RadioGroup,
-@@ -116431,6 +116439,7 @@ var init_data_table_search = __esm({
+@@ -116431,6 +116505,7 @@ var init_data_table_search = __esm({
        return /* @__PURE__ */ (0, import_jsx_runtime51.jsx)(
          import_ui34.Input,
          {
@@ -57,7 +160,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
            autoComplete: "off",
            name: "q",
            type: "search",
-@@ -116634,7 +116643,7 @@ var init_data_table_root = __esm({
+@@ -116634,7 +116709,7 @@ var init_data_table_root = __esm({
                              cell.getContext()
                            );
                            const isTabableLink = isFirstCell && !!to;
@@ -66,7 +169,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
                            return /* @__PURE__ */ (0, import_jsx_runtime53.jsx)(
                              import_ui35.Table.Cell,
                              {
-@@ -116865,36 +116874,7 @@ var init_product_list_table_actions = __esm({
+@@ -116865,36 +116940,7 @@ var init_product_list_table_actions = __esm({
        product
      }) => {
        const { t: t5 } = (0, import_react_i18next32.useTranslation)();
@@ -103,7 +206,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
        return /* @__PURE__ */ (0, import_jsx_runtime55.jsx)(
          ActionMenu,
          {
-@@ -116918,16 +116898,7 @@ var init_product_list_table_actions = __esm({
+@@ -116918,16 +116964,7 @@ var init_product_list_table_actions = __esm({
                    }
                  ]
                }
@@ -121,7 +224,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
            ]
          }
        );
-@@ -117626,7 +117597,6 @@ var init_product_list_table = __esm({
+@@ -117626,7 +117663,6 @@ var init_product_list_table = __esm({
            /* @__PURE__ */ (0, import_jsx_runtime65.jsx)(import_ui41.Heading, { level: "h1", children: t5("products.domain") }),
            /* @__PURE__ */ (0, import_jsx_runtime65.jsxs)("div", { className: "flex items-center justify-center gap-x-2", children: [
              /* @__PURE__ */ (0, import_jsx_runtime65.jsx)(import_ui41.Button, { size: "small", variant: "secondary", asChild: true, children: /* @__PURE__ */ (0, import_jsx_runtime65.jsx)(import_react_router_dom26.Link, { to: `export${location.search}`, children: t5("actions.export") }) }),
@@ -129,7 +232,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
              /* @__PURE__ */ (0, import_jsx_runtime65.jsx)(import_ui41.Button, { size: "small", variant: "secondary", asChild: true, children: /* @__PURE__ */ (0, import_jsx_runtime65.jsx)(import_react_router_dom26.Link, { to: "create", children: t5("actions.create") }) })
            ] })
          ] }),
-@@ -117664,6 +117634,7 @@ var init_product_list_table = __esm({
+@@ -117664,6 +117700,7 @@ var init_product_list_table = __esm({
            ...base,
            columnHelper2.display({
              id: "actions",
@@ -137,7 +240,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
              cell: ({ row }) => {
                return /* @__PURE__ */ (0, import_jsx_runtime65.jsx)(ProductActions, { product: row.original });
              }
-@@ -123459,7 +123430,6 @@ var init_configurable_product_list_table = __esm({
+@@ -123459,7 +123496,6 @@ var init_configurable_product_list_table = __esm({
              heading: t5("products.domain"),
              actions: [
                { label: t5("actions.export"), to: `export${location.search}` },
@@ -145,7 +248,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
                { label: t5("actions.create"), to: "create" }
              ]
            }
-@@ -123571,21 +123541,25 @@ var init_form = __esm({
+@@ -123571,21 +123607,25 @@ var init_form = __esm({
        if (!fieldContext) {
          throw new Error("useFormField should be used within a FormField");
        }
@@ -177,7 +280,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
            "div",
            {
              ref,
-@@ -123597,7 +123571,8 @@ var init_form = __esm({
+@@ -123597,7 +123637,8 @@ var init_form = __esm({
      );
      Item.displayName = "Form.Item";
      Label4 = (0, import_react78.forwardRef)(({ className, optional = false, tooltip, icon, ...props }, ref) => {
@@ -187,7 +290,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
        const { t: t5 } = (0, import_react_i18next48.useTranslation)();
        return /* @__PURE__ */ (0, import_jsx_runtime81.jsxs)("div", { className: "flex items-center gap-x-1", children: [
          /* @__PURE__ */ (0, import_jsx_runtime81.jsx)(
-@@ -123624,7 +123599,7 @@ var init_form = __esm({
+@@ -123624,7 +123665,7 @@ var init_form = __esm({
      Label4.displayName = "Form.Label";
      Control = (0, import_react78.forwardRef)(({ ...props }, ref) => {
        const {
@@ -196,7 +299,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
          formItemId,
          formDescriptionId,
          formErrorMessageId,
-@@ -123635,16 +123610,17 @@ var init_form = __esm({
+@@ -123635,16 +123676,17 @@ var init_form = __esm({
          {
            ref,
            id: formItemId,
@@ -217,7 +320,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
        return /* @__PURE__ */ (0, import_jsx_runtime81.jsx)(
          import_ui54.Hint,
          {
-@@ -123657,8 +123633,10 @@ var init_form = __esm({
+@@ -123657,8 +123699,10 @@ var init_form = __esm({
      });
      Hint.displayName = "Form.Hint";
      ErrorMessage = (0, import_react78.forwardRef)(({ className, children, ...props }, ref) => {
@@ -229,7 +332,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
        if (!msg || msg === "undefined") {
          return null;
        }
-@@ -124062,9 +124040,10 @@ var init_route_focus_modal = __esm({
+@@ -124062,9 +124106,10 @@ var init_route_focus_modal = __esm({
        return /* @__PURE__ */ (0, import_jsx_runtime86.jsx)(
          import_ui57.FocusModal.Content,
          {
@@ -243,7 +346,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
            className: (0, import_ui57.clx)({
              "!bg-ui-bg-disabled !inset-x-5 !inset-y-3": stackedModalOpen
            }),
-@@ -126016,7 +125995,16 @@ var init_combobox = __esm({
+@@ -126016,7 +126061,16 @@ var init_combobox = __esm({
                          "txt-compact-small text-ui-fg-base !placeholder:text-ui-fg-muted transition-fg size-full cursor-pointer bg-transparent pe-8 ps-1 outline-none focus:cursor-text"
                        ),
                        placeholder: Array.isArray(selectedValues) && selectedValues.length > 0 ? void 0 : placeholder,
@@ -261,7 +364,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
                      }
                    ) }),
                    /* @__PURE__ */ (0, import_jsx_runtime98.jsx)(
-@@ -126027,6 +126015,7 @@ var init_combobox = __esm({
+@@ -126027,6 +126081,7 @@ var init_combobox = __esm({
                            "button",
                            {
                              ...props,
@@ -269,7 +372,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
                              type: "button",
                              className: "text-ui-fg-muted transition-fg hover:bg-ui-bg-field-hover absolute end-0 top-0 flex h-8 w-8 items-center justify-center rounded-r outline-none",
                              children: /* @__PURE__ */ (0, import_jsx_runtime98.jsx)(import_icons35.TrianglesMini, {})
-@@ -126112,7 +126101,16 @@ var init_combobox = __esm({
+@@ -126112,7 +126167,16 @@ var init_combobox = __esm({
                            }
                          ),
                          placeholder: hidePlaceholder ? void 0 : placeholder,
@@ -287,7 +390,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
                        }
                      )
                    ] }),
-@@ -126136,6 +126134,7 @@ var init_combobox = __esm({
+@@ -126136,6 +126200,7 @@ var init_combobox = __esm({
                            "button",
                            {
                              ...props,
@@ -295,7 +398,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
                              type: "button",
                              className: "text-ui-fg-muted transition-fg hover:bg-ui-bg-field-hover absolute end-0 flex size-8 items-center justify-center rounded-r outline-none",
                              children: /* @__PURE__ */ (0, import_jsx_runtime98.jsx)(import_icons35.TrianglesMini, {})
-@@ -126150,7 +126149,14 @@ var init_combobox = __esm({
+@@ -126150,7 +126215,14 @@ var init_combobox = __esm({
              /* @__PURE__ */ (0, import_jsx_runtime98.jsxs)(
                import_react98.ComboboxPopover,
                {
@@ -311,7 +414,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
                  sameWidth: true,
                  ref: listboxRef,
                  role: "listbox",
-@@ -126162,7 +126168,7 @@ var init_combobox = __esm({
+@@ -126162,7 +126234,7 @@ var init_combobox = __esm({
                    "data-[side=bottom]:slide-in-from-top-2 data-[side=start]:slide-in-from-end-2 data-[side=end]:slide-in-from-start-2 data-[side=top]:slide-in-from-bottom-2"
                  ),
                  style: {
@@ -320,7 +423,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
                  },
                  children: [
                    results.map(({ value, label, disabled }) => /* @__PURE__ */ (0, import_jsx_runtime98.jsxs)(
-@@ -134419,35 +134425,9 @@ var init_product_general_section = __esm({
+@@ -134419,35 +134491,9 @@ var init_product_general_section = __esm({
        product
      }) => {
        const { t: t5 } = (0, import_react_i18next88.useTranslation)();
@@ -356,7 +459,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
        return /* @__PURE__ */ (0, import_jsx_runtime136.jsxs)(import_ui99.Container, { className: "divide-y p-0", children: [
          /* @__PURE__ */ (0, import_jsx_runtime136.jsxs)("div", { className: "flex items-center justify-between px-6 py-4", children: [
            /* @__PURE__ */ (0, import_jsx_runtime136.jsx)(import_ui99.Heading, { children: product.title }),
-@@ -134476,16 +134456,7 @@ var init_product_general_section = __esm({
+@@ -134476,16 +134522,7 @@ var init_product_general_section = __esm({
                          }
                        ]
                      }
@@ -374,7 +477,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
                  ]
                }
              )
-@@ -135147,8 +135118,6 @@ var init_product_variant_section = __esm({
+@@ -135147,8 +135184,6 @@ var init_product_variant_section = __esm({
      useColumns4 = (product) => {
        const { t: t5 } = (0, import_react_i18next93.useTranslation)();
        const navigate = (0, import_react_router_dom38.useNavigate)();
@@ -383,7 +486,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
        const [searchParams] = (0, import_react_router_dom38.useSearchParams)();
        const tableSearchParams = (0, import_react140.useMemo)(() => {
          const filtered = new URLSearchParams();
-@@ -135159,23 +135128,6 @@ var init_product_variant_section = __esm({
+@@ -135159,23 +135194,6 @@ var init_product_variant_section = __esm({
          }
          return filtered;
        }, [searchParams]);
@@ -407,7 +510,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
        const optionColumns = (0, import_react140.useMemo)(() => {
          if (!product?.options) {
            return [];
-@@ -135232,13 +135184,6 @@ var init_product_variant_section = __esm({
+@@ -135232,13 +135250,6 @@ var init_product_variant_section = __esm({
                }
              }
            ];
@@ -421,7 +524,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
            const inventoryItemsCount = variant.inventory_items?.length || 0;
            switch (inventoryItemsCount) {
              case 0:
-@@ -135271,9 +135216,9 @@ var init_product_variant_section = __esm({
+@@ -135271,9 +135282,9 @@ var init_product_variant_section = __esm({
                });
              }
            }
@@ -433,7 +536,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
        );
        const getInventory = (0, import_react140.useCallback)(
          (variant) => {
-@@ -141169,29 +141114,8 @@ var init_loader5 = __esm({
+@@ -141169,29 +141180,8 @@ var init_loader5 = __esm({
  // src/routes/product-variants/product-variant-detail/components/variant-general-section/variant-general-section.tsx
  function VariantGeneralSection({ variant }) {
    const { t: t5 } = (0, import_react_i18next124.useTranslation)();
@@ -463,7 +566,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
    return /* @__PURE__ */ (0, import_jsx_runtime183.jsxs)(import_ui133.Container, { className: "divide-y p-0", children: [
      /* @__PURE__ */ (0, import_jsx_runtime183.jsxs)("div", { className: "flex items-center justify-between px-6 py-4", children: [
        /* @__PURE__ */ (0, import_jsx_runtime183.jsxs)("div", { children: [
-@@ -141224,16 +141148,7 @@ function VariantGeneralSection({ variant }) {
+@@ -141224,16 +141214,7 @@ function VariantGeneralSection({ variant }) {
                    }
                  ]
                }
@@ -481,7 +584,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
            ]
          }
        ) })
-@@ -149209,6 +149124,7 @@ var init_constants10 = __esm({
+@@ -149209,6 +149190,7 @@ var init_constants10 = __esm({
        "*payment_collections",
        "*payment_collections.payment_sessions",
        "*payment_collections.payments",
@@ -489,7 +592,83 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
        "*payment_collections.payments.refunds",
        "*payment_collections.payments.refunds.refund_reason",
        "region.automatic_taxes"
-@@ -153795,7 +153711,7 @@ var init_order_summary_section = __esm({
+@@ -152000,10 +151982,10 @@ var init_customer_info = __esm({
+       return /* @__PURE__ */ (0, import_jsx_runtime294.jsxs)("div", { className: "text-ui-fg-subtle grid grid-cols-2 items-center px-6 py-4", children: [
+         /* @__PURE__ */ (0, import_jsx_runtime294.jsx)(import_ui193.Text, { size: "small", leading: "compact", weight: "plus", children: t5("fields.id") }),
+         /* @__PURE__ */ (0, import_jsx_runtime294.jsx)(
+-          import_react_router_dom90.Link,
+-          {
+-            to: `/customers/${id2}`,
+-            className: "focus:shadow-borders-focus rounded-[4px] outline-none transition-shadow",
++      id2 ? import_react_router_dom90.Link : "div",
++      {
++        ...(id2 ? { to: `/customers/${id2}` } : {}),
++        className: "focus:shadow-borders-focus inline-flex min-h-6 items-center rounded-[4px] outline-none transition-shadow",
+             children: /* @__PURE__ */ (0, import_jsx_runtime294.jsxs)("div", { className: "flex items-center gap-x-2 overflow-hidden", children: [
+               /* @__PURE__ */ (0, import_jsx_runtime294.jsx)(import_ui193.Avatar, { size: "2xsmall", fallback }),
+               /* @__PURE__ */ (0, import_jsx_runtime294.jsx)(
+@@ -152038,7 +152020,7 @@ var init_customer_info = __esm({
+       return /* @__PURE__ */ (0, import_jsx_runtime294.jsxs)("div", { className: "text-ui-fg-subtle grid grid-cols-2 items-start px-6 py-4", children: [
+         /* @__PURE__ */ (0, import_jsx_runtime294.jsx)(import_ui193.Text, { size: "small", leading: "compact", weight: "plus", children: t5("orders.customer.contactLabel") }),
+         /* @__PURE__ */ (0, import_jsx_runtime294.jsxs)("div", { className: "flex flex-col gap-y-2", children: [
+-          /* @__PURE__ */ (0, import_jsx_runtime294.jsxs)("div", { className: "grid grid-cols-[1fr_20px] items-start gap-x-2", children: [
++          /* @__PURE__ */ (0, import_jsx_runtime294.jsxs)("div", { className: "grid grid-cols-[1fr_24px] items-start gap-x-2", children: [
+             /* @__PURE__ */ (0, import_jsx_runtime294.jsx)(
+               import_ui193.Text,
+               {
+@@ -152050,7 +152032,7 @@ var init_customer_info = __esm({
+             ),
+             /* @__PURE__ */ (0, import_jsx_runtime294.jsx)("div", { className: "flex justify-end", children: /* @__PURE__ */ (0, import_jsx_runtime294.jsx)(import_ui193.Copy, { content: email, className: "text-ui-fg-muted" }) })
+           ] }),
+-          phone && /* @__PURE__ */ (0, import_jsx_runtime294.jsxs)("div", { className: "grid grid-cols-[1fr_20px] items-start gap-x-2", children: [
++          phone && /* @__PURE__ */ (0, import_jsx_runtime294.jsxs)("div", { className: "grid grid-cols-[1fr_24px] items-start gap-x-2", children: [
+             /* @__PURE__ */ (0, import_jsx_runtime294.jsx)(
+               import_ui193.Text,
+               {
+@@ -152072,7 +152054,7 @@ var init_customer_info = __esm({
+       const { t: t5 } = (0, import_react_i18next203.useTranslation)();
+       return /* @__PURE__ */ (0, import_jsx_runtime294.jsxs)("div", { className: "text-ui-fg-subtle grid grid-cols-2 items-start px-6 py-4", children: [
+         /* @__PURE__ */ (0, import_jsx_runtime294.jsx)(import_ui193.Text, { size: "small", leading: "compact", weight: "plus", children: type === "shipping" ? t5("addresses.shippingAddress.label") : t5("addresses.billingAddress.label") }),
+-        address ? /* @__PURE__ */ (0, import_jsx_runtime294.jsxs)("div", { className: "grid grid-cols-[1fr_20px] items-start gap-x-2", children: [
++        address ? /* @__PURE__ */ (0, import_jsx_runtime294.jsxs)("div", { className: "grid grid-cols-[1fr_24px] items-start gap-x-2", children: [
+           /* @__PURE__ */ (0, import_jsx_runtime294.jsx)(import_ui193.Text, { size: "small", leading: "compact", children: getFormattedAddress({ address }).map((line, i) => {
+             return /* @__PURE__ */ (0, import_jsx_runtime294.jsxs)("span", { className: "break-words", children: [
+               line,
+@@ -153690,24 +153672,24 @@ var init_order_summary_section = __esm({
+         /* @__PURE__ */ (0, import_jsx_runtime303.jsxs)(
+           "div",
+           {
+-            className: "text-ui-fg-subtle grid grid-cols-2 items-center gap-x-4 px-6 py-4",
++            className: "text-ui-fg-subtle grid grid-cols-1 items-center gap-x-4 gap-y-3 px-6 py-4 sm:grid-cols-2",
+             children: [
+-              /* @__PURE__ */ (0, import_jsx_runtime303.jsxs)("div", { className: " flex justify-between gap-x-2 ", children: [
+-                /* @__PURE__ */ (0, import_jsx_runtime303.jsxs)("div", { className: " group flex items-start gap-x-4", children: [
++              /* @__PURE__ */ (0, import_jsx_runtime303.jsxs)("div", { className: "flex min-w-0 justify-between gap-x-2", children: [
++                /* @__PURE__ */ (0, import_jsx_runtime303.jsxs)("div", { className: "group flex min-w-0 items-start gap-x-4", children: [
+                   /* @__PURE__ */ (0, import_jsx_runtime303.jsx)(Thumbnail, { src: item.thumbnail }),
+-                  /* @__PURE__ */ (0, import_jsx_runtime303.jsxs)("div", { children: [
+-                    /* @__PURE__ */ (0, import_jsx_runtime303.jsx)(import_ui202.Text, { size: "small", leading: "compact", className: "text-ui-fg-base", children: item.title }),
+-                    item.variant_sku && /* @__PURE__ */ (0, import_jsx_runtime303.jsxs)("div", { className: "flex items-center gap-x-1", children: [
+-                      /* @__PURE__ */ (0, import_jsx_runtime303.jsx)(import_ui202.Text, { size: "small", children: item.variant_sku }),
++                  /* @__PURE__ */ (0, import_jsx_runtime303.jsxs)("div", { className: "min-w-0", children: [
++                    /* @__PURE__ */ (0, import_jsx_runtime303.jsx)(import_ui202.Text, { size: "small", leading: "compact", className: "text-ui-fg-base min-w-0 break-words", children: item.title }),
++                    item.variant_sku && /* @__PURE__ */ (0, import_jsx_runtime303.jsxs)("div", { className: "flex min-w-0 items-start gap-x-1", children: [
++                      /* @__PURE__ */ (0, import_jsx_runtime303.jsx)(import_ui202.Text, { size: "small", className: "min-w-0 break-all", children: item.variant_sku }),
+                       /* @__PURE__ */ (0, import_jsx_runtime303.jsx)(
+                         import_ui202.Copy,
+                         {
+                           content: item.variant_sku,
+-                          className: "text-ui-fg-muted hidden group-hover:block"
++                          "aria-label": "Copy item SKU", className: "text-ui-fg-muted min-h-6 min-w-6 shrink-0 cursor-pointer"
+                         }
+                       )
+                     ] }),
+-                    /* @__PURE__ */ (0, import_jsx_runtime303.jsx)(import_ui202.Text, { size: "small", children: item.variant?.options?.map((o) => o.value).join(" \xB7 ") })
++                    /* @__PURE__ */ (0, import_jsx_runtime303.jsx)(import_ui202.Text, { size: "small", className: "min-w-0 break-words", children: item.variant?.options?.map((o) => o.value).join(" \xB7 ") })
+                   ] })
+                 ] }),
+                 appliedPromoCodes.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime303.jsx)(
+@@ -153795,7 +153777,7 @@ var init_order_summary_section = __esm({
        secondaryValue,
        tooltip
      }) => /* @__PURE__ */ (0, import_jsx_runtime303.jsxs)("div", { className: "grid grid-cols-3 items-center", children: [
@@ -498,7 +677,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
          label,
          " ",
          tooltip
-@@ -154649,12 +154565,14 @@ function OrderCreateFulfillmentItem({
+@@ -154649,12 +154631,14 @@ function OrderCreateFulfillmentItem({
                        /* @__PURE__ */ (0, import_jsx_runtime305.jsx)(Form.Control, { children: /* @__PURE__ */ (0, import_jsx_runtime305.jsx)(
                          import_ui203.Input,
                          {
@@ -514,7 +693,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
                              if (val !== null && !isNaN(val)) {
                                if (val < minValue || val > maxValue) {
                                  form.setError(`quantity.${item.id}`, {
-@@ -154789,6 +154707,10 @@ function OrderCreateFulfillmentForm({
+@@ -154789,6 +154773,10 @@ function OrderCreateFulfillmentForm({
          ({ id: id2 }) => itemShippingProfileMap[id2] === selectedShippingProfileId
        );
      }
@@ -525,7 +704,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
      const payload = {
        location_id: selectedLocationId,
        shipping_option_id: shippingOptionId,
-@@ -154852,7 +154774,7 @@ function OrderCreateFulfillmentForm({
+@@ -154852,7 +154840,7 @@ function OrderCreateFulfillmentForm({
        onSubmit: handleSubmit,
        className: "flex h-full flex-col overflow-hidden",
        children: [
@@ -534,7 +713,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
          /* @__PURE__ */ (0, import_jsx_runtime306.jsx)(RouteFocusModal.Body, { className: "flex h-full w-full flex-col items-center divide-y overflow-y-auto", children: /* @__PURE__ */ (0, import_jsx_runtime306.jsx)("div", { className: "flex size-full flex-col items-center overflow-auto p-16", children: /* @__PURE__ */ (0, import_jsx_runtime306.jsx)("div", { className: "flex w-full max-w-[736px] flex-col justify-center px-2 pb-2", children: /* @__PURE__ */ (0, import_jsx_runtime306.jsxs)("div", { className: "flex flex-col divide-y divide-dashed", children: [
            /* @__PURE__ */ (0, import_jsx_runtime306.jsx)("div", { className: "pb-8", children: /* @__PURE__ */ (0, import_jsx_runtime306.jsx)(
              Form.Field,
-@@ -154906,7 +154828,8 @@ function OrderCreateFulfillmentForm({
+@@ -154906,7 +154894,8 @@ function OrderCreateFulfillmentForm({
                              /* @__PURE__ */ (0, import_jsx_runtime306.jsx)(
                                import_ui204.Select.Trigger,
                                {
@@ -544,7 +723,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
                                  ref,
                                  children: isShippingOptionsLoading ? /* @__PURE__ */ (0, import_jsx_runtime306.jsxs)("span", { className: "text-right", children: [
                                    t5("labels.loading"),
-@@ -155171,11 +155094,12 @@ function DismissedQuantity({
+@@ -155171,11 +155160,12 @@ function DismissedQuantity({
      }
    };
    return /* @__PURE__ */ (0, import_jsx_runtime308.jsxs)(import_ui205.Popover, { open: isOpen, onOpenChange: setIsOpen, children: [
@@ -559,7 +738,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
        /* @__PURE__ */ (0, import_jsx_runtime308.jsx)("span", { className: "txt-small text-ui-fg-subtle mb-2 font-medium", children: t5("orders.returns.receive.writeOffInputLabel") }),
        /* @__PURE__ */ (0, import_jsx_runtime308.jsx)(
          Form.Field,
-@@ -155189,6 +155113,7 @@ function DismissedQuantity({
+@@ -155189,6 +155179,7 @@ function DismissedQuantity({
                  min: 0,
                  max: item.quantity,
                  type: "number",
@@ -567,7 +746,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
                  value,
                  className: "bg-ui-bg-field-component text-right [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none",
                  onChange: (e) => {
-@@ -155333,6 +155258,7 @@ function OrderReceiveReturnForm({
+@@ -155333,6 +155324,7 @@ function OrderReceiveReturnForm({
        import_ui206.toast.error(t5("orders.returns.receive.toast.errorLargeValue"));
        return;
      }
@@ -575,7 +754,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
      try {
        if (action) {
          if (value === null || value === 0) {
-@@ -155402,7 +155328,7 @@ function OrderReceiveReturnForm({
+@@ -155402,7 +155394,7 @@ function OrderReceiveReturnForm({
                            ")"
                          ] })
                        ] }),
@@ -584,7 +763,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
                      ] })
                    ] }),
                    /* @__PURE__ */ (0, import_jsx_runtime309.jsxs)("div", { className: "flex flex-1 flex-row items-center gap-2", children: [
-@@ -155428,6 +155354,7 @@ function OrderReceiveReturnForm({
+@@ -155428,6 +155420,7 @@ function OrderReceiveReturnForm({
                                min: 0,
                                max: item.quantity,
                                type: "number",
@@ -592,7 +771,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
                                value: value ?? 0,
                                className: "bg-ui-bg-field-component text-right [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none",
                                onChange: (e) => {
-@@ -155480,7 +155407,7 @@ function OrderReceiveReturnForm({
+@@ -155480,7 +155473,7 @@ function OrderReceiveReturnForm({
                        import_ui206.Switch,
                        {
                          dir: "ltr",
@@ -601,7 +780,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
                          checked: !!value,
                          onCheckedChange: onChange,
                          ...field
-@@ -155587,9 +155514,9 @@ function OrderReceiveReturn() {
+@@ -155587,9 +155580,9 @@ function OrderReceiveReturn() {
    }, [preview]);
    const ready = order && orderReturn && preview;
    return /* @__PURE__ */ (0, import_jsx_runtime310.jsxs)(RouteDrawer, { children: [
@@ -613,7 +792,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
      ready && /* @__PURE__ */ (0, import_jsx_runtime310.jsx)(
        OrderReceiveReturnForm,
        {
-@@ -155693,13 +155620,13 @@ function OrderAllocateItemsItem({
+@@ -155693,13 +155686,13 @@ function OrderAllocateItemsItem({
      getFulfillableQuantity(item),
      availableQuantity || Number.MAX_SAFE_INTEGER
    );
@@ -630,7 +809,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
              /* @__PURE__ */ (0, import_jsx_runtime311.jsx)(import_ui208.Text, { className: "txt-small flex", as: "span", weight: "plus", children: item.product_title }),
              item.variant_sku && /* @__PURE__ */ (0, import_jsx_runtime311.jsxs)("span", { className: "text-ui-fg-subtle", children: [
                " ",
-@@ -155709,7 +155636,7 @@ function OrderAllocateItemsItem({
+@@ -155709,7 +155702,7 @@ function OrderAllocateItemsItem({
              ] }),
              hasInventoryKit && /* @__PURE__ */ (0, import_jsx_runtime311.jsx)(import_icons93.Component, { className: "text-ui-fg-muted ml-2 overflow-visible pt-[2px]" })
            ] }),
@@ -639,7 +818,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
          ] })
        ] }) }),
        /* @__PURE__ */ (0, import_jsx_runtime311.jsxs)(
-@@ -155726,7 +155653,7 @@ function OrderAllocateItemsItem({
+@@ -155726,7 +155719,7 @@ function OrderAllocateItemsItem({
                  /* @__PURE__ */ (0, import_jsx_runtime311.jsxs)("div", { className: "txt-small flex flex-col", children: [
                    /* @__PURE__ */ (0, import_jsx_runtime311.jsx)("span", { className: "text-ui-fg-subtle font-medium", children: t5("labels.available") }),
                    /* @__PURE__ */ (0, import_jsx_runtime311.jsxs)("span", { className: "text-ui-fg-muted", children: [
@@ -648,7 +827,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
                      availableQuantity && !hasInventoryKit && quantityField[`${item.id}-${item.variant?.inventory?.[0].id}`] && /* @__PURE__ */ (0, import_jsx_runtime311.jsxs)("span", { className: "text-ui-fg-error txt-small ml-1", children: [
                        "-",
                        quantityField[`${item.id}-${item.variant?.inventory?.[0].id}`]
-@@ -155738,7 +155665,7 @@ function OrderAllocateItemsItem({
+@@ -155738,7 +155731,7 @@ function OrderAllocateItemsItem({
                  /* @__PURE__ */ (0, import_jsx_runtime311.jsx)("div", { className: "bg-ui-border-strong block h-[12px] w-[1px]" }),
                  /* @__PURE__ */ (0, import_jsx_runtime311.jsxs)("div", { className: "txt-small flex flex-col", children: [
                    /* @__PURE__ */ (0, import_jsx_runtime311.jsx)("span", { className: "text-ui-fg-subtle font-medium", children: t5("labels.inStock") }),
@@ -657,7 +836,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
                  ] })
                ] })
              ] }),
-@@ -155761,6 +155688,7 @@ function OrderAllocateItemsItem({
+@@ -155761,6 +155754,7 @@ function OrderAllocateItemsItem({
                          {
                            className: "bg-ui-bg-base txt-small w-[46px] rounded-lg text-right [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none",
                            type: "number",
@@ -665,7 +844,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
                            ...field,
                            disabled: !locationId,
                            onChange: (e) => {
-@@ -155793,10 +155721,12 @@ function OrderAllocateItemsItem({
+@@ -155793,10 +155787,12 @@ function OrderAllocateItemsItem({
        )
      ] }),
      hasInventoryKit && /* @__PURE__ */ (0, import_jsx_runtime311.jsx)("div", { className: "px-4 py-2", children: /* @__PURE__ */ (0, import_jsx_runtime311.jsxs)(
@@ -680,7 +859,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
          children: [
            /* @__PURE__ */ (0, import_jsx_runtime311.jsx)(
              import_icons93.TriangleDownMini,
-@@ -155816,7 +155746,7 @@ function OrderAllocateItemsItem({
+@@ -155816,7 +155812,7 @@ function OrderAllocateItemsItem({
          (l) => l.location_id === locationId
        );
        const hasQuantityError2 = !!quantityField[`${item.id}-${i.id}`] && quantityField[`${item.id}-${i.id}`] > (location?.available_quantity ?? 0);
@@ -689,7 +868,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
          /* @__PURE__ */ (0, import_jsx_runtime311.jsxs)("div", { className: "flex flex-1 flex-row items-center gap-3", children: [
            hasQuantityError2 && /* @__PURE__ */ (0, import_jsx_runtime311.jsx)(import_icons93.ExclamationCircleSolid, { className: "text-ui-fg-error" }),
            /* @__PURE__ */ (0, import_jsx_runtime311.jsxs)("div", { className: "flex flex-col", children: [
-@@ -155832,7 +155762,7 @@ function OrderAllocateItemsItem({
+@@ -155832,7 +155828,7 @@ function OrderAllocateItemsItem({
              /* @__PURE__ */ (0, import_jsx_runtime311.jsxs)("div", { className: "txt-small flex flex-col", children: [
                /* @__PURE__ */ (0, import_jsx_runtime311.jsx)("span", { className: "text-ui-fg-subtle font-medium", children: t5("labels.available") }),
                /* @__PURE__ */ (0, import_jsx_runtime311.jsxs)("span", { className: "text-ui-fg-muted", children: [
@@ -698,7 +877,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
                  location?.available_quantity && quantityField[`${item.id}-${i.id}`] && /* @__PURE__ */ (0, import_jsx_runtime311.jsxs)("span", { className: "text-ui-fg-error txt-small ml-1", children: [
                    "-",
                    quantityField[`${item.id}-${i.id}`]
-@@ -155844,7 +155774,7 @@ function OrderAllocateItemsItem({
+@@ -155844,7 +155840,7 @@ function OrderAllocateItemsItem({
              /* @__PURE__ */ (0, import_jsx_runtime311.jsx)("div", { className: "bg-ui-border-strong block h-[12px] w-[1px]" }),
              /* @__PURE__ */ (0, import_jsx_runtime311.jsxs)("div", { className: "txt-small flex flex-col", children: [
                /* @__PURE__ */ (0, import_jsx_runtime311.jsx)("span", { className: "text-ui-fg-subtle font-medium", children: t5("labels.inStock") }),
@@ -707,7 +886,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
              ] })
            ] }),
            /* @__PURE__ */ (0, import_jsx_runtime311.jsxs)("div", { className: "flex items-center gap-3", children: [
-@@ -155866,6 +155796,7 @@ function OrderAllocateItemsItem({
+@@ -155866,6 +155862,7 @@ function OrderAllocateItemsItem({
                        {
                          className: "bg-ui-bg-base txt-small w-[46px] rounded-lg text-right [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none",
                          type: "number",
@@ -715,7 +894,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
                          ...field,
                          disabled: !locationId,
                          onChange: (e) => {
-@@ -156033,8 +155964,9 @@ function OrderAllocateItemsForm({ order }) {
+@@ -156033,8 +156030,9 @@ function OrderAllocateItemsForm({ order }) {
        className: "flex h-full flex-col overflow-hidden",
        children: [
          /* @__PURE__ */ (0, import_jsx_runtime312.jsx)(RouteFocusModal.Header, {}),
@@ -727,7 +906,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
            /* @__PURE__ */ (0, import_jsx_runtime312.jsxs)("div", { className: "flex-1 divide-y divide-dashed pt-8", children: [
              /* @__PURE__ */ (0, import_jsx_runtime312.jsx)(
                Form.Field,
-@@ -156043,30 +155975,30 @@ function OrderAllocateItemsForm({ order }) {
+@@ -156043,30 +156041,30 @@ function OrderAllocateItemsForm({ order }) {
                  name: "location_id",
                  render: ({ field: { onChange, ref, ...field } }) => {
                    return /* @__PURE__ */ (0, import_jsx_runtime312.jsxs)(Form.Item, { children: [
@@ -763,7 +942,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
                      ] }),
                      /* @__PURE__ */ (0, import_jsx_runtime312.jsx)(Form.ErrorMessage, {})
                    ] });
-@@ -156074,7 +156006,7 @@ function OrderAllocateItemsForm({ order }) {
+@@ -156074,7 +156072,7 @@ function OrderAllocateItemsForm({ order }) {
                }
              ),
              /* @__PURE__ */ (0, import_jsx_runtime312.jsxs)(Form.Item, { className: "mt-8 pt-8", children: [
@@ -772,7 +951,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
                  /* @__PURE__ */ (0, import_jsx_runtime312.jsxs)("div", { className: "flex-1", children: [
                    /* @__PURE__ */ (0, import_jsx_runtime312.jsx)(Form.Label, { children: t5("orders.allocateItems.itemsToAllocate") }),
                    /* @__PURE__ */ (0, import_jsx_runtime312.jsx)(Form.Hint, { children: t5("orders.allocateItems.itemsToAllocateDesc") })
-@@ -156084,6 +156016,7 @@ function OrderAllocateItemsForm({ order }) {
+@@ -156084,6 +156082,7 @@ function OrderAllocateItemsForm({ order }) {
                    {
                      value: filterTerm,
                      onChange: (e) => setFilterTerm(e.target.value),
@@ -780,7 +959,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
                      placeholder: t5("orders.allocateItems.search"),
                      autoComplete: "off",
                      type: "search"
-@@ -156169,6 +156102,7 @@ var init_order_create_fulfillment_form3 = __esm({
+@@ -156169,6 +156168,7 @@ var init_order_create_fulfillment_form3 = __esm({
  // src/routes/orders/order-allocate-items/order-allocate-items.tsx
  function OrderAllocateItems() {
    const { id: id2 } = (0, import_react_router_dom96.useParams)();
@@ -788,7 +967,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
    const { order, isLoading, isError, error } = useOrder(id2, {
      fields: "currency_code,*items,*items.variant,+items.variant.product.title,*items.variant.inventory,*items.variant.inventory.location_levels,*items.variant.inventory_items,*shipping_address"
    });
-@@ -156176,7 +156110,7 @@ function OrderAllocateItems() {
+@@ -156176,7 +156176,7 @@ function OrderAllocateItems() {
      throw error;
    }
    const ready = !isLoading && order;
@@ -797,7 +976,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
  }
  var import_react_router_dom96, import_jsx_runtime313;
  var init_order_allocate_items = __esm({
-@@ -156275,7 +156209,8 @@ function OrderCreateShipmentForm({
+@@ -156275,7 +156275,8 @@ function OrderCreateShipmentForm({
          /* @__PURE__ */ (0, import_jsx_runtime314.jsx)(RouteFocusModal.Header, {}),
          /* @__PURE__ */ (0, import_jsx_runtime314.jsx)(RouteFocusModal.Body, { className: "flex h-full w-full flex-col items-center divide-y overflow-y-auto", children: /* @__PURE__ */ (0, import_jsx_runtime314.jsx)("div", { className: "flex size-full flex-col items-center overflow-auto p-16", children: /* @__PURE__ */ (0, import_jsx_runtime314.jsx)("div", { className: "flex w-full max-w-[736px] flex-col justify-center px-2 pb-2", children: /* @__PURE__ */ (0, import_jsx_runtime314.jsxs)("div", { className: "flex flex-col divide-y", children: [
            /* @__PURE__ */ (0, import_jsx_runtime314.jsxs)("div", { className: "flex flex-1 flex-col", children: [
@@ -807,7 +986,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
              /* @__PURE__ */ (0, import_jsx_runtime314.jsx)("div", { className: "flex flex-col max-md:gap-y-2 max-md:divide-y", children: labels.map((label, index) => /* @__PURE__ */ (0, import_jsx_runtime314.jsxs)(
                "div",
                {
-@@ -156543,7 +156478,9 @@ var init_use_return_item_table_columns = __esm({
+@@ -156543,7 +156544,9 @@ var init_use_return_item_table_columns = __esm({
                return /* @__PURE__ */ (0, import_jsx_runtime317.jsx)(
                  import_ui211.Checkbox,
                  {
@@ -818,7 +997,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
                    onCheckedChange: (value) => table.toggleAllPageRowsSelected(!!value)
                  }
                );
-@@ -156553,7 +156490,9 @@ var init_use_return_item_table_columns = __esm({
+@@ -156553,7 +156556,9 @@ var init_use_return_item_table_columns = __esm({
                return /* @__PURE__ */ (0, import_jsx_runtime317.jsx)(
                  import_ui211.Checkbox,
                  {
@@ -829,7 +1008,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
                    checked: row.getIsSelected(),
                    onCheckedChange: (value) => row.toggleSelected(!!value),
                    onClick: (e) => {
-@@ -156925,6 +156864,7 @@ function ReturnItem({
+@@ -156925,6 +156930,7 @@ function ReturnItem({
    index
  }) {
    const { t: t5 } = (0, import_react_i18next225.useTranslation)();
@@ -837,7 +1016,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
    const { return_reasons = [] } = useReturnReasons({ fields: "+label" });
    const formItem = form.watch(`items.${index}`);
    const showReturnReason = typeof formItem.reason_id === "string";
-@@ -156936,7 +156876,7 @@ function ReturnItem({
+@@ -156936,7 +156942,7 @@ function ReturnItem({
          /* @__PURE__ */ (0, import_jsx_runtime319.jsxs)("div", { className: "flex flex-col", children: [
            /* @__PURE__ */ (0, import_jsx_runtime319.jsxs)("div", { children: [
              /* @__PURE__ */ (0, import_jsx_runtime319.jsxs)(import_ui212.Text, { className: "txt-small", as: "span", weight: "plus", children: [
@@ -846,7 +1025,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
                " "
              ] }),
              item.variant_sku && /* @__PURE__ */ (0, import_jsx_runtime319.jsxs)("span", { children: [
-@@ -156945,7 +156885,7 @@ function ReturnItem({
+@@ -156945,7 +156951,7 @@ function ReturnItem({
                ")"
              ] })
            ] }),
@@ -855,7 +1034,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
          ] })
        ] }),
        /* @__PURE__ */ (0, import_jsx_runtime319.jsxs)("div", { className: "flex flex-1 justify-between", children: [
-@@ -156960,7 +156900,8 @@ function ReturnItem({
+@@ -156960,7 +156966,8 @@ function ReturnItem({
                    /* @__PURE__ */ (0, import_jsx_runtime319.jsx)(Form.Control, { children: /* @__PURE__ */ (0, import_jsx_runtime319.jsx)(
                      import_ui212.Input,
                      {
@@ -865,7 +1044,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
                        min: 1,
                        max: item.quantity,
                        type: "number",
-@@ -156969,7 +156910,7 @@ function ReturnItem({
+@@ -156969,7 +156976,7 @@ function ReturnItem({
                          const val = e.target.value;
                          const payload = val === "" ? null : Number(val);
                          field.onChange(payload);
@@ -874,7 +1053,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
                            onUpdate({ quantity: payload });
                          }
                        }
-@@ -157034,7 +156975,8 @@ function ReturnItem({
+@@ -157034,7 +157041,8 @@ function ReturnItem({
                    /* @__PURE__ */ (0, import_jsx_runtime319.jsx)(Form.Control, { children: /* @__PURE__ */ (0, import_jsx_runtime319.jsx)(
                      Combobox,
                      {
@@ -884,7 +1063,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
                        value,
                        onChange: (v) => {
                          onUpdate({ reason_id: v });
-@@ -157055,7 +156997,8 @@ function ReturnItem({
+@@ -157055,7 +157063,8 @@ function ReturnItem({
            /* @__PURE__ */ (0, import_jsx_runtime319.jsx)(
              import_ui212.IconButton,
              {
@@ -894,7 +1073,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
                className: "flex-shrink",
                variant: "transparent",
                onClick: () => {
-@@ -157085,8 +157028,9 @@ function ReturnItem({
+@@ -157085,8 +157094,9 @@ function ReturnItem({
                      {
                        onChange,
                        ...field,
@@ -906,7 +1085,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
                      }
                    ) }),
                    /* @__PURE__ */ (0, import_jsx_runtime319.jsx)(Form.ErrorMessage, {})
-@@ -157097,7 +157041,8 @@ function ReturnItem({
+@@ -157097,7 +157107,8 @@ function ReturnItem({
            /* @__PURE__ */ (0, import_jsx_runtime319.jsx)(
              import_ui212.IconButton,
              {
@@ -916,7 +1095,99 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
                className: "flex-shrink",
                variant: "transparent",
                onClick: () => {
-@@ -157433,13 +157378,14 @@ var init_return_create_form = __esm({
+@@ -157210,7 +157221,7 @@ var init_return_create_form = __esm({
+         value: "0",
+         float: 0
+       });
+-      const [inventoryMap, setInventoryMap] = (0, import_react215.useState)({});
++      const [inventoryContext, setInventoryContext] = (0, import_react215.useState)({ key: '', status: 'loading', locations: {} });
+       const { stock_locations = [] } = useStockLocations({ limit: 999 });
+       const { shipping_options = [] } = useShippingOptions({
+         limit: 999,
+@@ -157360,57 +157371,31 @@ var init_return_create_form = __esm({
+       (0, import_react215.useEffect)(() => {
+         form.setValue("location_id", activeReturn?.location_id || "");
+       }, [activeReturn]);
+-      const showLevelsWarning = (0, import_react215.useMemo)(() => {
+-        if (!locationId) {
+-          return false;
+-        }
+-        const allItemsHaveLocation = items.map((_i) => {
+-          const item = itemsMap.get(_i.item_id);
+-          if (!item?.variant_id) {
+-            return true;
+-          }
+-          if (!item.variant?.manage_inventory) {
+-            return true;
+-          }
+-          return inventoryMap[item.variant_id]?.find(
+-            (l) => l.location_id === locationId
+-          );
+-        }).every(Boolean);
+-        return !allItemsHaveLocation;
+-      }, [items, inventoryMap, locationId]);
+-      (0, import_react215.useEffect)(() => {
+-        const getInventoryMap = async () => {
+-          const ret = {};
+-          if (!items.length) {
+-            return ret;
+-          }
+-          ;
+-          (await Promise.all(
+-            items.map(async (_i) => {
+-              const item = itemsMap.get(_i.item_id);
+-              if (!item?.variant_id || !item?.product_id) {
+-                return void 0;
+-              }
+-              return await sdk.admin.product.retrieveVariant(
+-                item.product_id,
+-                item.variant_id,
+-                { fields: "*inventory,*inventory.location_levels" }
+-              );
+-            })
+-          )).filter((it2) => it2?.variant).forEach((item) => {
+-            const { variant } = item;
+-            const levels = variant.inventory?.[0]?.location_levels;
+-            if (!levels) {
+-              return;
+-            }
+-            ret[variant.id] = levels;
+-          });
+-          return ret;
+-        };
+-        getInventoryMap().then((map) => {
+-          setInventoryMap(map);
+-        });
+-      }, [items]);
++      const inventorySelection = (0, import_react215.useMemo)(() => {
++    try {
++      const ids = getClaimInventoryVariantIds(order.items, items);
++      return { ids, key: JSON.stringify(ids), valid: true };
++    } catch {
++      return { ids: [], key: 'unavailable', valid: false };
++    }
++  }, [order.items, items]);
++  const inventoryGuidanceStatus = !inventorySelection.valid ? 'unavailable' : inventoryContext.key === inventorySelection.key ? inventoryContext.status : 'loading';
++  const showInventoryGuidanceStatus = !!locationId && items.length > 0 && inventoryGuidanceStatus !== 'ready';
++  const showLevelsWarning = claimInventoryLocationWarning(inventoryContext, inventorySelection.key, inventorySelection.ids, locationId);
++  (0, import_react215.useEffect)(() => {
++    let active = true;
++    const key = inventorySelection.key;
++    setInventoryContext({ key, status: inventorySelection.valid ? 'loading' : 'unavailable', locations: {} });
++    if (inventorySelection.valid) {
++      readClaimInventoryLocationMap(inventorySelection.ids, query => sdk.admin.productVariant.list(query)).then(locations => {
++        if (active) setInventoryContext({ key, status: 'ready', locations });
++      }).catch(() => {
++        if (active) setInventoryContext({ key, status: 'unavailable', locations: {} });
++      });
++    }
++    return () => { active = false; };
++  }, [inventorySelection.key, inventorySelection.valid]);
++
+       const returnTotal = preview.return_requested_total;
+       const shippingTotal = (0, import_react215.useMemo)(() => {
+         const method = preview.shipping_methods.find(
+@@ -157433,13 +157418,14 @@ var init_return_create_form = __esm({
            children: /* @__PURE__ */ (0, import_jsx_runtime320.jsxs)(KeyboundForm, { onSubmit: handleSubmit, className: "flex h-full flex-col", children: [
              /* @__PURE__ */ (0, import_jsx_runtime320.jsx)(RouteFocusModal.Header, {}),
              /* @__PURE__ */ (0, import_jsx_runtime320.jsx)(RouteFocusModal.Body, { className: "flex size-full justify-center overflow-y-auto", children: /* @__PURE__ */ (0, import_jsx_runtime320.jsxs)("div", { className: "mt-16 w-[720px] max-w-[100%] px-4 md:p-0", children: [
@@ -934,7 +1205,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
                      /* @__PURE__ */ (0, import_jsx_runtime320.jsx)(
                        AddReturnItemsTable,
                        {
-@@ -157541,6 +157487,7 @@ var init_return_create_form = __esm({
+@@ -157541,6 +157527,7 @@ var init_return_create_form = __esm({
                          return /* @__PURE__ */ (0, import_jsx_runtime320.jsx)(Form.Item, { children: /* @__PURE__ */ (0, import_jsx_runtime320.jsx)(Form.Control, { children: /* @__PURE__ */ (0, import_jsx_runtime320.jsx)(
                            Combobox,
                            {
@@ -942,7 +1213,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
                              value,
                              onChange: (v) => {
                                onChange(v);
-@@ -157588,6 +157535,7 @@ var init_return_create_form = __esm({
+@@ -157588,6 +157575,7 @@ var init_return_create_form = __esm({
                          return /* @__PURE__ */ (0, import_jsx_runtime320.jsx)(Form.Item, { children: /* @__PURE__ */ (0, import_jsx_runtime320.jsx)(Form.Control, { children: /* @__PURE__ */ (0, import_jsx_runtime320.jsx)(
                            Combobox,
                            {
@@ -950,7 +1221,26 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
                              allowClear: true,
                              value,
                              onChange: (v) => {
-@@ -157689,7 +157637,7 @@ var init_return_create_form = __esm({
+@@ -157612,7 +157600,8 @@ var init_return_create_form = __esm({
+                   )
+                 ] })
+               ] }),
+-              showLevelsWarning && /* @__PURE__ */ (0, import_jsx_runtime320.jsxs)(import_ui213.Alert, { variant: "warning", dismissible: true, className: "mt-4 p-5", children: [
++              showInventoryGuidanceStatus && (0, import_jsx_runtime320.jsx)("div", { role: "status", className: "text-ui-fg-subtle txt-small mt-4", children: inventoryGuidanceStatus === "loading" ? t5("orders.returns.checkingInventory", { defaultValue: "Checking inventory locations…" }) : t5("orders.returns.inventoryUnavailable", { defaultValue: "Inventory location guidance is unavailable. Confirm the selected location before receiving items." }) }),
++showLevelsWarning && /* @__PURE__ */ (0, import_jsx_runtime320.jsxs)(import_ui213.Alert, { variant: "warning", dismissible: true, className: "mt-4 p-5", children: [
+                 /* @__PURE__ */ (0, import_jsx_runtime320.jsx)("div", { className: "text-ui-fg-subtle txt-small pb-2 font-medium leading-[20px]", children: t5("orders.returns.noInventoryLevel") }),
+                 /* @__PURE__ */ (0, import_jsx_runtime320.jsx)(import_ui213.Text, { className: "text-ui-fg-subtle txt-small leading-normal", children: t5("orders.returns.noInventoryLevelDesc") })
+               ] }),
+@@ -157630,7 +157619,7 @@ var init_return_create_form = __esm({
+                     !isShippingPriceEdit && /* @__PURE__ */ (0, import_jsx_runtime320.jsx)(
+                       import_ui213.IconButton,
+                       {
+-                        onClick: () => setIsShippingPriceEdit(true),
++                        "aria-label": "Edit return shipping price", onClick: () => setIsShippingPriceEdit(true),
+                         variant: "transparent",
+                         className: "text-ui-fg-muted",
+                         disabled: showPlaceholder || !shippingOptionId,
+@@ -157689,7 +157678,7 @@ var init_return_create_form = __esm({
                            import_ui213.Switch,
                            {
                              dir: "ltr",
@@ -959,7 +1249,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
                              checked: !!value,
                              onCheckedChange: onChange,
                              ...field
-@@ -157796,14 +157744,14 @@ var init_return_create = __esm({
+@@ -157796,14 +157785,14 @@ var init_return_create = __esm({
          }
          run();
        }, [preview]);
@@ -976,7 +1266,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
      };
    }
  });
-@@ -157844,7 +157792,9 @@ var init_use_claim_item_table_columns = __esm({
+@@ -157844,7 +157833,9 @@ var init_use_claim_item_table_columns = __esm({
                return /* @__PURE__ */ (0, import_jsx_runtime322.jsx)(
                  import_ui215.Checkbox,
                  {
@@ -987,7 +1277,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
                    onCheckedChange: (value) => table.toggleAllPageRowsSelected(!!value)
                  }
                );
-@@ -157854,7 +157804,9 @@ var init_use_claim_item_table_columns = __esm({
+@@ -157854,7 +157845,9 @@ var init_use_claim_item_table_columns = __esm({
                return /* @__PURE__ */ (0, import_jsx_runtime322.jsx)(
                  import_ui215.Checkbox,
                  {
@@ -998,7 +1288,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
                    checked: row.getIsSelected(),
                    onCheckedChange: (value) => row.toggleSelected(!!value),
                    onClick: (e) => {
-@@ -158223,6 +158175,7 @@ function ClaimInboundItem({
+@@ -158223,6 +158216,7 @@ function ClaimInboundItem({
    index
  }) {
    const { t: t5 } = (0, import_react_i18next231.useTranslation)();
@@ -1006,7 +1296,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
    const { return_reasons = [] } = useReturnReasons({ fields: "+label" });
    const formItem = form.watch(`inbound_items.${index}`);
    const showReturnReason = typeof formItem.reason_id === "string";
-@@ -158234,7 +158187,7 @@ function ClaimInboundItem({
+@@ -158234,7 +158228,7 @@ function ClaimInboundItem({
          /* @__PURE__ */ (0, import_jsx_runtime324.jsxs)("div", { className: "flex flex-col", children: [
            /* @__PURE__ */ (0, import_jsx_runtime324.jsxs)("div", { children: [
              /* @__PURE__ */ (0, import_jsx_runtime324.jsxs)(import_ui216.Text, { className: "txt-small", as: "span", weight: "plus", children: [
@@ -1015,7 +1305,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
                " "
              ] }),
              item.variant_sku && /* @__PURE__ */ (0, import_jsx_runtime324.jsxs)("span", { children: [
-@@ -158243,7 +158196,7 @@ function ClaimInboundItem({
+@@ -158243,7 +158237,7 @@ function ClaimInboundItem({
                ")"
              ] })
            ] }),
@@ -1024,7 +1314,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
          ] })
        ] }),
        /* @__PURE__ */ (0, import_jsx_runtime324.jsxs)("div", { className: "flex flex-1 justify-between", children: [
-@@ -158259,7 +158212,8 @@ function ClaimInboundItem({
+@@ -158259,7 +158253,8 @@ function ClaimInboundItem({
                      import_ui216.Input,
                      {
                        ...field,
@@ -1034,7 +1324,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
                        min: 1,
                        max: item.quantity,
                        type: "number",
-@@ -158267,7 +158221,7 @@ function ClaimInboundItem({
+@@ -158267,7 +158262,7 @@ function ClaimInboundItem({
                          const val = e.target.value;
                          const payload = val === "" ? null : Number(val);
                          field.onChange(payload);
@@ -1043,7 +1333,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
                            onUpdate({ quantity: payload });
                          }
                        }
-@@ -158332,7 +158286,8 @@ function ClaimInboundItem({
+@@ -158332,7 +158327,8 @@ function ClaimInboundItem({
                    /* @__PURE__ */ (0, import_jsx_runtime324.jsx)(Form.Control, { children: /* @__PURE__ */ (0, import_jsx_runtime324.jsx)(
                      Combobox,
                      {
@@ -1053,7 +1343,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
                        value,
                        onChange: (v) => {
                          onUpdate({ reason_id: v });
-@@ -158353,7 +158308,8 @@ function ClaimInboundItem({
+@@ -158353,7 +158349,8 @@ function ClaimInboundItem({
            /* @__PURE__ */ (0, import_jsx_runtime324.jsx)(
              import_ui216.IconButton,
              {
@@ -1063,7 +1353,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
                className: "flex-shrink",
                variant: "transparent",
                onClick: () => {
-@@ -158384,9 +158340,10 @@ function ClaimInboundItem({
+@@ -158384,9 +158381,10 @@ function ClaimInboundItem({
                        ...field,
                        onBlur: () => {
                          field.onChange(field.value);
@@ -1076,7 +1366,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
                      }
                    ) }),
                    /* @__PURE__ */ (0, import_jsx_runtime324.jsx)(Form.ErrorMessage, {})
-@@ -158397,7 +158354,8 @@ function ClaimInboundItem({
+@@ -158397,7 +158395,8 @@ function ClaimInboundItem({
            /* @__PURE__ */ (0, import_jsx_runtime324.jsx)(
              import_ui216.IconButton,
              {
@@ -1086,7 +1376,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
                className: "flex-shrink",
                variant: "transparent",
                onClick: () => {
-@@ -158483,7 +158441,9 @@ var init_use_claim_outbound_item_table_columns = __esm({
+@@ -158483,7 +158482,9 @@ var init_use_claim_outbound_item_table_columns = __esm({
                return /* @__PURE__ */ (0, import_jsx_runtime325.jsx)(
                  import_ui217.Checkbox,
                  {
@@ -1097,7 +1387,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
                    onCheckedChange: (value) => table.toggleAllPageRowsSelected(!!value)
                  }
                );
-@@ -158493,7 +158453,9 @@ var init_use_claim_outbound_item_table_columns = __esm({
+@@ -158493,7 +158494,9 @@ var init_use_claim_outbound_item_table_columns = __esm({
                return /* @__PURE__ */ (0, import_jsx_runtime325.jsx)(
                  import_ui217.Checkbox,
                  {
@@ -1108,7 +1398,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
                    checked: row.getIsSelected(),
                    onCheckedChange: (value) => row.toggleSelected(!!value),
                    onClick: (e) => {
-@@ -158615,7 +158577,7 @@ var init_add_claim_outbound_items_table = __esm({
+@@ -158615,7 +158618,7 @@ var init_add_claim_outbound_items_table = __esm({
          pageSize: PAGE_SIZE16,
          prefix: PREFIX7
        });
@@ -1117,7 +1407,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
          ...searchParams,
          fields: "*inventory_items.inventory.location_levels,+inventory_quantity"
        });
-@@ -158636,12 +158598,14 @@ var init_add_claim_outbound_items_table = __esm({
+@@ -158636,12 +158639,14 @@ var init_add_claim_outbound_items_table = __esm({
            updater
          }
        });
@@ -1133,7 +1423,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
            count,
            filters,
            pagination: true,
-@@ -158684,7 +158648,7 @@ function ClaimOutboundItem({
+@@ -158684,7 +158689,7 @@ function ClaimOutboundItem({
        /* @__PURE__ */ (0, import_jsx_runtime327.jsxs)("div", { className: "flex flex-col", children: [
          /* @__PURE__ */ (0, import_jsx_runtime327.jsxs)("div", { children: [
            /* @__PURE__ */ (0, import_jsx_runtime327.jsxs)(import_ui218.Text, { className: "txt-small", as: "span", weight: "plus", children: [
@@ -1142,7 +1432,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
              " "
            ] }),
            previewItem.variant_sku && /* @__PURE__ */ (0, import_jsx_runtime327.jsxs)("span", { children: [
-@@ -158693,7 +158657,7 @@ function ClaimOutboundItem({
+@@ -158693,7 +158698,7 @@ function ClaimOutboundItem({
              ")"
            ] })
          ] }),
@@ -1151,7 +1441,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
        ] })
      ] }),
      /* @__PURE__ */ (0, import_jsx_runtime327.jsxs)("div", { className: "flex flex-1 justify-between", children: [
-@@ -158709,14 +158673,15 @@ function ClaimOutboundItem({
+@@ -158709,14 +158714,15 @@ function ClaimOutboundItem({
                    import_ui218.Input,
                    {
                      ...field,
@@ -1169,7 +1459,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
                          onUpdate({ quantity: payload });
                        }
                      }
-@@ -159042,9 +159007,9 @@ var init_claim_outbound_section = __esm({
+@@ -159042,9 +159048,9 @@ var init_claim_outbound_section = __esm({
          /* @__PURE__ */ (0, import_jsx_runtime329.jsxs)("div", { className: "mt-8 flex items-center justify-between", children: [
            /* @__PURE__ */ (0, import_jsx_runtime329.jsx)(import_ui219.Heading, { level: "h2", children: t5("orders.returns.outbound") }),
            /* @__PURE__ */ (0, import_jsx_runtime329.jsxs)(StackedFocusModal, { id: "outbound-items", children: [
@@ -1181,7 +1471,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
                /* @__PURE__ */ (0, import_jsx_runtime329.jsx)(
                  AddClaimOutboundItemsTable,
                  {
-@@ -159129,6 +159094,7 @@ var init_claim_outbound_section = __esm({
+@@ -159129,6 +159135,7 @@ var init_claim_outbound_section = __esm({
                  return /* @__PURE__ */ (0, import_jsx_runtime329.jsx)(Form.Item, { children: /* @__PURE__ */ (0, import_jsx_runtime329.jsx)(Form.Control, { children: /* @__PURE__ */ (0, import_jsx_runtime329.jsx)(
                    Combobox,
                    {
@@ -1189,7 +1479,86 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
                      allowClear: true,
                      value: value ?? void 0,
                      onChange: (val) => {
-@@ -159577,13 +159543,14 @@ var init_claim_create_form = __esm({
+@@ -159209,7 +159216,7 @@ var init_claim_create_form = __esm({
+         value: "0",
+         float: 0
+       });
+-      const [inventoryMap, setInventoryMap] = (0, import_react222.useState)({});
++      const [inventoryContext, setInventoryContext] = (0, import_react222.useState)({ key: '', status: 'loading', locations: {} });
+       const { mutateAsync: confirmClaimRequest, isPending: isConfirming } = useClaimConfirmRequest(claim.id, order.id);
+       const { mutateAsync: cancelClaimRequest, isPending: isCanceling } = useCancelClaimRequest(claim.id, order.id);
+       const { mutateAsync: updateReturn, isPending: isUpdating } = useUpdateReturn(
+@@ -159506,44 +159513,31 @@ var init_claim_create_form = __esm({
+           document.getElementById("js-shipping-outbound-input")?.focus();
+         }
+       }, [isShippingOutboundPriceEdit]);
+-      const showLevelsWarning = (0, import_react222.useMemo)(() => {
+-        if (!locationId) {
+-          return false;
+-        }
+-        const allItemsHaveLocation = inboundItems.map((_i) => {
+-          const item = itemsMap.get(_i.item_id);
+-          if (!item?.variant_id || !item?.variant) {
+-            return true;
+-          }
+-          if (!item.variant?.manage_inventory) {
+-            return true;
+-          }
+-          return inventoryMap[item.variant_id]?.find(
+-            (l) => l.location_id === locationId
+-          );
+-        }).every(Boolean);
+-        return !allItemsHaveLocation;
+-      }, [inboundItems, inventoryMap, locationId]);
+-      (0, import_react222.useEffect)(() => {
+-        const getInventoryMap = async () => {
+-          const ret = {};
+-          if (!inboundItems.length) {
+-            return ret;
+-          }
+-          const variantIds = inboundItems.map((item) => item?.variant_id).filter(Boolean);
+-          const variants = (await sdk.admin.productVariant.list({
+-            id: variantIds,
+-            fields: "*inventory.location_levels"
+-          })).variants;
+-          variants.forEach((variant) => {
+-            ret[variant.id] = variant.inventory?.[0]?.location_levels || [];
+-          });
+-          return ret;
+-        };
+-        getInventoryMap().then((map) => {
+-          setInventoryMap(map);
+-        });
+-      }, [inboundItems]);
++      const inventorySelection = (0, import_react222.useMemo)(() => {
++    try {
++      const ids = getClaimInventoryVariantIds(order.items, inboundItems);
++      return { ids, key: JSON.stringify(ids), valid: true };
++    } catch {
++      return { ids: [], key: 'unavailable', valid: false };
++    }
++  }, [order.items, inboundItems]);
++  const inventoryGuidanceStatus = !inventorySelection.valid ? 'unavailable' : inventoryContext.key === inventorySelection.key ? inventoryContext.status : 'loading';
++  const showInventoryGuidanceStatus = !!locationId && inboundItems.length > 0 && inventoryGuidanceStatus !== 'ready';
++  const showLevelsWarning = claimInventoryLocationWarning(inventoryContext, inventorySelection.key, inventorySelection.ids, locationId);
++  (0, import_react222.useEffect)(() => {
++    let active = true;
++    const key = inventorySelection.key;
++    setInventoryContext({ key, status: inventorySelection.valid ? 'loading' : 'unavailable', locations: {} });
++    if (inventorySelection.valid) {
++      readClaimInventoryLocationMap(inventorySelection.ids, query => sdk.admin.productVariant.list(query)).then(locations => {
++        if (active) setInventoryContext({ key, status: 'ready', locations });
++      }).catch(() => {
++        if (active) setInventoryContext({ key, status: 'unavailable', locations: {} });
++      });
++    }
++    return () => { active = false; };
++  }, [inventorySelection.key, inventorySelection.valid]);
++
+       (0, import_react222.useEffect)(() => {
+         return () => {
+           if (IS_CANCELING) {
+@@ -159577,13 +159571,14 @@ var init_claim_create_form = __esm({
        return /* @__PURE__ */ (0, import_jsx_runtime330.jsx)(RouteFocusModal.Form, { form, children: /* @__PURE__ */ (0, import_jsx_runtime330.jsxs)(KeyboundForm, { onSubmit: handleSubmit, className: "flex h-full flex-col", children: [
          /* @__PURE__ */ (0, import_jsx_runtime330.jsx)(RouteFocusModal.Header, {}),
          /* @__PURE__ */ (0, import_jsx_runtime330.jsx)(RouteFocusModal.Body, { className: "flex size-full justify-center overflow-y-auto", children: /* @__PURE__ */ (0, import_jsx_runtime330.jsxs)("div", { className: "mt-16 w-[720px] max-w-[100%] px-4 md:p-0", children: [
@@ -1207,7 +1576,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
                  /* @__PURE__ */ (0, import_jsx_runtime330.jsx)(
                    AddClaimItemsTable,
                    {
-@@ -159685,6 +159652,7 @@ var init_claim_create_form = __esm({
+@@ -159685,6 +159680,7 @@ var init_claim_create_form = __esm({
                      return /* @__PURE__ */ (0, import_jsx_runtime330.jsx)(Form.Item, { children: /* @__PURE__ */ (0, import_jsx_runtime330.jsx)(Form.Control, { children: /* @__PURE__ */ (0, import_jsx_runtime330.jsx)(
                        Combobox,
                        {
@@ -1215,7 +1584,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
                          ...field,
                          value: value ?? void 0,
                          onChange: (v) => {
-@@ -159732,6 +159700,7 @@ var init_claim_create_form = __esm({
+@@ -159732,6 +159728,7 @@ var init_claim_create_form = __esm({
                      return /* @__PURE__ */ (0, import_jsx_runtime330.jsx)(Form.Item, { children: /* @__PURE__ */ (0, import_jsx_runtime330.jsx)(Form.Control, { children: /* @__PURE__ */ (0, import_jsx_runtime330.jsx)(
                        Combobox,
                        {
@@ -1223,7 +1592,35 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
                          allowClear: true,
                          value: value ?? void 0,
                          onChange: (val) => {
-@@ -159928,7 +159897,7 @@ var init_claim_create_form = __esm({
+@@ -159752,7 +159749,8 @@ var init_claim_create_form = __esm({
+               )
+             ] })
+           ] }),
+-          showLevelsWarning && /* @__PURE__ */ (0, import_jsx_runtime330.jsxs)(import_ui220.Alert, { variant: "warning", dismissible: true, className: "mt-4 p-5", children: [
++          showInventoryGuidanceStatus && (0, import_jsx_runtime330.jsx)("div", { role: "status", className: "text-ui-fg-subtle txt-small mt-4", children: inventoryGuidanceStatus === "loading" ? t5("orders.returns.checkingInventory", { defaultValue: "Checking inventory locations…" }) : t5("orders.returns.inventoryUnavailable", { defaultValue: "Inventory location guidance is unavailable. Confirm the selected location before receiving items." }) }),
++showLevelsWarning && /* @__PURE__ */ (0, import_jsx_runtime330.jsxs)(import_ui220.Alert, { variant: "warning", dismissible: true, className: "mt-4 p-5", children: [
+             /* @__PURE__ */ (0, import_jsx_runtime330.jsx)("div", { className: "text-ui-fg-subtle txt-small pb-2 font-medium leading-[20px]", children: t5("orders.returns.noInventoryLevel") }),
+             /* @__PURE__ */ (0, import_jsx_runtime330.jsx)(import_ui220.Text, { className: "text-ui-fg-subtle txt-small leading-normal", children: t5("orders.returns.noInventoryLevelDesc") })
+           ] }),
+@@ -159798,7 +159796,7 @@ var init_claim_create_form = __esm({
+                 !isShippingInboundPriceEdit && /* @__PURE__ */ (0, import_jsx_runtime330.jsx)(
+                   import_ui220.IconButton,
+                   {
+-                    onClick: () => setIsShippingInboundPriceEdit(true),
++                    "aria-label": "Edit inbound shipping price", onClick: () => setIsShippingInboundPriceEdit(true),
+                     variant: "transparent",
+                     className: "text-ui-fg-muted",
+                     disabled: showInboundItemsPlaceholder || !inboundShippingOptionId,
+@@ -159856,7 +159854,7 @@ var init_claim_create_form = __esm({
+                 !isShippingOutboundPriceEdit && /* @__PURE__ */ (0, import_jsx_runtime330.jsx)(
+                   import_ui220.IconButton,
+                   {
+-                    onClick: () => setIsShippingOutboundPriceEdit(true),
++                    "aria-label": "Edit outbound shipping price", onClick: () => setIsShippingOutboundPriceEdit(true),
+                     variant: "transparent",
+                     className: "text-ui-fg-muted",
+                     disabled: showOutboundItemsPlaceholder || !outboundShippingOptionId,
+@@ -159928,7 +159926,7 @@ var init_claim_create_form = __esm({
                        import_ui220.Switch,
                        {
                          dir: "ltr",
@@ -1232,7 +1629,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
                          checked: !!value,
                          onCheckedChange: async (checked) => {
                            onChange(checked);
-@@ -159974,7 +159943,7 @@ var init_claim_create_form = __esm({
+@@ -159974,7 +159972,7 @@ var init_claim_create_form = __esm({
                        import_ui220.Switch,
                        {
                          dir: "ltr",
@@ -1241,7 +1638,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
                          checked: !!value,
                          onCheckedChange: onChange,
                          ...field
-@@ -160093,7 +160062,7 @@ var init_claim_create = __esm({
+@@ -160093,7 +160091,7 @@ var init_claim_create = __esm({
          }
          run();
        }, [preview]);
@@ -1250,7 +1647,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
          ClaimCreateForm,
          {
            order,
-@@ -160101,7 +160070,7 @@ var init_claim_create = __esm({
+@@ -160101,7 +160099,7 @@ var init_claim_create = __esm({
            preview,
            orderReturn
          }
@@ -1259,7 +1656,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
      };
    }
  });
-@@ -160174,7 +160143,9 @@ var init_use_exchange_item_table_columns = __esm({
+@@ -160174,7 +160172,9 @@ var init_use_exchange_item_table_columns = __esm({
                return /* @__PURE__ */ (0, import_jsx_runtime332.jsx)(
                  import_ui222.Checkbox,
                  {
@@ -1270,7 +1667,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
                    onCheckedChange: (value) => table.toggleAllPageRowsSelected(!!value)
                  }
                );
-@@ -160184,7 +160155,9 @@ var init_use_exchange_item_table_columns = __esm({
+@@ -160184,7 +160184,9 @@ var init_use_exchange_item_table_columns = __esm({
                return /* @__PURE__ */ (0, import_jsx_runtime332.jsx)(
                  import_ui222.Checkbox,
                  {
@@ -1281,7 +1678,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
                    checked: row.getIsSelected(),
                    onCheckedChange: (value) => row.toggleSelected(!!value),
                    onClick: (e) => {
-@@ -160451,6 +160424,7 @@ function ExchangeInboundItem({
+@@ -160451,6 +160453,7 @@ function ExchangeInboundItem({
    index
  }) {
    const { t: t5 } = (0, import_react_i18next242.useTranslation)();
@@ -1289,7 +1686,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
    const { return_reasons = [] } = useReturnReasons({ fields: "+label" });
    const formItem = form.watch(`inbound_items.${index}`);
    const showReturnReason = typeof formItem.reason_id === "string";
-@@ -160465,7 +160439,7 @@ function ExchangeInboundItem({
+@@ -160465,7 +160468,7 @@ function ExchangeInboundItem({
          /* @__PURE__ */ (0, import_jsx_runtime334.jsxs)("div", { className: "flex flex-grow flex-col", children: [
            /* @__PURE__ */ (0, import_jsx_runtime334.jsxs)("div", { children: [
              /* @__PURE__ */ (0, import_jsx_runtime334.jsxs)(import_ui223.Text, { className: "txt-small", as: "span", weight: "plus", children: [
@@ -1298,7 +1695,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
                " "
              ] }),
              item.variant_sku && /* @__PURE__ */ (0, import_jsx_runtime334.jsxs)("span", { children: [
-@@ -160474,7 +160448,7 @@ function ExchangeInboundItem({
+@@ -160474,7 +160477,7 @@ function ExchangeInboundItem({
                ")"
              ] })
            ] }),
@@ -1307,7 +1704,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
          ] }),
          appliedPromoCodes.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime334.jsx)("div", { className: "flex flex-shrink", children: /* @__PURE__ */ (0, import_jsx_runtime334.jsx)(
            import_ui223.Tooltip,
-@@ -160497,7 +160471,8 @@ function ExchangeInboundItem({
+@@ -160497,7 +160500,8 @@ function ExchangeInboundItem({
                      import_ui223.Input,
                      {
                        ...field,
@@ -1317,7 +1714,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
                        min: 1,
                        max: item.quantity,
                        type: "number",
-@@ -160505,7 +160480,7 @@ function ExchangeInboundItem({
+@@ -160505,7 +160509,7 @@ function ExchangeInboundItem({
                          const val = e.target.value;
                          const payload = val === "" ? null : Number(val);
                          field.onChange(payload);
@@ -1326,7 +1723,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
                            onUpdate({ quantity: payload });
                          }
                        }
-@@ -160570,7 +160545,8 @@ function ExchangeInboundItem({
+@@ -160570,7 +160574,8 @@ function ExchangeInboundItem({
                    /* @__PURE__ */ (0, import_jsx_runtime334.jsx)(Form.Control, { children: /* @__PURE__ */ (0, import_jsx_runtime334.jsx)(
                      Combobox,
                      {
@@ -1336,7 +1733,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
                        value,
                        onChange: (v) => {
                          onUpdate({ reason_id: v });
-@@ -160591,7 +160567,8 @@ function ExchangeInboundItem({
+@@ -160591,7 +160596,8 @@ function ExchangeInboundItem({
            /* @__PURE__ */ (0, import_jsx_runtime334.jsx)(
              import_ui223.IconButton,
              {
@@ -1346,7 +1743,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
                className: "flex-shrink",
                variant: "transparent",
                onClick: () => {
-@@ -160622,9 +160599,10 @@ function ExchangeInboundItem({
+@@ -160622,9 +160628,10 @@ function ExchangeInboundItem({
                        ...field,
                        onBlur: () => {
                          field.onChange(field.value);
@@ -1359,7 +1756,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
                      }
                    ) }),
                    /* @__PURE__ */ (0, import_jsx_runtime334.jsx)(Form.ErrorMessage, {})
-@@ -160635,7 +160613,8 @@ function ExchangeInboundItem({
+@@ -160635,7 +160642,8 @@ function ExchangeInboundItem({
            /* @__PURE__ */ (0, import_jsx_runtime334.jsx)(
              import_ui223.IconButton,
              {
@@ -1369,7 +1766,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
                className: "flex-shrink",
                variant: "transparent",
                onClick: () => {
-@@ -160906,9 +160885,9 @@ var init_exchange_inbound_section = __esm({
+@@ -160906,9 +160914,9 @@ var init_exchange_inbound_section = __esm({
          /* @__PURE__ */ (0, import_jsx_runtime335.jsxs)("div", { className: "mt-8 flex items-center justify-between", children: [
            /* @__PURE__ */ (0, import_jsx_runtime335.jsx)(import_ui224.Heading, { level: "h2", children: t5("orders.returns.inbound") }),
            /* @__PURE__ */ (0, import_jsx_runtime335.jsxs)(StackedFocusModal, { id: "inbound-items", children: [
@@ -1381,7 +1778,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
                /* @__PURE__ */ (0, import_jsx_runtime335.jsx)(
                  AddExchangeInboundItemsTable,
                  {
-@@ -161002,6 +160981,7 @@ var init_exchange_inbound_section = __esm({
+@@ -161002,6 +161010,7 @@ var init_exchange_inbound_section = __esm({
                    return /* @__PURE__ */ (0, import_jsx_runtime335.jsx)(Form.Item, { children: /* @__PURE__ */ (0, import_jsx_runtime335.jsx)(Form.Control, { children: /* @__PURE__ */ (0, import_jsx_runtime335.jsx)(
                      Combobox,
                      {
@@ -1389,7 +1786,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
                        ...field,
                        value: value ?? void 0,
                        onChange: (v) => {
-@@ -161049,6 +161029,7 @@ var init_exchange_inbound_section = __esm({
+@@ -161049,6 +161058,7 @@ var init_exchange_inbound_section = __esm({
                    return /* @__PURE__ */ (0, import_jsx_runtime335.jsx)(Form.Item, { children: /* @__PURE__ */ (0, import_jsx_runtime335.jsx)(Form.Control, { children: /* @__PURE__ */ (0, import_jsx_runtime335.jsx)(
                      Combobox,
                      {
@@ -1397,7 +1794,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
                        allowClear: true,
                        value: value ?? void 0,
                        onChange: (val) => {
-@@ -161100,7 +161081,9 @@ var init_use_exchange_outbound_item_table_columns = __esm({
+@@ -161100,7 +161110,9 @@ var init_use_exchange_outbound_item_table_columns = __esm({
                return /* @__PURE__ */ (0, import_jsx_runtime336.jsx)(
                  import_ui225.Checkbox,
                  {
@@ -1408,7 +1805,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
                    onCheckedChange: (value) => table.toggleAllPageRowsSelected(!!value)
                  }
                );
-@@ -161110,7 +161093,9 @@ var init_use_exchange_outbound_item_table_columns = __esm({
+@@ -161110,7 +161122,9 @@ var init_use_exchange_outbound_item_table_columns = __esm({
                return /* @__PURE__ */ (0, import_jsx_runtime336.jsx)(
                  import_ui225.Checkbox,
                  {
@@ -1419,7 +1816,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
                    checked: row.getIsSelected(),
                    onCheckedChange: (value) => row.toggleSelected(!!value),
                    onClick: (e) => {
-@@ -161232,7 +161217,7 @@ var init_add_exchange_outbound_items_table = __esm({
+@@ -161232,7 +161246,7 @@ var init_add_exchange_outbound_items_table = __esm({
          pageSize: PAGE_SIZE18,
          prefix: PREFIX9
        });
@@ -1428,7 +1825,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
          ...searchParams,
          fields: "*inventory_items.inventory.location_levels,+inventory_quantity"
        });
-@@ -161253,12 +161238,14 @@ var init_add_exchange_outbound_items_table = __esm({
+@@ -161253,12 +161267,14 @@ var init_add_exchange_outbound_items_table = __esm({
            updater
          }
        });
@@ -1444,7 +1841,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
            count,
            filters,
            pagination: true,
-@@ -161304,7 +161291,7 @@ function ExchangeOutboundItem({
+@@ -161304,7 +161320,7 @@ function ExchangeOutboundItem({
        /* @__PURE__ */ (0, import_jsx_runtime338.jsxs)("div", { className: "flex flex-grow flex-col", children: [
          /* @__PURE__ */ (0, import_jsx_runtime338.jsxs)("div", { children: [
            /* @__PURE__ */ (0, import_jsx_runtime338.jsxs)(import_ui226.Text, { className: "txt-small", as: "span", weight: "plus", children: [
@@ -1453,7 +1850,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
              " "
            ] }),
            previewItem.variant_sku && /* @__PURE__ */ (0, import_jsx_runtime338.jsxs)("span", { children: [
-@@ -161313,7 +161300,7 @@ function ExchangeOutboundItem({
+@@ -161313,7 +161329,7 @@ function ExchangeOutboundItem({
              ")"
            ] })
          ] }),
@@ -1462,7 +1859,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
        ] }),
        appliedPromoCodes.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime338.jsx)("div", { className: "flex flex-shrink", children: /* @__PURE__ */ (0, import_jsx_runtime338.jsx)(
          import_ui226.Tooltip,
-@@ -161336,14 +161323,15 @@ function ExchangeOutboundItem({
+@@ -161336,14 +161352,15 @@ function ExchangeOutboundItem({
                    import_ui226.Input,
                    {
                      ...field,
@@ -1480,7 +1877,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
                          onUpdate({ quantity: payload });
                        }
                      }
-@@ -161611,9 +161599,9 @@ var init_exchange_outbound_section = __esm({
+@@ -161611,9 +161628,9 @@ var init_exchange_outbound_section = __esm({
          /* @__PURE__ */ (0, import_jsx_runtime339.jsxs)("div", { className: "mt-8 flex items-center justify-between", children: [
            /* @__PURE__ */ (0, import_jsx_runtime339.jsx)(import_ui227.Heading, { level: "h2", children: t5("orders.returns.outbound") }),
            /* @__PURE__ */ (0, import_jsx_runtime339.jsxs)(StackedFocusModal, { id: "outbound-items", children: [
@@ -1492,7 +1889,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
                /* @__PURE__ */ (0, import_jsx_runtime339.jsx)(
                  AddExchangeOutboundItemsTable,
                  {
-@@ -161698,6 +161686,7 @@ var init_exchange_outbound_section = __esm({
+@@ -161698,6 +161715,7 @@ var init_exchange_outbound_section = __esm({
                  return /* @__PURE__ */ (0, import_jsx_runtime339.jsx)(Form.Item, { children: /* @__PURE__ */ (0, import_jsx_runtime339.jsx)(Form.Control, { children: /* @__PURE__ */ (0, import_jsx_runtime339.jsx)(
                    Combobox,
                    {
@@ -1500,7 +1897,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
                      allowClear: true,
                      noResultsPlaceholder: /* @__PURE__ */ (0, import_jsx_runtime339.jsx)(OutboundShippingPlaceholder, {}),
                      value: value ?? void 0,
-@@ -161932,7 +161921,8 @@ var init_exchange_create_form = __esm({
+@@ -161932,7 +161950,8 @@ var init_exchange_create_form = __esm({
        return /* @__PURE__ */ (0, import_jsx_runtime340.jsx)(RouteFocusModal.Form, { form, children: /* @__PURE__ */ (0, import_jsx_runtime340.jsxs)(KeyboundForm, { onSubmit: handleSubmit, className: "flex h-full flex-col", children: [
          /* @__PURE__ */ (0, import_jsx_runtime340.jsx)(RouteFocusModal.Header, {}),
          /* @__PURE__ */ (0, import_jsx_runtime340.jsx)(RouteFocusModal.Body, { className: "flex size-full justify-center overflow-y-auto", children: /* @__PURE__ */ (0, import_jsx_runtime340.jsxs)("div", { className: "mt-16 w-[720px] max-w-[100%] px-4 md:p-0", children: [
@@ -1510,7 +1907,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
            /* @__PURE__ */ (0, import_jsx_runtime340.jsx)(
              ExchangeInboundSection,
              {
-@@ -161982,7 +161972,8 @@ var init_exchange_create_form = __esm({
+@@ -161982,7 +162001,8 @@ var init_exchange_create_form = __esm({
                  !isInboundShippingPriceEdit && /* @__PURE__ */ (0, import_jsx_runtime340.jsx)(
                    import_ui228.IconButton,
                    {
@@ -1520,7 +1917,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
                      variant: "transparent",
                      className: "text-ui-fg-muted",
                      disabled: !inboundPreviewItems?.length || !inboundShippingOptionId,
-@@ -161993,6 +161984,7 @@ var init_exchange_create_form = __esm({
+@@ -161993,6 +162013,7 @@ var init_exchange_create_form = __esm({
                    import_ui228.CurrencyInput,
                    {
                      id: "js-inbound-shipping-input",
@@ -1528,7 +1925,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
                      onBlur: () => {
                        let actionId;
                        preview.shipping_methods.forEach((s) => {
-@@ -162038,7 +162030,8 @@ var init_exchange_create_form = __esm({
+@@ -162038,7 +162059,8 @@ var init_exchange_create_form = __esm({
                  !isOutboundShippingPriceEdit && /* @__PURE__ */ (0, import_jsx_runtime340.jsx)(
                    import_ui228.IconButton,
                    {
@@ -1538,7 +1935,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
                      variant: "transparent",
                      className: "text-ui-fg-muted",
                      disabled: !outboundPreviewItems?.length || !outboundShippingOptionId,
-@@ -162049,6 +162042,7 @@ var init_exchange_create_form = __esm({
+@@ -162049,6 +162071,7 @@ var init_exchange_create_form = __esm({
                    import_ui228.CurrencyInput,
                    {
                      id: "js-outbound-shipping-input",
@@ -1546,7 +1943,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
                      onBlur: () => {
                        let actionId;
                        preview.shipping_methods.forEach((s) => {
-@@ -162108,7 +162102,7 @@ var init_exchange_create_form = __esm({
+@@ -162108,7 +162131,7 @@ var init_exchange_create_form = __esm({
                        import_ui228.Switch,
                        {
                          dir: "ltr",
@@ -1555,7 +1952,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
                          checked: !!value,
                          onCheckedChange: async (checked) => {
                            onChange(checked);
-@@ -162154,7 +162148,7 @@ var init_exchange_create_form = __esm({
+@@ -162154,7 +162177,7 @@ var init_exchange_create_form = __esm({
                        import_ui228.Switch,
                        {
                          dir: "ltr",
@@ -1564,7 +1961,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
                          checked: !!value,
                          onCheckedChange: onChange,
                          ...field
-@@ -162272,7 +162266,7 @@ var init_exchange_create = __esm({
+@@ -162272,7 +162295,7 @@ var init_exchange_create = __esm({
          }
          run();
        }, [preview]);
@@ -1573,7 +1970,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
          ExchangeCreateForm,
          {
            order,
-@@ -162280,7 +162274,7 @@ var init_exchange_create = __esm({
+@@ -162280,7 +162303,7 @@ var init_exchange_create = __esm({
            preview,
            orderReturn
          }
@@ -1582,7 +1979,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
      };
    }
  });
-@@ -162445,7 +162439,7 @@ var init_add_order_edit_items_table = __esm({
+@@ -162445,7 +162468,7 @@ var init_add_order_edit_items_table = __esm({
          pageSize: PAGE_SIZE19,
          prefix: PREFIX10
        });
@@ -1591,7 +1988,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
          ...searchParams,
          fields: "*inventory_items.inventory.location_levels,+inventory_quantity"
        });
-@@ -162466,12 +162460,14 @@ var init_add_order_edit_items_table = __esm({
+@@ -162466,12 +162489,14 @@ var init_add_order_edit_items_table = __esm({
            updater
          }
        });
@@ -1607,7 +2004,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
            count,
            filters,
            pagination: true,
-@@ -163482,7 +163478,9 @@ var init_create_refund_form = __esm({
+@@ -163482,7 +163507,9 @@ var init_create_refund_form = __esm({
        );
        const payments = getPaymentsFromOrder(order);
        const payment = payments.find((p) => p.id === paymentId);
@@ -1618,7 +2015,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
        const currency = (0, import_react238.useMemo)(
          () => currencies[order.currency_code.toUpperCase()],
          [order.currency_code]
-@@ -163505,16 +163503,21 @@ var init_create_refund_form = __esm({
+@@ -163505,16 +163532,21 @@ var init_create_refund_form = __esm({
        });
        (0, import_react238.useEffect)(() => {
          const pendingDifference = order.summary.pending_difference;
@@ -1643,7 +2040,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
          await mutateAsync(
            {
              amount: data.amount.float,
-@@ -163556,7 +163559,7 @@ var init_create_refund_form = __esm({
+@@ -163556,7 +163588,7 @@ var init_create_refund_form = __esm({
                    },
                    children: [
                      /* @__PURE__ */ (0, import_jsx_runtime349.jsx)(import_ui236.Label, { className: "txt-compact-small mb-[-6px] font-sans font-medium", children: t5("orders.payment.selectPaymentToRefund") }),
@@ -1652,7 +2049,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
                        import_ui236.Select.Value,
                        {
                          placeholder: t5("orders.payment.selectPaymentToRefund")
-@@ -163633,10 +163636,10 @@ var init_create_refund_form = __esm({
+@@ -163633,10 +163665,10 @@ var init_create_refund_form = __esm({
                            symbol: currency.symbol_native,
                            code: currency.code,
                            value: field.value.value,
@@ -1667,7 +2064,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
                            autoFocus: true
                          }
                        ) }),
-@@ -163660,7 +163663,7 @@ var init_create_refund_form = __esm({
+@@ -163660,7 +163692,7 @@ var init_create_refund_form = __esm({
                            value: field.value,
                            onValueChange: field.onChange,
                            children: [
@@ -1676,7 +2073,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
                              /* @__PURE__ */ (0, import_jsx_runtime349.jsx)(import_ui236.Select.Content, { children: refund_reasons?.map((reason) => /* @__PURE__ */ (0, import_jsx_runtime349.jsx)(import_ui236.Select.Item, { value: reason.id, children: reason.label }, reason.id)) })
                            ]
                          }
-@@ -163738,7 +163741,7 @@ var init_order_create_refund = __esm({
+@@ -163738,7 +163770,7 @@ var init_order_create_refund = __esm({
        const { plugins = [] } = usePlugins();
        const loyaltyPlugin = getLoyaltyPlugin(plugins);
        return /* @__PURE__ */ (0, import_jsx_runtime350.jsxs)(RouteDrawer, { children: [
@@ -1685,7 +2082,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
          order && !loyaltyPlugin && /* @__PURE__ */ (0, import_jsx_runtime350.jsx)(CreateRefundForm, { order }),
          order && loyaltyPlugin && /* @__PURE__ */ (0, import_jsx_runtime350.jsx)(OrderBalanceSettlementForm, { order })
        ] });
-@@ -218597,14 +218600,6 @@ function getRouteMap({
+@@ -218597,14 +218629,6 @@ function getRouteMap({
                    path: "",
                    lazy: () => Promise.resolve().then(() => (init_product_list2(), product_list_exports)),
                    children: [
@@ -1700,7 +2097,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
                      {
                        path: "export",
                        lazy: () => Promise.resolve().then(() => (init_product_export2(), product_export_exports))
-@@ -221160,9 +221155,10 @@ var init_dashboard_app = __esm({
+@@ -221160,9 +221184,10 @@ var init_dashboard_app = __esm({
        }
        /**
         * Returns widgets for a given base zone grouped by layout section.
@@ -1714,7 +2111,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
         */
        getWidgetsForSections(route, sections) {
          const result = {};
-@@ -221170,7 +221166,9 @@ var init_dashboard_app = __esm({
+@@ -221170,7 +221195,9 @@ var init_dashboard_app = __esm({
            if (!zone.startsWith(route)) {
              continue;
            }
@@ -1725,7 +2122,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..4f43ea24fe76d908fc04607ce65298e5
            const mainSection = sections.includes("main") ? "main" : sections[0];
            const section = suffix || mainSection;
            if (!result[section]) {
-@@ -221180,6 +221178,7 @@ var init_dashboard_app = __esm({
+@@ -221180,6 +221207,7 @@ var init_dashboard_app = __esm({
              const sourceId = ext.widgetId ?? `${zone}:${i}`;
              result[section].push({
                Component: ext.Component,
@@ -2043,7 +2440,7 @@ index 1f0ae3f83bfd827fe091e934bbcb62337dc0f998..b4ad11f79eddb01888148f6c3453c2fa
            // identity (and saved preference) when its zone moves to a different
            // section of the same route.
 diff --git a/dist/chunk-Z3OGJXAM.mjs b/dist/chunk-Z3OGJXAM.mjs
-index 3e5230d1d9e765aad336a7ada8ee7de59bfcc5d1..ac9ffd7ecc1f133c63a087d32adab614eac7cfe3 100644
+index 3e5230d1d9e765aad336a7ada8ee7de59bfcc5d1..6da4880e8df45395fab488d5f6fdbe8329724167 100644
 --- a/dist/chunk-Z3OGJXAM.mjs
 +++ b/dist/chunk-Z3OGJXAM.mjs
 @@ -739,17 +739,25 @@ var LayoutComposerRoot = ({
@@ -2075,6 +2472,30 @@ index 3e5230d1d9e765aad336a7ada8ee7de59bfcc5d1..ac9ffd7ecc1f133c63a087d32adab614
      const validSectionIds2 = new Set(layout?.sections.map((s) => s.id) ?? []);
      const entriesBySection2 = buildDisplayEntries(
        rawEntries,
+@@ -1111,6 +1119,7 @@ var JsonViewSection = ({ data }) => {
+       /* @__PURE__ */ jsx6(Drawer.Trigger, { asChild: true, children: /* @__PURE__ */ jsx6(
+         IconButton3,
+         {
++          "aria-label": "View JSON",
+           size: "small",
+           variant: "transparent",
+           className: "text-ui-fg-muted hover:text-ui-fg-subtle",
+@@ -1142,6 +1151,7 @@ var JsonViewSection = ({ data }) => {
+                 /* @__PURE__ */ jsx6(Drawer.Close, { asChild: true, children: /* @__PURE__ */ jsx6(
+                   IconButton3,
+                   {
++                    "aria-label": "Close JSON",
+                     size: "small",
+                     variant: "transparent",
+                     className: "text-ui-contrast-fg-secondary hover:text-ui-contrast-fg-primary hover:bg-ui-contrast-bg-base-hover active:bg-ui-contrast-bg-base-pressed focus-visible:bg-ui-contrast-bg-base-hover focus-visible:shadow-borders-interactive-with-active",
+@@ -1275,6 +1285,7 @@ var MetadataSection = ({
+     /* @__PURE__ */ jsx7(
+       IconButton4,
+       {
++        "aria-label": "Edit metadata",
+         size: "small",
+         variant: "transparent",
+         className: "text-ui-fg-muted hover:text-ui-fg-subtle",
 diff --git a/dist/components.js b/dist/components.js
 index c5e00d8ee8258b0a64c95975948c21402ec98ce5..0cca0c2a3fb2a179fdda9b216a090b02e04e8256 100644
 --- a/dist/components.js
@@ -2297,10 +2718,77 @@ index 7b683f6d27f9ff90edb8d80664313ea4d7cf16fd..9c36466b92c0e66edba8585e0daade8c
  export {
    OrderAllocateItems as Component
 diff --git a/dist/order-create-claim-ZMJRSB2U.mjs b/dist/order-create-claim-ZMJRSB2U.mjs
-index 675d55c5face56e3a5e2362de690aad0f2109785..3a4b31d328e102f8779c07702d2c44db51d9327f 100644
+index 675d55c5face56e3a5e2362de690aad0f2109785..4772325f1d64b9fb80e9e6bc3fd140873990acd3 100644
 --- a/dist/order-create-claim-ZMJRSB2U.mjs
 +++ b/dist/order-create-claim-ZMJRSB2U.mjs
-@@ -187,6 +187,8 @@ var useClaimItemTableColumns = (currencyCode) => {
+@@ -1,3 +1,66 @@
++function getClaimInventoryVariantIds(orderItems, inboundItems) {
++  if (!Array.isArray(orderItems) || !Array.isArray(inboundItems)) throw new Error("Inventory guidance unavailable");
++  const items = new Map(orderItems.map((item) => [item.id, item]));
++  if (items.size !== orderItems.length) throw new Error("Inventory guidance unavailable");
++  const ids = /* @__PURE__ */ new Set();
++  for (const field of inboundItems) {
++    const item = items.get(field.item_id);
++    if (!item) throw new Error("Inventory guidance unavailable");
++    if (item.variant_id == null) continue;
++    if (!item.variant || typeof item.variant.manage_inventory !== "boolean") throw new Error("Inventory guidance unavailable");
++    if (!item.variant.manage_inventory) continue;
++    if (typeof item.variant_id !== "string" || !/^variant_[A-Za-z0-9_-]+$/.test(item.variant_id)) throw new Error("Inventory guidance unavailable");
++    ids.add(item.variant_id);
++  }
++  return [...ids].sort();
++}
++async function readClaimInventoryLocationMap(variantIds, list) {
++  if (variantIds.length > 250 || new Set(variantIds).size !== variantIds.length) throw new Error("Inventory guidance unavailable");
++  const result = {};
++  const seen = /* @__PURE__ */ new Set();
++  const expected = new Set(variantIds);
++  let offset = 0;
++  while (offset < variantIds.length) {
++    const value = await list({
++      id: variantIds,
++      limit: 100,
++      offset,
++      fields: "id,manage_inventory,inventory_items.inventory_item_id,inventory_items.required_quantity,inventory_items.inventory.id,*inventory_items.inventory.location_levels"
++    });
++    if (!value || typeof value !== "object") throw new Error("Inventory guidance unavailable");
++    const page = value;
++    if (!Array.isArray(page.variants) || page.count !== variantIds.length || page.offset !== offset || page.limit !== 100 || page.variants.length === 0 || page.variants.length > 100) throw new Error("Inventory guidance unavailable");
++    for (const variant of page.variants) {
++      if (!variant || !expected.has(variant.id) || seen.has(variant.id)) throw new Error("Inventory guidance unavailable");
++      seen.add(variant.id);
++      if (variant.manage_inventory === false) {
++        result[variant.id] = null;
++        continue;
++      }
++      if (variant.manage_inventory !== true || !Array.isArray(variant.inventory_items)) throw new Error("Inventory guidance unavailable");
++      let common;
++      const components = /* @__PURE__ */ new Set();
++      for (const link of variant.inventory_items) {
++        if (!link || typeof link.inventory_item_id !== "string" || components.has(link.inventory_item_id) || !Number.isFinite(link.required_quantity) || link.required_quantity <= 0 || !link.inventory || link.inventory.id !== link.inventory_item_id || !Array.isArray(link.inventory.location_levels)) throw new Error("Inventory guidance unavailable");
++        components.add(link.inventory_item_id);
++        const locations = [];
++        for (const level of link.inventory.location_levels) {
++          if (!level || typeof level.location_id !== "string" || !/^sloc_[A-Za-z0-9_-]+$/.test(level.location_id) || locations.includes(level.location_id)) throw new Error("Inventory guidance unavailable");
++          locations.push(level.location_id);
++        }
++        common = common === void 0 ? locations : common.filter((location) => locations.includes(location));
++      }
++      result[variant.id] = common ?? [];
++    }
++    offset += page.variants.length;
++  }
++  if (seen.size !== variantIds.length) throw new Error("Inventory guidance unavailable");
++  return result;
++}
++function claimInventoryLocationWarning(context, key, ids, locationId) {
++  return !!locationId && context.key === key && context.status === "ready" && ids.some((id) => context.locations[id] !== null && !context.locations[id]?.includes(locationId));
++}
++
+ import {
+   ItemPlaceholder
+ } from "./chunk-QJ6SBVJ2.mjs";
+@@ -187,6 +250,8 @@ var useClaimItemTableColumns = (currencyCode) => {
            return /* @__PURE__ */ jsx(
              Checkbox,
              {
@@ -2309,7 +2797,7 @@ index 675d55c5face56e3a5e2362de690aad0f2109785..3a4b31d328e102f8779c07702d2c44db
                checked: table.getIsSomePageRowsSelected() ? "indeterminate" : table.getIsAllPageRowsSelected(),
                onCheckedChange: (value) => table.toggleAllPageRowsSelected(!!value)
              }
-@@ -197,6 +199,8 @@ var useClaimItemTableColumns = (currencyCode) => {
+@@ -197,6 +262,8 @@ var useClaimItemTableColumns = (currencyCode) => {
            return /* @__PURE__ */ jsx(
              Checkbox,
              {
@@ -2318,7 +2806,7 @@ index 675d55c5face56e3a5e2362de690aad0f2109785..3a4b31d328e102f8779c07702d2c44db
                disabled: !isSelectable,
                checked: row.getIsSelected(),
                onCheckedChange: (value) => row.toggleSelected(!!value),
-@@ -532,6 +536,7 @@ function ClaimInboundItem({
+@@ -532,6 +599,7 @@ function ClaimInboundItem({
    index
  }) {
    const { t } = useTranslation4();
@@ -2326,7 +2814,7 @@ index 675d55c5face56e3a5e2362de690aad0f2109785..3a4b31d328e102f8779c07702d2c44db
    const { return_reasons = [] } = useReturnReasons({ fields: "+label" });
    const formItem = form.watch(`inbound_items.${index}`);
    const showReturnReason = typeof formItem.reason_id === "string";
-@@ -543,7 +548,7 @@ function ClaimInboundItem({
+@@ -543,7 +611,7 @@ function ClaimInboundItem({
          /* @__PURE__ */ jsxs("div", { className: "flex flex-col", children: [
            /* @__PURE__ */ jsxs("div", { children: [
              /* @__PURE__ */ jsxs(Text, { className: "txt-small", as: "span", weight: "plus", children: [
@@ -2335,7 +2823,7 @@ index 675d55c5face56e3a5e2362de690aad0f2109785..3a4b31d328e102f8779c07702d2c44db
                " "
              ] }),
              item.variant_sku && /* @__PURE__ */ jsxs("span", { children: [
-@@ -552,7 +557,7 @@ function ClaimInboundItem({
+@@ -552,7 +620,7 @@ function ClaimInboundItem({
                ")"
              ] })
            ] }),
@@ -2344,7 +2832,7 @@ index 675d55c5face56e3a5e2362de690aad0f2109785..3a4b31d328e102f8779c07702d2c44db
          ] })
        ] }),
        /* @__PURE__ */ jsxs("div", { className: "flex flex-1 justify-between", children: [
-@@ -568,7 +573,8 @@ function ClaimInboundItem({
+@@ -568,7 +636,8 @@ function ClaimInboundItem({
                      Input,
                      {
                        ...field,
@@ -2354,7 +2842,7 @@ index 675d55c5face56e3a5e2362de690aad0f2109785..3a4b31d328e102f8779c07702d2c44db
                        min: 1,
                        max: item.quantity,
                        type: "number",
-@@ -576,7 +582,7 @@ function ClaimInboundItem({
+@@ -576,7 +645,7 @@ function ClaimInboundItem({
                          const val = e.target.value;
                          const payload = val === "" ? null : Number(val);
                          field.onChange(payload);
@@ -2363,7 +2851,7 @@ index 675d55c5face56e3a5e2362de690aad0f2109785..3a4b31d328e102f8779c07702d2c44db
                            onUpdate({ quantity: payload });
                          }
                        }
-@@ -641,7 +647,8 @@ function ClaimInboundItem({
+@@ -641,7 +710,8 @@ function ClaimInboundItem({
                    /* @__PURE__ */ jsx3(Form.Control, { children: /* @__PURE__ */ jsx3(
                      Combobox,
                      {
@@ -2373,7 +2861,7 @@ index 675d55c5face56e3a5e2362de690aad0f2109785..3a4b31d328e102f8779c07702d2c44db
                        value,
                        onChange: (v) => {
                          onUpdate({ reason_id: v });
-@@ -662,7 +669,8 @@ function ClaimInboundItem({
+@@ -662,7 +732,8 @@ function ClaimInboundItem({
            /* @__PURE__ */ jsx3(
              IconButton,
              {
@@ -2383,7 +2871,7 @@ index 675d55c5face56e3a5e2362de690aad0f2109785..3a4b31d328e102f8779c07702d2c44db
                className: "flex-shrink",
                variant: "transparent",
                onClick: () => {
-@@ -693,9 +701,10 @@ function ClaimInboundItem({
+@@ -693,9 +764,10 @@ function ClaimInboundItem({
                        ...field,
                        onBlur: () => {
                          field.onChange(field.value);
@@ -2396,7 +2884,7 @@ index 675d55c5face56e3a5e2362de690aad0f2109785..3a4b31d328e102f8779c07702d2c44db
                      }
                    ) }),
                    /* @__PURE__ */ jsx3(Form.ErrorMessage, {})
-@@ -706,7 +715,8 @@ function ClaimInboundItem({
+@@ -706,7 +778,8 @@ function ClaimInboundItem({
            /* @__PURE__ */ jsx3(
              IconButton,
              {
@@ -2406,7 +2894,7 @@ index 675d55c5face56e3a5e2362de690aad0f2109785..3a4b31d328e102f8779c07702d2c44db
                className: "flex-shrink",
                variant: "transparent",
                onClick: () => {
-@@ -775,6 +785,8 @@ var useClaimOutboundItemTableColumns = (currencyCode) => {
+@@ -775,6 +848,8 @@ var useClaimOutboundItemTableColumns = (currencyCode) => {
            return /* @__PURE__ */ jsx4(
              Checkbox2,
              {
@@ -2415,7 +2903,7 @@ index 675d55c5face56e3a5e2362de690aad0f2109785..3a4b31d328e102f8779c07702d2c44db
                checked: table.getIsSomePageRowsSelected() ? "indeterminate" : table.getIsAllPageRowsSelected(),
                onCheckedChange: (value) => table.toggleAllPageRowsSelected(!!value)
              }
-@@ -785,6 +797,8 @@ var useClaimOutboundItemTableColumns = (currencyCode) => {
+@@ -785,6 +860,8 @@ var useClaimOutboundItemTableColumns = (currencyCode) => {
            return /* @__PURE__ */ jsx4(
              Checkbox2,
              {
@@ -2424,7 +2912,7 @@ index 675d55c5face56e3a5e2362de690aad0f2109785..3a4b31d328e102f8779c07702d2c44db
                disabled: !isSelectable,
                checked: row.getIsSelected(),
                onCheckedChange: (value) => row.toggleSelected(!!value),
-@@ -880,7 +894,7 @@ var AddClaimOutboundItemsTable = ({
+@@ -880,7 +957,7 @@ var AddClaimOutboundItemsTable = ({
      pageSize: PAGE_SIZE2,
      prefix: PREFIX2
    });
@@ -2433,7 +2921,7 @@ index 675d55c5face56e3a5e2362de690aad0f2109785..3a4b31d328e102f8779c07702d2c44db
      ...searchParams,
      fields: "*inventory_items.inventory.location_levels,+inventory_quantity"
    });
-@@ -901,12 +915,14 @@ var AddClaimOutboundItemsTable = ({
+@@ -901,12 +978,14 @@ var AddClaimOutboundItemsTable = ({
        updater
      }
    });
@@ -2449,7 +2937,7 @@ index 675d55c5face56e3a5e2362de690aad0f2109785..3a4b31d328e102f8779c07702d2c44db
        count,
        filters,
        pagination: true,
-@@ -943,7 +959,7 @@ function ClaimOutboundItem({
+@@ -943,7 +1022,7 @@ function ClaimOutboundItem({
        /* @__PURE__ */ jsxs2("div", { className: "flex flex-col", children: [
          /* @__PURE__ */ jsxs2("div", { children: [
            /* @__PURE__ */ jsxs2(Text2, { className: "txt-small", as: "span", weight: "plus", children: [
@@ -2458,7 +2946,7 @@ index 675d55c5face56e3a5e2362de690aad0f2109785..3a4b31d328e102f8779c07702d2c44db
              " "
            ] }),
            previewItem.variant_sku && /* @__PURE__ */ jsxs2("span", { children: [
-@@ -952,7 +968,7 @@ function ClaimOutboundItem({
+@@ -952,7 +1031,7 @@ function ClaimOutboundItem({
              ")"
            ] })
          ] }),
@@ -2467,7 +2955,7 @@ index 675d55c5face56e3a5e2362de690aad0f2109785..3a4b31d328e102f8779c07702d2c44db
        ] })
      ] }),
      /* @__PURE__ */ jsxs2("div", { className: "flex flex-1 justify-between", children: [
-@@ -968,14 +984,15 @@ function ClaimOutboundItem({
+@@ -968,14 +1047,15 @@ function ClaimOutboundItem({
                    Input2,
                    {
                      ...field,
@@ -2485,7 +2973,7 @@ index 675d55c5face56e3a5e2362de690aad0f2109785..3a4b31d328e102f8779c07702d2c44db
                          onUpdate({ quantity: payload });
                        }
                      }
-@@ -1203,9 +1220,9 @@ var ClaimOutboundSection = ({
+@@ -1203,9 +1283,9 @@ var ClaimOutboundSection = ({
      /* @__PURE__ */ jsxs3("div", { className: "mt-8 flex items-center justify-between", children: [
        /* @__PURE__ */ jsx7(Heading, { level: "h2", children: t("orders.returns.outbound") }),
        /* @__PURE__ */ jsxs3(StackedFocusModal, { id: "outbound-items", children: [
@@ -2497,7 +2985,7 @@ index 675d55c5face56e3a5e2362de690aad0f2109785..3a4b31d328e102f8779c07702d2c44db
            /* @__PURE__ */ jsx7(
              AddClaimOutboundItemsTable,
              {
-@@ -1290,6 +1307,7 @@ var ClaimOutboundSection = ({
+@@ -1290,6 +1370,7 @@ var ClaimOutboundSection = ({
              return /* @__PURE__ */ jsx7(Form.Item, { children: /* @__PURE__ */ jsx7(Form.Control, { children: /* @__PURE__ */ jsx7(
                Combobox,
                {
@@ -2505,7 +2993,83 @@ index 675d55c5face56e3a5e2362de690aad0f2109785..3a4b31d328e102f8779c07702d2c44db
                  allowClear: true,
                  value: value ?? void 0,
                  onChange: (val) => {
-@@ -1708,13 +1726,14 @@ var ClaimCreateForm = ({
+@@ -1340,7 +1421,7 @@ var ClaimCreateForm = ({
+     value: "0",
+     float: 0
+   });
+-  const [inventoryMap, setInventoryMap] = useState4({});
++  const [inventoryContext, setInventoryContext] = useState4({ key: '', status: 'loading', locations: {} });
+   const { mutateAsync: confirmClaimRequest, isPending: isConfirming } = useClaimConfirmRequest(claim.id, order.id);
+   const { mutateAsync: cancelClaimRequest, isPending: isCanceling } = useCancelClaimRequest(claim.id, order.id);
+   const { mutateAsync: updateReturn, isPending: isUpdating } = useUpdateReturn(
+@@ -1637,44 +1718,31 @@ var ClaimCreateForm = ({
+       document.getElementById("js-shipping-outbound-input")?.focus();
+     }
+   }, [isShippingOutboundPriceEdit]);
+-  const showLevelsWarning = useMemo5(() => {
+-    if (!locationId) {
+-      return false;
++  const inventorySelection = useMemo5(() => {
++    try {
++      const ids = getClaimInventoryVariantIds(order.items, inboundItems);
++      return { ids, key: JSON.stringify(ids), valid: true };
++    } catch {
++      return { ids: [], key: 'unavailable', valid: false };
+     }
+-    const allItemsHaveLocation = inboundItems.map((_i) => {
+-      const item = itemsMap.get(_i.item_id);
+-      if (!item?.variant_id || !item?.variant) {
+-        return true;
+-      }
+-      if (!item.variant?.manage_inventory) {
+-        return true;
+-      }
+-      return inventoryMap[item.variant_id]?.find(
+-        (l) => l.location_id === locationId
+-      );
+-    }).every(Boolean);
+-    return !allItemsHaveLocation;
+-  }, [inboundItems, inventoryMap, locationId]);
++  }, [order.items, inboundItems]);
++  const inventoryGuidanceStatus = !inventorySelection.valid ? 'unavailable' : inventoryContext.key === inventorySelection.key ? inventoryContext.status : 'loading';
++  const showInventoryGuidanceStatus = !!locationId && inboundItems.length > 0 && inventoryGuidanceStatus !== 'ready';
++  const showLevelsWarning = claimInventoryLocationWarning(inventoryContext, inventorySelection.key, inventorySelection.ids, locationId);
+   useEffect2(() => {
+-    const getInventoryMap = async () => {
+-      const ret = {};
+-      if (!inboundItems.length) {
+-        return ret;
+-      }
+-      const variantIds = inboundItems.map((item) => item?.variant_id).filter(Boolean);
+-      const variants = (await sdk.admin.productVariant.list({
+-        id: variantIds,
+-        fields: "*inventory.location_levels"
+-      })).variants;
+-      variants.forEach((variant) => {
+-        ret[variant.id] = variant.inventory?.[0]?.location_levels || [];
++    let active = true;
++    const key = inventorySelection.key;
++    setInventoryContext({ key, status: inventorySelection.valid ? 'loading' : 'unavailable', locations: {} });
++    if (inventorySelection.valid) {
++      readClaimInventoryLocationMap(inventorySelection.ids, query => sdk.admin.productVariant.list(query)).then(locations => {
++        if (active) setInventoryContext({ key, status: 'ready', locations });
++      }).catch(() => {
++        if (active) setInventoryContext({ key, status: 'unavailable', locations: {} });
+       });
+-      return ret;
+-    };
+-    getInventoryMap().then((map) => {
+-      setInventoryMap(map);
+-    });
+-  }, [inboundItems]);
++    }
++    return () => { active = false; };
++  }, [inventorySelection.key, inventorySelection.valid]);
++
+   useEffect2(() => {
+     return () => {
+       if (IS_CANCELING) {
+@@ -1708,13 +1776,14 @@ var ClaimCreateForm = ({
    return /* @__PURE__ */ jsx8(RouteFocusModal.Form, { form, children: /* @__PURE__ */ jsxs4(KeyboundForm, { onSubmit: handleSubmit, className: "flex h-full flex-col", children: [
      /* @__PURE__ */ jsx8(RouteFocusModal.Header, {}),
      /* @__PURE__ */ jsx8(RouteFocusModal.Body, { className: "flex size-full justify-center overflow-y-auto", children: /* @__PURE__ */ jsxs4("div", { className: "mt-16 w-[720px] max-w-[100%] px-4 md:p-0", children: [
@@ -2523,7 +3087,7 @@ index 675d55c5face56e3a5e2362de690aad0f2109785..3a4b31d328e102f8779c07702d2c44db
              /* @__PURE__ */ jsx8(
                AddClaimItemsTable,
                {
-@@ -1816,6 +1835,7 @@ var ClaimCreateForm = ({
+@@ -1816,6 +1885,7 @@ var ClaimCreateForm = ({
                  return /* @__PURE__ */ jsx8(Form.Item, { children: /* @__PURE__ */ jsx8(Form.Control, { children: /* @__PURE__ */ jsx8(
                    Combobox,
                    {
@@ -2531,7 +3095,7 @@ index 675d55c5face56e3a5e2362de690aad0f2109785..3a4b31d328e102f8779c07702d2c44db
                      ...field,
                      value: value ?? void 0,
                      onChange: (v) => {
-@@ -1863,6 +1883,7 @@ var ClaimCreateForm = ({
+@@ -1863,6 +1933,7 @@ var ClaimCreateForm = ({
                  return /* @__PURE__ */ jsx8(Form.Item, { children: /* @__PURE__ */ jsx8(Form.Control, { children: /* @__PURE__ */ jsx8(
                    Combobox,
                    {
@@ -2539,7 +3103,35 @@ index 675d55c5face56e3a5e2362de690aad0f2109785..3a4b31d328e102f8779c07702d2c44db
                      allowClear: true,
                      value: value ?? void 0,
                      onChange: (val) => {
-@@ -2059,7 +2080,7 @@ var ClaimCreateForm = ({
+@@ -1883,7 +1954,8 @@ var ClaimCreateForm = ({
+           )
+         ] })
+       ] }),
+-      showLevelsWarning && /* @__PURE__ */ jsxs4(Alert2, { variant: "warning", dismissible: true, className: "mt-4 p-5", children: [
++      showInventoryGuidanceStatus && jsx8("div", { role: "status", className: "text-ui-fg-subtle txt-small mt-4", children: inventoryGuidanceStatus === "loading" ? t("orders.returns.checkingInventory", { defaultValue: "Checking inventory locations…" }) : t("orders.returns.inventoryUnavailable", { defaultValue: "Inventory location guidance is unavailable. Confirm the selected location before receiving items." }) }),
++showLevelsWarning && /* @__PURE__ */ jsxs4(Alert2, { variant: "warning", dismissible: true, className: "mt-4 p-5", children: [
+         /* @__PURE__ */ jsx8("div", { className: "text-ui-fg-subtle txt-small pb-2 font-medium leading-[20px]", children: t("orders.returns.noInventoryLevel") }),
+         /* @__PURE__ */ jsx8(Text4, { className: "text-ui-fg-subtle txt-small leading-normal", children: t("orders.returns.noInventoryLevelDesc") })
+       ] }),
+@@ -1929,7 +2001,7 @@ var ClaimCreateForm = ({
+             !isShippingInboundPriceEdit && /* @__PURE__ */ jsx8(
+               IconButton2,
+               {
+-                onClick: () => setIsShippingInboundPriceEdit(true),
++                "aria-label": "Edit inbound shipping price", onClick: () => setIsShippingInboundPriceEdit(true),
+                 variant: "transparent",
+                 className: "text-ui-fg-muted",
+                 disabled: showInboundItemsPlaceholder || !inboundShippingOptionId,
+@@ -1987,7 +2059,7 @@ var ClaimCreateForm = ({
+             !isShippingOutboundPriceEdit && /* @__PURE__ */ jsx8(
+               IconButton2,
+               {
+-                onClick: () => setIsShippingOutboundPriceEdit(true),
++                "aria-label": "Edit outbound shipping price", onClick: () => setIsShippingOutboundPriceEdit(true),
+                 variant: "transparent",
+                 className: "text-ui-fg-muted",
+                 disabled: showOutboundItemsPlaceholder || !outboundShippingOptionId,
+@@ -2059,7 +2131,7 @@ var ClaimCreateForm = ({
                    Switch,
                    {
                      dir: "ltr",
@@ -2548,7 +3140,7 @@ index 675d55c5face56e3a5e2362de690aad0f2109785..3a4b31d328e102f8779c07702d2c44db
                      checked: !!value,
                      onCheckedChange: async (checked) => {
                        onChange(checked);
-@@ -2105,7 +2126,7 @@ var ClaimCreateForm = ({
+@@ -2105,7 +2177,7 @@ var ClaimCreateForm = ({
                    Switch,
                    {
                      dir: "ltr",
@@ -2557,7 +3149,7 @@ index 675d55c5face56e3a5e2362de690aad0f2109785..3a4b31d328e102f8779c07702d2c44db
                      checked: !!value,
                      onCheckedChange: onChange,
                      ...field
-@@ -2200,7 +2221,7 @@ var ClaimCreate = () => {
+@@ -2200,7 +2272,7 @@ var ClaimCreate = () => {
      }
      run();
    }, [preview]);
@@ -2566,7 +3158,7 @@ index 675d55c5face56e3a5e2362de690aad0f2109785..3a4b31d328e102f8779c07702d2c44db
      ClaimCreateForm,
      {
        order,
-@@ -2208,7 +2229,7 @@ var ClaimCreate = () => {
+@@ -2208,7 +2280,7 @@ var ClaimCreate = () => {
        preview,
        orderReturn
      }
@@ -3064,10 +3656,77 @@ index 194742b565cd47c3b1d7602f60e377dd0733c4e5..c8a48b223ccd26aec4e84a142c462b89
      order && loyaltyPlugin && /* @__PURE__ */ jsx3(OrderBalanceSettlementForm, { order })
    ] });
 diff --git a/dist/order-create-return-CZVXDD6A.mjs b/dist/order-create-return-CZVXDD6A.mjs
-index ad4511598af5015b804cd470f3166fbf8ec97fa4..1492090a4ba008ad1ebd90674d8fe35848ca0743 100644
+index ad4511598af5015b804cd470f3166fbf8ec97fa4..3041c1a4e3ca4f580bb81681978d91635b410976 100644
 --- a/dist/order-create-return-CZVXDD6A.mjs
 +++ b/dist/order-create-return-CZVXDD6A.mjs
-@@ -142,6 +142,8 @@ var useReturnItemTableColumns = (currencyCode) => {
+@@ -1,3 +1,66 @@
++function getClaimInventoryVariantIds(orderItems, inboundItems) {
++  if (!Array.isArray(orderItems) || !Array.isArray(inboundItems)) throw new Error("Inventory guidance unavailable");
++  const items = new Map(orderItems.map((item) => [item.id, item]));
++  if (items.size !== orderItems.length) throw new Error("Inventory guidance unavailable");
++  const ids = /* @__PURE__ */ new Set();
++  for (const field of inboundItems) {
++    const item = items.get(field.item_id);
++    if (!item) throw new Error("Inventory guidance unavailable");
++    if (item.variant_id == null) continue;
++    if (!item.variant || typeof item.variant.manage_inventory !== "boolean") throw new Error("Inventory guidance unavailable");
++    if (!item.variant.manage_inventory) continue;
++    if (typeof item.variant_id !== "string" || !/^variant_[A-Za-z0-9_-]+$/.test(item.variant_id)) throw new Error("Inventory guidance unavailable");
++    ids.add(item.variant_id);
++  }
++  return [...ids].sort();
++}
++async function readClaimInventoryLocationMap(variantIds, list) {
++  if (variantIds.length > 250 || new Set(variantIds).size !== variantIds.length) throw new Error("Inventory guidance unavailable");
++  const result = {};
++  const seen = /* @__PURE__ */ new Set();
++  const expected = new Set(variantIds);
++  let offset = 0;
++  while (offset < variantIds.length) {
++    const value = await list({
++      id: variantIds,
++      limit: 100,
++      offset,
++      fields: "id,manage_inventory,inventory_items.inventory_item_id,inventory_items.required_quantity,inventory_items.inventory.id,*inventory_items.inventory.location_levels"
++    });
++    if (!value || typeof value !== "object") throw new Error("Inventory guidance unavailable");
++    const page = value;
++    if (!Array.isArray(page.variants) || page.count !== variantIds.length || page.offset !== offset || page.limit !== 100 || page.variants.length === 0 || page.variants.length > 100) throw new Error("Inventory guidance unavailable");
++    for (const variant of page.variants) {
++      if (!variant || !expected.has(variant.id) || seen.has(variant.id)) throw new Error("Inventory guidance unavailable");
++      seen.add(variant.id);
++      if (variant.manage_inventory === false) {
++        result[variant.id] = null;
++        continue;
++      }
++      if (variant.manage_inventory !== true || !Array.isArray(variant.inventory_items)) throw new Error("Inventory guidance unavailable");
++      let common;
++      const components = /* @__PURE__ */ new Set();
++      for (const link of variant.inventory_items) {
++        if (!link || typeof link.inventory_item_id !== "string" || components.has(link.inventory_item_id) || !Number.isFinite(link.required_quantity) || link.required_quantity <= 0 || !link.inventory || link.inventory.id !== link.inventory_item_id || !Array.isArray(link.inventory.location_levels)) throw new Error("Inventory guidance unavailable");
++        components.add(link.inventory_item_id);
++        const locations = [];
++        for (const level of link.inventory.location_levels) {
++          if (!level || typeof level.location_id !== "string" || !/^sloc_[A-Za-z0-9_-]+$/.test(level.location_id) || locations.includes(level.location_id)) throw new Error("Inventory guidance unavailable");
++          locations.push(level.location_id);
++        }
++        common = common === void 0 ? locations : common.filter((location) => locations.includes(location));
++      }
++      result[variant.id] = common ?? [];
++    }
++    offset += page.variants.length;
++  }
++  if (seen.size !== variantIds.length) throw new Error("Inventory guidance unavailable");
++  return result;
++}
++function claimInventoryLocationWarning(context, key, ids, locationId) {
++  return !!locationId && context.key === key && context.status === "ready" && ids.some((id) => context.locations[id] !== null && !context.locations[id]?.includes(locationId));
++}
++
+ import {
+   ReturnShippingPlaceholder
+ } from "./chunk-P3DRE4IY.mjs";
+@@ -142,6 +205,8 @@ var useReturnItemTableColumns = (currencyCode) => {
            return /* @__PURE__ */ jsx(
              Checkbox,
              {
@@ -3076,7 +3735,7 @@ index ad4511598af5015b804cd470f3166fbf8ec97fa4..1492090a4ba008ad1ebd90674d8fe358
                checked: table.getIsSomePageRowsSelected() ? "indeterminate" : table.getIsAllPageRowsSelected(),
                onCheckedChange: (value) => table.toggleAllPageRowsSelected(!!value)
              }
-@@ -152,6 +154,8 @@ var useReturnItemTableColumns = (currencyCode) => {
+@@ -152,6 +217,8 @@ var useReturnItemTableColumns = (currencyCode) => {
            return /* @__PURE__ */ jsx(
              Checkbox,
              {
@@ -3085,7 +3744,7 @@ index ad4511598af5015b804cd470f3166fbf8ec97fa4..1492090a4ba008ad1ebd90674d8fe358
                disabled: !isSelectable,
                checked: row.getIsSelected(),
                onCheckedChange: (value) => row.toggleSelected(!!value),
-@@ -490,6 +494,7 @@ function ReturnItem({
+@@ -490,6 +557,7 @@ function ReturnItem({
    index
  }) {
    const { t } = useTranslation4();
@@ -3093,7 +3752,7 @@ index ad4511598af5015b804cd470f3166fbf8ec97fa4..1492090a4ba008ad1ebd90674d8fe358
    const { return_reasons = [] } = useReturnReasons({ fields: "+label" });
    const formItem = form.watch(`items.${index}`);
    const showReturnReason = typeof formItem.reason_id === "string";
-@@ -501,7 +506,7 @@ function ReturnItem({
+@@ -501,7 +569,7 @@ function ReturnItem({
          /* @__PURE__ */ jsxs("div", { className: "flex flex-col", children: [
            /* @__PURE__ */ jsxs("div", { children: [
              /* @__PURE__ */ jsxs(Text, { className: "txt-small", as: "span", weight: "plus", children: [
@@ -3102,7 +3761,7 @@ index ad4511598af5015b804cd470f3166fbf8ec97fa4..1492090a4ba008ad1ebd90674d8fe358
                " "
              ] }),
              item.variant_sku && /* @__PURE__ */ jsxs("span", { children: [
-@@ -510,7 +515,7 @@ function ReturnItem({
+@@ -510,7 +578,7 @@ function ReturnItem({
                ")"
              ] })
            ] }),
@@ -3111,7 +3770,7 @@ index ad4511598af5015b804cd470f3166fbf8ec97fa4..1492090a4ba008ad1ebd90674d8fe358
          ] })
        ] }),
        /* @__PURE__ */ jsxs("div", { className: "flex flex-1 justify-between", children: [
-@@ -525,7 +530,8 @@ function ReturnItem({
+@@ -525,7 +593,8 @@ function ReturnItem({
                    /* @__PURE__ */ jsx3(Form.Control, { children: /* @__PURE__ */ jsx3(
                      Input,
                      {
@@ -3121,7 +3780,7 @@ index ad4511598af5015b804cd470f3166fbf8ec97fa4..1492090a4ba008ad1ebd90674d8fe358
                        min: 1,
                        max: item.quantity,
                        type: "number",
-@@ -534,7 +540,7 @@ function ReturnItem({
+@@ -534,7 +603,7 @@ function ReturnItem({
                          const val = e.target.value;
                          const payload = val === "" ? null : Number(val);
                          field.onChange(payload);
@@ -3130,7 +3789,7 @@ index ad4511598af5015b804cd470f3166fbf8ec97fa4..1492090a4ba008ad1ebd90674d8fe358
                            onUpdate({ quantity: payload });
                          }
                        }
-@@ -599,7 +605,8 @@ function ReturnItem({
+@@ -599,7 +668,8 @@ function ReturnItem({
                    /* @__PURE__ */ jsx3(Form.Control, { children: /* @__PURE__ */ jsx3(
                      Combobox,
                      {
@@ -3140,7 +3799,7 @@ index ad4511598af5015b804cd470f3166fbf8ec97fa4..1492090a4ba008ad1ebd90674d8fe358
                        value,
                        onChange: (v) => {
                          onUpdate({ reason_id: v });
-@@ -620,7 +627,8 @@ function ReturnItem({
+@@ -620,7 +690,8 @@ function ReturnItem({
            /* @__PURE__ */ jsx3(
              IconButton,
              {
@@ -3150,7 +3809,7 @@ index ad4511598af5015b804cd470f3166fbf8ec97fa4..1492090a4ba008ad1ebd90674d8fe358
                className: "flex-shrink",
                variant: "transparent",
                onClick: () => {
-@@ -650,8 +658,9 @@ function ReturnItem({
+@@ -650,8 +721,9 @@ function ReturnItem({
                      {
                        onChange,
                        ...field,
@@ -3162,7 +3821,7 @@ index ad4511598af5015b804cd470f3166fbf8ec97fa4..1492090a4ba008ad1ebd90674d8fe358
                      }
                    ) }),
                    /* @__PURE__ */ jsx3(Form.ErrorMessage, {})
-@@ -662,7 +671,8 @@ function ReturnItem({
+@@ -662,7 +734,8 @@ function ReturnItem({
            /* @__PURE__ */ jsx3(
              IconButton,
              {
@@ -3172,7 +3831,96 @@ index ad4511598af5015b804cd470f3166fbf8ec97fa4..1492090a4ba008ad1ebd90674d8fe358
                className: "flex-shrink",
                variant: "transparent",
                onClick: () => {
-@@ -952,13 +962,14 @@ var ReturnCreateForm = ({
+@@ -729,7 +802,7 @@ var ReturnCreateForm = ({
+     value: "0",
+     float: 0
+   });
+-  const [inventoryMap, setInventoryMap] = useState2({});
++  const [inventoryContext, setInventoryContext] = useState2({ key: '', status: 'loading', locations: {} });
+   const { stock_locations = [] } = useStockLocations({ limit: 999 });
+   const { shipping_options = [] } = useShippingOptions({
+     limit: 999,
+@@ -879,57 +952,31 @@ var ReturnCreateForm = ({
+   useEffect(() => {
+     form.setValue("location_id", activeReturn?.location_id || "");
+   }, [activeReturn]);
+-  const showLevelsWarning = useMemo3(() => {
+-    if (!locationId) {
+-      return false;
++  const inventorySelection = useMemo3(() => {
++    try {
++      const ids = getClaimInventoryVariantIds(order.items, items);
++      return { ids, key: JSON.stringify(ids), valid: true };
++    } catch {
++      return { ids: [], key: 'unavailable', valid: false };
+     }
+-    const allItemsHaveLocation = items.map((_i) => {
+-      const item = itemsMap.get(_i.item_id);
+-      if (!item?.variant_id) {
+-        return true;
+-      }
+-      if (!item.variant?.manage_inventory) {
+-        return true;
+-      }
+-      return inventoryMap[item.variant_id]?.find(
+-        (l) => l.location_id === locationId
+-      );
+-    }).every(Boolean);
+-    return !allItemsHaveLocation;
+-  }, [items, inventoryMap, locationId]);
++  }, [order.items, items]);
++  const inventoryGuidanceStatus = !inventorySelection.valid ? 'unavailable' : inventoryContext.key === inventorySelection.key ? inventoryContext.status : 'loading';
++  const showInventoryGuidanceStatus = !!locationId && items.length > 0 && inventoryGuidanceStatus !== 'ready';
++  const showLevelsWarning = claimInventoryLocationWarning(inventoryContext, inventorySelection.key, inventorySelection.ids, locationId);
+   useEffect(() => {
+-    const getInventoryMap = async () => {
+-      const ret = {};
+-      if (!items.length) {
+-        return ret;
+-      }
+-      ;
+-      (await Promise.all(
+-        items.map(async (_i) => {
+-          const item = itemsMap.get(_i.item_id);
+-          if (!item?.variant_id || !item?.product_id) {
+-            return void 0;
+-          }
+-          return await sdk.admin.product.retrieveVariant(
+-            item.product_id,
+-            item.variant_id,
+-            { fields: "*inventory,*inventory.location_levels" }
+-          );
+-        })
+-      )).filter((it) => it?.variant).forEach((item) => {
+-        const { variant } = item;
+-        const levels = variant.inventory?.[0]?.location_levels;
+-        if (!levels) {
+-          return;
+-        }
+-        ret[variant.id] = levels;
++    let active = true;
++    const key = inventorySelection.key;
++    setInventoryContext({ key, status: inventorySelection.valid ? 'loading' : 'unavailable', locations: {} });
++    if (inventorySelection.valid) {
++      readClaimInventoryLocationMap(inventorySelection.ids, query => sdk.admin.productVariant.list(query)).then(locations => {
++        if (active) setInventoryContext({ key, status: 'ready', locations });
++      }).catch(() => {
++        if (active) setInventoryContext({ key, status: 'unavailable', locations: {} });
+       });
+-      return ret;
+-    };
+-    getInventoryMap().then((map) => {
+-      setInventoryMap(map);
+-    });
+-  }, [items]);
++    }
++    return () => { active = false; };
++  }, [inventorySelection.key, inventorySelection.valid]);
++
+   const returnTotal = preview.return_requested_total;
+   const shippingTotal = useMemo3(() => {
+     const method = preview.shipping_methods.find(
+@@ -952,13 +999,14 @@ var ReturnCreateForm = ({
        children: /* @__PURE__ */ jsxs2(KeyboundForm, { onSubmit: handleSubmit, className: "flex h-full flex-col", children: [
          /* @__PURE__ */ jsx4(RouteFocusModal.Header, {}),
          /* @__PURE__ */ jsx4(RouteFocusModal.Body, { className: "flex size-full justify-center overflow-y-auto", children: /* @__PURE__ */ jsxs2("div", { className: "mt-16 w-[720px] max-w-[100%] px-4 md:p-0", children: [
@@ -3190,7 +3938,7 @@ index ad4511598af5015b804cd470f3166fbf8ec97fa4..1492090a4ba008ad1ebd90674d8fe358
                  /* @__PURE__ */ jsx4(
                    AddReturnItemsTable,
                    {
-@@ -1060,6 +1071,7 @@ var ReturnCreateForm = ({
+@@ -1060,6 +1108,7 @@ var ReturnCreateForm = ({
                      return /* @__PURE__ */ jsx4(Form.Item, { children: /* @__PURE__ */ jsx4(Form.Control, { children: /* @__PURE__ */ jsx4(
                        Combobox,
                        {
@@ -3198,7 +3946,7 @@ index ad4511598af5015b804cd470f3166fbf8ec97fa4..1492090a4ba008ad1ebd90674d8fe358
                          value,
                          onChange: (v) => {
                            onChange(v);
-@@ -1107,6 +1119,7 @@ var ReturnCreateForm = ({
+@@ -1107,6 +1156,7 @@ var ReturnCreateForm = ({
                      return /* @__PURE__ */ jsx4(Form.Item, { children: /* @__PURE__ */ jsx4(Form.Control, { children: /* @__PURE__ */ jsx4(
                        Combobox,
                        {
@@ -3206,7 +3954,26 @@ index ad4511598af5015b804cd470f3166fbf8ec97fa4..1492090a4ba008ad1ebd90674d8fe358
                          allowClear: true,
                          value,
                          onChange: (v) => {
-@@ -1208,7 +1221,7 @@ var ReturnCreateForm = ({
+@@ -1131,7 +1181,8 @@ var ReturnCreateForm = ({
+               )
+             ] })
+           ] }),
+-          showLevelsWarning && /* @__PURE__ */ jsxs2(Alert, { variant: "warning", dismissible: true, className: "mt-4 p-5", children: [
++          showInventoryGuidanceStatus && jsx4("div", { role: "status", className: "text-ui-fg-subtle txt-small mt-4", children: inventoryGuidanceStatus === "loading" ? t("orders.returns.checkingInventory", { defaultValue: "Checking inventory locations…" }) : t("orders.returns.inventoryUnavailable", { defaultValue: "Inventory location guidance is unavailable. Confirm the selected location before receiving items." }) }),
++showLevelsWarning && /* @__PURE__ */ jsxs2(Alert, { variant: "warning", dismissible: true, className: "mt-4 p-5", children: [
+             /* @__PURE__ */ jsx4("div", { className: "text-ui-fg-subtle txt-small pb-2 font-medium leading-[20px]", children: t("orders.returns.noInventoryLevel") }),
+             /* @__PURE__ */ jsx4(Text2, { className: "text-ui-fg-subtle txt-small leading-normal", children: t("orders.returns.noInventoryLevelDesc") })
+           ] }),
+@@ -1149,7 +1200,7 @@ var ReturnCreateForm = ({
+                 !isShippingPriceEdit && /* @__PURE__ */ jsx4(
+                   IconButton2,
+                   {
+-                    onClick: () => setIsShippingPriceEdit(true),
++                    "aria-label": "Edit return shipping price", onClick: () => setIsShippingPriceEdit(true),
+                     variant: "transparent",
+                     className: "text-ui-fg-muted",
+                     disabled: showPlaceholder || !shippingOptionId,
+@@ -1208,7 +1259,7 @@ var ReturnCreateForm = ({
                        Switch,
                        {
                          dir: "ltr",
@@ -3215,7 +3982,7 @@ index ad4511598af5015b804cd470f3166fbf8ec97fa4..1492090a4ba008ad1ebd90674d8fe358
                          checked: !!value,
                          onCheckedChange: onChange,
                          ...field
-@@ -1292,14 +1305,14 @@ var ReturnCreate = () => {
+@@ -1292,14 +1343,14 @@ var ReturnCreate = () => {
      }
      run();
    }, [preview]);
@@ -3247,9 +4014,84 @@ index 5207400e3498c0d8c75f3eb1d02db6dc4ac25184..7ffa29e5daefd639e36cdcf24edcf784
                "div",
                {
 diff --git a/dist/order-detail-GZ4ZBWIT.mjs b/dist/order-detail-GZ4ZBWIT.mjs
-index 10a323ae2c1345c42f39dc4c5a9a050925fbd0a8..81d1d0cb5b60e27cb60b18de18541eadf25644ee 100644
+index 10a323ae2c1345c42f39dc4c5a9a050925fbd0a8..d8cdbb774bdccdaea192949099821295f8ec46a6 100644
 --- a/dist/order-detail-GZ4ZBWIT.mjs
 +++ b/dist/order-detail-GZ4ZBWIT.mjs
+@@ -1575,10 +1575,10 @@ var ID = ({ data }) => {
+   return /* @__PURE__ */ jsxs10("div", { className: "text-ui-fg-subtle grid grid-cols-2 items-center px-6 py-4", children: [
+     /* @__PURE__ */ jsx9(Text7, { size: "small", leading: "compact", weight: "plus", children: t("fields.id") }),
+     /* @__PURE__ */ jsx9(
+-      Link,
++      id ? Link : "div",
+       {
+-        to: `/customers/${id}`,
+-        className: "focus:shadow-borders-focus rounded-[4px] outline-none transition-shadow",
++        ...(id ? { to: `/customers/${id}` } : {}),
++        className: "focus:shadow-borders-focus inline-flex min-h-6 items-center rounded-[4px] outline-none transition-shadow",
+         children: /* @__PURE__ */ jsxs10("div", { className: "flex items-center gap-x-2 overflow-hidden", children: [
+           /* @__PURE__ */ jsx9(Avatar, { size: "2xsmall", fallback }),
+           /* @__PURE__ */ jsx9(
+@@ -1613,7 +1613,7 @@ var Contact = ({ data }) => {
+   return /* @__PURE__ */ jsxs10("div", { className: "text-ui-fg-subtle grid grid-cols-2 items-start px-6 py-4", children: [
+     /* @__PURE__ */ jsx9(Text7, { size: "small", leading: "compact", weight: "plus", children: t("orders.customer.contactLabel") }),
+     /* @__PURE__ */ jsxs10("div", { className: "flex flex-col gap-y-2", children: [
+-      /* @__PURE__ */ jsxs10("div", { className: "grid grid-cols-[1fr_20px] items-start gap-x-2", children: [
++      /* @__PURE__ */ jsxs10("div", { className: "grid grid-cols-[1fr_24px] items-start gap-x-2", children: [
+         /* @__PURE__ */ jsx9(
+           Text7,
+           {
+@@ -1625,7 +1625,7 @@ var Contact = ({ data }) => {
+         ),
+         /* @__PURE__ */ jsx9("div", { className: "flex justify-end", children: /* @__PURE__ */ jsx9(Copy2, { content: email, className: "text-ui-fg-muted" }) })
+       ] }),
+-      phone && /* @__PURE__ */ jsxs10("div", { className: "grid grid-cols-[1fr_20px] items-start gap-x-2", children: [
++      phone && /* @__PURE__ */ jsxs10("div", { className: "grid grid-cols-[1fr_24px] items-start gap-x-2", children: [
+         /* @__PURE__ */ jsx9(
+           Text7,
+           {
+@@ -1647,7 +1647,7 @@ var AddressPrint = ({
+   const { t } = useTranslation9();
+   return /* @__PURE__ */ jsxs10("div", { className: "text-ui-fg-subtle grid grid-cols-2 items-start px-6 py-4", children: [
+     /* @__PURE__ */ jsx9(Text7, { size: "small", leading: "compact", weight: "plus", children: type === "shipping" ? t("addresses.shippingAddress.label") : t("addresses.billingAddress.label") }),
+-    address ? /* @__PURE__ */ jsxs10("div", { className: "grid grid-cols-[1fr_20px] items-start gap-x-2", children: [
++    address ? /* @__PURE__ */ jsxs10("div", { className: "grid grid-cols-[1fr_24px] items-start gap-x-2", children: [
+       /* @__PURE__ */ jsx9(Text7, { size: "small", leading: "compact", children: getFormattedAddress({ address }).map((line, i) => {
+         return /* @__PURE__ */ jsxs10("span", { className: "break-words", children: [
+           line,
+@@ -3082,24 +3082,24 @@ var Item = ({
+     /* @__PURE__ */ jsxs19(
+       "div",
+       {
+-        className: "text-ui-fg-subtle grid grid-cols-2 items-center gap-x-4 px-6 py-4",
++        className: "text-ui-fg-subtle grid grid-cols-1 items-center gap-x-4 gap-y-3 px-6 py-4 sm:grid-cols-2",
+         children: [
+-          /* @__PURE__ */ jsxs19("div", { className: " flex justify-between gap-x-2 ", children: [
+-            /* @__PURE__ */ jsxs19("div", { className: " group flex items-start gap-x-4", children: [
++          /* @__PURE__ */ jsxs19("div", { className: "flex min-w-0 justify-between gap-x-2", children: [
++            /* @__PURE__ */ jsxs19("div", { className: "group flex min-w-0 items-start gap-x-4", children: [
+               /* @__PURE__ */ jsx18(Thumbnail, { src: item.thumbnail }),
+-              /* @__PURE__ */ jsxs19("div", { children: [
+-                /* @__PURE__ */ jsx18(Text12, { size: "small", leading: "compact", className: "text-ui-fg-base", children: item.title }),
+-                item.variant_sku && /* @__PURE__ */ jsxs19("div", { className: "flex items-center gap-x-1", children: [
+-                  /* @__PURE__ */ jsx18(Text12, { size: "small", children: item.variant_sku }),
++              /* @__PURE__ */ jsxs19("div", { className: "min-w-0", children: [
++                /* @__PURE__ */ jsx18(Text12, { size: "small", leading: "compact", className: "text-ui-fg-base min-w-0 break-words", children: item.title }),
++                item.variant_sku && /* @__PURE__ */ jsxs19("div", { className: "flex min-w-0 items-start gap-x-1", children: [
++                  /* @__PURE__ */ jsx18(Text12, { size: "small", className: "min-w-0 break-all", children: item.variant_sku }),
+                   /* @__PURE__ */ jsx18(
+                     Copy5,
+                     {
+                       content: item.variant_sku,
+-                      className: "text-ui-fg-muted hidden group-hover:block"
++                      "aria-label": "Copy item SKU", className: "text-ui-fg-muted min-h-6 min-w-6 shrink-0 cursor-pointer"
+                     }
+                   )
+                 ] }),
+-                /* @__PURE__ */ jsx18(Text12, { size: "small", children: item.variant?.options?.map((o) => o.value).join(" \xB7 ") })
++                /* @__PURE__ */ jsx18(Text12, { size: "small", className: "min-w-0 break-words", children: item.variant?.options?.map((o) => o.value).join(" \xB7 ") })
+               ] })
+             ] }),
+             appliedPromoCodes.length > 0 && /* @__PURE__ */ jsx18(
 @@ -3187,7 +3187,7 @@ var Cost = ({
    secondaryValue,
    tooltip
@@ -3673,6 +4515,72 @@ index 1c1a8180222bae4279fa60e23703a76c2437316f..5b06cc2c6c87624d164458aa4c4486a5
        <EllipsisHorizontal />
      </IconButton>
    )
+diff --git a/src/components/common/customer-info/customer-info.tsx b/src/components/common/customer-info/customer-info.tsx
+index 2c0c82ead810aa1731038768f862a98351c82971..3d669a8f11a44879c33488850f693789bcd5fe0c 100644
+--- a/src/components/common/customer-info/customer-info.tsx
++++ b/src/components/common/customer-info/customer-info.tsx
+@@ -1,3 +1,4 @@
++import type { ElementType } from "react"
+ import { Avatar, Copy, Text } from "@medusajs/ui"
+ import { useTranslation } from "react-i18next"
+ import { Link } from "react-router-dom"
+@@ -8,6 +9,7 @@ const ID = ({ data }: { data: HttpTypes.AdminOrder }) => {
+   const { t } = useTranslation()
+ 
+   const id = data.customer_id
++  const Identity: ElementType = id ? Link : "div"
+   const name = getOrderCustomer(data)
+   const email = data.email
+   const fallback = (name || email || "").charAt(0).toUpperCase()
+@@ -17,9 +19,9 @@ const ID = ({ data }: { data: HttpTypes.AdminOrder }) => {
+       <Text size="small" leading="compact" weight="plus">
+         {t("fields.id")}
+       </Text>
+-      <Link
+-        to={`/customers/${id}`}
+-        className="focus:shadow-borders-focus rounded-[4px] outline-none transition-shadow"
++      <Identity
++        {...(id ? { to: `/customers/${id}` } : {})}
++        className="focus:shadow-borders-focus inline-flex min-h-6 items-center rounded-[4px] outline-none transition-shadow"
+       >
+         <div className="flex items-center gap-x-2 overflow-hidden">
+           <Avatar size="2xsmall" fallback={fallback} />
+@@ -31,7 +33,7 @@ const ID = ({ data }: { data: HttpTypes.AdminOrder }) => {
+             {name || email}
+           </Text>
+         </div>
+-      </Link>
++      </Identity>
+     </div>
+   )
+ }
+@@ -69,7 +71,7 @@ const Contact = ({ data }: { data: HttpTypes.AdminOrder }) => {
+         {t("orders.customer.contactLabel")}
+       </Text>
+       <div className="flex flex-col gap-y-2">
+-        <div className="grid grid-cols-[1fr_20px] items-start gap-x-2">
++        <div className="grid grid-cols-[1fr_24px] items-start gap-x-2">
+           <Text
+             size="small"
+             leading="compact"
+@@ -83,7 +85,7 @@ const Contact = ({ data }: { data: HttpTypes.AdminOrder }) => {
+           </div>
+         </div>
+         {phone && (
+-          <div className="grid grid-cols-[1fr_20px] items-start gap-x-2">
++          <div className="grid grid-cols-[1fr_24px] items-start gap-x-2">
+             <Text
+               size="small"
+               leading="compact"
+@@ -121,7 +123,7 @@ const AddressPrint = ({
+           : t("addresses.billingAddress.label")}
+       </Text>
+       {address ? (
+-        <div className="grid grid-cols-[1fr_20px] items-start gap-x-2">
++        <div className="grid grid-cols-[1fr_24px] items-start gap-x-2">
+           <Text size="small" leading="compact">
+             {getFormattedAddress({ address }).map((line, i) => {
+               return (
 diff --git a/src/components/common/form/form.tsx b/src/components/common/form/form.tsx
 index 2e7fbf05b88933c5255d1cd89a380091133c154b..c256ad5f515cd84114c549be3ea8dbc66aaca8b4 100644
 --- a/src/components/common/form/form.tsx
@@ -3802,6 +4710,38 @@ index 2e7fbf05b88933c5255d1cd89a380091133c154b..c256ad5f515cd84114c549be3ea8dbc6
      return null
    }
  
+diff --git a/src/components/common/json-view-section/json-view-section.tsx b/src/components/common/json-view-section/json-view-section.tsx
+index fc3f3d7460e84023c632d515c65d5239803b90a0..425fe54a7ccb3ed67eeaa1db124dc4a8f82155ae 100644
+--- a/src/components/common/json-view-section/json-view-section.tsx
++++ b/src/components/common/json-view-section/json-view-section.tsx
+@@ -39,6 +39,7 @@ export const JsonViewSection = ({ data }: JsonViewSectionProps) => {
+       <Drawer>
+         <Drawer.Trigger asChild>
+           <IconButton
++        aria-label="View JSON"
+             size="small"
+             variant="transparent"
+             className="text-ui-fg-muted hover:text-ui-fg-subtle"
+@@ -73,6 +74,7 @@ export const JsonViewSection = ({ data }: JsonViewSectionProps) => {
+               </Kbd>
+               <Drawer.Close asChild>
+                 <IconButton
++                  aria-label="Close JSON"
+                   size="small"
+                   variant="transparent"
+                   className="text-ui-contrast-fg-secondary hover:text-ui-contrast-fg-primary hover:bg-ui-contrast-bg-base-hover active:bg-ui-contrast-bg-base-pressed focus-visible:bg-ui-contrast-bg-base-hover focus-visible:shadow-borders-interactive-with-active"
+diff --git a/src/components/common/metadata-section/metadata-section.tsx b/src/components/common/metadata-section/metadata-section.tsx
+index 4786bb31d0ae3d8043b1df5e879cb81d36737418..4177f711e489176738584c7c85d63857e994f3b0 100644
+--- a/src/components/common/metadata-section/metadata-section.tsx
++++ b/src/components/common/metadata-section/metadata-section.tsx
+@@ -35,6 +35,7 @@ export const MetadataSection = <TData extends object>({
+         </Badge>
+       </div>
+       <IconButton
++        aria-label="Edit metadata"
+         size="small"
+         variant="transparent"
+         className="text-ui-fg-muted hover:text-ui-fg-subtle"
 diff --git a/src/components/filtering/order-by/order-by.tsx b/src/components/filtering/order-by/order-by.tsx
 index 20111880b52dc6de18727d963f3c6f274b6c791f..8d4987f622a9e8a884d39b5600e9250b71aeb13c 100644
 --- a/src/components/filtering/order-by/order-by.tsx
@@ -4070,6 +5010,81 @@ index a2b3dc5ddea120bab6c99eb40b3d0c3c068285de..8284a7ad41530ba115e8b5b6cbf4a795
                      {
                        path: "export",
                        lazy: () =>
+diff --git a/src/routes/orders/common/return-inventory-guidance.ts b/src/routes/orders/common/return-inventory-guidance.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..2c6adb43c812586e0e43ae811ef8e426a7d8a08d
+--- /dev/null
++++ b/src/routes/orders/common/return-inventory-guidance.ts
+@@ -0,0 +1,69 @@
++export type ClaimInventoryLocationMap = Record<string, string[] | null>
++export type ClaimInventoryContext = {
++  key: string
++  status: "loading" | "ready" | "unavailable"
++  locations: ClaimInventoryLocationMap
++}
++
++export function getClaimInventoryVariantIds(orderItems: unknown, inboundItems: unknown): string[] {
++  if (!Array.isArray(orderItems) || !Array.isArray(inboundItems)) throw new Error("Inventory guidance unavailable")
++  const items = new Map(orderItems.map(item => [item.id, item]))
++  if (items.size !== orderItems.length) throw new Error("Inventory guidance unavailable")
++  const ids = new Set<string>()
++  for (const field of inboundItems) {
++    const item = items.get(field.item_id)
++    if (!item) throw new Error("Inventory guidance unavailable")
++    if (item.variant_id == null) continue
++    if (!item.variant || typeof item.variant.manage_inventory !== "boolean") throw new Error("Inventory guidance unavailable")
++    if (!item.variant.manage_inventory) continue
++    if (typeof item.variant_id !== "string" || !/^variant_[A-Za-z0-9_-]+$/.test(item.variant_id)) throw new Error("Inventory guidance unavailable")
++    ids.add(item.variant_id)
++  }
++  return [...ids].sort()
++}
++
++export async function readClaimInventoryLocationMap(
++  variantIds: string[],
++  list: (query: { id: string[]; fields: string; limit: number; offset: number }) => Promise<unknown>
++): Promise<ClaimInventoryLocationMap> {
++  if (variantIds.length > 250 || new Set(variantIds).size !== variantIds.length) throw new Error("Inventory guidance unavailable")
++  const result: ClaimInventoryLocationMap = {}
++  const seen = new Set<string>()
++  const expected = new Set(variantIds)
++  let offset = 0
++  while (offset < variantIds.length) {
++    const value = await list({
++      id: variantIds, limit: 100, offset,
++      fields: "id,manage_inventory,inventory_items.inventory_item_id,inventory_items.required_quantity,inventory_items.inventory.id,*inventory_items.inventory.location_levels",
++    })
++    if (!value || typeof value !== "object") throw new Error("Inventory guidance unavailable")
++    const page = value as { variants?: unknown; count?: unknown; offset?: unknown; limit?: unknown }
++    if (!Array.isArray(page.variants) || page.count !== variantIds.length || page.offset !== offset || page.limit !== 100 || page.variants.length === 0 || page.variants.length > 100) throw new Error("Inventory guidance unavailable")
++    for (const variant of page.variants) {
++      if (!variant || !expected.has(variant.id) || seen.has(variant.id)) throw new Error("Inventory guidance unavailable")
++      seen.add(variant.id)
++      if (variant.manage_inventory === false) { result[variant.id] = null; continue }
++      if (variant.manage_inventory !== true || !Array.isArray(variant.inventory_items)) throw new Error("Inventory guidance unavailable")
++      let common: string[] | undefined
++      const components = new Set<string>()
++      for (const link of variant.inventory_items) {
++        if (!link || typeof link.inventory_item_id !== "string" || components.has(link.inventory_item_id) || !Number.isFinite(link.required_quantity) || link.required_quantity <= 0 || !link.inventory || link.inventory.id !== link.inventory_item_id || !Array.isArray(link.inventory.location_levels)) throw new Error("Inventory guidance unavailable")
++        components.add(link.inventory_item_id)
++        const locations: string[] = []
++        for (const level of link.inventory.location_levels) {
++          if (!level || typeof level.location_id !== "string" || !/^sloc_[A-Za-z0-9_-]+$/.test(level.location_id) || locations.includes(level.location_id)) throw new Error("Inventory guidance unavailable")
++          locations.push(level.location_id)
++        }
++        common = common === undefined ? locations : common.filter(location => locations.includes(location))
++      }
++      result[variant.id] = common ?? []
++    }
++    offset += page.variants.length
++  }
++  if (seen.size !== variantIds.length) throw new Error("Inventory guidance unavailable")
++  return result
++}
++
++export function claimInventoryLocationWarning(context: ClaimInventoryContext, key: string, ids: string[], locationId: string | undefined): boolean {
++  return !!locationId && context.key === key && context.status === "ready" && ids.some(id => context.locations[id] !== null && !context.locations[id]?.includes(locationId))
++}
 diff --git a/src/routes/orders/order-allocate-items/components/order-create-fulfillment-form/order-allocate-items-form.tsx b/src/routes/orders/order-allocate-items/components/order-create-fulfillment-form/order-allocate-items-form.tsx
 index 69b700f1ac62ce1523a09a0140311b193342c070..9a0e035c4676707dd585471c843a3543107d27f6 100644
 --- a/src/routes/orders/order-allocate-items/components/order-create-fulfillment-form/order-allocate-items-form.tsx
@@ -4398,10 +5413,125 @@ index 9e7e51f3a2ca292d384311fa411b55b002734888..06e85c91a2a8d5d7c62450deac80abfc
                checked={row.getIsSelected()}
                onCheckedChange={(value) => row.toggleSelected(!!value)}
 diff --git a/src/routes/orders/order-create-claim/components/claim-create-form/claim-create-form.tsx b/src/routes/orders/order-create-claim/components/claim-create-form/claim-create-form.tsx
-index 87f461501072c54a3f6dad671290e3a71badaaf3..72accafa19441a40ffa4614026d2e2854b9ff820 100644
+index 87f461501072c54a3f6dad671290e3a71badaaf3..933e89a3e0bc50d19910914ea08382cf3a1f3e17 100644
 --- a/src/routes/orders/order-create-claim/components/claim-create-form/claim-create-form.tsx
 +++ b/src/routes/orders/order-create-claim/components/claim-create-form/claim-create-form.tsx
-@@ -625,18 +625,30 @@ export const ClaimCreateForm = ({
+@@ -1,8 +1,8 @@
++import { getClaimInventoryVariantIds, readClaimInventoryLocationMap, claimInventoryLocationWarning, type ClaimInventoryContext } from "../../../common/return-inventory-guidance"
+ import { zodResolver } from "@hookform/resolvers/zod"
+ import { InformationCircleSolid, PencilSquare } from "@medusajs/icons"
+ import {
+   AdminClaim,
+-  AdminInventoryLevel,
+   AdminOrder,
+   AdminOrderPreview,
+ } from "@medusajs/types"
+@@ -58,7 +58,6 @@ import { currencies } from "../../../../../lib/data/currencies"
+ import { ReturnShippingPlaceholder } from "../../../common/placeholders"
+ import { ClaimOutboundSection } from "./claim-outbound-section"
+ import { ItemPlaceholder } from "./item-placeholder"
+-import { ExtendedVariant } from "../../../../product-variants/product-variant-detail/constants.ts"
+ 
+ type ReturnCreateFormProps = {
+   order: AdminOrder
+@@ -101,10 +100,7 @@ export const ClaimCreateForm = ({
+       float: 0,
+     })
+ 
+-  const [inventoryMap, setInventoryMap] = useState<
+-    Record<string, AdminInventoryLevel[]>
+-  >({})
+-
++  const [inventoryContext, setInventoryContext] = useState<ClaimInventoryContext>({ key: '', status: 'loading', locations: {} })
+   /**
+    * MUTATIONS
+    */
+@@ -512,63 +508,31 @@ export const ClaimCreateForm = ({
+     }
+   }, [isShippingOutboundPriceEdit])
+ 
+-  const showLevelsWarning = useMemo(() => {
+-    if (!locationId) {
+-      return false
++  const inventorySelection = useMemo(() => {
++    try {
++      const ids = getClaimInventoryVariantIds(order.items, inboundItems);
++      return { ids, key: JSON.stringify(ids), valid: true };
++    } catch {
++      return { ids: [], key: 'unavailable', valid: false };
+     }
+-
+-    const allItemsHaveLocation = inboundItems
+-      .map((_i) => {
+-        const item = itemsMap.get(_i.item_id)
+-        if (!item?.variant_id || !item?.variant) {
+-          return true
+-        }
+-
+-        if (!item.variant?.manage_inventory) {
+-          return true
+-        }
+-
+-        return inventoryMap[item.variant_id]?.find(
+-          (l) => l.location_id === locationId
+-        )
+-      })
+-      .every(Boolean)
+-
+-    return !allItemsHaveLocation
+-  }, [inboundItems, inventoryMap, locationId])
+-
++  }, [order.items, inboundItems]);
++  const inventoryGuidanceStatus = !inventorySelection.valid ? 'unavailable' : inventoryContext.key === inventorySelection.key ? inventoryContext.status : 'loading';
++  const showInventoryGuidanceStatus = !!locationId && inboundItems.length > 0 && inventoryGuidanceStatus !== 'ready';
++  const showLevelsWarning = claimInventoryLocationWarning(inventoryContext, inventorySelection.key, inventorySelection.ids, locationId);
+   useEffect(() => {
+-    const getInventoryMap = async () => {
+-      const ret: Record<string, AdminInventoryLevel[]> = {}
+-
+-      if (!inboundItems.length) {
+-        return ret
+-      }
+-
+-      const variantIds = inboundItems
+-        .map((item) => item?.variant_id)
+-        .filter(Boolean) as string[]
+-
+-      const variants = (
+-        await sdk.admin.productVariant.list({
+-          id: variantIds,
+-          fields: "*inventory.location_levels",
+-        })
+-      ).variants
+-
+-      variants.forEach((variant) => {
+-        // TODO: fix this for inventory kits
+-        ret[variant.id] =
+-          (variant as ExtendedVariant).inventory?.[0]?.location_levels || []
+-      })
+-
+-      return ret
++    let active = true;
++    const key = inventorySelection.key;
++    setInventoryContext({ key, status: inventorySelection.valid ? 'loading' : 'unavailable', locations: {} });
++    if (inventorySelection.valid) {
++      readClaimInventoryLocationMap(inventorySelection.ids, query => sdk.admin.productVariant.list(query)).then(locations => {
++        if (active) setInventoryContext({ key, status: 'ready', locations });
++      }).catch(() => {
++        if (active) setInventoryContext({ key, status: 'unavailable', locations: {} });
++      });
+     }
++    return () => { active = false; };
++  }, [inventorySelection.key, inventorySelection.valid]);
+ 
+-    getInventoryMap().then((map) => {
+-      setInventoryMap(map)
+-    })
+-  }, [inboundItems])
+ 
+   useEffect(() => {
+     /**
+@@ -625,18 +589,30 @@ export const ClaimCreateForm = ({
          <RouteFocusModal.Header />
          <RouteFocusModal.Body className="flex size-full justify-center overflow-y-auto">
            <div className="mt-16 w-[720px] max-w-[100%] px-4 md:p-0">
@@ -4436,7 +5566,7 @@ index 87f461501072c54a3f6dad671290e3a71badaaf3..72accafa19441a40ffa4614026d2e285
  
                    <AddClaimItemsTable
                      items={order.items!}
-@@ -755,7 +767,7 @@ export const ClaimCreateForm = ({
+@@ -755,7 +731,7 @@ export const ClaimCreateForm = ({
                        return (
                          <Form.Item>
                            <Form.Control>
@@ -4445,7 +5575,7 @@ index 87f461501072c54a3f6dad671290e3a71badaaf3..72accafa19441a40ffa4614026d2e285
                                {...field}
                                value={value ?? undefined}
                                onChange={(v) => {
-@@ -802,7 +814,7 @@ export const ClaimCreateForm = ({
+@@ -802,7 +778,7 @@ export const ClaimCreateForm = ({
                        return (
                          <Form.Item>
                            <Form.Control>
@@ -4454,7 +5584,35 @@ index 87f461501072c54a3f6dad671290e3a71badaaf3..72accafa19441a40ffa4614026d2e285
                                allowClear
                                value={value ?? undefined}
                                onChange={(val) => {
-@@ -1064,7 +1076,7 @@ export const ClaimCreateForm = ({
+@@ -827,6 +803,11 @@ export const ClaimCreateForm = ({
+                 </div>
+               </div>
+             )}
++            {showInventoryGuidanceStatus && (
++              <div role="status" className="text-ui-fg-subtle txt-small mt-4">
++                {inventoryGuidanceStatus === 'loading' ? t('orders.returns.checkingInventory', { defaultValue: 'Checking inventory locations…' }) : t('orders.returns.inventoryUnavailable', { defaultValue: 'Inventory location guidance is unavailable. Confirm the selected location before receiving items.' })}
++              </div>
++            )}
+             {showLevelsWarning && (
+               <Alert variant="warning" dismissible className="mt-4 p-5">
+                 <div className="text-ui-fg-subtle txt-small pb-2 font-medium leading-[20px]">
+@@ -898,6 +879,7 @@ export const ClaimCreateForm = ({
+                 <span className="txt-small text-ui-fg-subtle flex items-center">
+                   {!isShippingInboundPriceEdit && (
+                     <IconButton
++                      aria-label="Edit inbound shipping price"
+                       onClick={() => setIsShippingInboundPriceEdit(true)}
+                       variant="transparent"
+                       className="text-ui-fg-muted"
+@@ -973,6 +955,7 @@ export const ClaimCreateForm = ({
+                 <span className="txt-small text-ui-fg-subtle flex items-center">
+                   {!isShippingOutboundPriceEdit && (
+                     <IconButton
++                      aria-label="Edit outbound shipping price"
+                       onClick={() => setIsShippingOutboundPriceEdit(true)}
+                       variant="transparent"
+                       className="text-ui-fg-muted"
+@@ -1064,7 +1047,7 @@ export const ClaimCreateForm = ({
                            <Form.Control className="mr-4 self-start">
                              <Switch
                                dir="ltr"
@@ -4463,7 +5621,7 @@ index 87f461501072c54a3f6dad671290e3a71badaaf3..72accafa19441a40ffa4614026d2e285
                                checked={!!value}
                                onCheckedChange={async (checked) => {
                                  onChange(checked)
-@@ -1115,7 +1127,7 @@ export const ClaimCreateForm = ({
+@@ -1115,7 +1098,7 @@ export const ClaimCreateForm = ({
                          <Form.Control className="mr-4 self-start">
                            <Switch
                              dir="ltr"
@@ -5216,10 +6374,135 @@ index c3e26bdfa874c8613756dc4f1bb52e01ceb0ad9a..9097309b974d941cbf4ead65cd5bf1cc
                checked={row.getIsSelected()}
                onCheckedChange={(value) => row.toggleSelected(!!value)}
 diff --git a/src/routes/orders/order-create-return/components/return-create-form/return-create-form.tsx b/src/routes/orders/order-create-return/components/return-create-form/return-create-form.tsx
-index 42ff770ea622bc3ccde2ac5579640c55d3e25533..46d1ed85c40154cbdfaef2a07f0b3a68db2db4d4 100644
+index 42ff770ea622bc3ccde2ac5579640c55d3e25533..3edde87c66db681ecedf660f7ba83c358fa58e05 100644
 --- a/src/routes/orders/order-create-return/components/return-create-form/return-create-form.tsx
 +++ b/src/routes/orders/order-create-return/components/return-create-form/return-create-form.tsx
-@@ -430,17 +430,29 @@ export const ReturnCreateForm = ({
+@@ -1,7 +1,7 @@
++import { getClaimInventoryVariantIds, readClaimInventoryLocationMap, claimInventoryLocationWarning, type ClaimInventoryContext } from "../../../common/return-inventory-guidance"
+ import { zodResolver } from "@hookform/resolvers/zod"
+ import { PencilSquare } from "@medusajs/icons"
+ import {
+-  AdminInventoryLevel,
+   AdminOrder,
+   AdminOrderPreview,
+   AdminReturn,
+@@ -51,7 +51,6 @@ import { ReturnShippingPlaceholder } from "../../../common/placeholders"
+ import { AddReturnItemsTable } from "../add-return-items-table"
+ import { ReturnItem } from "./return-item"
+ import { ReturnCreateSchema, ReturnCreateSchemaType } from "./schema"
+-import { ExtendedVariant } from "../../../../product-variants/product-variant-detail/constants"
+ 
+ type ReturnCreateFormProps = {
+   order: AdminOrder
+@@ -102,10 +101,7 @@ export const ReturnCreateForm = ({
+     value: "0",
+     float: 0,
+   })
+-  const [inventoryMap, setInventoryMap] = useState<
+-    Record<string, AdminInventoryLevel[]>
+-  >({})
+-
++  const [inventoryContext, setInventoryContext] = useState<ClaimInventoryContext>({ key: '', status: 'loading', locations: {} })
+   /**
+    * HOOKS
+    */
+@@ -328,74 +324,31 @@ export const ReturnCreateForm = ({
+     form.setValue("location_id", activeReturn?.location_id || "")
+   }, [activeReturn])
+ 
+-  const showLevelsWarning = useMemo(() => {
+-    if (!locationId) {
+-      return false
++  const inventorySelection = useMemo(() => {
++    try {
++      const ids = getClaimInventoryVariantIds(order.items, items);
++      return { ids, key: JSON.stringify(ids), valid: true };
++    } catch {
++      return { ids: [], key: 'unavailable', valid: false };
+     }
+-
+-    const allItemsHaveLocation = items
+-      .map((_i) => {
+-        const item = itemsMap.get(_i.item_id)
+-        if (!item?.variant_id) {
+-          return true
+-        }
+-
+-        if (!item.variant?.manage_inventory) {
+-          return true
+-        }
+-
+-        return inventoryMap[item.variant_id]?.find(
+-          (l) => l.location_id === locationId
+-        )
+-      })
+-      .every(Boolean)
+-
+-    return !allItemsHaveLocation
+-  }, [items, inventoryMap, locationId])
+-
++  }, [order.items, items]);
++  const inventoryGuidanceStatus = !inventorySelection.valid ? 'unavailable' : inventoryContext.key === inventorySelection.key ? inventoryContext.status : 'loading';
++  const showInventoryGuidanceStatus = !!locationId && items.length > 0 && inventoryGuidanceStatus !== 'ready';
++  const showLevelsWarning = claimInventoryLocationWarning(inventoryContext, inventorySelection.key, inventorySelection.ids, locationId);
+   useEffect(() => {
+-    const getInventoryMap = async () => {
+-      const ret: Record<string, AdminInventoryLevel[]> = {}
+-
+-      if (!items.length) {
+-        return ret
+-      }
+-
+-      ;(
+-        await Promise.all(
+-          items.map(async (_i) => {
+-            const item = itemsMap.get(_i.item_id)
+-
+-            if (!item?.variant_id || !item?.product_id) {
+-              return undefined
+-            }
+-            return (await sdk.admin.product.retrieveVariant(
+-              item.product_id,
+-              item.variant_id,
+-              { fields: "*inventory,*inventory.location_levels" }
+-            )) as { variant: ExtendedVariant }
+-          })
+-        )
+-      )
+-        .filter((it) => it?.variant)
+-        .forEach((item) => {
+-          const { variant } = item!
+-          const levels = variant.inventory?.[0]?.location_levels
+-
+-          if (!levels) {
+-            return
+-          }
+-
+-          ret[variant.id] = levels
+-        })
+-
+-      return ret
++    let active = true;
++    const key = inventorySelection.key;
++    setInventoryContext({ key, status: inventorySelection.valid ? 'loading' : 'unavailable', locations: {} });
++    if (inventorySelection.valid) {
++      readClaimInventoryLocationMap(inventorySelection.ids, query => sdk.admin.productVariant.list(query)).then(locations => {
++        if (active) setInventoryContext({ key, status: 'ready', locations });
++      }).catch(() => {
++        if (active) setInventoryContext({ key, status: 'unavailable', locations: {} });
++      });
+     }
++    return () => { active = false; };
++  }, [inventorySelection.key, inventorySelection.valid]);
+ 
+-    getInventoryMap().then((map) => {
+-      setInventoryMap(map)
+-    })
+-  }, [items])
+ 
+   const returnTotal = preview.return_requested_total
+ 
+@@ -430,17 +383,29 @@ export const ReturnCreateForm = ({
          <RouteFocusModal.Header />
          <RouteFocusModal.Body className="flex size-full justify-center overflow-y-auto">
            <div className="mt-16 w-[720px] max-w-[100%] px-4 md:p-0">
@@ -5253,7 +6536,7 @@ index 42ff770ea622bc3ccde2ac5579640c55d3e25533..46d1ed85c40154cbdfaef2a07f0b3a68
  
                    <AddReturnItemsTable
                      items={order.items!}
-@@ -556,7 +568,7 @@ export const ReturnCreateForm = ({
+@@ -556,7 +521,7 @@ export const ReturnCreateForm = ({
                        return (
                          <Form.Item>
                            <Form.Control>
@@ -5262,7 +6545,7 @@ index 42ff770ea622bc3ccde2ac5579640c55d3e25533..46d1ed85c40154cbdfaef2a07f0b3a68
                                value={value}
                                onChange={(v) => {
                                  onChange(v)
-@@ -603,7 +615,7 @@ export const ReturnCreateForm = ({
+@@ -603,7 +568,7 @@ export const ReturnCreateForm = ({
                        return (
                          <Form.Item>
                            <Form.Control>
@@ -5271,7 +6554,27 @@ index 42ff770ea622bc3ccde2ac5579640c55d3e25533..46d1ed85c40154cbdfaef2a07f0b3a68
                                allowClear
                                value={value}
                                onChange={(v) => {
-@@ -749,7 +761,7 @@ export const ReturnCreateForm = ({
+@@ -642,6 +607,11 @@ export const ReturnCreateForm = ({
+               </div>
+             )}
+ 
++            {showInventoryGuidanceStatus && (
++              <div role="status" className="text-ui-fg-subtle txt-small mt-4">
++                {inventoryGuidanceStatus === 'loading' ? t('orders.returns.checkingInventory', { defaultValue: 'Checking inventory locations…' }) : t('orders.returns.inventoryUnavailable', { defaultValue: 'Inventory location guidance is unavailable. Confirm the selected location before receiving items.' })}
++              </div>
++            )}
+             {showLevelsWarning && (
+               <Alert variant="warning" dismissible className="mt-4 p-5">
+                 <div className="text-ui-fg-subtle txt-small pb-2 font-medium leading-[20px]">
+@@ -674,6 +644,7 @@ export const ReturnCreateForm = ({
+                 <span className="txt-small text-ui-fg-subtle flex items-center">
+                   {!isShippingPriceEdit && (
+                     <IconButton
++                      aria-label="Edit return shipping price"
+                       onClick={() => setIsShippingPriceEdit(true)}
+                       variant="transparent"
+                       className="text-ui-fg-muted"
+@@ -749,7 +720,7 @@ export const ReturnCreateForm = ({
                          <Form.Control className="mr-4 self-start">
                            <Switch
                              dir="ltr"
@@ -5403,10 +6706,47 @@ index 6da5cb651255a2631242f7f7c8e8c7147e1ed0a6..2f971994ef96790bab28ed95aa9ff0d2
                    <div className="flex flex-col max-md:gap-y-2 max-md:divide-y">
                      {labels.map((label, index) => (
 diff --git a/src/routes/orders/order-detail/components/order-summary-section/order-summary-section.tsx b/src/routes/orders/order-detail/components/order-summary-section/order-summary-section.tsx
-index d438830cbc26f3783fd7cb3a5855d71459ed489b..7ebcb4d1697ad931d3d068357f0375b840ba7ba3 100644
+index d438830cbc26f3783fd7cb3a5855d71459ed489b..a6290287b0c6b0da0ec8ba5fb1b691d5075e90cf 100644
 --- a/src/routes/orders/order-detail/components/order-summary-section/order-summary-section.tsx
 +++ b/src/routes/orders/order-detail/components/order-summary-section/order-summary-section.tsx
-@@ -575,7 +575,7 @@ const Cost = ({
+@@ -413,26 +413,27 @@ const Item = ({
+     <>
+       <div
+         key={item.id}
+-        className="text-ui-fg-subtle grid grid-cols-2 items-center gap-x-4 px-6 py-4"
++        className="text-ui-fg-subtle grid grid-cols-1 items-center gap-x-4 gap-y-3 px-6 py-4 sm:grid-cols-2"
+       >
+-        <div className=" flex justify-between gap-x-2 ">
+-          <div className=" group flex items-start gap-x-4">
++        <div className="flex min-w-0 justify-between gap-x-2">
++          <div className="group flex min-w-0 items-start gap-x-4">
+             <Thumbnail src={item.thumbnail} />
+-            <div>
+-              <Text size="small" leading="compact" className="text-ui-fg-base">
++            <div className="min-w-0">
++              <Text size="small" leading="compact" className="text-ui-fg-base min-w-0 break-words">
+                 {item.title}
+               </Text>
+ 
+               {item.variant_sku && (
+-                <div className="flex items-center gap-x-1">
+-                  <Text size="small">{item.variant_sku}</Text>
++                <div className="flex min-w-0 items-start gap-x-1">
++                  <Text size="small" className="min-w-0 break-all">{item.variant_sku}</Text>
+                   <Copy
+                     content={item.variant_sku}
+-                    className="text-ui-fg-muted hidden group-hover:block"
++                    aria-label="Copy item SKU"
++                    className="text-ui-fg-muted min-h-6 min-w-6 shrink-0 cursor-pointer"
+                   />
+                 </div>
+               )}
+-              <Text size="small">
++              <Text size="small" className="min-w-0 break-words">
+                 {item.variant?.options?.map((o) => o.value).join(" · ")}
+               </Text>
+             </div>
+@@ -575,7 +576,7 @@ const Cost = ({
    tooltip?: ReactNode
  }) => (
    <div className="grid grid-cols-3 items-center">

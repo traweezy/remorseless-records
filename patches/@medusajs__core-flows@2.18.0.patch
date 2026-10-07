@@ -10,6 +10,130 @@ index 24f62e14ba7c4255dadfbebdc0708db19e3fd961..cec865da75c9911929a202b96324c258
      "locale",
      "items.*",
      "items.variant.id",
+diff --git a/dist/order/workflows/claim/confirm-claim-request.d.ts b/dist/order/workflows/claim/confirm-claim-request.d.ts
+index 7594df8ce6118821a8d5ee113f6e2d957dd29ce9..695202237efa0f8fbd6512f91de35b852513320f 100644
+--- a/dist/order/workflows/claim/confirm-claim-request.d.ts
++++ b/dist/order/workflows/claim/confirm-claim-request.d.ts
+@@ -56,6 +56,8 @@ export type ConfirmClaimRequestWorkflowInput = {
+      * The ID of the user confirming the claim.
+      */
+     confirmed_by?: string;
++    /** Disable email unless the confirmation explicitly opts in. */
++    no_notification?: boolean;
+ };
+ export declare const confirmClaimRequestWorkflowId = "confirm-claim-request";
+ /**
+diff --git a/dist/order/workflows/claim/confirm-claim-request.js b/dist/order/workflows/claim/confirm-claim-request.js
+index b10a4c9767cb46bb2d28a4e513d82f1d739931e9..d62f90e1042fd24d0ce1cb6b68e8c71759ae1406 100644
+--- a/dist/order/workflows/claim/confirm-claim-request.js
++++ b/dist/order/workflows/claim/confirm-claim-request.js
+@@ -348,6 +348,8 @@ exports.confirmClaimRequestWorkflow = (0, workflows_sdk_1.createWorkflow)(export
+         data: {
+             order_id: order.id,
+             claim_id: orderClaim.id,
++            order_change_id: orderChange.id,
++            no_notification: (0, workflows_sdk_1.transform)({ input }, ({ input }) => input.no_notification !== false),
+         },
+     });
+     return new workflows_sdk_1.WorkflowResponse(orderPreview);
+diff --git a/dist/order/workflows/exchange/confirm-exchange-request.d.ts b/dist/order/workflows/exchange/confirm-exchange-request.d.ts
+index edf9f6c897a9cf260e923f0063603f104a772de3..f852af51e2d48b363d93d56278892af410262ed5 100644
+--- a/dist/order/workflows/exchange/confirm-exchange-request.d.ts
++++ b/dist/order/workflows/exchange/confirm-exchange-request.d.ts
+@@ -56,6 +56,8 @@ export type ConfirmExchangeRequestWorkflowInput = {
+      * The ID of the user that's confirming the exchange.
+      */
+     confirmed_by?: string;
++    /** Disable email unless the confirmation explicitly opts in. */
++    no_notification?: boolean;
+ };
+ export declare const confirmExchangeRequestWorkflowId = "confirm-exchange-request";
+ /**
+diff --git a/dist/order/workflows/exchange/confirm-exchange-request.js b/dist/order/workflows/exchange/confirm-exchange-request.js
+index caceca13cdc23252d20c7151e7f635eb250f785d..1b8f226d7db80368eaf0fa0421fb135fe96d8785 100644
+--- a/dist/order/workflows/exchange/confirm-exchange-request.js
++++ b/dist/order/workflows/exchange/confirm-exchange-request.js
+@@ -338,6 +338,8 @@ exports.confirmExchangeRequestWorkflow = (0, workflows_sdk_1.createWorkflow)(exp
+         data: {
+             order_id: order.id,
+             exchange_id: orderExchange.id,
++            order_change_id: orderChange.id,
++            no_notification: (0, workflows_sdk_1.transform)({ input }, ({ input }) => input.no_notification !== false),
+         },
+     });
+     return new workflows_sdk_1.WorkflowResponse(orderPreview);
+diff --git a/dist/order/workflows/return/confirm-receive-return-request.d.ts b/dist/order/workflows/return/confirm-receive-return-request.d.ts
+index 5d7dee6d4b2aba3d3e5204eeb27761c37c6628ff..850686125ce5effb8fab374f2eb03bc3813c3cc5 100644
+--- a/dist/order/workflows/return/confirm-receive-return-request.d.ts
++++ b/dist/order/workflows/return/confirm-receive-return-request.d.ts
+@@ -56,6 +56,8 @@ export type ConfirmReceiveReturnRequestWorkflowInput = {
+      * The ID of the user that's confirming the return receival.
+      */
+     confirmed_by?: string;
++    /** Disable email unless the confirmation explicitly opts in. */
++    no_notification?: boolean;
+ };
+ export declare const confirmReturnReceiveWorkflowId = "confirm-return-receive";
+ /**
+diff --git a/dist/order/workflows/return/confirm-receive-return-request.js b/dist/order/workflows/return/confirm-receive-return-request.js
+index 037792999f905a9173a82c57d99dd9722e1bce99..36579c598b16a9614f9899160e2fbbad71720972 100644
+--- a/dist/order/workflows/return/confirm-receive-return-request.js
++++ b/dist/order/workflows/return/confirm-receive-return-request.js
+@@ -188,12 +188,15 @@ exports.confirmReturnReceiveWorkflow = (0, workflows_sdk_1.createWorkflow)(expor
+                 }
+                 return;
+             }
++            // Each confirmation stores cumulative receipt state. Inventory
++            // adjustments above remain limited to this change's usable units.
++            const previous = retItems.find((item) => item.item_id === itemId);
+             itemUpdates[itemId] = {
+                 id: itemMap[itemId],
+-                received_quantity: act.details.quantity,
+-                damaged_quantity: act.action === utils_1.ChangeActionType.RECEIVE_DAMAGED_RETURN_ITEM
++                received_quantity: utils_1.MathBN.add(previous?.received_quantity ?? 0, act.details.quantity),
++                damaged_quantity: utils_1.MathBN.add(previous?.damaged_quantity ?? 0, act.action === utils_1.ChangeActionType.RECEIVE_DAMAGED_RETURN_ITEM
+                     ? act.details.quantity
+-                    : 0,
++                    : 0),
+             };
+         });
+         const hasReceivedAllItems = retItems.every((item) => {
+@@ -237,6 +240,9 @@ exports.confirmReturnReceiveWorkflow = (0, workflows_sdk_1.createWorkflow)(expor
+         data: {
+             order_id: order.id,
+             return_id: orderReturn.id,
++            return_status: updateReturn.status,
++            order_change_id: orderChange.id,
++            no_notification: (0, workflows_sdk_1.transform)({ input }, ({ input }) => input.no_notification !== false),
+         },
+     }), (0, common_1.emitEventStep)({
+         eventName: utils_1.InventoryLevelWorkflowEvents.UPDATED,
+diff --git a/dist/order/workflows/return/confirm-return-request.d.ts b/dist/order/workflows/return/confirm-return-request.d.ts
+index 07bb82e7b352eb83aa670ce7f86bea1a54b59602..da947a376e785f382010d9f4a46916ca6ee1443d 100644
+--- a/dist/order/workflows/return/confirm-return-request.d.ts
++++ b/dist/order/workflows/return/confirm-return-request.d.ts
+@@ -56,6 +56,8 @@ export type ConfirmReturnRequestWorkflowInput = {
+      * The ID of the user confirming the return request.
+      */
+     confirmed_by?: string;
++    /** Disable email unless the confirmation explicitly opts in. */
++    no_notification?: boolean;
+ };
+ export declare const confirmReturnRequestWorkflowId = "confirm-return-request";
+ /**
+diff --git a/dist/order/workflows/return/confirm-return-request.js b/dist/order/workflows/return/confirm-return-request.js
+index 4b6730d81691c0acbf4c63b24823479c210ac150..cb1d66f3c5d33e40cb78ac6a96f63252dfa28b92 100644
+--- a/dist/order/workflows/return/confirm-return-request.js
++++ b/dist/order/workflows/return/confirm-return-request.js
+@@ -220,6 +220,8 @@ exports.confirmReturnRequestWorkflow = (0, workflows_sdk_1.createWorkflow)(expor
+         data: {
+             order_id: order.id,
+             return_id: orderReturn.id,
++            order_change_id: orderChange.id,
++            no_notification: (0, workflows_sdk_1.transform)({ input }, ({ input }) => input.no_notification !== false),
+         },
+     }));
+     create_or_update_order_payment_collection_1.createOrUpdateOrderPaymentCollectionWorkflow.runAsStep({
 diff --git a/dist/payment/workflows/refund-payments.js b/dist/payment/workflows/refund-payments.js
 index b34f9e67198d03a4a6c7f32f5317000f1913c014..97c4461a98be4a10eab906618b2a859a211fdb2c 100644
 --- a/dist/payment/workflows/refund-payments.js

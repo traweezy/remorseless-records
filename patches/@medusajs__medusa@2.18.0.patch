@@ -1,3 +1,51 @@
+diff --git a/dist/api/admin/claims/[id]/request/route.js b/dist/api/admin/claims/[id]/request/route.js
+index 485bb1949e20e2fe7fe6622992ac72aa6656a216..acd8d9e93137fff8e1bf6dbd56d5fede702c5cde 100644
+--- a/dist/api/admin/claims/[id]/request/route.js
++++ b/dist/api/admin/claims/[id]/request/route.js
+@@ -11,6 +11,7 @@ const POST = async (req, res) => {
+         input: {
+             claim_id: id,
+             confirmed_by: req.auth_context.actor_id,
++            no_notification: req.validatedBody.no_notification !== false,
+         },
+     });
+     const queryObject = (0, utils_1.remoteQueryObjectFromString)({
+diff --git a/dist/api/admin/claims/middlewares.js b/dist/api/admin/claims/middlewares.js
+index 31790392761902b2974fb2c7e7887a068a8c9899..7fe5c6f532b5b38ead785126fd11ee2065469675 100644
+--- a/dist/api/admin/claims/middlewares.js
++++ b/dist/api/admin/claims/middlewares.js
+@@ -296,6 +296,7 @@ exports.adminClaimRoutesMiddlewares = [
+         method: ["POST"],
+         matcher: "/admin/claims/:id/request",
+         middlewares: [
++            (0, framework_1.validateAndTransformBody)(validators_1.AdminPostClaimsConfirmRequestReqSchema),
+             (0, framework_1.validateAndTransformQuery)(validators_1.AdminGetOrdersOrderParams, QueryConfig.retrieveTransformQueryConfig),
+         ],
+         policies: [
+diff --git a/dist/api/admin/exchanges/[id]/request/route.js b/dist/api/admin/exchanges/[id]/request/route.js
+index 968177675fa054eaaea3f3afe4ae49c3ab2178be..8a568d1bd080c64846d9f6b818d18810c4a2f35e 100644
+--- a/dist/api/admin/exchanges/[id]/request/route.js
++++ b/dist/api/admin/exchanges/[id]/request/route.js
+@@ -11,6 +11,7 @@ const POST = async (req, res) => {
+         input: {
+             exchange_id: id,
+             confirmed_by: req.auth_context.actor_id,
++            no_notification: req.validatedBody.no_notification !== false,
+         },
+     });
+     const queryObject = (0, utils_1.remoteQueryObjectFromString)({
+diff --git a/dist/api/admin/exchanges/middlewares.js b/dist/api/admin/exchanges/middlewares.js
+index 8081794cccad4e7cdf799f91a4663debc21e993d..a911b20e118a4ff31ca0cb953b03fceb31496799 100644
+--- a/dist/api/admin/exchanges/middlewares.js
++++ b/dist/api/admin/exchanges/middlewares.js
+@@ -251,6 +251,7 @@ exports.adminExchangeRoutesMiddlewares = [
+         method: ["POST"],
+         matcher: "/admin/exchanges/:id/request",
+         middlewares: [
++            (0, framework_1.validateAndTransformBody)(validators_1.AdminPostExchangesConfirmRequestReqSchema),
+             (0, framework_1.validateAndTransformQuery)(validators_1.AdminGetOrdersOrderParams, QueryConfig.retrieveTransformQueryConfig),
+         ],
+         policies: [
 diff --git a/dist/api/admin/products/[id]/variants/[variant_id]/route.js b/dist/api/admin/products/[id]/variants/[variant_id]/route.js
 index e957a37097d4d2cc826f376005d04b024d00d1cf..b4695cd07a667f2331b9c122c5231891aa887db0 100644
 --- a/dist/api/admin/products/[id]/variants/[variant_id]/route.js
@@ -48,7 +96,32 @@ index e957a37097d4d2cc826f376005d04b024d00d1cf..b4695cd07a667f2331b9c122c5231891
      res.status(200).json({ product: (0, helpers_1.remapProductResponse)(product) });
  };
  exports.POST = POST;
+diff --git a/dist/api/admin/returns/[id]/receive/confirm/route.js b/dist/api/admin/returns/[id]/receive/confirm/route.js
+index 2478b5a6f27990b54de4f35e24f056b81441e6af..09460518f09278bf39090e0a11e4d86f61a8b82b 100644
+--- a/dist/api/admin/returns/[id]/receive/confirm/route.js
++++ b/dist/api/admin/returns/[id]/receive/confirm/route.js
+@@ -10,6 +10,7 @@ const POST = async (req, res) => {
+         input: {
+             return_id: id,
+             confirmed_by: req.auth_context.actor_id,
++            no_notification: req.validatedBody.no_notification !== false,
+         },
+     });
+     const queryObject = (0, utils_1.remoteQueryObjectFromString)({
+diff --git a/dist/api/admin/returns/[id]/request/route.js b/dist/api/admin/returns/[id]/request/route.js
+index 542670dc7842c60ff9889e265ffe484d0f11f443..132ec35777eaaee1827f17809ee3dc0f5390e237 100644
+--- a/dist/api/admin/returns/[id]/request/route.js
++++ b/dist/api/admin/returns/[id]/request/route.js
+@@ -10,6 +10,7 @@ const POST = async (req, res) => {
+         input: {
+             return_id: id,
+             confirmed_by: req.auth_context.actor_id,
++            no_notification: req.validatedBody.no_notification !== false,
+         },
+     });
+     const queryObject = (0, utils_1.remoteQueryObjectFromString)({
 diff --git a/dist/api/hooks/payment/[provider]/route.js b/dist/api/hooks/payment/[provider]/route.js
+index ca5ec92b4b64e81126a655dbe64db0cba1aae052..297a0c9b8be5d3802cc1cf379b44db3960e8d274 100644
 --- a/dist/api/hooks/payment/[provider]/route.js
 +++ b/dist/api/hooks/payment/[provider]/route.js
 @@ -22,8 +22,9 @@ const POST = async (req, res) => {
@@ -64,7 +137,7 @@ diff --git a/dist/api/hooks/payment/[provider]/route.js b/dist/api/hooks/payment
      }
      res.sendStatus(200);
 diff --git a/dist/loaders/index.d.ts b/dist/loaders/index.d.ts
-index 3b57398422d468f92fb954f9a6e6c6ae55e9e687..f72712a2284c836292d2b83ad86e93cabccc1479 100644
+index 3b57398422d468f92fb954f9a6e6c6ae55e9e687..a038c7fba0ac4e8ebb2ffc89c8655041688b53db 100644
 --- a/dist/loaders/index.d.ts
 +++ b/dist/loaders/index.d.ts
 @@ -6,6 +6,13 @@ type Options = {
@@ -82,7 +155,7 @@ index 3b57398422d468f92fb954f9a6e6c6ae55e9e687..f72712a2284c836292d2b83ad86e93ca
      skipDbConnection?: boolean;
      throwOnValidationError?: boolean;
 diff --git a/dist/loaders/index.js b/dist/loaders/index.js
-index 109e3936fedaa059da4c8c1650c281ec5bf0a5bf..1200a6b776600be49a9880b69aa051eeb5940c0b 100644
+index 109e3936fedaa059da4c8c1650c281ec5bf0a5bf..314693e47b0610d43e9a6b4575d47a0ec3cee25f 100644
 --- a/dist/loaders/index.js
 +++ b/dist/loaders/index.js
 @@ -4,6 +4,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {

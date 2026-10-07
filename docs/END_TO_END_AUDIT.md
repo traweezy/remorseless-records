@@ -1,5 +1,178 @@
 # Storefront, Admin and Stripe end-to-end audit
 
+### Active continuation — October 7
+
+The user resumed Batch 6. The prior pause below is historical; Batch 7's
+client environment clone remains paused. New evidence is under
+`artifacts/end-to-end-audit-2026-10-07/`; the original October 6 evidence stays
+unchanged. Deployed staging is still `86c325a3a40679feff1a027a9a8cc1e089bef897`.
+Fresh 10:14:59.375 UTC readiness passes basic/exact-revision checks and backups,
+with exhaustive/scheduler acceptance still open. Renewed all-nine observation
+records the intentional 36,228.518-second overnight gap. Redis at 10:31:29.605
+UTC remains on the same process with 306,942 seconds uptime, healthy persistence
+and unchanged failed queues; no old jobs are retried.
+
+**B6-SPLIT-RETURN-RECEIPTS — reproduced and repaired locally:** real native
+workflows receiving one unit twice leave the Return at one received unit and
+`partially_received`. The reviewed core-flows 2.18.0 patch now stores cumulative
+received and damaged counts. Restocking remains the new usable-unit delta.
+Five installed-transform regressions cover split, damaged, mixed and shared
+variant cases. The complete disposable aggregate passes (76 native/service,
+44 payment cases plus all recovery/API/session gates). Real managed stock is
+36 → 38 → 40; a damaged batch changes no stock and a later usable unit adds
+only its required two component units. The actual Graph/event/subscriber path
+verifies all four notice stages, opt-out, repeated delivery and late partial
+replay. Controlled fixture delivery is stubbed; no live RMA notice is claimed.
+Earlier unfulfilled-fixture, type/link and reproduced native failures remain
+in private logs. Reviewed image/DB scans use Trivy 0.70.0 and exact fixture
+image IDs; rejected 0.75 and context/permission diagnostics remain recorded.
+
+**B6-NATIVE-ORDER-SUMMARY-OVERFLOW — repaired locally:** responsive rows wrap
+the long SKU and keep amount controls separate at 390/573/1440 pixels.
+The first expanded 40-case matrix reports 29 passes and 11 failures, including
+unnamed metadata/JSON/alert controls, small copy targets and invalid loading
+JSX. Local Dashboard/UI fixes retain the checks, correct those controls and
+remove the guest `/customers/null` link. The return fixture now includes the
+native preview total it omitted. Both final production builds and all 40 rendered Admin cases now pass, with
+zero axe violations/incomplete checks and inspected responsive screenshots.
+
+Backend coverage passes 295 suites / 2,497 tests and 72 native contracts pass.
+All four email states render at both widths with eight independent clean axe
+checks; screenshots have been inspected. Frozen installation preserves package
+versions and unrelated dependency graph. Full lint/policy/type/build gates and the final rendered matrix pass.
+Conventional commits, direct staging push, exact CI/
+all-nine rollout and deployed RMA/remaining-family acceptance are still pending.
+
+### User-requested pause — October 7, 00:11 UTC (October 6 EDT)
+
+Batch 6 remains open. Stop here at the user's request; resume only after the
+next continuation request. No new payment, external mutation or deployment is
+started for this checkpoint. Batch 7's client clone remains separately paused.
+
+**Current deployed revision:** `86c325a3a40679feff1a027a9a8cc1e089bef897`,
+the three-commit direct staging push below. Root, Backend, Storefront and
+Runtime Images all pass on the exact revision, attempt 1, with all 23 required
+checks. Their run IDs are `37547315154`, `37547315171`, `37547315153` and
+`37547315158`. The two application deployments are
+`1e83c700-867f-40f5-a96c-7768e2bf59b2` and
+`8d54fc8e-f165-4e51-bc30-d628ea764bec`; both succeed on this SHA, as do
+Migrations `f65bb075-d8ba-4999-a3f1-74e5aabaf90a` and RecoveryBackups
+`25c21f9a-a95c-4f88-a08c-7e508359006b`. Read-only readiness at 23:55:10.178
+UTC passes exact CI/deployments, both live/readiness pairs and backup freshness.
+Its `releaseAccepted: false` remains correct: basic readiness does not complete
+the exhaustive audit or the ordinary scheduler gate.
+
+Native receiving now confirms the unchanged quantity, named damaged controls
+and notification switch on the deployed correction. Owned S return
+`return_01M49T4W6CD92AWDPZ6AKVX319` is received at 23:55:49.899 UTC.
+The native payment controls refund $2.34 at 23:56:29.305 and $5.50 at
+23:59:12.556, following the earlier $1.23 refund. Read-only reconciliation at
+00:00:25.041 UTC and the Stripe dashboard confirm the owned $9.07 charge is
+fully refunded with three succeeded refunds. All three controlled refund
+notifications have durable successful delivery evidence; tax evidence is
+refunded with $9.07 total, no failed refund and no missing tax source.
+
+Owned inventory is restored: CD 20, Vinyl 20, M 4, S 3, L 0, XL 2 and 2XL 1,
+with zero reservations. Native Admin remains the only mutation authority;
+Stripe is used for independent reads. Do not repeat the completed refunds or
+returns. The inspected order-edit draft was cancelled and soft-deleted at
+23:57:47.477 UTC. Its historical `pending` row is not an active pending edit;
+retain the initial diagnostic/filter and UI-wait failures. Native accounting
+still retains the original $5.50 shipping charge after the payment-only refund.
+Do not infer zero order total/outstanding balance or a closed order from a
+fully refunded payment. Claim activity copy implies an outgoing item for an
+inbound-only claim; edit-form notification copy/search naming also need review.
+
+**B6-NATIVE-ORDER-SUMMARY-OVERFLOW:** the final real Admin screenshot at its
+normal 573-pixel viewport shows the owned long CD SKU overlapping the amount.
+Read-only DOM evidence confirms main width 563 versus scroll width 600, and
+the Summary card width 539 versus scroll width 588. This is a newly recorded
+open finding; the prior native-drawer matrix does not prove the order Summary
+fits. Retain `browser/admin-owned-full-refund-pause.jpg` and add a real-shaped
+long-SKU Summary regression before claiming narrow native-order acceptance.
+
+**B6-RMA-NOTIFICATION-OPTIONS — local correction, not released:** the pinned
+native return request/receiving and claim/exchange confirmation routes discarded
+the Admin's notification preference, and the four workflow payloads did not
+carry it. Extend the existing MIT Medusa/core-flows 2.18.0 patches to validate
+the native body and pass explicit opt-in through the four events. Missing
+preferences default to opt-out. Keep native RBAC, confirmation, inventory and
+payment authority. The new subscriber requires exact resource, order and
+confirmed order-change linkage, valid persisted timestamps, an uncancelled
+order and recipient, and uses a stable resource/stage notification key.
+Receiving also binds the event's actual return status: partial confirmation,
+including its late replay after another receipt, cannot send full-receipt copy.
+Four strict email states reuse the existing brand/layout and do not promise a
+refund or outbound shipment. Durable acknowledgements/retry boundaries remain.
+
+**B6-CLAIM-LOCATION-HINT — local correction, not released:** fresh native claim
+preview rows lack `variant_id`; the old guide used that stale row field instead
+of the order item's canonical variant. Both claim and return guidance also
+checked only the first kit component. The extended Dashboard patch reads only
+selected canonical variants, checks complete paginated/count/identity evidence,
+and intersects the locations of every required inventory component. Unmanaged
+variants remain explicit. Pending, failed, stale or incomplete reads show
+unavailable guidance rather than a false missing-level warning. This changes
+operator guidance only; native inventory mutations remain unchanged.
+
+Current local checks pass: frozen root installation; 67 installed native form,
+RMA-route/event and inventory-guidance contract cases; 83 focused subscriber,
+template and provider tests; both Backend TypeScript projects. The lock review
+permits only the three patch hashes and their dependent peer identities,
+restoring unrelated third-party-web to 0.29.2. The new actual native RMA
+workflow integration case is written and typechecks, but has not run.
+The current Backend build, full integration/coverage/lint/policy gates, managed
+claim/return rendered matrix additions, email visual review, documentation/hash
+updates, commit/push, exact CI and deployed controlled RMA acceptance remain.
+The preceding 27-case matrix and builds do not cover these uncommitted changes.
+
+Final all-nine observation at 00:10:32.732 UTC shows all deployments successful
+and no sampled fault. The owned watcher is stopped intentionally at the pause;
+there is no promise of continued overnight monitoring. Renew it on resume and
+retain the documented observer gaps. Redis read-only diagnostics at
+00:07:53.555 UTC pass on the same deployment, instance and run with 269,526
+seconds uptime, healthy AOF/RDB and zero OOM, eviction or rejected connections.
+The failed 237 scheduled plus one event jobs remain untouched. The initial
+removed Backend instance has no verified stop reason; do not claim zero
+restarts from the successful deployment label.
+
+Private evidence is under `artifacts/end-to-end-audit-2026-10-06-resume/`:
+`receipts/readiness-86c325a-initial.json`,
+`receipts/redis-86c325a-rollout-diagnostic.json`,
+`receipts/pause-all-nine-observation.json`,
+`receipts/rma-inventory-three-patch-lock-review.json`,
+`checks/order-nine-86c325a-fully-refunded.json`,
+`checks/rma-inventory-native-contract-after.log` and `checks/pause-*.log`.
+Browser proofs include `native-receiving-s-86c325a-damage-control.jpg`,
+the two native refund dialogs and `stripe-owned-full-refund-907-86c325a.jpg`.
+Earlier failures and the original October 6 evidence are retained unchanged.
+
+Resume the local correction's remaining gates first. New prepared-notice and
+fixed-bundle stock live acceptance, paid product families, owned media lifecycle,
+guarded search rebuild/parity and the executed-control ledger remain open.
+The scheduler incident latch stays intact until at least October 7,
+14:18:40.644 UTC plus fresh healthy observation. No new Conventional Commit or
+staging push is made merely to checkpoint unfinished work. Production is
+untouched, and the client environment clone remains paused.
+
+
+**Corrective push — October 6, 23:34 UTC:** the three logical commits are
+pushed directly to staging as `86c325a3a40679feff1a027a9a8cc1e089bef897`:
+`ed85c8e` native bundle stock, `4697085` prepared notification event and
+`86c325a` native after-sales controls. Normal commit/pre-push lint/type/policy
+and Storefront coverage gates pass. All four exact push workflows are running;
+Backend, Storefront, Migrations and RecoveryBackups remain `WAITING` for CI at
+the first fresh rollout observation. The previous exact pair remains active.
+No candidate ref, PR, force push, gate waiver or production action is used.
+
+The prior all-nine observer exits with code 143; renewed monitoring starts at
+23:35:22.591 UTC after a recorded 210.417-second gap from its final snapshot.
+Retain both histories and do not claim continuous coverage across the gap.
+The new snapshot has no sampled fault. GitHub's default-branch advisory #56
+is the already documented Braces stack-exhaustion issue; its exact mitigation
+is retained, not a new suppression. Exact CI, rollout and live retests of this
+push remain pending; Batch 6 stays open and the client clone stays paused.
+
 ### Native after-sales workflows and prepared notices — October 6, 23:32 UTC
 
 The active Backend/Storefront pair now serves exact `3873c85`: deployment

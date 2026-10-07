@@ -242,6 +242,12 @@ const rmaOrder = {
     transaction_total: 2.34,
     pending_difference: 0,
   },
+  original_total: 2.34,
+  original_subtotal: 2.34,
+  original_tax_total: 0,
+  original_shipping_total: 0,
+  original_shipping_subtotal: 0,
+  original_shipping_tax_total: 0,
   total: 2.34,
   subtotal: 2.34,
   item_total: 2.34,
@@ -259,6 +265,7 @@ const rmaOrder = {
 }
 const rmaPreview = {
   ...rmaOrder,
+  return_requested_total: 2.34,
   order_change: rmaChange,
   items: [
     {
@@ -277,6 +284,33 @@ const rmaPreview = {
       ],
     },
   ],
+}
+
+const inventoryCase =
+  /^native-(claim|return)-inventory-(ready|missing|pending|unavailable)$/u.exec(
+    setup
+  )
+const selectedInventoryRead = (url) =>
+  [...url.searchParams.keys()].some((key) => /^id(?:\[.*\])?$/u.test(key))
+const isSummaryCase = setup === "native-order-summary-long-sku"
+const inventoryItem = {
+  ...rmaItem,
+  variant: { ...rmaItem.variant, manage_inventory: true },
+}
+const inventoryChange = inventoryCase && {
+  ...rmaChange,
+  change_type: inventoryCase[1] === "claim" ? "claim" : "return_request",
+  claim_id: inventoryCase[1] === "claim" ? "claim_acceptance" : null,
+  exchange_id: null,
+}
+const summaryItem = {
+  ...rmaItem,
+  title: "Acceptance Release With A Long Product Title",
+  product_title: "Acceptance Release With A Long Product Title",
+  variant_title: "CD / Limited Edition",
+  variant_sku:
+    "MUSIC_RELEASE_RR_AUDIT_B8517C2C_LONG_RELEASE_IDENTIFICATION_CD_LIMITED_EDITION",
+  variant: { ...rmaItem.variant, options: [{ value: "CD / Limited Edition" }] },
 }
 
 const listKeyByPath = new Map([
@@ -307,6 +341,8 @@ const listKeyByPath = new Map([
 const fixtureFor = (url) => {
   const { pathname } = url
   if (pathname === "/admin/orders/order_acceptance") {
+    if (inventoryCase) return { order: { ...rmaOrder, items: [inventoryItem] } }
+    if (isSummaryCase) return { order: { ...rmaOrder, items: [summaryItem] } }
     if (setup === "native-refund-controls") {
       return {
         order: {
@@ -386,6 +422,24 @@ const fixtureFor = (url) => {
     return { order: rmaOrder }
   }
   if (pathname === "/admin/orders/order_acceptance/preview") {
+    if (isSummaryCase) return { order: { ...rmaOrder, items: [summaryItem] } }
+    if (inventoryCase)
+      return {
+        order: {
+          ...rmaPreview,
+          order_change: inventoryChange,
+          items: rmaPreview.items.map((item) => ({
+            ...item,
+            variant: inventoryItem.variant,
+            actions: item.actions.map((action) => ({
+              ...action,
+              exchange_id: null,
+              claim_id:
+                inventoryCase[1] === "claim" ? "claim_acceptance" : null,
+            })),
+          })),
+        },
+      }
     if (setup === "native-return-receive") {
       return {
         order: {
@@ -423,6 +477,63 @@ const fixtureFor = (url) => {
       },
     }
   }
+  if (pathname === "/admin/claims/claim_acceptance")
+    return {
+      claim: {
+        id: "claim_acceptance",
+        order_id: "order_acceptance",
+        return_id: "return_acceptance",
+        type: "refund",
+        display_id: 1,
+        created_at: timestamp,
+        claim_items: [],
+        additional_items: [],
+        shipping_methods: [],
+        canceled_at: null,
+      },
+    }
+  if (
+    pathname === "/admin/product-variants" &&
+    inventoryCase &&
+    selectedInventoryRead(url)
+  ) {
+    const levels = (location_id) => [
+      {
+        location_id,
+        stocked_quantity: 3,
+        reserved_quantity: 0,
+        available_quantity: 3,
+      },
+    ]
+    const component = (id, location_id) => ({
+      inventory_item_id: id,
+      required_quantity: 1,
+      inventory: { id, location_levels: levels(location_id) },
+    })
+    return {
+      variants:
+        inventoryCase[2] === "unavailable"
+          ? []
+          : [
+              {
+                id: "variant_acceptance",
+                manage_inventory: true,
+                inventory_items: [
+                  component("iitem_first", "sloc_acceptance"),
+                  component(
+                    "iitem_second",
+                    inventoryCase[2] === "missing"
+                      ? "sloc_other"
+                      : "sloc_acceptance"
+                  ),
+                ],
+              },
+            ],
+      count: 1,
+      offset: Number(url.searchParams.get("offset")),
+      limit: Number(url.searchParams.get("limit")),
+    }
+  }
   if (pathname === "/admin/returns/return_acceptance") {
     return {
       return: {
@@ -430,7 +541,9 @@ const fixtureFor = (url) => {
         order_id: "order_acceptance",
         status: "requested",
         location_id:
-          setup === "native-return-receive" ? "sloc_acceptance" : null,
+          setup === "native-return-receive" || inventoryCase
+            ? "sloc_acceptance"
+            : null,
         items:
           setup === "native-return-receive"
             ? [{ item_id: rmaItem.id, quantity: 1 }]
@@ -1065,6 +1178,8 @@ try {
   })
 
   let pendingExchangeRequest
+  let pendingInventoryRequest
+  const inventoryRequests = []
   const pendingExchangeRead =
     setup === "native-exchange-pending"
       ? page.waitForRequest(
@@ -1112,6 +1227,17 @@ try {
         url.pathname,
         (fixtureRequests.get(url.pathname) ?? 0) + 1
       )
+      if (
+        inventoryCase &&
+        url.pathname === "/admin/product-variants" &&
+        selectedInventoryRead(url)
+      ) {
+        inventoryRequests.push([...url.searchParams])
+        if (inventoryCase[2] === "pending") {
+          pendingInventoryRequest = request
+          return
+        }
+      }
       if (
         setup === "native-exchange-pending" &&
         url.pathname === "/admin/exchanges/oexc_acceptance"
@@ -1217,6 +1343,117 @@ try {
           )
       )
     )
+  }
+  if (inventoryCase) {
+    await page.waitForSelector('[role="dialog"] input[name$="0.note"]')
+    const stage = inventoryCase[2]
+    if (stage === "pending" || stage === "unavailable") {
+      await page.waitForFunction(
+        (expected) => {
+          const dialog = document.querySelector('[role="dialog"]')
+          const status = dialog?.querySelector('[role="status"]')
+          return (
+            status?.textContent.includes(expected) &&
+            !dialog.textContent.includes("No inventory level")
+          )
+        },
+        {},
+        stage === "pending"
+          ? "Checking inventory locations"
+          : "Inventory location guidance is unavailable"
+      )
+      if (stage === "pending") {
+        await page.screenshot({
+          path: screenshotPath.replace(/\.png$/u, "-pending.png"),
+          fullPage: true,
+        })
+        const pendingAxe = await new AxePuppeteer(page)
+          .include('[role="dialog"]')
+          .analyze()
+        if (pendingAxe.violations.length || pendingAxe.incomplete.length)
+          throw new Error(
+            "Pending native inventory guidance failed accessibility"
+          )
+        if (!pendingInventoryRequest)
+          throw new Error("Pending inventory request was not captured")
+        await pendingInventoryRequest.respond({
+          body: JSON.stringify(
+            fixtureFor(new URL(pendingInventoryRequest.url()))
+          ),
+          contentType: "application/json",
+          headers: {
+            "access-control-allow-credentials": "true",
+            "access-control-allow-origin": acceptanceOrigin,
+            "cache-control": "no-store",
+          },
+          status: 200,
+        })
+      }
+    }
+    if (stage !== "unavailable") {
+      await page.waitForFunction(
+        (missing) => {
+          const dialog = document.querySelector('[role="dialog"]')
+          return (
+            dialog &&
+            !dialog.querySelector('[role="status"]') &&
+            dialog.textContent.includes("No inventory level") === missing
+          )
+        },
+        {},
+        stage === "missing"
+      )
+    }
+    if (inventoryRequests.length !== 1)
+      throw new Error(
+        "Native inventory guidance did not use one selected-variant read"
+      )
+    const ids = inventoryRequests[0]
+      .filter(([key]) => /^id(?:\[.*\])?$/u.test(key))
+      .map(([, value]) => value)
+    if (ids.length !== 1 || ids[0] !== "variant_acceptance")
+      throw new Error(
+        "Native inventory guidance omitted the canonical selected variant"
+      )
+  }
+  if (isSummaryCase) {
+    await page.waitForFunction(
+      (sku) => document.querySelector("main")?.textContent.includes(sku),
+      {},
+      summaryItem.variant_sku
+    )
+    const overlaps = await page.evaluate((sku) => {
+      const main = document.querySelector("main")
+      const text = [...main.querySelectorAll("p")].find(
+        (e) => e.textContent === sku
+      )
+      if (!text) return { missing: true }
+      const row = text.closest('[class*="grid-cols-2"]')
+      if (!row) return { missingRow: true }
+      const cells = [...row.children]
+      const a = cells[0].getBoundingClientRect()
+      const b = cells[1].getBoundingClientRect()
+      const range = document.createRange()
+      range.selectNodeContents(text)
+      return {
+        mainOverflow: main.scrollWidth > main.clientWidth + 1,
+        rowOverflow: row.scrollWidth > row.clientWidth + 1,
+        overlap: [...range.getClientRects()].some(
+          (r) =>
+            Math.min(r.right, b.right) - Math.max(r.left, b.left) > 0.5 &&
+            Math.min(r.bottom, b.bottom) - Math.max(r.top, b.top) > 0.5
+        ),
+        cellOverlap:
+          Math.min(a.right, b.right) - Math.max(a.left, b.left) > 0.5 &&
+          Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 0.5,
+      }
+    }, summaryItem.variant_sku)
+    if (Object.values(overlaps).some(Boolean)) {
+      await page.screenshot({ path: screenshotPath, fullPage: true })
+      throw new Error(
+        `Native order Summary does not fit: ${JSON.stringify(overlaps)}`
+      )
+    }
   }
   if (setup === "native-refund-reason-validation") {
     await page.waitForSelector('[role="dialog"] input[name="label"]')

@@ -36,6 +36,7 @@ const SUPPORTED_TEMPLATES = new Set<string>([
   EmailTemplates.ORDER_PLACED,
   EmailTemplates.REFUND_ISSUED,
   EmailTemplates.FULFILLMENT_STATUS,
+  EmailTemplates.AFTER_SALES_STATUS,
 ])
 const SAFE_PROVIDER_ID = /^[A-Za-z0-9_-]{1,255}$/
 

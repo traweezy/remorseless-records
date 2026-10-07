@@ -44,7 +44,7 @@
     "qa:browser-toolchain-security": "node scripts/verify-browser-toolchain-security.mjs",
     "qa:storefront-provider-fixture": "node --test storefront/scripts/ci-medusa-fixture.test.mjs",
     "qa:medusa-build-toolchain": "node scripts/verify-medusa-build-toolchain.mjs",
-    "qa:dashboard-form-validation": "node --test scripts/verify-dashboard-form-validation.test.mjs",
+    "qa:dashboard-form-validation": "node --test scripts/verify-dashboard-form-validation.test.mjs scripts/native-rma-notification-contract.test.mjs scripts/native-return-inventory-contract.test.mjs",
     "qa:dashboard-product-import": "node scripts/verify-dashboard-product-import-boundary.mjs",
     "qa:dashboard-product-create": "node scripts/verify-dashboard-product-create-boundary.mjs",
     "qa:dashboard-product-deletion": "node scripts/verify-dashboard-product-deletion-boundary.mjs",

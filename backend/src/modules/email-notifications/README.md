@@ -54,7 +54,7 @@ again. If redaction fails after delivery, the unchanged provider idempotency
 key prevents another email while the retry completes redaction.
 
 The Resend provider accepts one validated recipient, the configured sender,
-one of the four known templates, a subject-only options object, and no
+one of the five known templates, a subject-only options object, and no
 attachments or per-message sender. Every template requires provider
 idempotency. Calls have a five-second deadline and success requires Resend's
 exact non-empty external ID response. Errors and logs include no recipient,
@@ -97,11 +97,38 @@ head title. The fulfillment template uses its specific stage title and one
 semantic heading. Local render/fixture checks do not establish compatibility
 with every recipient email client or actual inbox delivery.
 
-Native return, exchange and claim forms also expose notification options, but
-those lifecycle events currently have no registered subscriber or template in
-this application. Selecting an option does not establish delivery. The Batch 6
-audit tracks this unsupported contract separately; refund notices and outbound
-fulfillment updates still use their registered events above.
+### Return, claim and exchange notifications
+
+`after-sales-status.ts` consumes the pinned native `order.return_requested`,
+`order.return_received`, `order.claim_created` and `order.exchange_created`
+confirmation events. The reviewed Medusa/core-flows 2.18.0 patches carry the
+validated Admin checkbox preference, exact resource ID, order ID and confirmed
+order-change ID. Only explicit `no_notification: false` opts in. Missing or
+true preferences skip delivery, including legacy/generic events; historical
+failed events are not opted in by this change.
+
+Native Query must resolve one matching resource and confirmed order change,
+with valid persisted confirmation dates and the correct order/resource/type
+link. Canceled resources/orders, draft orders and orders without a recipient
+are skipped. Missing, duplicated or malformed linkage propagates an error for
+retry. Guest orders with a validated recipient remain supported.
+
+Receiving carries the confirmation's actual `return_status` and also checks
+persisted receipt state. Partial receipts skip the full-receipt message,
+including a delayed partial event replayed after a later receipt. The pinned
+native receipt patch retains cumulative received/damaged quantities across
+confirmations and restocks only newly received usable units. Each notice
+uses `after-sales-status:<resource-id>:<stage>` for both Medusa and Resend.
+Its immutable projection includes only the order number and confirmed stage;
+addresses, tracking labels, item lists and financial amounts are excluded.
+Durable acknowledgement, stable provider idempotency and deadlines are the
+same as the other registered templates.
+
+The four states describe a confirmed return request, one fully received return,
+a confirmed claim or a confirmed exchange. They do not promise a refund or
+shipment; those have separate registered events. Local workflow/render tests
+and a checked Admin option do not prove an actual controlled staging delivery.
+Require independent durable provider evidence for live acceptance.
 
 ### Trigger an email notification
 

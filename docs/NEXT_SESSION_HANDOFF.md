@@ -1,13 +1,135 @@
 # Next-session handoff
 
-Last updated: 2026-10-06 (America/New_York)
+Last updated: 2026-10-07 (America/New_York)
 
 ## Current continuation — direct staging only
 
-**Resumed October 6:** continue Batch 6 with existing full authorization for
-routine audit work. The client environment clone remains paused behind the
-separate Batch 7 stop boundary below. Latest evidence and remaining work are
-recorded at the top of `docs/END_TO_END_AUDIT.md`.
+**Resumed at the user's request — October 7:** continue Batch 6; Batch 7's
+client environment clone remains paused. The checkpoint below describes the
+previous pause, not a new stop instruction. The previous deployed staging checkpoint is
+`86c325a3a40679feff1a027a9a8cc1e089bef897`. The October 7 correction
+below has passed local gates and is ready for its direct staging push;
+resolve its exact SHA from Git before checking CI and deployment.
+
+Current evidence lives in `artifacts/end-to-end-audit-2026-10-07/`. Read-only
+readiness at 10:14:59.375 UTC passes exact CI, deployment, basic live/readiness
+and backup freshness; exhaustive/scheduler acceptance remains open. All-nine
+observation is renewed after a recorded 36,228.518-second intentional overnight
+gap. At 10:31:29.605 UTC Redis has 306,942 seconds uptime on the same process,
+healthy AOF/RDB, zero OOM/eviction/rejection and unchanged 237 scheduled plus
+one event failed jobs. No historical jobs are retried.
+
+The actual native RMA integration reproduces a Medusa 2.18.0 defect: each
+receipt overwrites prior received/damaged quantities. The extended core-flows
+patch retains cumulative receipt quantities while inventory adjustments remain
+this batch's usable-unit delta. The full disposable aggregate now passes:
+76 native/service cases, 44 payment cases, PostgreSQL recovery, Redis capacity/
+AOF/replay/live aggregate, API contracts and session rotation, with cleanup.
+The managed fixture consumes two inventory units per variant and proves
+split receipt stock 36 → 38 → 40; damaged receipts do not restock, and late partial/repeated events do not
+create duplicate/full-receipt messages. The 72 installed native contracts pass.
+Backend coverage passes 295 suites / 2,497 tests. Eight independent mobile/
+desktop after-sales email renders have zero axe violations/incomplete checks.
+
+The expanded Admin matrix passes all 40 cases with zero axe violations or
+incomplete checks, after retaining its initial 29-pass/11-failure report.
+The native Summary fits at 390/573/1440 pixels; JSON/metadata/alert controls
+have names, copy targets are 24 pixels, and loading JSX is valid. The return
+fixture includes its required native preview total. Guest orders have no
+`/customers/null` link. Frozen installation, both production builds and full
+lint/policy/type gates pass. The exact lock review permits only four patch
+hashes and three dependent peer identities, with all registry versions and
+integrities unchanged. The shared CI command registry includes the 72 native
+contracts and preserves its strict drift checks. Failed runs remain evidence.
+Group the correction into a normal direct staging push, then wait exact CI,
+all-nine deployment and controlled live RMA acceptance. Remaining audit work is in the numbered
+continuation below and the opening end-to-end audit.
+
+**Paused at the user's request — October 7, 00:11 UTC (October 6 EDT):**
+stop at this checkpoint and await the next continuation request. Batch 6 is
+unfinished; the separate Batch 7 client environment clone remains paused.
+No further payment, mutation, commit or push is performed for this pause.
+Existing authorization and direct-staging rules apply when work resumes.
+
+**Deployed checkpoint:** HEAD and `origin/staging` are
+`86c325a3a40679feff1a027a9a8cc1e089bef897`. All four exact push workflows
+and all 23 required checks pass. Backend deployment
+`1e83c700-867f-40f5-a96c-7768e2bf59b2`, Storefront
+`8d54fc8e-f165-4e51-bc30-d628ea764bec`, Migrations and RecoveryBackups
+all succeed on that revision. Read-only readiness at 23:55 UTC passes basic
+live/readiness probes and backup freshness, but does not accept Batch 6.
+The last all-nine snapshot at 00:10:32.732 UTC has no sampled fault.
+The owned watcher is stopped intentionally at the pause: renew it on resume;
+do not claim continued observation overnight. Redis at 00:07:53.555 UTC has
+269,526 seconds uptime, the same process/run, healthy AOF, zero OOM/eviction/
+rejection and unchanged failed queues (237 scheduled plus one event).
+The removed initial Backend instance still has no verified stop reason.
+
+**Owned order #9 cleanup is complete for payment and stock:** native Admin
+receives/restocks S at 23:55:49.899 UTC, then refunds $2.34 and $5.50.
+Independent Stripe sandbox evidence at 00:00:25.041 UTC confirms all three
+successful refunds total $9.07; Medusa tax/refund evidence and all three durable
+controlled refund notices agree. CD 20, Vinyl 20, M 4, S 3, L 0, XL 2 and
+2XL 1 are restored, with zero reservations. Do not repeat these refunds or
+receipts. The cancelled edit is soft-deleted, with no active pending edit.
+The original $5.50 shipping charge remains in the native order ledger;
+payment refund does not prove zero order total/outstanding accounting.
+The Admin tab is authenticated, open and shows the refunded owned order.
+Its narrow native Summary has a new recorded overflow finding: at a normal
+573-pixel viewport, main scroll width is 600 and the owned long CD SKU overlaps
+the row amount. Keep this open; the earlier drawer matrix does not cover it.
+
+**Local, uncommitted next correction:** RMA confirmation routes/workflows now
+carry an explicit notification preference into four strict after-sales events.
+The new subscriber/template/provider wiring binds each notice to persisted
+confirmed resource/order-change state and a stable durable idempotency key.
+Partial receiving cannot send full-receipt copy, including on a late replay.
+Native claim/return location guidance now uses canonical selected variants,
+complete paginated evidence and every required kit component; loading, stale
+or failed reads remain unavailable. Only the existing reviewed Medusa 2.18.0
+patches and their dependent peer identities change; unrelated third-party-web
+is restored to 0.29.2. Frozen installation, 67 installed native contract cases,
+83 focused subscriber/template/provider tests and both Backend TypeScript
+projects pass. No package version upgrade or external RMA notice is claimed.
+
+Do not commit or push this correction before its remaining gates. Resume with:
+
+1. Recheck Git/provider/browser identity and renew all-nine observation.
+   Preserve the current uncommitted work and unrelated setup files.
+2. Build the current Backend, then run the new real native RMA workflow case
+   and full disposable aggregate. Check actual partial-receipt semantics:
+   the final receipt must become received and emit only the correct notice.
+   Typechecking the case is not an integration pass.
+3. Extend `qa/admin-visual-acceptance.mjs` and
+   `qa/run-admin-accessibility-matrix.mjs` with managed claim/return cases for
+   complete kits, missing component levels and pending/unavailable reads.
+   Repair/retest the recorded native order Summary overflow, then inspect
+   rendered screenshots and the four new email states. Neither the
+   previous 27-case matrix nor prior builds cover this local correction.
+4. Update the email README and dependency audit with the reviewed patch
+   hashes, then complete applicable lint/policy, coverage and build gates.
+   Group logical Conventional Commits into one direct staging push; wait all
+   four exact CI workflows, all-nine rollout and applicable deployed tests.
+5. Continue the remaining paid families, new prepared-notice/bundle-stock
+   live acceptance, owned media lifecycle, guarded search rebuild/parity and
+   executed-control ledger. Keep the scheduler's 24-hour incident latch intact
+   until at least October 7, 14:18:40.644 UTC plus fresh healthy observation.
+
+Private evidence and patch working directories are under
+`artifacts/end-to-end-audit-2026-10-06-resume/`; the earlier October 6 evidence
+directory is unchanged. Read the opening audit for exact receipts and remaining
+limitations. Patch extenders in `helpers/` have already run: do not rerun their
+non-idempotent initial transformations. Reuse/repair the owned patch snapshots.
+There is no new staging push for this pause and no production action.
+
+**Current corrective push — October 6, 23:34 UTC:** direct staging is
+`86c325a3a40679feff1a027a9a8cc1e089bef897`, grouping bundle stock,
+prepared notices and native after-sales controls. Normal hooks and all local
+gates pass. Four exact CI workflows run while all four Railway application/job
+deployments wait; no release acceptance is claimed. All-nine monitoring is
+renewed after a documented 210.417-second observer gap; no sampled fault is
+found. Complete exact CI/deployment and deployed native checks, then continue
+actionable Batch 6 work. Client cloning remains paused.
 
 **Latest continuation — October 6, 23:32 UTC:** exact `3873c85` now runs
 on both applications. Fresh read-only readiness passes all 23 checks, exact

@@ -107,20 +107,24 @@ contracts before applying generic framework examples from those files.
 
 Latest fully accepted hardening batch is Batch 5 at
 `960fe7bbc47b912770c8357c148f5bd6cb75b3f8`. Batch 6's exhaustive audit stays
-open. Security correction `3873c8511e75c21388f250b757fad2f3490fc6b3`
-runs on both applications with all four exact workflows / 23 checks passing.
-Fresh basic/readiness and backup gates pass; all nine services/jobs are watched.
-Preserve failed `1b09546`, observer gaps and the removed Backend instance for
-investigation. Local bundle-stock, prepared-event and native after-sales fixes
-are grouped for the next corrective staging push within Batch 6; follow the
-opening handoff, audit and dependency records for exact verification.
-Owned exchange and CD claim/refund succeed, but order #9's financial/inventory
-cleanup, paid families, owned media, guarded search rebuild and executed-control
-ledger remain open. Native claim stock guidance and RMA notification options
-have separate unresolved findings. The scheduler's 24-hour incident latch stays
-intact until its documented window passes and fresh normal observation succeeds.
-The Admin session is authenticated. Public pages and unpaid carts do not prove
-paid-family acceptance. Pause before Batch 7's client clone; do not create it.
+open and resumed at the user's request on October 7. The earlier 00:11 UTC
+pause is historical; the client clone remains separately paused. Exact `86c325a3a40679feff1a027a9a8cc1e089bef897` runs on both
+applications with all four workflows / 23 checks passing; Migrations and
+RecoveryBackups also succeed. Basic/readiness and backup gates pass. Owned
+order #9's payment is fully refunded and its inventory is restored; native
+shipping accounting still retains its original charge. RMA notifications and
+complete native claim/return stock guidance are local, uncommitted corrections
+with full Backend coverage, native contracts, real RMA/inventory integration
+and email rendering passing. All 40 final Admin cases and both production
+builds pass; exact CI/deployed acceptance remains. Follow the opening handoff before running or committing
+them. The all-nine watcher is renewed; its deliberate overnight observation gap
+is recorded. Redis remains on the same healthy process. Preserve failed `1b09546`, observer gaps and the removed Backend
+instance for investigation. Paid families, owned media, guarded search rebuild,
+prepared-notice/bundle-stock live retests and the executed-control ledger remain
+open. Keep the scheduler incident latch intact through its documented window
+and fresh normal observation. The Admin tab is authenticated and open.
+Public pages and unpaid carts do not prove paid-family acceptance. Pause before
+Batch 7's client clone; do not create it.
 Production approval remains separately in Batch 8. Earlier recovery/support
 limits remain in the carryover register. The snapshots below are historical.
 

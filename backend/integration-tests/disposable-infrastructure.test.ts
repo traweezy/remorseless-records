@@ -5,6 +5,20 @@ import {
   linkSalesChannelsToApiKeyWorkflow,
   refundPaymentsWorkflow,
   updateOrderTaxLinesWorkflow,
+  beginReturnOrderWorkflow,
+  requestItemReturnWorkflow,
+  confirmReturnRequestWorkflow,
+  beginReceiveReturnWorkflow,
+  receiveItemReturnRequestWorkflow,
+  dismissItemReturnRequestWorkflow,
+  confirmReturnReceiveWorkflow,
+  beginClaimOrderWorkflow,
+  orderClaimRequestItemReturnWorkflow,
+  confirmClaimRequestWorkflow,
+  beginExchangeOrderWorkflow,
+  orderExchangeRequestItemReturnWorkflow,
+  orderExchangeAddNewItemWorkflow,
+  confirmExchangeRequestWorkflow,
 } from "@medusajs/core-flows"
 import { loadStoreCatalogPresentations } from "../src/lib/catalog/store-presentation"
 import { loadProductAuthoringView } from "../src/lib/catalog/product-authoring-view"
@@ -20,6 +34,7 @@ import type {
   IPaymentModuleService,
   IEventBusModuleService,
   IOrderModuleService,
+  IInventoryService,
   ITaxModuleService,
   CreateNotificationDTO,
 } from "@medusajs/framework/types"
@@ -68,6 +83,7 @@ import type PaymentLifecycleModuleService from "../src/modules/payment-lifecycle
 import type TaxControlModuleService from "../src/modules/tax-control/service"
 import { buildRefundNotificationPayloads } from "../src/lib/refund-operations/notification"
 import fulfillmentStatusHandler from "../src/subscribers/fulfillment-status"
+import afterSalesStatusHandler from "../src/subscribers/after-sales-status"
 
 const databaseName = "rr_disposable_integration"
 const redisUrl = process.env.REDIS_URL?.trim()
@@ -1154,6 +1170,459 @@ medusaIntegrationTestRunner({
             to_collection_mode: "disabled",
           },
         ])
+      })
+
+      it("binds native RMA confirmation preferences to persisted state before delivery", async () => {
+        const container = getContainer()
+        const inventory = container.resolve<IInventoryService>(
+          Modules.INVENTORY
+        )
+        const orders = container.resolve<IOrderModuleService>(Modules.ORDER)
+        const fulfillments = container.resolve<IFulfillmentModuleService>(
+          Modules.FULFILLMENT
+        )
+        const products = container.resolve<IProductModuleService>(
+          Modules.PRODUCT
+        )
+        const locations = container.resolve<IStockLocationService>(
+          Modules.STOCK_LOCATION
+        )
+        const location = await locations.createStockLocations({
+          name: "After-sales fixture",
+        })
+        const shippingProfile = await fulfillments.createShippingProfiles({
+          name: "After-sales fixture",
+          type: "default",
+        })
+        const set = await fulfillments.createFulfillmentSets({
+          name: "After-sales fixture",
+          type: "shipping",
+          service_zones: [
+            {
+              name: "US",
+              geo_zones: [{ country_code: "us", type: "country" }],
+            },
+          ],
+        })
+        const link = container.resolve(ContainerRegistrationKeys.LINK)
+        await link.create({
+          [Modules.STOCK_LOCATION]: { stock_location_id: location.id },
+          [Modules.FULFILLMENT]: { fulfillment_set_id: set.id },
+        })
+        await link.create({
+          [Modules.STOCK_LOCATION]: { stock_location_id: location.id },
+          [Modules.FULFILLMENT]: {
+            fulfillment_provider_id: "per_item_standard",
+          },
+        })
+        const { result: shippingOptions } = await createShippingOptionsWorkflow(
+          container
+        ).run({
+          input: [
+            {
+              name: "After-sales fixture",
+              price_type: "calculated",
+              provider_id: "per_item_standard",
+              service_zone_id: set.service_zones![0]!.id,
+              shipping_profile_id: shippingProfile.id,
+              type: {
+                label: "Standard",
+                code: "standard",
+                description: "Synthetic delivery",
+              },
+              data: {
+                base_amount: 5,
+                additional_amount: 0.5,
+                currency_code: "usd",
+              },
+            },
+          ],
+        })
+        const product = await products.createProducts({
+          title: "After-sales fixture",
+          status: "published",
+          variants: [{ title: "Synthetic", manage_inventory: true }],
+        })
+        await link.create({
+          [Modules.PRODUCT]: { product_id: product.id },
+          [Modules.FULFILLMENT]: { shipping_profile_id: shippingProfile.id },
+        })
+        const variant = product.variants![0]!
+        const inventoryItem = await inventory.createInventoryItems({
+          title: "After-sales component",
+        })
+        await link.create({
+          [Modules.PRODUCT]: { variant_id: variant.id },
+          [Modules.INVENTORY]: { inventory_item_id: inventoryItem.id },
+          data: { required_quantity: 2 },
+        })
+        const inventoryLevel = await inventory.createInventoryLevels({
+          inventory_item_id: inventoryItem.id,
+          location_id: location.id,
+          stocked_quantity: 40,
+        })
+        const stock = async () =>
+          Number(
+            (await inventory.retrieveInventoryLevel(inventoryLevel.id))
+              .stocked_quantity
+          )
+        const createOrder = async () => {
+          const order = await orders.createOrders({
+            currency_code: "usd",
+            email: "delivered@resend.dev",
+            shipping_address: {
+              address_1: "Synthetic fixture",
+              country_code: "us",
+            },
+            items: [
+              {
+                title: "Synthetic item",
+                variant_id: variant.id,
+                quantity: 2,
+                unit_price: 2.34,
+                requires_shipping: false,
+              },
+            ],
+          })
+          await inventory.createReservationItems({
+            inventory_item_id: inventoryItem.id,
+            location_id: location.id,
+            line_item_id: order.items![0]!.id,
+            quantity: 4,
+          })
+          await createOrderFulfillmentWorkflow(container).run({
+            input: {
+              order_id: order.id,
+              items: [{ id: order.items![0]!.id, quantity: 2 }],
+              location_id: location.id,
+              shipping_option_id: shippingOptions[0]!.id,
+              no_notification: true,
+            },
+          })
+          return order
+        }
+        const events = container.resolve<IEventBusModuleService>(
+          Modules.EVENT_BUS
+        )
+        const captured: { name: string; data: Record<string, unknown> }[] = []
+        const emit = jest
+          .spyOn(events, "emit")
+          .mockImplementation(async (input) => {
+            for (const event of Array.isArray(input) ? input : [input]) {
+              if (
+                [
+                  "order.return_requested",
+                  "order.return_received",
+                  "order.claim_created",
+                  "order.exchange_created",
+                ].includes(event.name)
+              ) {
+                captured.push({
+                  name: event.name,
+                  data: recordFrom(event.data, "Native RMA event"),
+                })
+              }
+            }
+          })
+        const rows = new Map<string, Record<string, unknown>>()
+        const notification = {
+          createNotifications: async (payloads: CreateNotificationDTO[]) => {
+            const created = []
+            for (const payload of payloads) {
+              if (rows.has(payload.idempotency_key!)) continue
+              const row = {
+                ...payload,
+                id: `noti_${rows.size + 1}`,
+                external_id: `email_${rows.size + 1}`,
+                provider_id: "fixture_resend",
+                status: "success",
+                created_at: new Date(),
+              }
+              rows.set(payload.idempotency_key!, row)
+              created.push(row)
+            }
+            return created
+          },
+          listNotifications: async ({
+            idempotency_key,
+          }: {
+            idempotency_key: string[]
+          }) =>
+            idempotency_key.flatMap((key) =>
+              rows.has(key) ? [rows.get(key)!] : []
+            ),
+          retrieveNotification: async (id: string) =>
+            [...rows.values()].find((row) => row.id === id),
+          updateNotifications: async () => null,
+        }
+        const deliver = async (event: (typeof captured)[number]) =>
+          afterSalesStatusHandler({
+            event,
+            container: {
+              resolve: (key: string) =>
+                key === Modules.NOTIFICATION
+                  ? notification
+                  : container.resolve(key),
+            },
+          } as unknown as Parameters<typeof afterSalesStatusHandler>[0])
+        const latest = (name: string) => {
+          const event = captured.at(-1)!
+          expect(event.name).toBe(name)
+          expect(event.data.order_change_id).toMatch(/^ordch_/)
+          expect(event.data.no_notification).toBe(false)
+          return event
+        }
+        const query = container.resolve(ContainerRegistrationKeys.QUERY)
+        const receipt = async (returnId: string) => {
+          const { data } = await query.graph({
+            entity: "return",
+            fields: [
+              "status",
+              "items.received_quantity",
+              "items.damaged_quantity",
+            ],
+            filters: { id: returnId },
+          })
+          expect(data).toHaveLength(1)
+          return data[0]!
+        }
+        try {
+          const order = await createOrder()
+          expect(await stock()).toBe(36)
+          const { result: request } = await beginReturnOrderWorkflow(
+            container
+          ).run({
+            input: { order_id: order.id, location_id: location.id },
+          })
+          const returnId = request.return_id!
+          await requestItemReturnWorkflow(container).run({
+            input: {
+              return_id: returnId,
+              items: [{ id: order.items![0]!.id, quantity: 2 }],
+            },
+          })
+          await confirmReturnRequestWorkflow(container).run({
+            input: { return_id: returnId, no_notification: false },
+          })
+          const requested = latest("order.return_requested")
+          expect(requested.data.order_change_id).toBe(request.id)
+          await deliver(requested)
+          await deliver(requested)
+          expect(rows.size).toBe(1)
+
+          await beginReceiveReturnWorkflow(container).run({
+            input: { return_id: returnId },
+          })
+          await receiveItemReturnRequestWorkflow(container).run({
+            input: {
+              return_id: returnId,
+              items: [{ id: order.items![0]!.id, quantity: 1 }],
+            },
+          })
+          await confirmReturnReceiveWorkflow(container).run({
+            input: { return_id: returnId, no_notification: false },
+          })
+          const partial = latest("order.return_received")
+          expect(partial.data.return_status).toBe("partially_received")
+          expect(await receipt(returnId)).toMatchObject({
+            status: "partially_received",
+            items: [{ received_quantity: 1, damaged_quantity: 0 }],
+          })
+          expect(await stock()).toBe(38)
+          await deliver(partial)
+          expect(rows.size).toBe(1)
+
+          await beginReceiveReturnWorkflow(container).run({
+            input: { return_id: returnId },
+          })
+          await receiveItemReturnRequestWorkflow(container).run({
+            input: {
+              return_id: returnId,
+              items: [{ id: order.items![0]!.id, quantity: 1 }],
+            },
+          })
+          await confirmReturnReceiveWorkflow(container).run({
+            input: { return_id: returnId, no_notification: false },
+          })
+          const received = latest("order.return_received")
+          expect(received.data.return_status).toBe("received")
+          expect(await receipt(returnId)).toMatchObject({
+            status: "received",
+            items: [{ received_quantity: 2, damaged_quantity: 0 }],
+          })
+          expect(await stock()).toBe(40)
+          await deliver(received)
+          await deliver(received)
+          expect(rows.size).toBe(2)
+
+          for (const preference of [true, undefined]) {
+            const quietOrder = await createOrder()
+            const { result } = await beginReturnOrderWorkflow(container).run({
+              input: { order_id: quietOrder.id, location_id: location.id },
+            })
+            await requestItemReturnWorkflow(container).run({
+              input: {
+                return_id: result.return_id!,
+                items: [{ id: quietOrder.items![0]!.id, quantity: 1 }],
+              },
+            })
+            await confirmReturnRequestWorkflow(container).run({
+              input: {
+                return_id: result.return_id!,
+                ...(preference === undefined
+                  ? {}
+                  : { no_notification: preference }),
+              },
+            })
+            const event = captured.at(-1)!
+            expect(event.name).toBe("order.return_requested")
+            expect(event.data.no_notification).toBe(true)
+            await deliver(event)
+            expect(rows.size).toBe(2)
+          }
+
+          const claimedOrder = await createOrder()
+          const { result: claim } = await beginClaimOrderWorkflow(
+            container
+          ).run({ input: { order_id: claimedOrder.id, type: "refund" } })
+          const { data: nativeClaims } = await query.graph({
+            entity: "order_claim",
+            fields: ["id", "return_id"],
+            filters: { id: claim.claim_id! },
+          })
+          expect(nativeClaims).toHaveLength(1)
+          await orderClaimRequestItemReturnWorkflow(container).run({
+            input: {
+              claim_id: claim.claim_id!,
+              return_id: nativeClaims[0]!.return_id,
+              items: [{ id: claimedOrder.items![0]!.id, quantity: 1 }],
+              location_id: location.id,
+            },
+          })
+          await confirmClaimRequestWorkflow(container).run({
+            input: { claim_id: claim.claim_id!, no_notification: false },
+          })
+          const claimEvent = latest("order.claim_created")
+          await deliver(claimEvent)
+          await deliver(claimEvent)
+          expect(rows.size).toBe(3)
+
+          const exchangedOrder = await createOrder()
+          const { result: exchange } = await beginExchangeOrderWorkflow(
+            container
+          ).run({ input: { order_id: exchangedOrder.id } })
+          const { data: nativeExchanges } = await query.graph({
+            entity: "order_exchange",
+            fields: ["id", "return_id"],
+            filters: { id: exchange.exchange_id! },
+          })
+          expect(nativeExchanges).toHaveLength(1)
+          await orderExchangeRequestItemReturnWorkflow(container).run({
+            input: {
+              exchange_id: exchange.exchange_id!,
+              return_id: nativeExchanges[0]!.return_id,
+              items: [{ id: exchangedOrder.items![0]!.id, quantity: 1 }],
+              location_id: location.id,
+            },
+          })
+          await orderExchangeAddNewItemWorkflow(container).run({
+            input: {
+              exchange_id: exchange.exchange_id!,
+              items: [
+                { variant_id: variant.id, quantity: 1, unit_price: 2.34 },
+              ],
+            },
+          })
+          await confirmExchangeRequestWorkflow(container).run({
+            input: {
+              exchange_id: exchange.exchange_id!,
+              no_notification: false,
+            },
+          })
+          const exchangeEvent = latest("order.exchange_created")
+          await deliver(exchangeEvent)
+          await deliver(exchangeEvent)
+          expect(rows.size).toBe(4)
+          const damagedOrder = await createOrder()
+          const damagedStock = await stock()
+          const { result: damagedRequest } = await beginReturnOrderWorkflow(
+            container
+          ).run({
+            input: { order_id: damagedOrder.id, location_id: location.id },
+          })
+          const damagedReturnId = damagedRequest.return_id!
+          await requestItemReturnWorkflow(container).run({
+            input: {
+              return_id: damagedReturnId,
+              items: [{ id: damagedOrder.items![0]!.id, quantity: 2 }],
+            },
+          })
+          await confirmReturnRequestWorkflow(container).run({
+            input: { return_id: damagedReturnId, no_notification: true },
+          })
+          await beginReceiveReturnWorkflow(container).run({
+            input: { return_id: damagedReturnId },
+          })
+          await dismissItemReturnRequestWorkflow(container).run({
+            input: {
+              return_id: damagedReturnId,
+              items: [{ id: damagedOrder.items![0]!.id, quantity: 1 }],
+            },
+          })
+          await confirmReturnReceiveWorkflow(container).run({
+            input: { return_id: damagedReturnId, no_notification: false },
+          })
+          const damagedPartial = latest("order.return_received")
+          await deliver(damagedPartial)
+          expect(rows.size).toBe(4)
+          expect(await receipt(damagedReturnId)).toMatchObject({
+            status: "partially_received",
+            items: [{ received_quantity: 1, damaged_quantity: 1 }],
+          })
+          expect(await stock()).toBe(damagedStock)
+          await beginReceiveReturnWorkflow(container).run({
+            input: { return_id: damagedReturnId },
+          })
+          await receiveItemReturnRequestWorkflow(container).run({
+            input: {
+              return_id: damagedReturnId,
+              items: [{ id: damagedOrder.items![0]!.id, quantity: 1 }],
+            },
+          })
+          await confirmReturnReceiveWorkflow(container).run({
+            input: { return_id: damagedReturnId, no_notification: false },
+          })
+          const damagedReceived = latest("order.return_received")
+          await deliver(damagedReceived)
+          await deliver(damagedReceived)
+          // A late partial replay still cannot send full-receipt copy.
+          await deliver(damagedPartial)
+          expect(rows.size).toBe(5)
+          expect(await receipt(damagedReturnId)).toMatchObject({
+            status: "received",
+            items: [{ received_quantity: 2, damaged_quantity: 1 }],
+          })
+          expect(await stock()).toBe(damagedStock + 2)
+          for (const row of rows.values()) {
+            expect(row.template).toBe("after-sales-status")
+            expect(row.to).toBe("delivered@resend.dev")
+          }
+          const { data: changes } = await query.graph({
+            entity: "order_change",
+            fields: ["id", "status", "confirmed_at"],
+            filters: {
+              id: captured.map((event) => event.data.order_change_id),
+            },
+          })
+          expect(changes).toHaveLength(captured.length)
+          expect(
+            changes.every(
+              (change) => change.status === "confirmed" && change.confirmed_at
+            )
+          ).toBe(true)
+        } finally {
+          emit.mockRestore()
+        }
       })
 
       it("resolves the native fulfillment/order link before stage notification and replay", async () => {

@@ -27,7 +27,7 @@ const sharedContracts = Object.freeze({
   "qa:storefront-provider-fixture":
     "node --test storefront/scripts/ci-medusa-fixture.test.mjs",
   "qa:dashboard-form-validation":
-    "node --test scripts/verify-dashboard-form-validation.test.mjs",
+    "node --test scripts/verify-dashboard-form-validation.test.mjs scripts/native-rma-notification-contract.test.mjs scripts/native-return-inventory-contract.test.mjs",
   "qa:dashboard-product-create":
     "node scripts/verify-dashboard-product-create-boundary.mjs",
   "qa:workflow-scheduler-timestamps":

@@ -1636,3 +1636,35 @@ Drawer and FocusModal close buttons receive accessible names. The plugin ships
 these implementations in CJS/ESM Admin bundles, not separate TypeScript source;
 patch both published entry points and preserve its MIT license. All four
 changes preserve registry versions and the reviewed dependency boundaries.
+
+### October 7 native after-sales and Admin audit corrections
+
+The exhaustive Batch 6 audit extends four existing MIT patches at their
+unchanged reviewed versions. No new registry version, licensing change or
+cooling exception is introduced. Preserve isolated Admin React 18, native
+Medusa RBAC, inventory/payment authority and all earlier patch behavior.
+
+| Package | Reviewed patch SHA-256 | Change |
+| --- | --- | --- |
+| `@medusajs/core-flows` 2.18.0 | `dc6a211ee3b2eb35e480a415af4a3ad9953a05ab3b5d1291920dc87aad505def` | Four native RMA confirmation events carry explicit notification preference and confirmed change identity. Receiving binds the confirmed return status and preserves cumulative received/damaged quantities; inventory adjustment stays this batch's usable-unit delta. |
+| `@medusajs/medusa` 2.18.0 | `7d3d96e7210456a7757b91b0d979a8ed1925be7288d38f4d22765b2aaa520657` | Native return/claim/exchange confirmation validates the checkbox and forwards it with the native actor; missing preference stays opt-out and RBAC is retained. |
+| `@medusajs/dashboard` 2.18.0 | `a96cc608eac6f4da1cbd33ad802c4e0f307ae5ff7a753a67ddce4096413bd225` | Claim/return guidance uses complete canonical selected variants and all kit components, distinguishes pending/unavailable evidence, and matches lazy/main entry points. Long-SKU Summary rows wrap; shipping/metadata/JSON controls have names, and guest orders have no null customer link. |
+| `@medusajs/ui` 4.2.0 | `3d12857632962b173c65266a16d349f7cd1526544d801d1b9fef7d2fe366294e` | CJS/ESM alert dismiss controls have a name and 24-pixel target; copy controls have a 24-pixel target. Existing modal/form patch behavior is retained. |
+
+The reproduced native receipt failure and five actual installed-transform
+regressions distinguish cumulative persistence from inventory deltas. The
+complete disposable aggregate passes with real native workflows, Graph/module
+state, managed stock and damaged receipts; the notification boundary alone is
+stubbed to avoid provider sends. Installed native contracts pass 72 cases.
+Backend coverage and eight independently checked email renders pass. The
+expanded Admin matrix retains its initial failures and now passes all 40
+cases. Both production builds and full lint/policy/type gates pass. Exact
+staging CI/deployment evidence belongs to the current handoff and audit and
+must not be inferred from these local contracts.
+
+`pnpm patch-commit` again proposed unrelated third-party-web drift. Restore
+the reviewed original graph before frozen installation. The final lock change
+is confined to these four patch hashes and dependent Medusa/draft-order/
+test-utils peer identities; package versions, integrity records, policies and
+all other patches remain unchanged. Re-review/remove these compatibility
+patches during the coordinated Medusa upgrade rather than carrying them blind.

@@ -68,6 +68,54 @@ const fixture = () => {
 }
 
 describe("Resend notification provider", () => {
+  it.each([
+    "return-requested",
+    "return-received",
+    "claim-confirmed",
+    "exchange-confirmed",
+  ])(
+    "delivers the minimal %s notice through the guarded provider",
+    async (status) => {
+      const input = fixture()
+      const notification = refundNotification({
+        template: "after-sales-status",
+        data: {
+          orderDisplayId: 42,
+          status,
+          emailOptions: { subject: "After-sales update" },
+        },
+        provider_data: {
+          idempotency_key: `after-sales-status:return_01:${status}`,
+        },
+      })
+      await expect(input.provider.send(notification)).resolves.toEqual({
+        id: "email_01",
+      })
+      expect(input.send).toHaveBeenCalledWith(
+        expect.objectContaining({
+          to: "customer@example.com",
+          subject: "After-sales update",
+          from: "store@example.com",
+        }),
+        expect.objectContaining({
+          idempotencyKey: `after-sales-status:return_01:${status}`,
+          signal: expect.any(AbortSignal),
+        })
+      )
+      input.send.mockClear()
+      await expect(
+        input.provider.send({ ...notification, provider_data: null })
+      ).rejects.toThrow("requires provider idempotency")
+      await expect(
+        input.provider.send({
+          ...notification,
+          data: { ...notification.data, refund_amount: 99 },
+        })
+      ).rejects.toThrow("Invalid data")
+      expect(input.send).not.toHaveBeenCalled()
+    }
+  )
+
   it("carries sensitive-email idempotency through the provider deadline", async () => {
     const input = fixture()
 

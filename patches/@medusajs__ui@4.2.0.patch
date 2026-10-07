@@ -11,6 +11,46 @@ index ad1ab13fca64a5c5872dffe7768ffbddaf7f6dc3..23e448e666e4d16f2debf799dc8d7c61
  };
  exports.DataTableSearch = DataTableSearch;
  DataTableSearch.displayName = "DataTable.Search";
+diff --git a/dist/cjs/components/alert/alert.js b/dist/cjs/components/alert/alert.js
+index 190a2bb867bad70a1150369b467f0e8c5f663499..c13d34d628c8ef3c858926ff83a1a1b7f4cb910a 100644
+--- a/dist/cjs/components/alert/alert.js
++++ b/dist/cjs/components/alert/alert.js
+@@ -36,8 +36,8 @@ dismissible = false, className, children, ...props }, ref) => {
+     }
+     return (React.createElement("div", { ref: ref, className: (0, clx_1.clx)("bg-ui-bg-subtle txt-compact-small grid items-start gap-x-2 text-pretty rounded-lg border p-3", {
+             "grid-cols-[20px_1fr]": !dismissible,
+-            "grid-cols-[20px_1fr_20px]": dismissible,
+-        }, className), ...props },
++            "grid-cols-[20px_1fr_24px]": dismissible,
++        }, className), style: dismissible ? { gridTemplateColumns: "20px 1fr 24px" } : undefined, ...props },
+         React.createElement(Icon, { className: (0, clx_1.clx)({
+                 "text-ui-tag-red-icon": variant === "error",
+                 "text-ui-tag-green-icon": variant === "success",
+@@ -45,7 +45,6 @@ dismissible = false, className, children, ...props }, ref) => {
+                 "text-ui-tag-neutral-icon": variant === "info",
+             }) }),
+         React.createElement("div", { className: "w-full" }, children),
+-        dismissible && (React.createElement(icon_button_1.IconButton, { size: "2xsmall", variant: "transparent", type: "button", onClick: handleDismiss },
++        dismissible && (React.createElement(icon_button_1.IconButton, { size: "xsmall", variant: "transparent", type: "button", "aria-label": "Dismiss alert", onClick: handleDismiss },
+             React.createElement(icons_1.XMarkMini, { className: "text-ui-fg-muted" })))));
+ });
+-//# sourceMappingURL=alert.js.map
+\ No newline at end of file
+diff --git a/dist/cjs/components/copy/copy.js b/dist/cjs/components/copy/copy.js
+index 328f797716b8a4a748c54e0e4d6ee285c2cc5c6b..cfa693aaed39d323c13a433e7abf6dfcca1e17b9 100644
+--- a/dist/cjs/components/copy/copy.js
++++ b/dist/cjs/components/copy/copy.js
+@@ -52,8 +52,7 @@ asChild = false, ...props }, ref) => {
+     const isDefault = isDefaultVariant(variant);
+     const Component = asChild ? radix_ui_1.Slot.Root : "button";
+     return (react_1.default.createElement(tooltip_1.Tooltip, { content: text, open: done || open, onOpenChange: setOpen },
+-        react_1.default.createElement(Component, { ref: ref, "aria-label": "Copy code snippet", type: "button", className: (0, clx_1.clx)("h-fit w-fit", className), onClick: copyToClipboard, ...props }, children ? (children) : done ? (isDefault ? (react_1.default.createElement(icons_1.CheckCircleSolid, { className: "text-ui-fg-subtle" })) : (react_1.default.createElement(icons_1.CheckCircleMiniSolid, { className: "text-ui-fg-subtle" }))) : isDefault ? (react_1.default.createElement(icons_1.SquareTwoStack, { className: "text-ui-fg-subtle" })) : (react_1.default.createElement(icons_1.SquareTwoStackMini, { className: "text-ui-fg-subtle" })))));
++        react_1.default.createElement(Component, { ref: ref, "aria-label": "Copy code snippet", type: "button", className: (0, clx_1.clx)("inline-flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center", className), onClick: copyToClipboard, ...props }, children ? (children) : done ? (isDefault ? (react_1.default.createElement(icons_1.CheckCircleSolid, { className: "text-ui-fg-subtle" })) : (react_1.default.createElement(icons_1.CheckCircleMiniSolid, { className: "text-ui-fg-subtle" }))) : isDefault ? (react_1.default.createElement(icons_1.SquareTwoStack, { className: "text-ui-fg-subtle" })) : (react_1.default.createElement(icons_1.SquareTwoStackMini, { className: "text-ui-fg-subtle" })))));
+ });
+ exports.Copy = Copy;
+ Copy.displayName = "Copy";
+-//# sourceMappingURL=copy.js.map
+\ No newline at end of file
 diff --git a/dist/cjs/components/drawer/drawer.js b/dist/cjs/components/drawer/drawer.js
 index 6ea1f86918580489c889f10ec09dd47d7cf20749..60e544736afd1d57c6a044d40028657e204bf574 100644
 --- a/dist/cjs/components/drawer/drawer.js
@@ -63,6 +103,46 @@ index 0cd5c7c17497fa5ce8dcce28c7b2a8016870acf4..2b397fc5085b128ef2674e62e48fdf9a
  };
  DataTableSearch.displayName = "DataTable.Search";
  const DataTableSearchSkeleton = () => {
+diff --git a/dist/esm/components/alert/alert.js b/dist/esm/components/alert/alert.js
+index 86328c7f002f111ef7ca67ca6fa1d53e5fa98bcc..316914f6a91fd7a51ea3f5d3b47b9a771c769519 100644
+--- a/dist/esm/components/alert/alert.js
++++ b/dist/esm/components/alert/alert.js
+@@ -32,8 +32,8 @@ dismissible = false, className, children, ...props }, ref) => {
+     }
+     return (React.createElement("div", { ref: ref, className: clx("bg-ui-bg-subtle txt-compact-small grid items-start gap-x-2 text-pretty rounded-lg border p-3", {
+             "grid-cols-[20px_1fr]": !dismissible,
+-            "grid-cols-[20px_1fr_20px]": dismissible,
+-        }, className), ...props },
++            "grid-cols-[20px_1fr_24px]": dismissible,
++        }, className), style: dismissible ? { gridTemplateColumns: "20px 1fr 24px" } : undefined, ...props },
+         React.createElement(Icon, { className: clx({
+                 "text-ui-tag-red-icon": variant === "error",
+                 "text-ui-tag-green-icon": variant === "success",
+@@ -41,7 +41,6 @@ dismissible = false, className, children, ...props }, ref) => {
+                 "text-ui-tag-neutral-icon": variant === "info",
+             }) }),
+         React.createElement("div", { className: "w-full" }, children),
+-        dismissible && (React.createElement(IconButton, { size: "2xsmall", variant: "transparent", type: "button", onClick: handleDismiss },
++        dismissible && (React.createElement(IconButton, { size: "xsmall", variant: "transparent", type: "button", "aria-label": "Dismiss alert", onClick: handleDismiss },
+             React.createElement(XMarkMini, { className: "text-ui-fg-muted" })))));
+ });
+-//# sourceMappingURL=alert.js.map
+\ No newline at end of file
+diff --git a/dist/esm/components/copy/copy.js b/dist/esm/components/copy/copy.js
+index be6970c6196a6f1515acc1b048c7b6ea186ccc39..c1aeabc7c4aad0db2be5473b458d69bf051c48e5 100644
+--- a/dist/esm/components/copy/copy.js
++++ b/dist/esm/components/copy/copy.js
+@@ -48,8 +48,7 @@ asChild = false, ...props }, ref) => {
+     const isDefault = isDefaultVariant(variant);
+     const Component = asChild ? Slot.Root : "button";
+     return (React.createElement(Tooltip, { content: text, open: done || open, onOpenChange: setOpen },
+-        React.createElement(Component, { ref: ref, "aria-label": "Copy code snippet", type: "button", className: clx("h-fit w-fit", className), onClick: copyToClipboard, ...props }, children ? (children) : done ? (isDefault ? (React.createElement(CheckCircleSolid, { className: "text-ui-fg-subtle" })) : (React.createElement(CheckCircleMiniSolid, { className: "text-ui-fg-subtle" }))) : isDefault ? (React.createElement(SquareTwoStack, { className: "text-ui-fg-subtle" })) : (React.createElement(SquareTwoStackMini, { className: "text-ui-fg-subtle" })))));
++        React.createElement(Component, { ref: ref, "aria-label": "Copy code snippet", type: "button", className: clx("inline-flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center", className), onClick: copyToClipboard, ...props }, children ? (children) : done ? (isDefault ? (React.createElement(CheckCircleSolid, { className: "text-ui-fg-subtle" })) : (React.createElement(CheckCircleMiniSolid, { className: "text-ui-fg-subtle" }))) : isDefault ? (React.createElement(SquareTwoStack, { className: "text-ui-fg-subtle" })) : (React.createElement(SquareTwoStackMini, { className: "text-ui-fg-subtle" })))));
+ });
+ Copy.displayName = "Copy";
+ export { Copy };
+-//# sourceMappingURL=copy.js.map
+\ No newline at end of file
 diff --git a/dist/esm/components/drawer/drawer.js b/dist/esm/components/drawer/drawer.js
 index edf9dcae3b155e30d720f22046fa22e6ff339f3d..d6afc2d241e207a8cc833aede808ed7e62212de4 100644
 --- a/dist/esm/components/drawer/drawer.js
