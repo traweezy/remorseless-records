@@ -71,11 +71,17 @@ const normalizeForCwd = (targetPath) => {
 const forwardedArgs = buildForwardedArgs(rawScriptArgs)
 const result = spawnSync(
   process.execPath,
-  [cliPath, "exec", normalizeForCwd(scriptPath), ...forwardedArgs],
+  [
+    path.join(__dirname, "run-medusa-exec.js"),
+    cliPath,
+    normalizeForCwd(scriptPath),
+    ...forwardedArgs,
+  ],
   {
     stdio: "inherit",
     cwd: hasServerRoot ? serverRoot : root,
     env: process.env,
+    shell: false,
   }
 )
 
