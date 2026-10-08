@@ -240,6 +240,13 @@ const adminCatalogMediaReadRateLimit = createRateLimitMiddleware({
   onUnavailable: "local-fallback",
 })
 
+const adminFailedCreationRepairRateLimit = createRateLimitMiddleware({
+  key: "admin:failed-creation-repair",
+  max: 10,
+  windowMs: 60_000,
+  onUnavailable: "reject",
+})
+
 const rejectPresignedUploads = (
   req: MedusaRequest,
   res: MedusaResponse
@@ -333,6 +340,20 @@ export const operationsAdminMiddlewareRoutes = [
       /^\/admin\/catalog\/media\/assets\/[^/]+\/(quarantine|restore)\/?$/i,
     methods: ["POST"],
     middlewares: [adminCatalogMediaMutationRateLimit],
+  },
+] satisfies MiddlewareRoute[]
+
+export const failedCreationRepairAdminMiddlewareRoutes = [
+  {
+    matcher: /^\/admin\/catalog\/failed-creations\/[^/]+\/?$/i,
+    methods: ["GET"],
+    middlewares: [adminCatalogMediaReadRateLimit],
+  },
+  {
+    matcher: /^\/admin\/catalog\/failed-creations\/[^/]+\/?$/i,
+    methods: ["POST"],
+    middlewares: [adminFailedCreationRepairRateLimit],
+    bodyParser: { sizeLimit: "4kb" },
   },
 ] satisfies MiddlewareRoute[]
 
@@ -512,6 +533,7 @@ export default defineMiddlewares({
     ...nativeAdminPolicyOverlayRoutes,
     ...disabledNativeCatalogDeletionAdminRoutes,
     ...operationsAdminMiddlewareRoutes,
+    ...failedCreationRepairAdminMiddlewareRoutes,
     ...deprecatedProductImportAdminRoutes,
     {
       matcher: "/admin/catalog/media/uploads",

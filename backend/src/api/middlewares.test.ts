@@ -21,6 +21,7 @@ import middlewares, {
   applySecurityBoundaryHeaders,
   createRateLimitMiddleware,
   disabledNativeCatalogDeletionAdminRoutes,
+  failedCreationRepairAdminMiddlewareRoutes,
   nativeAdminPolicyOverlayRoutes,
   operationsAdminMiddlewareRoutes,
   operationsAdminPolicyRoutes,
@@ -65,6 +66,50 @@ type PinnedRouteSorter = new (
 ) => {
   sort: () => PinnedSortableRoute[]
 }
+
+describe("failed-creation repair operational middleware", () => {
+  it("bounds exact preview/apply routes separately from native policy authorization", () => {
+    expect(failedCreationRepairAdminMiddlewareRoutes).toHaveLength(2)
+    for (const method of ["GET", "POST"])
+      for (const path of [
+        "/admin/catalog/failed-creations/catop_owned",
+        "/ADMIN/CATALOG/FAILED-CREATIONS/catop_owned/",
+      ]) {
+        const matched = failedCreationRepairAdminMiddlewareRoutes.filter(
+          (route) => routeMatches(route, method, path)
+        )
+        expect(matched).toHaveLength(1)
+        expect(matched[0]?.middlewares).toHaveLength(1)
+        expect((matched[0] as MiddlewareRoute).policies).toBeUndefined()
+        expect((matched[0] as MiddlewareRoute).bodyParser).toEqual(
+          method === "POST" ? { sizeLimit: "4kb" } : undefined
+        )
+      }
+    for (const path of [
+      "/admin/catalog/failed-creations/",
+      "/admin/catalog/failed-creations/catop_owned/extra",
+      "/admin/catalog/failed-creations/catop_owned-repair/extra",
+    ])
+      expect(
+        failedCreationRepairAdminMiddlewareRoutes.some((route) =>
+          routeMatches(route, "POST", path)
+        )
+      ).toBe(false)
+    expect(
+      policyFor(
+        adminAuthorizationPolicyRoutes,
+        "POST",
+        "/admin/catalog/failed-creations/catop_owned"
+      )
+    ).toEqual([
+      { resource: "catalog_authoring", operation: "read" },
+      { resource: "catalog_authoring", operation: "update" },
+      { resource: "catalog_authoring", operation: "delete" },
+      { resource: "product", operation: "read" },
+      { resource: "product_variant", operation: "read" },
+    ])
+  })
+})
 
 describe("content Admin RBAC middleware", () => {
   it.each([

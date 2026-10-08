@@ -39,6 +39,49 @@ const resolveScriptPath = (input) => {
   return fs.existsSync(builtCandidate) ? builtCandidate : resolved
 }
 
+const scriptIdentities = (input) => {
+  const resolved = path.resolve(input)
+  try {
+    return [resolved, fs.realpathSync(resolved)]
+  } catch (error) {
+    if (error.code === "ENOENT" || error.code === "ENOTDIR") {
+      return [resolved]
+    }
+    throw error
+  }
+}
+
+const wrapperRoot = path.resolve(__dirname, "..")
+const backendRoot =
+  path.basename(wrapperRoot) === "server" &&
+  path.basename(path.dirname(wrapperRoot)) === ".medusa"
+    ? path.resolve(wrapperRoot, "..", "..")
+    : wrapperRoot
+const repairPaths = [backendRoot, path.join(backendRoot, ".medusa", "server")]
+  .flatMap((directory) =>
+    ["ts", "js"].map((extension) =>
+      path.join(
+        directory,
+        "src",
+        "scripts",
+        `repair-failed-catalog-creation.${extension}`
+      )
+    )
+  )
+  .flatMap(scriptIdentities)
+const disabledRepairPaths = new Set(repairPaths)
+const scriptPath = resolveScriptPath(rawScript)
+if (
+  [rawScript, scriptPath]
+    .flatMap(scriptIdentities)
+    .some((identity) => disabledRepairPaths.has(identity))
+) {
+  console.error(
+    "Failed-creation repair must use the initialized native Admin operation; full application bootstrap is disabled for this script."
+  )
+  process.exit(1)
+}
+
 const root = process.cwd()
 const serverRoot = path.join(root, ".medusa", "server")
 const hasServerRoot = fs.existsSync(serverRoot)
@@ -54,7 +97,6 @@ if (!cliPath) {
   process.exit(1)
 }
 
-const scriptPath = resolveScriptPath(rawScript)
 if (!fs.existsSync(scriptPath)) {
   console.error(`Script not found at ${scriptPath}`)
   process.exit(1)

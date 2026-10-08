@@ -94,6 +94,7 @@ import { installDisposableStripeTransport } from "./helpers/native-artwork-check
 import { registerNativeCatalogBatchHttpTests } from "./helpers/native-catalog-batch-http"
 import { registerNativeArtworkImportIntegration } from "./helpers/native-artwork-import"
 import { registerCatalogSharedMediaIntegration } from "./helpers/catalog-shared-media"
+import { registerFailedCreationRepairHttpTests } from "./helpers/failed-creation-repair-http"
 import { catalogProductCreateSchema } from "../src/lib/catalog/product-create-contract"
 import {
   inspectFailedCatalogCreation,
@@ -459,6 +460,7 @@ medusaIntegrationTestRunner({
     describe("disposable PostgreSQL and Redis integration", () => {
       registerNativeCatalogBatchHttpTests(api, getContainer)
       registerNativeArtworkImportIntegration(getContainer)
+      registerFailedCreationRepairHttpTests(api, failedCreationFixture)
       registerCatalogSharedMediaIntegration(
         getContainer,
         catalogCreationFixture

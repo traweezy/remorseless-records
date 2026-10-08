@@ -1907,6 +1907,116 @@
         ]
       }
     },
+    "/admin/catalog/failed-creations/{creation_operation_id}": {
+      "get": {
+        "operationId": "backend_get_admin_catalog_failed_creations_by_creation_operation_id",
+        "summary": "GET /admin/catalog/failed-creations/{creation_operation_id}",
+        "tags": [
+          "backend custom routes"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "creation_operation_id",
+            "required": true,
+            "schema": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "native-medusa-error",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "backend/src/api/admin/catalog/failed-creations/[creation_operation_id]/route.ts"
+        ],
+        "x-services": [
+          "backend"
+        ]
+      },
+      "post": {
+        "operationId": "backend_post_admin_catalog_failed_creations_by_creation_operation_id",
+        "summary": "POST /admin/catalog/failed-creations/{creation_operation_id}",
+        "tags": [
+          "backend custom routes"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "creation_operation_id",
+            "required": true,
+            "schema": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "native-medusa-error",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "backend/src/api/admin/catalog/failed-creations/[creation_operation_id]/route.ts"
+        ],
+        "x-services": [
+          "backend"
+        ]
+      }
+    },
     "/admin/catalog/media/assets/{id}": {
       "get": {
         "operationId": "backend_get_admin_catalog_media_assets_by_id",
@@ -6067,12 +6177,12 @@
     }
   },
   "x-inventory": {
-    "routeFileCount": 97,
+    "routeFileCount": 98,
     "routeFileCounts": {
-      "backend": 65,
+      "backend": 66,
       "storefront": 32
     },
-    "routeOperationCount": 124,
-    "uniqueOperationCount": 122
+    "routeOperationCount": 126,
+    "uniqueOperationCount": 124
   }
 }

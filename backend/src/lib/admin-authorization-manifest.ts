@@ -125,6 +125,24 @@ export const adminAuthorizationManifest = [
   authorize("catalog", "GET", "/admin/catalog/bundles", authoring.read),
   authorize(
     "catalog",
+    "GET",
+    "/admin/catalog/failed-creations/:creation_operation_id",
+    authoring.read,
+    nativeAdminActions.product.read,
+    nativeAdminActions.productVariant.read
+  ),
+  authorize(
+    "catalog",
+    "POST",
+    "/admin/catalog/failed-creations/:creation_operation_id",
+    authoring.read,
+    authoring.update,
+    authoring.delete,
+    nativeAdminActions.product.read,
+    nativeAdminActions.productVariant.read
+  ),
+  authorize(
+    "catalog",
     "POST",
     "/admin/catalog/bundles",
     authoring.create,

@@ -135,6 +135,11 @@ const catalogExpectedPolicies: Record<string, string[]> = {
     "product:read",
   ],
   "GET /admin/catalog/bundles": ["catalog_authoring:read"],
+  "GET /admin/catalog/failed-creations/:creation_operation_id": [
+    "catalog_authoring:read",
+    "product:read",
+    "product_variant:read",
+  ],
   "GET /admin/catalog/media/assets/:id": ["media_cleanup:read"],
   "GET /admin/catalog/media/orphans": ["media_cleanup:read"],
   "GET /admin/catalog/products/:product_id/authoring-view": [
@@ -177,6 +182,13 @@ const catalogExpectedPolicies: Record<string, string[]> = {
     "product_variant:read",
   ],
   "POST /admin/catalog/artists": ["catalog_taxonomy:create"],
+  "POST /admin/catalog/failed-creations/:creation_operation_id": [
+    "catalog_authoring:read",
+    "catalog_authoring:update",
+    "catalog_authoring:delete",
+    "product:read",
+    "product_variant:read",
+  ],
   "POST /admin/catalog/bundles": [
     "catalog_authoring:create",
     "catalog_authoring:update",

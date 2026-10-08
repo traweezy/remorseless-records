@@ -35,7 +35,7 @@ test("inventories every custom route with complete error references", async () =
   const inventory = await inventoryRoutes(REPOSITORY_ROOT)
   assert.equal(
     inventory.filter((entry) => entry.service === "backend").length,
-    65
+    66
   )
   assert.equal(
     inventory.filter((entry) => entry.service === "storefront").length,
@@ -45,11 +45,53 @@ test("inventories every custom route with complete error references", async () =
 
   const contract = buildContract(inventory)
   assert.equal(contract.openapi, "3.1.0")
-  assert.equal(contract["x-inventory"].routeFileCount, 97)
-  assert.equal(contract["x-inventory"].routeOperationCount, 124)
-  assert.equal(contract["x-inventory"].uniqueOperationCount, 122)
+  assert.equal(contract["x-inventory"].routeFileCount, 98)
+  assert.equal(contract["x-inventory"].routeOperationCount, 126)
+  assert.equal(contract["x-inventory"].uniqueOperationCount, 124)
+  assert.deepEqual(contract["x-inventory"].routeFileCounts, {
+    backend: 66,
+    storefront: 32,
+  })
 
   assert.ok(contract.paths["/store/catalog/presentation"]?.get)
+
+  const repairPath = "/admin/catalog/failed-creations/{creation_operation_id}"
+  const repairSource =
+    "backend/src/api/admin/catalog/failed-creations/[creation_operation_id]/route.ts"
+  assert.deepEqual(
+    inventory.find((entry) => entry.sourcePath === repairSource),
+    {
+      errorEnvelope: "native-medusa-error",
+      methods: ["GET", "POST"],
+      providerBoundary: "not-applicable",
+      routePath: repairPath,
+      service: "backend",
+      sourcePath: repairSource,
+    }
+  )
+  assert.deepEqual(Object.keys(contract.paths[repairPath]), ["get", "post"])
+  for (const method of ["get", "post"]) {
+    const operation = contract.paths[repairPath][method]
+    assert.equal(
+      operation.operationId,
+      `backend_${method}_admin_catalog_failed_creations_by_creation_operation_id`
+    )
+    assert.deepEqual(operation["x-route-files"], [repairSource])
+    assert.deepEqual(operation["x-services"], ["backend"])
+    assert.deepEqual(operation["x-error-contract"], {
+      envelope: "native-medusa-error",
+      providerFailure: "not-applicable",
+      unexpectedStatus: 500,
+    })
+    // Native authentication/RBAC failures retain their Medusa envelope. The
+    // inventory does not infer policy grants from handler or middleware text.
+    for (const status of ["4XX", "5XX"]) {
+      assert.equal(
+        operation.responses[status].$ref,
+        "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+      )
+    }
+  }
 
   const guardedPaths = [
     "/admin/products/{id}",

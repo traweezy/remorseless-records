@@ -45,6 +45,7 @@ const container = { resolve(key) {
 require.cache[loadersPath] = { id: loadersPath, filename: loadersPath, loaded: true, exports: {
   __esModule: true,
   initializeContainer: async (directory, options) => {
+    fs.writeFileSync(process.env.MEDUSA_EXEC_BOOTSTRAP, "initialization entered")
     if (process.env.MEDUSA_EXEC_FAIL_BOOTSTRAP === "true") throw new Error("owned bootstrap failure")
     bootstrap.push({ directory, ...options })
     return container
@@ -103,22 +104,33 @@ const fixture = ({ built = false } = {}) => {
   write(preload, preloadSource)
   const receipt = path.join(root, "receipt.json")
   const launch = path.join(root, "launch.json")
+  const bootstrapReceipt = path.join(root, "bootstrap.json")
   const environment = {
     PATH: process.env.PATH,
     NODE_ENV: "production",
     NODE_OPTIONS: `--require=${preload}`,
     MEDUSA_EXEC_RECEIPT: receipt,
     MEDUSA_EXEC_LAUNCH: launch,
+    MEDUSA_EXEC_BOOTSTRAP: bootstrapReceipt,
     DATABASE_URL: "postgresql://app_runtime:fixture@localhost/fixture",
     DATABASE_ROLE_SPLIT_REQUIRED: "true",
     MEDUSA_WORKER_MODE: "shared",
   }
-  const run = (args = [], file = requestedScript, overrides = {}) =>
+  const run = (
+    args = [],
+    file = requestedScript,
+    overrides = {},
+    options = {}
+  ) =>
     spawnSync(
       process.execPath,
-      [path.join(root, "scripts", "run-medusa.js"), file, ...args],
+      [
+        options.wrapper ?? path.join(root, "scripts", "run-medusa.js"),
+        file,
+        ...args,
+      ],
       {
-        cwd: root,
+        cwd: options.cwd ?? root,
         encoding: "utf8",
         shell: false,
         timeout: 15_000,
@@ -142,7 +154,15 @@ const fixture = ({ built = false } = {}) => {
         env: environment,
       }
     )
-  return { root, runtime, run, runInstalledCli, receipt, launch }
+  return {
+    root,
+    runtime,
+    run,
+    runInstalledCli,
+    receipt,
+    launch,
+    bootstrapReceipt,
+  }
 }
 
 afterEach(() => {
@@ -152,6 +172,164 @@ afterEach(() => {
 })
 
 describe("real Medusa script execution boundary", () => {
+  it.each([
+    { built: false, pathKind: "source-relative" },
+    { built: false, pathKind: "source-absolute" },
+    { built: true, pathKind: "source-relative" },
+    { built: true, pathKind: "source-absolute" },
+    { built: true, pathKind: "built-relative" },
+    { built: true, pathKind: "built-absolute" },
+    { built: true, pathKind: "normalized-relative" },
+    { built: false, pathKind: "source-symlink" },
+    { built: true, pathKind: "built-symlink" },
+    { built: true, pathKind: "directory-symlink" },
+  ])(
+    "blocks repair before launch or bootstrap ($pathKind, built=$built)",
+    ({ built, pathKind }) => {
+      const input = fixture({ built })
+      const source = path.join(
+        input.root,
+        "src",
+        "scripts",
+        "repair-failed-catalog-creation.ts"
+      )
+      const compiled = path.join(
+        input.root,
+        ".medusa",
+        "server",
+        "src",
+        "scripts",
+        "repair-failed-catalog-creation.js"
+      )
+      write(source, scriptSource)
+      if (built) write(compiled, scriptSource)
+      let requested = source
+      if (pathKind.endsWith("relative")) {
+        requested = path.relative(
+          input.root,
+          pathKind === "built-relative" ? compiled : source
+        )
+        if (pathKind === "normalized-relative")
+          requested = `./src/scripts/../scripts/${path.basename(source)}`
+      } else if (pathKind === "built-absolute") {
+        requested = compiled
+      } else if (pathKind.endsWith("symlink")) {
+        const alias = path.join(input.root, "friendly-script.js")
+        if (pathKind === "directory-symlink") {
+          fs.symlinkSync(path.dirname(source), alias, "dir")
+          requested = path.join(alias, path.basename(source))
+        } else {
+          fs.symlinkSync(
+            pathKind === "built-symlink" ? compiled : source,
+            alias
+          )
+          requested = alias
+        }
+      }
+      const result = input.run(["--", "--apply", "--sha=fixture"], requested)
+      expect(result.error).toBeUndefined()
+      expect(result.status).toBe(1)
+      expect(result.stderr).toContain(
+        "Failed-creation repair must use the initialized native Admin operation"
+      )
+      expect(fs.existsSync(input.launch)).toBe(false)
+      expect(fs.existsSync(input.bootstrapReceipt)).toBe(false)
+      expect(fs.existsSync(input.receipt)).toBe(false)
+    }
+  )
+
+  it("blocks the canonical repair path before CLI lookup even when files are absent", () => {
+    const input = fixture()
+    fs.unlinkSync(path.join(input.root, "node_modules"))
+    const result = input.run(
+      [],
+      "./src/scripts/repair-failed-catalog-creation.ts",
+      { NODE_OPTIONS: "" }
+    )
+    expect(result.status).toBe(1)
+    expect(result.stderr).toContain(
+      "Failed-creation repair must use the initialized native Admin operation"
+    )
+    expect(result.stderr).not.toContain("Medusa CLI not found")
+    expect(fs.existsSync(input.launch)).toBe(false)
+    expect(fs.existsSync(input.bootstrapReceipt)).toBe(false)
+    expect(fs.existsSync(input.receipt)).toBe(false)
+  })
+
+  it.each([
+    "source-absolute",
+    "source-relative",
+    "built-absolute",
+    "built-relative",
+  ])("blocks repair from the copied runtime wrapper (%s)", (pathKind) => {
+    const input = fixture({ built: true })
+    for (const name of [
+      "run-medusa.js",
+      "run-medusa-exec.js",
+      "run-medusa-arguments.js",
+    ])
+      write(
+        path.join(input.runtime, "scripts", name),
+        fs.readFileSync(path.join(__dirname, name), "utf8")
+      )
+    const source = path.join(
+      input.root,
+      "src",
+      "scripts",
+      "repair-failed-catalog-creation.ts"
+    )
+    const compiled = path.join(
+      input.runtime,
+      "src",
+      "scripts",
+      "repair-failed-catalog-creation.js"
+    )
+    write(source, scriptSource)
+    write(compiled, scriptSource)
+    const target = pathKind.startsWith("source") ? source : compiled
+    const requested = pathKind.endsWith("relative")
+      ? path.relative(input.runtime, target)
+      : target
+    const result = input.run(
+      [],
+      requested,
+      {},
+      {
+        cwd: input.runtime,
+        wrapper: path.join(input.runtime, "scripts", "run-medusa.js"),
+      }
+    )
+    expect(result.error).toBeUndefined()
+    expect(result.status).toBe(1)
+    expect(result.stderr).toContain(
+      "Failed-creation repair must use the initialized native Admin operation"
+    )
+    expect(fs.existsSync(input.launch)).toBe(false)
+    expect(fs.existsSync(input.bootstrapReceipt)).toBe(false)
+    expect(fs.existsSync(input.receipt)).toBe(false)
+  })
+
+  it("preserves unrelated same-name scripts and ordinary missing-CLI failure", () => {
+    const input = fixture()
+    const unrelated = path.join(
+      input.root,
+      "other",
+      "repair-failed-catalog-creation.js"
+    )
+    write(unrelated, scriptSource)
+    const result = input.run(["--literal=unchanged"], unrelated)
+    expect(result.status).toBe(0)
+    expect(JSON.parse(fs.readFileSync(input.receipt, "utf8")).args).toEqual([
+      "--literal=unchanged",
+    ])
+    expect(fs.existsSync(input.launch)).toBe(true)
+    expect(fs.existsSync(input.bootstrapReceipt)).toBe(true)
+    fs.unlinkSync(path.join(input.root, "node_modules"))
+    const missingCli = input.run([], unrelated, { NODE_OPTIONS: "" })
+    expect(missingCli.status).toBe(1)
+    expect(missingCli.stderr).toContain("Medusa CLI not found")
+  })
+
   it("reproduces dropped flag arguments in the installed CLI parser", () => {
     const input = fixture()
     const result = input.runInstalledCli(["--", "--sha=fixture", "--apply"])

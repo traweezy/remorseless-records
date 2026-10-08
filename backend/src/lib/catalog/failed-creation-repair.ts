@@ -24,20 +24,33 @@ import {
 
 const identifier = (prefix: string) =>
   z.string().regex(new RegExp(`^${prefix}[A-Za-z0-9_-]{1,248}$`, "u"))
-const repairIdentity = z
+export const failedCreationRepairIdentitySchema = z
   .object({
     creationOperationId: identifier("catop_"),
     productId: identifier("prod_"),
   })
   .strict()
-const repairCommand = repairIdentity
-  .extend({
-    expectedManifestSha256: z.string().regex(/^[a-f0-9]{64}$/u),
-    idempotencyKey: z.uuid(),
-  })
+export const failedCreationRepairCommandSchema =
+  failedCreationRepairIdentitySchema
+    .extend({
+      expectedManifestSha256: z.string().regex(/^[a-f0-9]{64}$/u),
+      idempotencyKey: z.uuid(),
+    })
+    .strict()
+export type FailedCreationRepairIdentity = z.infer<
+  typeof failedCreationRepairIdentitySchema
+>
+export type FailedCreationRepairCommand = z.infer<
+  typeof failedCreationRepairCommandSchema
+>
+const adminAuthoritySchema = z
+  .object({ actorId: identifier("user_"), source: z.literal("admin_http") })
   .strict()
-export type FailedCreationRepairIdentity = z.infer<typeof repairIdentity>
-export type FailedCreationRepairCommand = z.infer<typeof repairCommand>
+// Only a trusted server caller supplies this separately from the public DTO.
+// Omission retains the existing operator CLI request hash and ledger contract.
+export type FailedCreationRepairAdminAuthority = z.infer<
+  typeof adminAuthoritySchema
+>
 const commandName = "catalog.failed-creation.repair"
 
 const ensure = (condition: unknown): void => {
@@ -287,7 +300,7 @@ export const inspectFailedCatalogCreation = async (
   container: MedusaContainer,
   rawInput: FailedCreationRepairIdentity
 ) => {
-  const input = repairIdentity.parse(rawInput)
+  const input = failedCreationRepairIdentitySchema.parse(rawInput)
   return container
     .resolve<CatalogService>("catalog")
     .runCatalogTransaction((context) => inspect(container, input, context))
@@ -295,11 +308,18 @@ export const inspectFailedCatalogCreation = async (
 
 export const repairFailedCatalogCreation = async (
   container: MedusaContainer,
-  rawInput: FailedCreationRepairCommand
+  rawInput: FailedCreationRepairCommand,
+  rawAuthority?: FailedCreationRepairAdminAuthority
 ) => {
-  const input = repairCommand.parse(rawInput)
+  const input = failedCreationRepairCommandSchema.parse(rawInput)
+  const authority =
+    rawAuthority === undefined
+      ? undefined
+      : adminAuthoritySchema.parse(rawAuthority)
   const catalog = container.resolve<CatalogService>("catalog")
-  const requestSha256 = hashCatalogCommand(input)
+  const requestSha256 = hashCatalogCommand(
+    authority ? { command: input, authority } : input
+  )
   return catalog.runCatalogTransaction(async (context) => {
     const existing = readCatalogTransactionOperationList(
       await catalog.listCatalogAuthoringOperations(
@@ -318,6 +338,12 @@ export const repairFailedCatalogCreation = async (
           existing.result.creationOperationId === input.creationOperationId &&
           existing.result.productId === input.productId
       )
+      if (authority)
+        ensure(
+          existing.actorId === authority.actorId &&
+            existing.metadata.source === authority.source &&
+            existing.expectedVersion === 1
+        )
       return {
         operationId: existing.id,
         replayed: true,
@@ -334,7 +360,7 @@ export const repairFailedCatalogCreation = async (
       await catalog.createCatalogAuthoringOperations(
         [
           {
-            actor_id: null,
+            actor_id: authority?.actorId ?? null,
             aggregate_id: input.productId,
             command: commandName,
             completed_at: null,
@@ -343,7 +369,7 @@ export const repairFailedCatalogCreation = async (
             expected_version: 1,
             idempotency_key: input.idempotencyKey,
             metadata: {
-              source: "operator_cli",
+              source: authority?.source ?? "operator_cli",
               creation_operation_id: input.creationOperationId,
             },
             request_sha256: requestSha256,
