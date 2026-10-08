@@ -1,8 +1,140 @@
+import type { ProductDTO } from "@medusajs/framework/types"
+
 import productSearchTransformer, {
   buildSearchDocument,
 } from "./product-transformer"
 
 describe("buildSearchDocument", () => {
+  it("projects finite native ProductDTO Date timestamps without guessing dates", () => {
+    const timestamps: Pick<ProductDTO, "created_at" | "updated_at"> = {
+      created_at: new Date("2026-10-03T23:26:56.472Z"),
+      updated_at: new Date("2026-10-07T12:27:10.170Z"),
+    }
+    const document = buildSearchDocument({
+      id: "prod_native_dates",
+      ...timestamps,
+    })
+
+    expect(document.created_at).toBe("2026-10-03T23:26:56.472Z")
+    expect(document.updated_at).toBe("2026-10-07T12:27:10.170Z")
+  })
+
+  it("retains timestamp aliases and nullish native field precedence", () => {
+    const document = buildSearchDocument({
+      id: "prod_date_aliases",
+      created_at: null,
+      createdAt: new Date("2026-10-03T23:26:56.472Z"),
+      updated_at: undefined,
+      updatedAt: new Date("2026-10-07T12:27:10.170Z"),
+    })
+    expect(document.created_at).toBe("2026-10-03T23:26:56.472Z")
+    expect(document.updated_at).toBe("2026-10-07T12:27:10.170Z")
+
+    const invalidNativeDates = buildSearchDocument({
+      id: "prod_invalid_native_dates",
+      created_at: new Date(Number.NaN),
+      createdAt: new Date("2026-10-03T23:26:56.472Z"),
+      updated_at: new Date(Number.NaN),
+      updatedAt: new Date("2026-10-07T12:27:10.170Z"),
+    })
+    expect(invalidNativeDates.created_at).toBeNull()
+    expect(invalidNativeDates.updated_at).toBeNull()
+  })
+
+  it.each([
+    ["2026-10-03T23:26:56.472Z", "2026-10-03T23:26:56.472Z"],
+    [" 2026-10-03T19:26:56.472-04:00 ", "2026-10-03T23:26:56.472Z"],
+    [2026, "2026-01-01T00:00:00.000Z"],
+  ])(
+    "preserves existing string and numeric timestamp parsing for %p",
+    (value, expected) => {
+      const document = buildSearchDocument({
+        id: "prod_existing_date_values",
+        created_at: value,
+        updated_at: value,
+      })
+      expect(document.created_at).toBe(expected)
+      expect(document.updated_at).toBe(expected)
+    }
+  )
+
+  it.each([new Date(Number.NaN), "not-a-date", " ", null, undefined, true])(
+    "does not invent timestamps for an invalid or missing value %p",
+    (value) => {
+      const document = buildSearchDocument({
+        id: "prod_missing_dates",
+        created_at: value,
+        updated_at: value,
+      })
+      expect(document.created_at).toBeNull()
+      expect(document.updated_at).toBeNull()
+    }
+  )
+
+  it("rejects arbitrary date-like objects without invoking their methods", () => {
+    const toISOString = jest.fn(() => "2026-10-03T23:26:56.472Z")
+    const dateValueOf = jest.fn(() => Date.parse("2026-10-03T23:26:56.472Z"))
+    const document = buildSearchDocument({
+      id: "prod_date_like_objects",
+      created_at: { toISOString, valueOf: dateValueOf },
+      updated_at: { toISOString, valueOf: dateValueOf },
+    })
+    expect(document.created_at).toBeNull()
+    expect(document.updated_at).toBeNull()
+    expect(toISOString).not.toHaveBeenCalled()
+    expect(dateValueOf).not.toHaveBeenCalled()
+  })
+
+  it("keeps catalog source creation precedence and falls back only when invalid", () => {
+    const product = {
+      id: "prod_source_dates",
+      created_at: new Date("2026-10-03T23:26:56.472Z"),
+    }
+    const authoredDate = buildSearchDocument(product, {
+      profile: {
+        metadata: { source_created_at: "2025-12-15T10:00:00.000Z" },
+      },
+    })
+    expect(authoredDate.created_at).toBe("2025-12-15T10:00:00.000Z")
+
+    const invalidSourceDate = buildSearchDocument(product, {
+      profile: { metadata: { source_created_at: "not-a-date" } },
+    })
+    expect(invalidSourceDate.created_at).toBe("2026-10-03T23:26:56.472Z")
+  })
+
+  it("projects native release and preorder Date values through the shared converter", () => {
+    const product = {
+      id: "prod_release_dates",
+      variants: [{ id: "var_release_dates" }],
+    }
+    const document = buildSearchDocument(product, {
+      profile: { release_date: new Date("2026-10-03T00:00:00.000Z") },
+      variantProfiles: [
+        {
+          variant_id: "var_release_dates",
+          preorder_release_date: new Date("2026-10-07T00:00:00.000Z"),
+        },
+      ],
+    })
+    expect(document.release_date).toBe("2026-10-03T00:00:00.000Z")
+    expect(document.variants[0]?.preorder_release_date).toBe(
+      "2026-10-07T00:00:00.000Z"
+    )
+
+    const invalidDates = buildSearchDocument(product, {
+      profile: { release_date: new Date(Number.NaN) },
+      variantProfiles: [
+        {
+          variant_id: "var_release_dates",
+          preorder_release_date: new Date(Number.NaN),
+        },
+      ],
+    })
+    expect(invalidDates.release_date).toBeNull()
+    expect(invalidDates.variants[0]?.preorder_release_date).toBeNull()
+  })
+
   it("indexes canonical bundle formats without changing authored option labels", () => {
     const document = buildSearchDocument({
       id: "prod_mystery",

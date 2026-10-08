@@ -248,6 +248,9 @@ const stripHtml = (value: string | null): string | null => {
 }
 
 const toIsoOrNull = (value: unknown): string | null => {
+  if (value instanceof Date) {
+    return Number.isFinite(value.getTime()) ? value.toISOString() : null
+  }
   const raw = toStringOrNull(value)
   if (!raw) {
     return null
