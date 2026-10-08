@@ -1,5 +1,203 @@
 # Storefront, Admin and Stripe end-to-end audit
 
+### Continuing corrective audit — October 8
+
+Staging `b6e494f` now passes all four exact push workflows / 23 required checks,
+its exact Backend/Storefront/Migrations deployments, runtime/role/restricted
+notification identity, ordinary scheduler, live/ready and fresh correlated
+application logs. Authenticated RecoveryBackups completion binds 1,182 archived
+objects and 19 retained snapshots; this is not a repeated full restore or PITR
+proof. The restarted all-nine observer retains the deliberate 29,729.717-second
+gap. The removed Backend instance's particular cause remains unverified.
+
+The deployed corrective artwork/404 matrix passes all 13 cases without
+retries/skips, all 60 card observations / 119 keyboard advances and 23 inspected
+frames. Square/contained images, complete metadata, availability behavior and
+keyboard access pass. Artist contrast is 7.3645:1 and complete-card/artist Axe
+checks have zero violations/incompletes. These before/after-bound results close
+the deployed card contrast and cold-404 findings for this exact revision.
+
+**Release acceptance still fails on search counts.** A complete independent
+native/index/public comparison matches all 464 published product IDs and all
+15 format OR memberships across 85 pages, including the Relics negative case.
+However, 299 public facet cells inflate counts and vary across pages; definitions
+also miss one CD and one Vinyl because quantity-prefixed bundle labels are not
+normalized. The pending Storefront correction counts canonical indexed products
+once, preserves bounded scan work and refreshes relevant cache identities.
+Retain the complete failed semantic report and original bounded transport/helper
+failures; correct membership is not correct count acceptance.
+
+**Local search correction — October 8, 09:34 UTC:** Conventional Commit
+`ffd6891` corrects all 299 canonical cells across the 85-page retained full
+catalog fixture and all 16 baseline/OR ID sets. Quantity bundles are included;
+counts are CD 282, Vinyl 126, Cassette 130 and DVD 1. Eight focused files / 89
+tests, full Storefront coverage and the actual production build pass. Desktop
+keyboard/Axe and both mobile keyboard/count/closing/overflow checks pass.
+The two strict mobile Axe cases retain a contrast incomplete for the exact
+drawer heading. A separate manual review verifies 14.1913:1 contrast and every
+unobscured heading character at 393/768 pixels. No automated result is rewritten
+and no broad rule exclusion is added. New deployed search acceptance remains.
+
+Fresh anonymous recovery also stays on `Confirming your order` after the status
+API's explicit HTTP 404 / `cart_missing`. A frozen client correction converts
+only that definite absence, requiring both actual HTTP and parsed problem
+status 404, into the existing catalog redirect and stops
+polling; uncertain responses retain payment recovery. Conventional Commit
+`32ebe2b` contains this correction. The failing baseline is
+retained, including the reproduced HTTP/body status mismatch. Four focused
+suites / 55 tests and final guarded full coverage pass 1,130 baseline / 417
+transactional tests with unchanged thresholds.
+The normal production build/112-asset verifier and 12 compiled recovery cases
+across desktop Chrome, Pixel and native WebKit pass. Deployed correction
+acceptance remains.
+
+Fresh deployed read-only completion covers Contact/Privacy invalid-field and
+native selector behavior, empty-cart/missing-receipt navigation and phone Quick
+shop closing/focus return. The corrected pinned WebKit run passes three iPhone
+cases; original WebKit-to-Chrome launch failures remain retained as harness
+errors. Desktop Quick shop keeps its strict contrast incomplete on the actual
+description paragraph. Root manually resolves only that node: 7.69554:1
+contrast, all 546 glyphs unobscured and identical complete before/after frames.
+No source/rule exclusion or rewritten automated pass occurs. The settled
+missing-receipt alert is separately inspected. All four profile groups complete
+two-tab consent, Discography and editorial/FAQ navigation/reflow checks. Consent
+telemetry is locally fulfilled and does not prove external delivery; native
+WebKit keyboard scrolling and viewport reflow do not prove unsupported wheel
+or native zoom actions. Original harness failures remain retained.
+
+A hash-bound primary-source reconciliation resolves all seven complete actual
+index sort orders across 464 products/56 pages, including accented titles and
+the three null creation dates. Its 20 offline cases prove the oracle correction;
+the original strict failure remains. Separate bounded SQL/index reads prove
+those three owned Products have finite persisted dates but null indexed dates.
+The transformer drops native Date values permitted by ProductDTO. Its scoped
+finite-Date correction in `d60a5b1` passes 34 focused tests, 303 Backend suites
+/ 2,713 tests and the normal compiled build; live projection repair remains
+pending. Deployment alone does not rewrite the existing indexed nulls. No synthetic
+date or index write was used.
+
+All four catalog diagnostics also complete seven sort controls, query/history,
+clear and scrolling. Strict scans reveal a phone heading hierarchy defect and
+toolbar contrast incompletes. The local correction adds a hidden results h2 and
+removes only the tagline's foreground alpha, preserving card headings and
+header translucency. All five baseline cases fail; actual browser-composited
+tagline contrast is 3.7929:1 over the modeled brightest backdrop. Corrected
+build/112-asset checks and all five focused browser cases pass. Corrected
+composited contrast is 5.03878:1 with all 18 glyphs unobscured; all three card
+and results rectangles remain unchanged and all 15 baseline/final frames are
+inspected. Eight later settled all-rule main scans have zero violations and zero
+initial incompletes. Four sticky cases retain 12 strict `imgNode` contrast
+incompletes. Root's separate exact-node review resolves those with inspected
+frames, visible text/native placeholder paint and conservative composited bounds
+of at least 4.86418:1. Native scroll is settled and Axe moves no scroll. All raw
+failures remain unchanged; no full-document or deployed acceptance is claimed.
+Conventional Commit `448e303` contains this bounded visual/heading correction.
+
+Native Admin saved sign-in works. The real Product page confirms missing
+control names, shrinking phone toolbar targets, missing filter-dismissal focus,
+empty native table headers and absent breadcrumb landmark. A same-version
+UI/Dashboard patch was verified using the complete compiled native
+page, full-document closed/active-filter Axe, actual keyboard behavior and
+phone/desktop light/dark frames. Native modal-menu contextual diagnostics remain
+recorded; do not change RBAC or modal semantics merely to pass a scanner.
+The foreign Variant-title batch hypothesis still needs isolated HTTP proof.
+Reparenting is refuted by installed ProductModule source.
+
+Predecessor shared QA and Backend coverage (303 suites / 2,699 tests) pass. The native
+67-case matrix adds mobile drawer focus, real row/menu/filter interactions,
+Settings and denied Role-detail controls.
+Read-only Settings inspection also finds unnamed selection controls, squeezed
+phone headers and nested-combobox Escape closing the Regions edit drawer.
+These remain explicit audit findings until their exact compiled/live retests.
+The first full run retains 60 passes and seven failures. The frozen predecessor
+passes all 67 browser cases and 134 component contracts after scoped dark-text
+and active-filter corrections. Short-heading geometry,
+closed-popover animation and native drag click-shield timing are separately
+evidenced harness findings. Actual Product Type creation additionally exposes
+missing native dialog registration, missing Cancel focus return and blocked
+button Enter activation. The scoped Title/Description, route-invoker fallback
+and KeyboundForm corrections pass 142 component checks and the normal build.
+Both new browser pilots prove native empty-submit validation without requests,
+focus trapping and Cancel/Escape return. The expanded 69-case matrix completes
+with 68 strict passes and the one retained automated failure below.
+The phone Description's strict contrast incomplete is retained separately from
+Root's exact-node manual resolution: all 46 glyphs unobscured, opaque contrast
+7.72982:1 and the complete frame inspected. No scanner rule is excluded.
+Latest broader Backend coverage/shared QA pass. Actual signed-in
+read-only navigation reaches all 19 Settings pages at 458 pixels without
+document overflow or visible alerts, bound by fresh before/after readiness.
+This inventory does not close their distinct form/control workflows or prove
+every asynchronous row; no key reveal or configuration/access changes occur.
+Conventional Commit `30c385e` contains the seven frozen native paths. Exact
+whole-lock review permits only four patch/dependent peer identities; versions,
+integrities, native authorization and the reviewed React trees are unchanged.
+
+The held orphan-repair tool has another execution boundary: full Medusa exec
+initialization writes search settings/provider/default rows and can remove
+Workflow Redis repeatable jobs before the scoped script runs. This review did
+not execute those effects. Both private execution helpers are now explicitly
+disabled before provider access, preserving their original bytes. Three
+zero-provider guard checks pass. A narrow replacement must preserve the existing
+owned manifest, atomic repair and replay contracts; no repair has run.
+A narrow initialized Admin boundary is now in local verification, reusing that
+serializable service and native policies with actual-user/expected-actor replay
+binding. Six focused suites / 168 tests and Backend/integration types pass;
+three actual HTTP integration cases are prepared but unrun behind the scanner
+gate. Its six-path session-auth screen passes 72 focused tests, types and
+response-boundary checks with independent review. Durable shared storage and
+native Web Locks retain one immutable UUID/body across uncertainty and reload;
+only a matched acknowledgement enables clearing after a fresh user check.
+The repository wrapper blocks source/built/symlink repair launches before any
+child/bootstrap; its 26 focused tests retain normal command behavior. This is
+local work, not a deployed repair acceptance. The compiled native lifecycle
+exposes a real initial-effect remount/read-lock race; a captured-epoch microtask
+cancels only the obsolete initial read. Two focused regressions and a fresh
+14-case 393/1440 run pass, with 16 main Axe scans clear. Six additional main
+scans and inspected frames resolve below-viewport capture in the same four
+contexts, for 22 clear scans and 22 inspected final PNGs. The framing run retains
+one failure from PageDown outside the focused main; focusing an existing
+control resolves the capture without source or mutation changes. Owned fixtures
+close with verified identity/session exit and free ports; unrelated processes
+and user tabs are preserved. Final combined Backend
+coverage passes 309 suites / 2,840 tests, shared QA and the build pass. Initial
+fixture binding failures and the real 10-pass/4-fail race run remain retained.
+The user requests a pause at this committed local correction checkpoint; no
+new staging push or provider repair is started.
+
+The next strict integration/release gates are externally blocked: a fresh,
+empty-cache download of the approved Trivy DB is expired because four upstream
+publications failed on an expired Docker Hub organization token. The normal
+Backend and Runtime Images/recovery freshness checks remain unchanged. Wait
+for successful approved GHCR publication and fresh scans; continue independent
+audit work. Primary evidence is retained in the opening handoff. No push,
+mirror substitution, freshness waiver or speculative Variant guard was made.
+
+Redis deep checks retain the same October 3 run/process identity, healthy
+memory/persistence and no observed OOM, eviction, rejection or restart.
+Supporting-service logs expose unmatched child warnings. Exact observed child
+PIDs match a natural later RDB warning family; the old private timeout-based
+reader left adopted children. Its corrected bounded read-only runner passes
+17 offline cases and actual all-14-child cleanup with zero new init-child delta.
+Older warning provenance and cumulative error replies remain separate facts;
+no forced save, restart, failed-job retry or blanket log suppression occurred.
+
+Orders #8/#9/#10/#11 remain completed; never repeat them. Order #11's actual
+in-app Copy item SKU shows Copied, but its clipboard bridge yields empty text;
+retain this live limitation without claiming an application bug. A separate
+compiled native Order Summary test at 390 pixels confirms the exact SKU through
+the real browser clipboard and restores its previous contents.
+A separate guarded read-only inventory verifies all 464 published Products,
+592 Variants and 1,147 managed links/assets without observed before/after drift.
+Only three owned historical audit Products need native-thumbnail repair; all
+Variant projections match. Draft/deleted Products and historical order artwork
+are excluded. Use the existing audited media workflow with fresh source/version
+guards after corrective acceptance; no blanket backfill is needed.
+No live orphan repair, thumbnail repair or mystery payment has run.
+After this current batch's corrective release is accepted, continue those owned
+workflows, media/search controls, full Admin/clipboard acceptance and the final
+executed ledger. Client cloning remains paused and production is untouched.
+Exact evidence and current local gate state live in the opening handoff.
+
 ### Active correction — October 7, 23:52 UTC
 
 The deployed staging baseline `d3809e5` passes all four exact CI workflows/23 checks,

@@ -1723,3 +1723,45 @@ is confined to these four patch hashes and dependent Medusa/draft-order/
 test-utils peer identities; package versions, integrity records, policies and
 all other patches remain unchanged. Re-review/remove these compatibility
 patches during the coordinated Medusa upgrade rather than carrying them blind.
+
+### October 8 native Product and Settings accessibility correction
+
+Batch 6 extends the existing Dashboard 2.18.0 and UI 4.2.0 MIT patches without
+changing a registry version, license, engine, cooling exception or React tree.
+Preserve all earlier after-sales, resolver, form and inventory behavior.
+
+| Package | Reviewed 11:13 UTC frozen patch SHA-256 | Change |
+| --- | --- | --- |
+| `@medusajs/dashboard` 2.18.0 | `da922188a14ff3779a5ec52959d1e7c4303429b58ae4dac7081a1e925701bb03` | Named shell/action controls, mobile navigation focus return, breadcrumb targets, narrow headers, contextual Settings selections/action headers, labelled groups, bounded Region/Role summaries, registered Region drawer title/currency trigger and nested-combobox Escape protection. Four exact functional-text contexts use the existing subtle foreground token. Product Type uses native Title/Description; route-dialog invoker fallback preserves native close priority, and KeyboundForm retains ordinary button/link Enter activation. |
+| `@medusajs/ui` 4.2.0 | `a7a1b309d6d36d2556ac72c077233da7776d9b028e1d3872421132a4b9b49bdf` | Named nonshrinking table controls and bounded toolbar wrapping, separate 24-pixel drag/sort controls, retained-trigger filter focus return, readable active-filter text and table-owned Search placeholders. Ordinary Input defaults and global color tokens remain unchanged. |
+
+Patch actual source and every published CJS/ESM implementation used by native
+Admin. Preserve translated names, native selection/disabled/indeterminate
+behavior, handlers, sorting/visibility metadata, modal focus traps and RBAC.
+No global Checkbox, IconButton or Dialog behavior is replaced. The frozen root
+installation succeeds; whole-lock normalization permits only these two patch
+hashes and their dependent peer identities. All registry versions and the
+reviewed `third-party-web` 0.29.2 graph remain unchanged.
+
+The frozen predecessor passes all 67 browser cases and 134 installed component
+contracts. The final seven-path correction passes 142 installed native
+component cases, the normal
+Backend/Admin build, accessibility boundary, supply-chain policy and both real
+dark Product pilots. Keep the initial generated-runtime dependency upload/build
+failure alongside its successful normal recheck. Native keyboard/pointer
+reorder, exact drag click-shield cleanup and independent sorting pass their
+focused pilots. Final shared QA and Backend coverage pass, including 303 suites
+/ 2,713 tests after native Date projection correction. The expanded 69-case
+matrix completes with 68 strict passes and the retained exact-node failure
+below; exact deployed acceptance remains pending. New Product Type
+keyboard pilots prove empty-submit validation without mutation attempts and
+Cancel/Escape invoker return. Its phone Description retains a strict contrast
+incomplete, separately resolved by Root's exact-node paint/frame review at
+7.72982:1 with all 46 glyphs unobscured. This is not an automated pass or scanner
+exception. The first 60/67 run, later dark active-filter
+and placeholder failures, and independently diagnosed geometry/transition
+findings remain retained.
+The opening handoff records eventual results. Raw modal-menu diagnostics
+remain retained with exact DOM and
+independent keyboard evidence; no contrast rule is excluded. Re-review/remove
+these patches in the coordinated Medusa upgrade.

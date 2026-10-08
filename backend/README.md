@@ -380,7 +380,7 @@ these checks or manually install dependencies inside the generated server.
 ## Admin authorization manifest
 
 `src/lib/admin-authorization-manifest.ts` is the typed authorization inventory
-for all 64 active custom Admin methods: 41 under `/admin/catalog/**` and 23
+for all 66 active custom Admin methods: 43 under `/admin/catalog/**` and 23
 elsewhere. Inventory tests compare route exports to the manifest and fail on a
 missing, duplicate, or stale entry. The removed
 `/admin/custom` scaffold and the disabled physical media-asset DELETE export do

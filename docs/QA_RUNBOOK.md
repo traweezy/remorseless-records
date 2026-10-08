@@ -24,6 +24,24 @@ configuration only; old-key rejection, running-process replacement and native
 session invalidation require separate live evidence. Its offline fixtures are
 part of `qa:secure-artifacts` and the shared CI/lint gate.
 
+Initialized failed-creation repair requires the native Admin boundary and
+reviewed exact staging Backend SHA. Its focused route/library/manifest checks
+must preserve conjunctive grants, actual-user audit authority, same-user
+preconditions and actor-bound replay; the real disposable HTTP matrix must
+exercise authorization, drift, atomic repair/replay and rollback after failed
+audit completion with `MEDUSA_FF_RBAC=true` before fixture startup. Follow the
+fresh image gate in [DISPOSABLE_INTEGRATION.md](DISPOSABLE_INTEGRATION.md).
+The native session UI must reject denied protected mounting, malformed replies,
+stale responses, account/origin changes and unavailable durable storage/locks.
+Verify one immutable UUID/body survives uncertainty, reload and cross-tab
+contention; an uncertain request cannot be cleared or replaced by a new preview.
+Only a matching successful acknowledgement/replay permits clearing after a
+fresh user check. Inspect compiled narrow/wide layouts, keyboard and actual
+browser storage/Web Locks support without enabling a fixture mutation. Test
+that the repository CLI wrapper rejects this repair entrypoint before child
+bootstrap and still executes unrelated native scripts normally. Full Medusa
+exec preview is not read-only or an alternative to this initialized boundary.
+
 ---
 
 ## 1. Accessibility & Performance Sweep
@@ -509,7 +527,7 @@ OPTIONS, regardless of origin. The local static server independently returns
 204 and HEAD never streams a body. A failed browser abort produces only
 `request:mutation_block_failed` and cannot fall through to the network.
 `qa:admin-accessibility-boundary` tests both layers and runs in the local lint
-gate and Root CI. Its 50 cases cover native login in both themes at 390/1440
+gate and Root CI. Its 69 configured cases cover native login in both themes at 390/1440
 pixels, partial-return Receive items navigation at 390/1440 pixels,
 both native Orders table implementations at 390/1440 pixels, including Tab
 access, an unclipped focus outline, pointer targets and Enter navigation,
@@ -523,15 +541,46 @@ Merchandising and its creation dialog, News and Discography creation dialogs,
 Tax Control, Media Cleanup, Refund Operations, and Tax Records including
 invalid-period correction without a failed report request. Viewports cover
 760-pixel narrow/mobile, 800-pixel 200%-equivalent, 1,440-pixel laptop, and
-1,920-pixel wide layouts.
+1,920-pixel wide layouts. Four complete native Product cases add both themes
+at 390/1440 pixels, actual filter/sort/row menus and mobile navigation dismissal.
+Eleven Settings cases cover Regions, Refund Reasons, Store currencies, Region
+countries and its editor at 458/1440 pixels, plus Roles at 458 pixels. They
+verify contextual selection names, native keyboard/indeterminate behavior,
+phone heading/control fit and nested-selector Escape without submitting data.
+Two Role-detail cases at 458/1440 pixels also verify named selection controls,
+bounded summaries and the denied-action fixture. Native configurable columns
+must retain separate drag and sort controls: keyboard and pointer reorder,
+native drag cleanup and independent Enter sorting are exercised without an API
+write. Reflow assertions bind actual heading/control layout and text bounds;
+short descriptions need not stretch to the full available width.
+Two Product Type form cases at 458/1440 pixels also exercise actual Create-link
+Enter activation, native Title/Description association, empty-submit keyboard
+validation with zero attempted writes, Tab/Shift-Tab trapping and clean
+Cancel/Escape focus return. KeyboundForm must retain ordinary native button/link
+activation, child prevention, textarea behavior and Ctrl/Meta shortcuts. Routed
+dialog fallback must preserve native trigger priority and reject disconnected,
+hidden, disabled or inert invokers.
 
-Every case must report zero axe violations and zero incomplete axe checks. The
+Every closed/default page and active-filter state must report zero axe
+violations and zero incomplete axe checks. Open native modal-menu diagnostics
+retain the full-document all-rules results. Classify a finding as modal context
+only when its exact DOM evidence binds it to the hidden native app, document
+root, visible menu or native focus guards, and independent real keyboard tests
+prove Tab/Shift-Tab trapping, background/guard redirection, Escape focus return
+and outside dismissal. Unresolved nodes or any unrelated finding fail; contrast
+findings have no contextual exception. Preserve transition scans before a
+settled native re-scan, and reset only the read-only fixture between independent
+interactions when the scanner itself has changed focus. The
 gate also fails for missing landmarks/headings, route mismatch, document
 overflow, unnamed controls, dangling `aria-controls`, positive tab order,
 undersized interactive targets, motion under reduced-motion emulation, missing
 or obscured focus, browser errors, or failed responses. Screenshots and the
 JSON summary are written to `/tmp/remorseless-admin-accessibility` by default.
 Inspect the changed surfaces; passing assertions do not prove visual hierarchy.
+The native 390-pixel Order Summary case also clicks the real Copy item SKU
+control, reads exact bytes through the browser clipboard and restores its
+previous contents. A live in-app clipboard bridge limitation is separate from
+this compiled native-browser proof.
 
 For a real graphical-desktop check, run one important route in headed mode,
 capture the desktop, and inspect the resulting image:

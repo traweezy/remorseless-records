@@ -1,6 +1,6 @@
 # Production Hardening Plan
 
-Last reviewed: October 7, 2026 UTC
+Last reviewed: October 8, 2026 UTC
 
 This is the authoritative launch-readiness backlog for Remorseless Records. It
 supersedes the local `tmp/HARDENING_NEXT_STEPS.md` working note. Detailed
@@ -19,29 +19,57 @@ production/launch acceptance to batch 8. This supersedes the seven-batch plan.
 pause before the client clone. Batch 7 must not start until the user explicitly
 resumes it; earlier continuation requests do not override this stop point.
 
-**October 7 continuing correction:** direct staging `d3809e5` passes all four
-exact workflows/23 checks, exact app/Migrations deployments, runtime/role proof,
-ordinary health and fresh correlated logs. Eight deployed cold 404 cases pass.
-Five live carousel cases verify 60 cards and 97 keyboard advances, but manual
-Axe review finds sold-out artist contrast 2.875:1; visually accepted release
-remains pending the artwork-only overlay correction. The same local batch
-adds canonical native artwork projection/guards, closes the CSV import bypass,
-and corrects false Cassette substring matching with fresh native facts and
-versioned caches. Its final 223-case aggregate passes with native artwork,
-shared-asset creation rollback, strict committed replay, complete 200-asset
-restoration and real Redis expired HTTP/import owner tests. All 32 frozen hashes
-match with clean fixture teardown. Shared lint/type/policy and both builds pass;
-final Backend coverage passes 303 suites / 2,699 tests. The separate six-route
-delegation inventory preserves installed native policy grouping. The full native Product page still fails for unnamed menus
-and shrinking phone targets, despite passing scoped Catalog guidance proof.
-Keep existing thumbnail drift and the unverified foreign-parent Variant source
-finding explicit. Preserve failed attempts and actual-versus-fixture scope.
-Final Storefront artwork/availability and 114 critical browser checks pass;
-exact direct staging CI/deployment and live acceptance remain. Owned repair, mystery
-payment, native media/Admin/clipboard/recovery controls and final executed
-ledger remain open. Orders 9/10/11 are complete; do not repeat them. All-nine
-monitoring retains healthy Redis and historical failures. Client clone remains
-paused; production is untouched. See the opening handoff and audit for evidence.
+**October 8 continuing correction:** staging `b6e494f` passes all four exact
+workflows / 23 checks, its app/Migrations deployments, runtime/role proof,
+ordinary health and correlated application logs. All 13 deployed artwork/404
+cases and 23 inspected frames pass, closing artist contrast on that revision.
+Full native/index/public search matches all 464 IDs and all 15 OR-filter
+memberships, but exposes 299 inflated/page-dependent facet cells and missing
+quantity-bundle definitions. Correct search counts and the native Admin's
+confirmed names/target/focus/landmark issues together in this Batch 6 corrective
+release. Same-version UI patches preserve RBAC and modal semantics; completed
+compiled-page evidence is below, and deployed acceptance remains pending.
+Local search correction `ffd6891`
+passes the full 85-page retained catalog oracle, production build and coverage;
+fresh shared QA and Backend coverage pass. The strict mobile Axe incompletes
+remain recorded alongside a bounded manual heading contrast review. Additional
+native Settings names/layout and nested-selector dismissal findings remain.
+The same correction also fixes the independently reproduced anonymous checkout
+recovery loop for explicit missing-cart responses; uncertain payment recovery
+is preserved. Its focused/full Storefront coverage, normal production build,
+112-asset verifier and all 12 compiled recovery browser cases pass. Deployed
+correction acceptance remains required.
+Signed-in read-only navigation reaches all 19 Settings pages without document
+overflow; this inventory does not close their distinct form/control workflows.
+The 67-case native predecessor passes after scoped dark-text/filter corrections;
+initial failures and evidenced harness findings are retained. The expanded
+69-case matrix adds native Product Type Title/Description, route-invoker focus
+return and normal button Enter validation; 142 component checks, shared QA and
+the normal build pass. The 69-case run completes with 68 strict passes. Its one
+phone Description strict contrast incomplete has
+separate exact-node manual paint proof and remains a raw automated failure.
+All seven complete current index sort orders are reconciled against primary
+source. Three finite persisted creation dates remain null in search; the scoped
+Date converter fix passes focused tests, 303 Backend suites / 2,713 tests and
+the compiled build, without claiming a live index repair. Catalog heading and
+toolbar contrast corrections pass five browser cases with unchanged geometry.
+The next strict integration/CI gates are blocked by the approved scanner DB's
+failed upstream publication; do not waive freshness or change mirrors to pass.
+Redis keeps its October 3 run
+identity, with diagnostic child warnings investigated against exact PID ledgers
+and a corrected bounded read-only reader. Historical warnings, error replies
+and observer gaps remain explicit. Authenticated current RecoveryBackups
+manifest/completion proof does not establish another full restore or PITR.
+Owned repair, three scoped native-thumbnail re-saves, mystery payment, native
+media/Admin/clipboard/recovery controls and final executed ledger remain open.
+Completed orders #8/#9/#10/#11 must not be repeated. Client clone remains paused;
+production is untouched. Follow the opening handoff/audit for exact evidence.
+The old private orphan-repair launchers are disabled: full Medusa exec bootstrap
+performs unrelated settings/provider/default/queue writes. A narrowly bounded
+replacement is required before the already-owned repair can execute.
+The initialized native Admin replacement and its durable browser UI are in local
+verification; keep native HTTP tests, fresh image scans and deployed acceptance
+as prerequisites to using it.
 
 1. **Accepted at `849abea`: credential isolation and backup access.** Migration
    authority is isolated in a one-shot service, and restricted backup export is
@@ -1033,6 +1061,15 @@ reported `SKIPPED` with `No changes to watched files`; the already accepted
 application deployments remained active and healthy.
 
 ## Completed slice: catalog Admin authorization manifest
+
+The historical accepted slice below has 64 methods. The October 8 local
+initialized-repair correction adds two methods, for 66 total (43 catalog / 23
+other) with unchanged native policy definitions and six delegates. Final local
+shared QA, 309 Backend suites / 2,840 tests, build and 14 compiled UI cases pass;
+the three native HTTP cases, strict fresh image scans and deployed acceptance
+remain held. The user-requested pause and exact continuation are in the opening
+handoff; do not mark Batch 6 or the repair accepted from these local checks.
+
 
 - [x] Inventory all 64 active custom Admin methods exactly once: 41 catalog
       methods and 23 other methods.

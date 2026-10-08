@@ -124,7 +124,7 @@ conjunctive. The Content landing page is the intentional exception in the UI:
 it opens when the actor can read at least one workspace and only renders cards
 and navigation for the workspaces that actor can read.
 
-The manifest covers exactly 64 active custom Admin methods once: 41 under
+The manifest covers exactly 66 active custom Admin methods once: 43 under
 `/admin/catalog/**` and 23 elsewhere. Six native Product/Variant POST delegates
 are recorded separately in `nativeAdminDelegationManifest`, including their
 installed handler and actual installed or project-overlay mutation policies.
@@ -133,6 +133,17 @@ policy declarations remain conjunctive, and the four existing exact-ID
 overlays remain in force. The inventory test derives every exported method
 from route source and requires an exact union of custom authorization and
 native delegation entries; it fails on missing, duplicate or stale entries.
+
+The October 8 initialized failed-creation repair adds only GET and POST at
+`/admin/catalog/failed-creations/:creation_operation_id`; its deployed acceptance
+is tracked in the handoff. Preview requires catalog-authoring read plus native
+Product and Variant read. Apply also requires catalog-authoring update and
+delete. The actual native authenticated user supplies audit authority; a strict
+expected-user precondition rejects account changes before module access, and
+the same server-derived user is bound to repair hashing and replay. Exact
+staging Backend and SHA checks run before inspection or mutation. The route
+reuses the already initialized request scope, avoiding a second full Medusa
+bootstrap. No new policy, role, credential or authorization authority is added.
 
 The six delegates only add the shared Catalog artwork ownership guard and
 disable nonempty Product/Variant batch hard-deletion lists. CSV confirmation

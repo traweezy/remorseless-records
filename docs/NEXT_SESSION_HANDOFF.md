@@ -1,6 +1,444 @@
 # Next-session handoff
 
-Last updated: 2026-10-07 (America/New_York)
+Last updated: 2026-10-08 (America/New_York)
+
+## Pause checkpoint — October 8, 12:26 UTC
+
+The user requested a good stopping point. Current Batch 6 corrections are
+committed locally through `549c18c8ad5d3d1a1abf074d6afd2b786737d3bd`;
+no new push or deployment started. Remote staging is freshly verified at
+`b6e494f71e796c03d122f40d565b22769520323f`. The six source commits include
+catalog counts/cache, authoritative missing-cart recovery, native Date
+projection, catalog heading/contrast, native Admin keyboard/accessibility and
+initialized failed-creation repair. The documentation checkpoint follows these
+commits. Normal hooks remain enabled. Client cloning stays paused and production
+is untouched; this release and Batch 6 are not accepted.
+
+The 24-path initialized repair correction retains the original ownership,
+serializable soft-delete and history contracts. It uses actual native-user
+permissions and audit authority, exact staging/SHA guards, durable immutable
+UUID/body storage and cross-tab locking. Full-bootstrap CLI repair is blocked
+before a child starts. The actual compiled browser run exposed an initial-effect
+cleanup/remount race against its own read lock. A narrow captured-epoch microtask
+cancels the obsolete initial read without changing writes, retries or locks.
+Two regressions plus the fresh compiled run resolve it; the original failures
+remain retained. Final gates pass 309 Backend suites / 2,840 tests, shared QA,
+Backend/Admin build, 72 focused UI tests and independent API/UI reviews. All 14
+compiled Chrome cases at 393/1440 pixels pass, including denied mounting,
+preview/review cancellation and unavailable storage/locks; all 16 main-scoped
+Axe scans have zero violations/incompletes. A bounded follow-up frames the
+below-viewport review and read-only content in the same four contexts: six
+additional clear main scans and inspected frames, for 22 total. Its original
+3-pass/1-fail framing run is retained; PageDown outside the focused main did not
+scroll, and focusing the existing control resolves that private capture. All
+22 final PNGs are inspected. Local synthetic GET-only fixtures
+prove neither persisted repair nor deployed acceptance. The actual three-case
+native HTTP matrix remains prepared but unrun behind the fresh image gate.
+
+The approved vulnerability database is still expired. Four additional bounded
+manifest checks through 12:04 UTC observe unchanged approved bytes, then stop
+for this pause. The public workflow read shows no new noon run; its later
+publication result is unknown. No mirror, metadata edit, scanner waiver or
+knowingly failing push was used. Both strict integration and subsequent release
+acceptance remain held until fresh approved database scans pass.
+
+All-nine monitoring has no fault samples through 12:14:27.064 UTC. Observer
+session 95980 reports exit 143 before the pause cleanup attempt; its termination
+cause is unverified. The verified process scan finds no remaining observer, and
+the cleanup precondition sends no signal when it finds none. Do not claim a
+continuous window or a user-caused termination. Restart one guarded observer
+and verify target/service identities on continuation. Temporary browser/fixture
+cleanup verifies the owned fixture identity, SIGINT and session 5184 exit zero;
+ports 4031/4032 and ephemeral Admin ports are free. The unrelated 3000 server and
+user tabs are preserved. Joined UI and closure evidence:
+`artifacts/end-to-end-audit-2026-10-07/receipts/catalog-repair-ui-final-joined-acceptance-oct8.json`
+and `catalog-repair-ui-owned-closure-oct8.json` in that receipt directory.
+
+On continuation, verify the local/remote state, obtain a fresh approved DB and
+run its strict image scans, the prepared native repair HTTP cases and the held
+Variant diagnostic. Then make one cohesive direct fast-forward staging push
+with the normal gates. Wait for all four exact workflows / 23 checks and watch
+all nine Railway services, both exact app deployments and documented live
+acceptance. Only after corrective acceptance continue the three owned gallery
+re-saves, failed-creation repair, mystery/receipt flows, distinct Settings and
+media/search/content controls, and the executed audit ledger. Never repeat
+orders #8/#9/#10/#11. Batch 7 client cloning remains separately paused.
+
+## Correction evidence — October 8, 11:56 UTC
+
+Batch 6 continues at staging `b6e494f71e796c03d122f40d565b22769520323f`.
+No new push has run. Local Conventional Commits `ffd6891` and `32ebe2b` contain
+the Storefront count/cache and confirmed missing-cart recovery corrections.
+Local `d60a5b1`, `448e303` and `30c385e` contain native Date projection,
+catalog heading/contrast and native Admin keyboard/accessibility corrections.
+All five source commits remain local, with their final gates below.
+Client cloning remains paused and production is untouched.
+Fresh full readiness at 11:26:22.007 UTC passes all four exact push workflows,
+all 23 checks, both exact app deployments and live/ready/backup freshness.
+The delayed critical browser job succeeded on attempt 1. Migrations succeeds
+on that SHA; RecoveryBackups has an authenticated completed execution/archive.
+The 04:04:50.312 UTC completion binds 1,182 objects (four database / 1,178 media)
+and 19 retained snapshots. This small-object/manifest verification does not
+repeat full ciphertext restoration, prove PITR, or establish off-site recovery.
+
+The prior all-nine observer, session 57765, completed its 300-sample bound with
+zero fault samples. The sole continuation observer is session 95980, started
+after that session closed. Its first sample is 11:36:51.237 UTC, following
+11:35:26.471 UTC by 84.766 seconds; no continuous coverage is claimed for that
+gap. Both boundary samples have zero faults. The private gap receipt is
+`artifacts/end-to-end-audit-2026-10-07/receipts/observer-continuation-gap-1136-oct8.json`.
+First resumed sample
+08:33:49.859 UTC has no faults; the five persistent identities remain unchanged.
+The intentional 29,729.717-second gap is retained without a continuity claim.
+Backend has one removed and one running instance in the exact deployment.
+Two startup timestamps and predeploy release markers support a predeploy
+explanation, but do not identify that removed instance; its cause remains
+unverified. Current runtime/role/migration/restricted Resend identity, ordinary
+scheduler and operations pass. Strict fresh correlated application logs through
+08:37:13.104 UTC pass with zero 5xx, truncation or stream-abort groups.
+
+All 13 deployed card/cold-404 cases pass with no retries/skips, 60 card
+observations, 119 keyboard advances and all 23 frames manually inspected.
+Full-card and artist Axe checks have zero violations/incompletes; artist
+contrast is 7.3645:1. Before/after full readiness binds the exact deployment
+pair and source. Search remains **failed**, independently of this browser pass:
+all 464 native/index/public IDs and all 15 OR-filter memberships match across
+85 public pages, but 299 format facet cells double-count products/change with
+pagination. Public definitions also omit one CD and one Vinyl bundle because
+`3CD Bundle` / `3LP Bundle` are not normalized. All failed receipts are retained.
+A scoped corrective Storefront change uses canonical index counts once,
+unique-product fallback counts, bounded post-filter totals and quantity aliases.
+The frozen correction passes eight focused files / 89 tests, full Storefront
+coverage (1,116 baseline and 403 transactional tests), the production build and
+its 112-asset security verification. Its real production API against the
+retained full native/index fixture matches all 16 complete ID sets, 85 pages
+and 299 canonical facet cells: CD 282, Vinyl 126, Cassette 130 and DVD 1.
+Desktop keyboard/Axe checks pass. Both mobile widths pass keyboard opening,
+selection, closing, result counts and no-overflow/error checks. Their strict
+automated Axe cases still fail on one `Tune your search` contrast incomplete
+per width. A separate root manual review of the exact nodes, screenshots,
+opaque colors and all 14 unobscured characters resolves only those findings
+at measured 14.1913:1 contrast. Retain the two raw failures; no automated
+exclusion or application geometry change is made. This is local fixture
+acceptance, not a deployed correction or a live ranking-engine proof.
+
+A fresh anonymous browser also reproduces an actual recovery defect:
+`/checkout/recover` keeps confirming an order after the authoritative status
+response is HTTP 404 / `cart_missing`. The frozen client correction maps only
+that exact parsed problem to the existing terminal missing-cart state, which
+returns to the catalog and stops polling. Actual HTTP status is retained
+separately: both it and the parsed problem must be 404. HTTP/body status
+mismatches keep recovery; their initial failing regression is retained.
+Unknown/malformed 404, server errors,
+rate limits, transport failures and uncertain payment states keep conservative
+recovery. Server identity, receipt-grant priority, payment authority and the
+recovery component are unchanged. The failing baseline is retained; four
+focused suites / 55 tests pass. Final guarded Storefront coverage passes 1,130
+baseline and 417 transactional tests with unchanged thresholds. The normal
+Storefront production build and 112-asset security verifier pass. Its compiled
+recovery matrix passes all 12 desktop Chrome/Pixel/native WebKit cases: real
+missing identity returns to the catalog once; HTTP/body status mismatches and
+missing receipt remain conservative. Deployed correction acceptance remains.
+
+Independent deployed read-only completion passes Contact/Privacy invalid-field
+and settled selector behavior, anonymous empty-cart/missing-receipt navigation,
+and phone Quick shop activation/closing. Three initial iPhone cases never
+launched because the private WebKit profile wrongly used Chrome's executable;
+retain those harness failures. The corrected actual pinned WebKit run passes
+all three cases. Desktop Quick shop retains a strict Axe contrast incomplete
+on its description paragraph. Root's exact-node manual review binds identical
+complete before/after frames, all 546 unobscured nonspace glyphs and 7.69554:1
+contrast on an opaque background. This resolves only that finding, with no
+source/rule change or rewritten automated result. Before/after readiness binds
+the deployed runs through 10:10:03.718 UTC. Sort/history, two-tab consent and
+editorial reflow now have separately bounded completion evidence. All four
+profiles pass two-tab consent convergence/revocation and Discography controls;
+consent telemetry is locally fulfilled, so this does not prove live delivery.
+All four editorial groups pass FAQ keyboard behavior, route/news navigation and
+reflow. Native WebKit uses keyboard scrolling and viewport reflow equivalence;
+unsupported wheel/native zoom operations are not claimed. Initial role,
+telemetry and live-selector harness failures remain retained.
+
+A complete sort comparison binds unchanged native/index/settings and service
+identities, all 464 public IDs and 56 pages. The original accented-title/newest
+strict failures remain retained. A 20-test offline reconciliation against
+hash-bound Meilisearch 1.11.3 and Charabia 0.9.1 primary source resolves all seven
+complete indexed orders: NFKD preserves combining marks, and null dates sort
+after the 461 valid dates. This proves current index sorting, not missing native
+date projection. A separate bounded read-only diagnosis proves all three owned
+Products have finite persisted creation dates but null indexed dates. Installed
+ProductDTO permits Date values; the existing transformer drops them. A scoped
+three-line converter correction preserves finite Dates without guessing missing
+values or changing string/number parsing. Two focused suites / 34 tests and the
+normal Backend build pass, with the compiled branch hash bound to the source.
+Final Backend coverage passes 303 suites / 2,713 tests; deployed/index repair
+acceptance remains pending. Deploying the converter alone does not rewrite the
+three existing null indexed dates.
+
+All four catalog browser diagnostics complete seven sort choices, query/history,
+clear and scrolling without page errors or overflow. Their strict failures
+expose a real phone heading hierarchy gap and toolbar contrast incompletes.
+A local correction adds only a screen-reader results h2 and removes the tagline's
+foreground alpha. Three heading baselines and two actual browser-composited
+contrast baselines fail as expected; the tagline measures 3.7929:1 over the
+brightest modeled backdrop. The normal corrected build/112-asset verifier pass;
+all five final browser cases pass with zero heading-order findings, 5.03878:1
+actual composited tagline contrast and all 18 glyphs unobscured. Results/card
+rectangles are unchanged at 320/768/1440 pixels. All 15 baseline/final frames are
+inspected. A measured-settlement diagnostic completes eight all-rule main
+scans over four actual browser profiles: zero violations and zero initial
+incompletes. Four strict sticky cases remain failed with 12 exact `imgNode`
+contrast incompletes; native scroll/header geometry is stable before/after and
+the scan itself moves no scroll. Root independently resolves only those 12
+nodes with inspected complete frames, conservative browser-composited contrast
+bounds (minimum 4.86418:1) and visible text/native placeholder paint. Empty
+placeholder TreeWalkers are not glyph proof; narrow native clipping retains a
+complete separate accessible label. No rule, geometry or raw result is changed.
+The fixture still uses synthetic art/prices/stock/date/artist and is not a live
+ranking or whole-document acceptance proof. Exact review:
+`artifacts/end-to-end-audit-2026-10-07/receipts/catalog-twelve-sticky-targets-root-manual-review-oct8.json`.
+
+Redis retains its October 3 process/run identity, with no observed restart,
+OOM, eviction or rejected connections. Supporting-log acceptance initially
+fails for 14 unmatched-child warnings, not a proved Redis crash. A natural
+later RDB window matches another 14 warnings to the exact observed timeout
+children adopted by Redis PID 1. A private diagnostic runner correction keeps
+bounded reads/deadlines and explicitly waits its direct children: 17 offline
+checks pass; actual 09:02:09.744 UTC deep proof has all 14 children waited/absent,
+zero new init-child delta and 387,982-second uptime. Historical warning provenance
+and cumulative error replies remain separate unresolved facts; no forced save,
+Redis restart, queue retry, provider change or broad log suppression occurred.
+Final reconciliation binds 14 fully owned BusyBox timer warnings to actual
+fork/PID ledgers. The original strict failure and older 14 unknown warnings
+remain retained. The corrected reader's next natural RDB window,
+09:02:09.744–09:07:18.465 UTC, has six native info rows, zero warnings/unknowns
+and no truncation; no retrospective warning waiver is claimed.
+Another corrected deep read at 09:48:28.718 UTC preserves the same process/run
+identity, with 390,760-second uptime, all 14 direct children waited/absent,
+zero new adopted children, healthy AOF/RDB and zero OOM/evictions/rejections.
+Cumulative error replies rise from 643 to 645; the two replies' cause remains
+unknown and is not classified as a crash.
+
+Saved browser sign-in restored native Admin access without credential export
+or auth changes. Read-only Product filters/inventory work, but native controls
+lack names, phone toolbar targets shrink, and filter dismissal leaves focus on
+BODY. Same-version UI/Dashboard patches are being verified against the complete
+compiled native Product page and real keyboard interactions. Strict closed-page
+Axe checks remain mandatory; native modal-menu diagnostics retain their context
+and findings. The actual mobile drawer also returns focus to BODY after Escape:
+the shell opens native Dialog without its Trigger reference. A scoped shell
+focus correction is in the expanded compiled native matrix. Read-only Settings checks
+also reproduce unnamed country/currency selections, squeezed phone headers,
+and a Regions edit drawer that closes the whole form when Escape dismisses an
+expanded provider combobox. A native Role detail's User summary also clips at
+458 pixels. Compiled retests additionally find nested drag/sort header controls,
+missing Region drawer title registration and an unassociated currency trigger.
+These bounded native corrections retain the existing modal, sorting/reordering
+and permission contracts.
+The first full 67-case run retains 60 passes and seven failures. Exact dark
+functional-text contrasts fail in breadcrumbs, nested navigation, search hint
+and empty Product media; the next pilot also finds active-filter label/operator
+and Clear-all contrast. The frozen predecessor corrects these exact contexts
+with the existing subtle foreground token and passes all 67 browser cases and
+134 installed component contracts. Separate short-heading geometry, closed
+popover animation and native drag click-shield timing findings remain preserved
+with their measured harness corrections; none permits a contrast exclusion.
+Actual Product Type creation then reproduces missing dialog registration,
+Cancel returning focus to BODY and ordinary Enter being blocked on native
+buttons by KeyboundForm. The next same-version correction registers native
+Title/Description, restores only a connected visible route invoker after native
+close handling, and retains normal button/link Enter activation while preserving
+field blocking, textarea behavior, prevented events and Ctrl/Meta submission.
+Both keyboard pilots prove empty-submit validation with zero attempted writes,
+Tab/Shift-Tab trapping and Cancel/Escape focus return. Final component checks
+pass 142 cases; normal Backend/Admin build, boundary and supply-chain checks
+pass. The expanded 69-case matrix completes with 68 strict passes and one
+retained raw automated failure. The phone Description retains a
+strict contrast incomplete; Root separately resolves only that exact node with
+an inspected full frame, all 46 unobscured glyphs and 7.72982:1 opaque contrast.
+Keep the raw failed result; this is not an automated pass or a rule exclusion.
+Root also inspects the final full 458-pixel matrix frame; its exact paragraph
+pixels match the manually resolved pilot. Joined native source/gate evidence is
+`artifacts/end-to-end-audit-2026-10-08/package-patches/native-admin-final-joined-receipt-oct8.json`.
+Signed-in read-only navigation at 458 pixels reaches all 19 Settings pages,
+with document width 458 and no visible alerts. Fresh before/after full readiness
+binds 10:22:20.343 through 10:33:51.382 UTC. Initial unsettled views and two
+navigation-dispatch timeouts are retained and reconciled by actual URL/DOM
+observations. This view/control inventory does not prove every asynchronous
+row, form action, computed accessible name or persisted setting. No key reveal,
+MFA enrollment, permission/configuration change or provider sync occurred.
+Full Backend coverage passes 303 suites / 2,699 tests and fresh shared QA passes.
+Those are predecessor gates; final coverage/shared QA for the latest frozen
+Date, keyboard and catalog changes now pass, with 2,713 Backend tests. Normal
+commits retain their required local hooks; strict integration remains held below.
+The foreign Variant-title batch hypothesis still needs isolated HTTP proof;
+installed ProductModule source refutes reparenting. Do not weaken native RBAC
+or vendor modal semantics to obtain a passing result.
+
+**Current external release blocker:** the approved Trivy database is expired.
+A verified empty-cache download at 09:21:47.092 UTC still returns `NextUpdate`
+October 8, 07:38:55.515 UTC. Four official scheduled publications failed at
+Docker Hub login because the publisher's organization token expired; fresh DB
+build stages succeeded but GHCR upload was skipped. The approved `:2` and
+`:latest` tags contain the same old DB layer. Backend disposable and Runtime
+Images/recovery freshness checks therefore cannot accept another release yet.
+Retain the failed scans and primary-source receipt
+`artifacts/end-to-end-audit-2026-10-07/receipts/trivy-official-db-stall-diagnosis-20261008.json`.
+Wait for an actual successful approved GHCR publication, then run fresh strict
+scans before isolated HTTP proof and the grouped staging push. The nominal
+12:00 UTC schedule is not a success guarantee. Do not change mirrors, metadata,
+freshness policy or test gates to manufacture acceptance; continue independent
+local/browser audit work meanwhile.
+Six bounded approved-manifest observations from 09:43:49.563 through
+10:10:32.438 UTC retain the same expired database digest/layer. That observer
+stopped at its bound. Four further bounded observations across the nominal noon
+schedule still retain those bytes, then stop at the user-requested pause. The
+12:04 UTC public workflow read shows no new noon publication run; its eventual
+result is unknown. No additional blob download, scan or automation ran.
+
+Ordinary Medusa exec bootstrap is not read-only: installed loaders update index
+settings and initialize defaults. It is disabled for the held owned-repair plan
+and must not be used for another read-only query. Reviewing its side effects or
+pinning a SHA does not remove that hold. The Date diagnosis used guarded direct SQL and
+three index GETs; actual query.graph Date representation remains unverified.
+Deeper installed-source review also identifies provider enablement/default
+upserts and Workflow Redis repeatable-job removal before the repair entrypoint.
+Both old private repair execution helpers now fail closed before provider/init
+or runtime access, with original bytes retained and three direct/serialized
+zero-provider guard proofs. Their older mocked tests do not certify the retired
+bootstrap. A safe initialized-service or isolated-module replacement is still
+required before owned orphan preview/apply/replay; do not merely pin its SHA.
+A narrow initialized native Admin GET/POST boundary is now in local verification.
+It reuses the existing serializable ownership/digest/repair service, conjunctive
+native policies and exact staging/SHA guard. Actual user authority, preview
+actor precondition and same-key replay are server-bound; CLI compatibility is
+preserved without re-enabling the unsafe launchers. Six focused suites / 168
+tests and Backend/integration types pass. Three actual native HTTP cases are
+prepared but remain unrun behind the scanner gate. A small session-auth Admin
+screen is frozen with durable exact-body uncertainty/retry state. Three focused
+suites / 72 tests, types, formatting and response-boundary checks pass, with
+independent review of all six final paths. Native Web Locks and shared storage
+coordinate tabs; the exact immutable command is saved before POST and only a
+matching acknowledgement/replay resolves uncertainty. Clearing requires a
+fresh original-user check. Neither API nor UI is deployed or accepted yet.
+Independent review matches all 14 frozen API/library/authorization/integration
+source hashes and finds no material authority/replay concern. The custom
+manifest now covers 66 methods (43 catalog / 23 other), with the same six native
+delegates and no new policy definitions. The support guide withdraws the unsafe
+exec procedure. The narrow repository-wrapper rejection passes two suites / 26 tests before
+any child/bootstrap, including source/built/runtime and symlink paths. Unrelated
+Medusa commands retain their existing behavior.
+
+Order #11 remains fully refunded/restocked. Its actual in-app Copy item SKU
+displays Copied, but that browser's clipboard bridge still returns empty text;
+retain this limitation without claiming an application copy failure. A separate
+compiled native Order Summary test at 390 pixels uses the actual browser
+clipboard, confirms exact SKU bytes and restores the previous clipboard.
+That local acceptance does not resolve the live bridge limitation.
+Never repeat completed orders #8/#9/#10/#11. A separate bounded repeatable-read inventory at 09:08:32.746 UTC covers
+all 464 published Products / 592 Variants and 1,147 managed links/assets, with
+matching before/after tables. Exactly three owned historical audit Products
+have a null native thumbnail despite active galleries: `prod_01M421F4YN6SE1TFFXMPXYSPF5`,
+`prod_01M424ZWCBV5CN6X2Z4X47V9KH` and `prod_01M4B59YEQZMET0SZW8P6CC2RV`.
+All 592 Variant thumbnail projections match. Plan fresh guarded re-saves
+through the existing audited media workflow after corrective acceptance;
+no blanket backfill or historical order rewrite is needed. Draft/deleted
+Products are outside this published inventory. The prepared three-Product plan
+has no accepted SHA and performed zero writes. Fresh aggregate-version, full
+link/profile/primary metadata, actor and exact idempotency guards are required
+before each audited media re-save. A replay must prove the stored operation
+result/version and no new write; the HTTP route returns a fresh media projection,
+so later legitimate writers can change that response body. No live orphan repair,
+thumbnail repair or mystery payment has run. **This release and Batch 6 are not accepted.**
+The search/Admin repairs belong to the current batch's necessary corrective
+release, with normal direct staging/CI/all-nine/deployed acceptance gates.
+Keep unrelated setup files and `Default/` untouched.
+
+## Paused at pushed correction — October 8, 00:18 UTC
+
+The user requested a good stopping point. Work is stopped at a fully committed,
+directly pushed staging correction. **CI and deployed acceptance remain pending;
+neither this release nor Batch 6 is accepted.** No next local batch began.
+Client cloning remains separately paused and production is untouched.
+
+Local HEAD and remote staging were verified as
+`b6e494f71e796c03d122f40d565b22769520323f`. The three Conventional Commits are
+`5a35f78` Catalog/native artwork ownership, `1d74fc2` storefront format/contrast,
+and `b6e494f` actual native/browser regressions and source handoff. All normal
+commit and push hooks pass. Final source gates pass shared QA, both builds,
+303 Backend suites / 2,699 tests, 223 disposable checks, Storefront baseline
+1,097 + transactional 403 tests, all 114 critical cases without retries,
+and inspected five-width artwork/availability frames. All 32 frozen Backend
+source hashes match. These local checks do not establish deployed acceptance.
+
+Exact-SHA CI at 00:18:09.570 UTC has all 23 required checks passing, but the
+whole Storefront workflow is incomplete. Root `37705276374`, Backend
+`37705276365` and Runtime Images `37705276420` pass; Storefront `37705276370`
+remains in progress. Its other jobs, including launch/responsive and Lighthouse,
+pass. Job `113078816984` has remained at **Install pinned Playwright browsers**
+since 00:02:52 UTC; critical tests have not started. The 60-minute job timeout
+is approximately 01:01:40 UTC. Live logs returned HTTP 404, with no annotations
+or confirmed installer/CDN/runner failure. No cancellation, retry, source fix
+or gate waiver was performed. Re-read actual terminal results on resume;
+do not infer success from the 23 required check names alone.
+
+The last all-nine Railway sample, 00:18:20.142 UTC, has no faults. The new
+exact-SHA candidates are still `WAITING`:
+
+| Service | New deployment |
+| --- | --- |
+| Backend | `c5948976-282c-48b4-b824-b96ee537bc4c` |
+| Storefront | `919e6f35-93ef-443b-9e24-7305b1606b81` |
+| Migrations | `3d196c32-1dd9-4110-9583-313710d5ebfa` |
+| RecoveryBackups | `fda01a91-9575-4a9d-a140-448b492678d7` |
+
+The previous `d3809e5` applications remain active; the five persistent
+supporting services retain their successful deployment/instance identities.
+The old idle RecoveryBackups service is not proof of a new archive. Redis's
+last deep probe at 23:44:38.434 UTC retained the same process/run identity and
+354,530-second uptime, with healthy persistence and no OOM/eviction/rejection.
+Scheduled failed jobs were not retried. No current-SHA runtime, scheduler,
+log, supporting-service or deployed browser acceptance has been run.
+
+Root intentionally stopped its owned all-nine and CI observer processes at
+00:18:32.667 UTC; both returned exit 143 and process absence was confirmed at
+00:18:37.717 UTC. The owned fixture session had already exited 0. GitHub and
+Railway automatic jobs were not cancelled and may continue after this pause.
+Reinventory all services and reconcile any deployment/instance changes on
+resume; the period after this stop is not continuously observed. The earlier
+271.794-second observer gap remains recorded. The private stopping receipt is
+`artifacts/end-to-end-audit-2026-10-07/receipts/stopping-state-b6e494f-2026-10-08T00-18-32.667Z.json`.
+
+Resume this correction before any new implementation or push:
+
+1. Inspect all four exact-SHA push workflows and their latest attempts with
+   the read-only readiness command. Diagnose any actual terminal failure;
+   do not blindly rerun the installer or replace evidence with another SHA.
+2. Reinventory all nine services, restart one owned observer, then collect a
+   fresh full readiness receipt and actual successful deployment identities.
+   Verify the migration receipt and new RecoveryBackups identity separately.
+3. Run the prepared exact-deployment runtime, ordinary new scheduler heartbeat,
+   deep Redis, bounded correlated logs and supporting-service checks. Fresh
+   timestamps and before/after identity guards remain mandatory.
+4. Run the prepared 13 deployed card/cold-404 cases, inspect all 23 frames,
+   and run the full native/index/public format comparison across all 15
+   nonempty format combinations. Bind fresh before/after readiness receipts.
+   The search facet-inflation concern remains an unverified source hypothesis;
+   preserve any real failure rather than declaring semantic acceptance.
+
+All fresh acceptance helpers remain unexecuted and gated in the private
+artifact directory. Only after this correction is accepted should a resumed
+audit address native thumbnail drift/backfill, guarded owned orphan cleanup,
+media/search controls, clipboard bytes, full Admin acceptance and the remaining
+mystery purchase/refund family. Native Admin is currently at login; do not
+bypass native authentication. Never repeat completed orders #8/#9/#10/#11.
+No live cleanup, new mystery payment or other business write ran in this
+stopping checkpoint. Finite leases and infrastructure/recovery/dependency
+carryovers remain explicit limits in the dated evidence below.
+
+Keep this final handoff local for the next substantive batch; do not add a
+documentation-only staging push. Preserve the unrelated setup files and
+unread `Default/` directory.
 
 ## Active continuation — October 7, 23:52 UTC
 

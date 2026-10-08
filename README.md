@@ -216,8 +216,8 @@ The permission model is deliberately small:
   the exact created/updated acknowledgement. Logs contain aggregate counts,
   never filenames, storage IDs, CSV values, or provider errors.
 
-The backend is the authority. A typed manifest covers all 64 active custom
-Admin methods exactly once: 41 under `/admin/catalog/**` and 23 elsewhere. It
+The backend is the authority. A typed manifest covers all 66 active custom
+Admin methods exactly once: 43 under `/admin/catalog/**` and 23 elsewhere. It
 generates exact, case-insensitive policy matchers that accept the same optional
 trailing slash as the router. When a route declares multiple custom and native
 permissions, all of them are required before the handler runs. Rate limits,

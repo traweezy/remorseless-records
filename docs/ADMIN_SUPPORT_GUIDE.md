@@ -84,31 +84,41 @@ successful child operations prove ownership of the remaining version-one
 profiles and media links. Do not retry the failed browser draft or write SQL
 to remove these records. Other failure shapes require investigation.
 
-After verifying the exact running staging Backend revision and its application
-bootstrap authority, run the built Medusa script in that container:
+Use the initialized **Operations → Catalog repair** workspace only after its
+exact deployed revision has passed the release gates in
+[the handoff](NEXT_SESSION_HANDOFF.md). The October 8 correction is still local;
+this procedure is unavailable on the older deployed revision. Keep the existing
+native Admin session and required conjunctive catalog/Product/Variant
+permissions. Do not export credentials or launch a second application.
 
-```bash
-node ./scripts/run-medusa.js ./src/scripts/repair-failed-catalog-creation.ts -- \
-  --sha=<exact-deployed-full-SHA> \
-  --creation-operation-id=<owned-compensated-catop-ID> \
-  --product-id=<owned-absent-prod-ID>
-```
+Enter the exact running staging Backend SHA, compensated creation-operation ID
+and absent Product ID. The preview reads through the existing initialized
+request scope and returns an ID-only manifest with full-row digests. Review its
+profiles, variants, media, active assets and child history before confirming.
+The authenticated user must remain the same through preview and confirmation.
 
-Preview performs no writes and returns an ID-only manifest with full-row
-digests. Review the exact profiles, variants, media, active assets and child
-history. Apply requires that unchanged manifest and a new repair UUID:
+The workspace retains a new repair UUID and the immutable reviewed request
+before its first send. An uncertain acknowledgement must retry that same
+request and UUID; do not start a new preview, change identities, or generate
+another UUID. An account, origin or deployed-SHA change requires investigation
+before retrying. A deployment during uncertainty can make the old exact-SHA
+request return a conflict; do not silently substitute the newer SHA. Storage or
+cross-tab coordination failure prevents a first send. Only a validated matching
+success acknowledgement or replay enables **Start another repair**, which
+checks the same signed-in user again before clearing the confirmed command.
+Keep independent private read-back evidence of assets, history and owned rows.
 
-```bash
-node ./scripts/run-medusa.js ./src/scripts/repair-failed-catalog-creation.ts -- \
-  --sha=<same-exact-deployed-full-SHA> \
-  --creation-operation-id=<same-owned-catop-ID> \
-  --product-id=<same-owned-prod-ID> \
-  --apply --manifest-sha256=<reviewed-64-character-manifest-SHA> \
-  --idempotency-key=<new-repair-UUID>
-```
+Do not use `repair-failed-catalog-creation` through Medusa `exec`, including for
+preview. Full application bootstrap occurs before the script and can update
+provider settings, defaults and scheduled queues. Its preview flag does not
+make that bootstrap read-only. The repository launcher blocks this repair
+entrypoint before starting a child process; bare Medusa CLI invocation is not
+a supported alternative.
 
-The script rejects other projects, environments, services, revisions and
-ambiguous ownership. A serializable catalog transaction soft-deletes only the
+The initialized API rejects other projects, environments, services, revisions,
+changed users and ambiguous ownership. The server derives audit authority
+from the native authenticated user. A serializable catalog transaction
+soft-deletes only the
 proven dangling media links and profiles, retaining uploaded assets and the
 original operation history. It records one successful
 `catalog.failed-creation.repair` operation. Completion failure rolls back the

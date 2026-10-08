@@ -10,9 +10,9 @@ Medusa's versioned error envelope because the Admin SDK and Dashboard consume
 it. Do not replace the native envelope without a Medusa compatibility test and
 a separate reviewed migration.
 
-The current generated inventory finds 32 Storefront and 65 Backend route
-files. They export 124 operations across both services. The generated document
-contains 122 unique path/method pairs because `/live` and
+The current generated inventory finds 32 Storefront and 66 Backend route
+files. They export 126 operations across both services. The generated document
+contains 124 unique path/method pairs because `/live` and
 `/ready` are deliberately implemented by both services. It records source
 ownership, path parameters, error-envelope ownership, generic success and
 error references, and the bounded Storefront provider matrix. CI reruns the

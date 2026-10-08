@@ -105,29 +105,53 @@ contracts before applying generic framework examples from those files.
 
 ## Verified continuation boundary
 
-**Current October 7 continuation:** Store Batch 6 continues. Direct staging
-baseline `d3809e54542fef4bce27e8ef6b849873efa4cb35` passes all four CI workflows /
-23 checks, both exact app deployments, Migrations, runtime, scheduler, backup
-freshness and correlated logs. Eight deployed cold 404/history cases pass.
-The carousel review finds sold-out artist text at 2.875:1; this revision remains
-visually unaccepted until the corrective release passes. Its cohesive local
-repair also projects managed artwork into native checkout snapshots, guards
-native/import artwork writes and batch deletion, and corrects the false
-Cassette match in Relics with changed cache identities. Final source gates pass 303 Backend suites / 2,699 tests, all 223 disposable
-checks, both builds, 114 critical browser cases and inspected availability/art
-frames. Shared-asset creation rollback, strict retries and bounded 200-asset
-restoration have actual service proof; failed reproductions remain retained.
-The next grouped direct push still requires exact CI and deployed acceptance.
-Preserve observer gaps and the removed Backend instance's unverified cause.
-All-nine monitoring and deep Redis remain healthy; historical job failures
-are retained. No guarded cleanup or new payment has run. Orders #9/#10/#11
-are already refunded/restocked and must not be repeated; mystery is the
-remaining distinct paid family. Existing managed thumbnail drift, owned
-media/search, native Admin/clipboard and individually unverified recovery
-controls remain. Native Admin currently shows login, not authenticated access.
-The control ledger's 493 AST candidates do not establish executed passes.
-Client cloning stays paused; production is untouched. Follow the opening
-handoff/audit for exact receipts and unfinished work.
+**Current October 8 continuation:** Store Batch 6 continues at `b6e494f`.
+All four exact workflows / 23 checks, exact app/Migrations deployments,
+runtime/role proof, ordinary health and correlated application logs pass.
+All 13 deployed card/404 cases and 23 inspected frames pass. Complete
+native/index/public format membership matches all 464 IDs, but facet counts
+and quantity-bundle definitions fail; the current corrective batch fixes those
+alongside native Admin control names, phone targets, filter focus and landmarks.
+Local Conventional Commit `ffd6891` passes full catalog count/API fixture,
+coverage and production-build checks. Its two strict mobile contrast incompletes
+are retained with exact manual review. Additional native Settings findings
+remain. The exact missing-cart recovery correction in `32ebe2b` also passes full Storefront
+coverage, the normal production build and all 12 compiled browser cases while
+preserving uncertain payment recovery. Signed-in read-only navigation reaches
+all 19 Settings pages; distinct workflows remain open. The native 67-case
+predecessor passes after scoped dark-text and independently evidenced harness
+corrections. The expanded 69-case matrix adds Product Type dialog registration,
+button Enter validation and Cancel/Escape return; 142 component checks and the
+normal build pass. One exact phone Description contrast incomplete remains a
+raw failure with separate manual paint proof; the completed 69-case matrix has
+68 strict passes and that one retained raw failure. All seven complete actual-index
+sort orders are reconciled against primary source; three finite native creation
+dates still have null indexed projections. The scoped Date converter correction
+passes 34 focused tests, 303 Backend suites / 2,713 tests and the compiled build.
+Catalog heading/toolbar corrections pass five browser cases with unchanged card
+geometry. Live correction acceptance and distinct owned workflows remain open.
+The approved scanner
+DB's upstream publication failure blocks fresh
+integration and release acceptance; keep its normal freshness gates intact.
+Saved native Admin sign-in is restored. Same-version vendor patches and full
+expanded compiled-page evidence is complete, with RBAC/modal semantics preserved.
+All-nine observation retains its intentional gap; Redis retains its October 3
+run identity while diagnostic child warnings are reconciled against exact PIDs.
+RecoveryBackups has authenticated current completion/manifest proof, not a
+repeated full restore/PITR acceptance. Existing thumbnail drift, owned orphan
+repair, media/search controls, the live clipboard bridge and mystery payment
+remain open. Compiled native clipboard bytes are verified separately.
+The failed-creation repair is moving to a narrow initialized native Admin API
+and session UI; exact actor/manifest/replay checks and the source-derived
+66-method authorization inventory pass focused local checks. Full exec startup
+can write before a preview and is held. The replacement's 14 compiled GET-only
+UI cases and 16 main-scoped Axe scans now pass, with 72 focused UI tests and
+final 309-suite / 2,840-test Backend coverage. Its fresh disposable HTTP gate
+and exact deployed acceptance remain pending; use the
+updated support guide and opening handoff before any owned repair.
+Never repeat completed orders #8/#9/#10/#11. AST control candidates do not
+establish executed passes. Client cloning stays paused and production is
+untouched. The opening handoff/audit retain exact receipts and unresolved gates.
 
 The following continuation description predates that current correction.
 
