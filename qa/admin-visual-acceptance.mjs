@@ -32,6 +32,14 @@ const holdMs = Number(process.env.ADMIN_ACCEPTANCE_HOLD_MS ?? "0")
 const settleMs = Number(process.env.ADMIN_ACCEPTANCE_SETTLE_MS ?? "3000")
 const clickText = process.env.ADMIN_ACCEPTANCE_CLICK ?? ""
 const setup = process.env.ADMIN_ACCEPTANCE_SETUP ?? ""
+const nativeProductStates = []
+let nativeClipboardProof = null
+let nativeDrawerProof = null
+let nativeInitialKeyboardProof = null
+let nativeSettingsProof = null
+let nativeFunctionalTextContrast = null
+let nativeProductTypeProof = null
+const blockedMutationRequests = []
 const taxConfiguration =
   process.env.ADMIN_ACCEPTANCE_TAX_CONFIGURATION ?? "ready"
 const taxRecordsState =
@@ -148,6 +156,124 @@ const product = {
       prices: [{ amount: 2400, currency_code: "usd", id: "price_acceptance" }],
       sku: "RR-001-BLK",
       title: "Black Vinyl",
+    },
+  ],
+}
+
+const isNativeProductTypeCase = setup === "native-product-type-cancel-focus"
+const isNativeProductCase = setup.startsWith("native-product-controls-")
+const isNativeSettingsCase = setup.startsWith("native-settings-")
+const nativeSettingsRegion = {
+  id: "reg_acceptance",
+  name: "US",
+  currency_code: "usd",
+  automatic_taxes: true,
+  metadata: {},
+  created_at: timestamp,
+  updated_at: timestamp,
+  countries: [
+    {
+      iso_2: "us",
+      iso_3: "usa",
+      num_code: 840,
+      name: "UNITED STATES",
+      display_name: "United States",
+      region_id: "reg_acceptance",
+    },
+    {
+      iso_2: "ca",
+      iso_3: "can",
+      num_code: 124,
+      name: "CANADA",
+      display_name: "Canada",
+      region_id: "reg_acceptance",
+    },
+  ],
+  payment_providers: [
+    { id: "pp_system_default", is_enabled: true },
+    { id: "pp_stripe_stripe", is_enabled: true },
+  ],
+}
+const nativeSettingsCurrencies = [
+  {
+    code: "usd",
+    name: "US Dollar",
+    symbol: "$",
+    symbol_native: "$",
+    decimal_digits: 2,
+    rounding: 0,
+  },
+  {
+    code: "eur",
+    name: "Euro",
+    symbol: "€",
+    symbol_native: "€",
+    decimal_digits: 2,
+    rounding: 0,
+  },
+]
+const nativeSettingsRoleUsers = [
+  ["Alexandria", "Fixture Operator"],
+  ["Christopher", "Fixture Reviewer"],
+  ["Morgan", "Fixture Observer"],
+].map(([first_name, last_name], index) => ({
+  id: `user_role_fixture_${index}`,
+  first_name,
+  last_name,
+  email: `role-fixture-${index}@example.invalid`,
+  created_at: timestamp,
+  updated_at: timestamp,
+}))
+const nativeSettingsRole = {
+  id: "role_acceptance",
+  name: "Audit operator",
+  description: "Owned read-only fixture",
+  created_at: timestamp,
+  updated_at: timestamp,
+  users_link: nativeSettingsRoleUsers.map((user) => ({ user })),
+  policies: [
+    { id: "policy_fixture_product", key: "product:read" },
+    { id: "policy_fixture_order", key: "order:read" },
+    { id: "policy_fixture_user", resource: "user", operation: "read" },
+  ],
+  metadata: {},
+}
+const nativeProduct = {
+  ...product,
+  options: [{ id: "option_acceptance", title: "Format", values: [] }],
+  variants: [
+    ...product.variants.map((variant) => ({
+      ...variant,
+      allow_backorder: false,
+      created_at: timestamp,
+      inventory_items: [],
+      options: [
+        {
+          id: "value_vinyl",
+          option_id: "option_acceptance",
+          value: "Black Vinyl",
+        },
+      ],
+      product_id: product.id,
+      thumbnail: null,
+      variant_rank: 0,
+    })),
+    {
+      id: "variant_acceptance_cd",
+      product_id: product.id,
+      title: "CD",
+      sku: "RR-001-CD",
+      manage_inventory: false,
+      allow_backorder: false,
+      inventory_quantity: 0,
+      inventory_items: [],
+      created_at: timestamp,
+      options: [
+        { id: "value_cd", option_id: "option_acceptance", value: "CD" },
+      ],
+      prices: [],
+      thumbnail: null,
+      variant_rank: 1,
     },
   ],
 }
@@ -341,6 +467,78 @@ const listKeyByPath = new Map([
 
 const fixtureFor = (url) => {
   const { pathname } = url
+  if (isNativeSettingsCase) {
+    if (pathname === "/admin/regions/reg_acceptance")
+      return { region: nativeSettingsRegion }
+    if (pathname === "/admin/regions")
+      return paged("regions", [nativeSettingsRegion])
+    if (pathname === "/admin/price-preferences")
+      return paged("price_preferences")
+    if (pathname === "/admin/currencies")
+      return paged("currencies", nativeSettingsCurrencies)
+    if (pathname === "/admin/payments/payment-providers")
+      return paged("payment_providers", nativeSettingsRegion.payment_providers)
+    if (pathname === "/admin/refund-reasons")
+      return paged("refund_reasons", [
+        {
+          id: "ref_reason_acceptance",
+          label: "Damaged item",
+          description: "An item arrived damaged",
+          created_at: timestamp,
+          updated_at: timestamp,
+        },
+      ])
+    if (pathname === "/admin/rbac/me/permissions")
+      return {
+        permissions: [
+          "rbac_role:read",
+          "rbac_role:create",
+          ...(setup.includes("role-detail")
+            ? ["user:read", "rbac_policy:read"]
+            : []),
+        ],
+      }
+    if (pathname === "/admin/rbac/roles/role_acceptance")
+      return { role: nativeSettingsRole }
+    if (pathname === "/admin/rbac/roles/role_acceptance/users")
+      return paged("users", nativeSettingsRoleUsers)
+    if (pathname === "/admin/rbac/roles")
+      return paged("roles", [nativeSettingsRole])
+    const columns = pathname.match(
+      /^\/admin\/views\/(regions|refund-reasons)\/columns$/u
+    )
+    if (columns)
+      return {
+        columns: [
+          {
+            id: columns[1] === "regions" ? "name" : "label",
+            field: columns[1] === "regions" ? "name" : "label",
+            name: "Name",
+            render_mode: "text",
+            data_type: "string",
+            default_visible: true,
+            default_order: 0,
+            sortable: true,
+            hideable: true,
+            filter: { enabled: false },
+            metadata: {},
+          },
+          {
+            id: "created_at",
+            field: "created_at",
+            name: "Created",
+            render_mode: "datetime",
+            data_type: "date",
+            default_visible: true,
+            default_order: 1,
+            sortable: true,
+            hideable: true,
+            filter: { enabled: false },
+            metadata: {},
+          },
+        ],
+      }
+  }
   if (pathname === "/admin/orders" && setup.startsWith("native-order-list-")) {
     return paged("orders", [{ ...rmaOrder, display_id: 10 }])
   }
@@ -655,8 +853,11 @@ const fixtureFor = (url) => {
   if (pathname === "/admin/feature-flags") {
     return {
       feature_flags: {
-        rbac: false,
-        view_configurations: setup === "native-order-list-links",
+        rbac:
+          setup.startsWith("native-settings-roles") ||
+          setup.includes("role-detail"),
+        view_configurations:
+          setup === "native-order-list-links" || isNativeSettingsCase,
       },
     }
   }
@@ -671,7 +872,13 @@ const fixtureFor = (url) => {
           id: "store_acceptance",
           metadata: {},
           name: "Remorseless Records",
-          supported_currencies: [],
+          supported_currencies: isNativeSettingsCase
+            ? nativeSettingsCurrencies.map((currency, index) => ({
+                currency_code: currency.code,
+                currency,
+                is_default: index === 0,
+              }))
+            : [],
           updated_at: timestamp,
         },
       ],
@@ -688,6 +895,24 @@ const fixtureFor = (url) => {
   }
   if (pathname.startsWith("/admin/views/")) {
     return { columns: [], configurations: [], view: null, views: [] }
+  }
+  if (
+    isNativeProductCase &&
+    pathname === "/admin/products/product_acceptance/variants"
+  ) {
+    let variants = nativeProduct.variants
+    const managed = url.searchParams.get("manage_inventory")
+    if (managed !== null)
+      variants = variants.filter(
+        (variant) => variant.manage_inventory === (managed === "true")
+      )
+    const order = url.searchParams.get("order")
+    if (order === "title" || order === "-title")
+      variants = [...variants].sort(
+        (a, b) =>
+          (order.startsWith("-") ? -1 : 1) * a.title.localeCompare(b.title)
+      )
+    return paged("variants", variants)
   }
   if (
     setup === "catalog-create-bundle-stock" &&
@@ -720,7 +945,7 @@ const fixtureFor = (url) => {
               }
             : product,
         ])
-      : { product }
+      : { product: isNativeProductCase ? nativeProduct : product }
   }
   if (pathname === "/admin/catalog/artists") {
     return {
@@ -1202,6 +1427,7 @@ const fixtureFor = (url) => {
 }
 
 let browser
+let page
 const navigations = []
 const issues = []
 const failedResponses = []
@@ -1219,14 +1445,25 @@ try {
     headless: process.env.ADMIN_ACCEPTANCE_HEADFUL !== "1",
   })
   await mkdir(dirname(screenshotPath), { recursive: true })
-  const page = await browser.newPage()
+  page = await browser.newPage()
+  if (isSummaryCase && width === 390) {
+    await browser
+      .defaultBrowserContext()
+      .overridePermissions(acceptanceOrigin, [
+        "clipboard-read",
+        "clipboard-write",
+        "clipboard-sanitized-write",
+      ])
+  }
   await page.emulateMediaFeatures([
     { name: "prefers-reduced-motion", value: "reduce" },
-    ...(setup.startsWith("native-login-")
+    ...(setup.startsWith("native-login-") ||
+    isNativeProductCase ||
+    isNativeSettingsCase
       ? [
           {
             name: "prefers-color-scheme",
-            value: setup === "native-login-dark" ? "dark" : "light",
+            value: setup.endsWith("-dark") ? "dark" : "light",
           },
         ]
       : []),
@@ -1277,6 +1514,14 @@ try {
           { timeout: 30_000 }
         )
       : null
+  page.on("request", (request) => {
+    if (!["GET", "HEAD", "OPTIONS"].includes(request.method())) {
+      blockedMutationRequests.push({
+        method: request.method(),
+        path: new URL(request.url()).pathname,
+      })
+    }
+  })
   await page.setRequestInterception(true)
   page.on("request", (request) => {
     if (rejectAdminAcceptanceMutation(request, (code) => issues.push(code))) {
@@ -1420,6 +1665,1586 @@ try {
       }
     }
     throw new Error(`Could not find ${label} button.`)
+  }
+  if (isNativeProductTypeCase) {
+    const createSelector = 'main a[href="/app/settings/product-types/create"]'
+    const dialogSelector = '[role="dialog"][data-state="open"]'
+    const cycles = []
+    nativeProductTypeProof = {
+      cycles,
+      fieldsEntered: false,
+      submitClicked: false,
+      mutationFencesRetained: true,
+    }
+    await page.waitForSelector(createSelector, { visible: true })
+    let tabReachedCreate = false
+    for (let index = 0; index < 100; index++) {
+      await page.keyboard.press("Tab")
+      if (
+        await page.$eval(
+          createSelector,
+          (node) => document.activeElement === node
+        )
+      ) {
+        tabReachedCreate = true
+        break
+      }
+    }
+    if (!tabReachedCreate)
+      throw new Error("Real Tab did not reach Product Type Create")
+    nativeProductTypeProof.realTabReachedCreate = true
+    const openNative = async () => {
+      await page.keyboard.press("Enter")
+      await page.waitForSelector(`${dialogSelector} input[name="value"]`, {
+        visible: true,
+      })
+      await page.waitForFunction(
+        (selector) => {
+          const dialog = document.querySelector(selector)
+          return (
+            dialog &&
+            getComputedStyle(dialog).opacity === "1" &&
+            !dialog
+              .getAnimations({ subtree: true })
+              .some(
+                (animation) =>
+                  animation.playState === "running" || animation.pending
+              )
+          )
+        },
+        {},
+        dialogSelector
+      )
+      const field = await page.$eval(
+        `${dialogSelector} input[name="value"]`,
+        (node) => {
+          const dialog = node.closest('[role="dialog"]')
+          return {
+            value: node.value,
+            labels: [...node.labels].map((label) => label.textContent.trim()),
+            title: document
+              .getElementById(dialog.getAttribute("aria-labelledby"))
+              ?.textContent.trim(),
+            focusInside: dialog.contains(document.activeElement),
+            focusOnValue: document.activeElement === node,
+          }
+        }
+      )
+      if (
+        field.value !== "" ||
+        field.labels.join() !== "Value" ||
+        field.title !== "Create Product Type" ||
+        !field.focusInside ||
+        !field.focusOnValue
+      )
+        throw new Error(
+          "Native Product Type title, label or initial focus is invalid"
+        )
+      const controls = await page.$$eval(
+        `${dialogSelector} input, ${dialogSelector} button`,
+        (nodes) =>
+          nodes
+            .filter(
+              (node) =>
+                !node.disabled &&
+                node.tabIndex >= 0 &&
+                node.getClientRects().length
+            )
+            .map((node) => ({
+              name: node.name || node.textContent.trim(),
+              type: node.getAttribute("type"),
+            }))
+      )
+      if (
+        controls.length !== 3 ||
+        controls[0].name !== "value" ||
+        controls[1].name !== "Cancel" ||
+        controls[2].type !== "submit"
+      )
+        throw new Error("Native Product Type focus-boundary controls changed")
+      for (let index = 0; index < controls.length; index++) {
+        await page.keyboard.press("Tab")
+        await page.waitForFunction(
+          (selector) =>
+            document.activeElement?.closest(selector) &&
+            !document.activeElement.closest('[aria-hidden="true"]'),
+          {},
+          dialogSelector
+        )
+      }
+      await page.waitForFunction(
+        (selector) =>
+          document.activeElement ===
+          document.querySelector(`${selector} input[name="value"]`),
+        {},
+        dialogSelector
+      )
+      await page.keyboard.down("Shift")
+      try {
+        await page.keyboard.press("Tab")
+      } finally {
+        await page.keyboard.up("Shift")
+      }
+      await page.waitForFunction(
+        (selector) =>
+          document.activeElement ===
+          document.querySelector(`${selector} button[type="submit"]`),
+        {},
+        dialogSelector
+      )
+      field.boundary = { controls, forwardWrap: true, backwardWrap: true }
+      await page.keyboard.press("Enter")
+      await page.waitForFunction(
+        (selector) => {
+          const input = document.querySelector(
+            `${selector} input[name="value"]`
+          )
+          return (
+            input?.getAttribute("aria-invalid") === "true" &&
+            input.value === "" &&
+            document.activeElement === input &&
+            (input.getAttribute("aria-describedby") || "")
+              .split(/\s+/u)
+              .some((id) => {
+                const message = document.getElementById(id)
+                return (
+                  message?.textContent.trim() && message.getClientRects().length
+                )
+              })
+          )
+        },
+        {},
+        dialogSelector
+      )
+      field.emptySubmit = await page.$eval(
+        `${dialogSelector} input[name="value"]`,
+        (input) => ({
+          invalid: input.getAttribute("aria-invalid") === "true",
+          value: input.value,
+          focusOnValue: document.activeElement === input,
+          errorId: input.getAttribute("aria-describedby"),
+          error: document
+            .getElementById(input.getAttribute("aria-describedby"))
+            ?.textContent.trim(),
+        })
+      )
+      if (!field.emptySubmit.error)
+        throw new Error(
+          "Native empty Product Type Enter did not produce validation"
+        )
+      // Return to the native Submit boundary for the independent dismissal cycle.
+      await page.keyboard.down("Shift")
+      try {
+        await page.keyboard.press("Tab")
+      } finally {
+        await page.keyboard.up("Shift")
+      }
+      await page.waitForFunction(
+        (selector) =>
+          document.activeElement ===
+          document.querySelector(`${selector} button[type="submit"]`),
+        {},
+        dialogSelector
+      )
+      return field
+    }
+    for (const dismissal of ["Cancel", "Escape"]) {
+      const field = await openNative()
+      await page.screenshot({
+        fullPage: true,
+        path: screenshotPath.replace(
+          /\.png$/u,
+          `-${dismissal.toLowerCase()}-open.png`
+        ),
+      })
+      if (dismissal === "Cancel") {
+        await page.keyboard.down("Shift")
+        try {
+          await page.keyboard.press("Tab")
+        } finally {
+          await page.keyboard.up("Shift")
+        }
+        await page.waitForFunction(
+          () => document.activeElement?.textContent.trim() === "Cancel"
+        )
+        await page.keyboard.press("Enter")
+      } else {
+        await page.keyboard.press("Tab")
+        await page.waitForFunction(
+          (selector) =>
+            document.activeElement ===
+            document.querySelector(`${selector} input[name="value"]`),
+          {},
+          dialogSelector
+        )
+        await page.keyboard.press("Escape")
+      }
+      await page.waitForFunction(
+        (expected) =>
+          location.pathname === expected &&
+          !document.querySelector('[role="dialog"]') &&
+          document.body.style.pointerEvents !== "none",
+        {},
+        route
+      )
+      await page.waitForFunction(
+        (selector) =>
+          document.activeElement === document.querySelector(selector),
+        {},
+        createSelector
+      )
+      const focus = await page.$eval(createSelector, (node) => ({
+        connected: node.isConnected,
+        visible: !!node.getClientRects().length,
+        html: node.outerHTML,
+        restored: document.activeElement === node,
+        focusVisible: node.matches(":focus-visible"),
+      }))
+      cycles.push({
+        dismissal,
+        field,
+        tabTrapped: true,
+        shiftTabTrapped: true,
+        focus,
+      })
+    }
+    // Leave the actual form open for the all-rules Dialog scan. The closed
+    // Product/Settings page scans remain separate in their existing cases.
+    nativeProductTypeProof.finalField = await openNative()
+    nativeProductTypeProof.blockedMutationRequests = blockedMutationRequests
+    if (blockedMutationRequests.length)
+      throw new Error(
+        "Native empty Product Type validation attempted a mutation"
+      )
+  }
+  if (isNativeSettingsCase) {
+    const proof = {
+      setup,
+      route,
+      selection: null,
+      group: null,
+      editor: null,
+      headingLayout: null,
+    }
+    nativeSettingsProof = proof
+    const selectorByName = (role, name) =>
+      `[role="${role}"][aria-label="${name}"]`
+    const restoreFixture = async () => {
+      await page.goto(`${baseUrl}${route}`, { waitUntil: "networkidle0" })
+      await page.waitForFunction(() => document.querySelector("main h1"))
+    }
+    // Inspect the entire native page before opening modal navigation or editors.
+    const initialAxe = await new AxePuppeteer(page).include("html").analyze()
+    proof.initialAxe = {
+      violations: initialAxe.violations,
+      incomplete: initialAxe.incomplete,
+    }
+    if (initialAxe.violations.length || initialAxe.incomplete.length)
+      issues.push("native-settings:initial_axe_findings")
+    await page.screenshot({
+      fullPage: true,
+      path: screenshotPath.replace(/\.png$/u, "-initial.png"),
+    })
+    proof.headingLayout = await page.evaluate(() => {
+      const heading = document.querySelector("main h1")
+      const headingGroup = heading?.parentElement?.parentElement
+      const header = headingGroup?.parentElement
+      const headingBox = headingGroup?.getBoundingClientRect()
+      const headerBox = header?.getBoundingClientRect()
+      const controls = headingGroup?.nextElementSibling
+      const controlsBox = controls?.getBoundingClientRect()
+      const create = [...document.querySelectorAll("main a")].find(
+        (node) => node.textContent.trim() === "Create"
+      )
+      const createBox = create?.getBoundingClientRect()
+      return {
+        heading: heading?.textContent,
+        headingWidth: headingBox?.width,
+        headerWidth: headerBox?.width,
+        headingClass: header?.className,
+        headerDirection: header && getComputedStyle(header).flexDirection,
+        headingBottom: headingBox?.bottom,
+        controlsTop: controlsBox?.top,
+        textBounds: [...headingGroup.querySelectorAll("h1,p")].map((node) => ({
+          text: node.textContent,
+          scrollWidth: node.scrollWidth,
+          clientWidth: node.clientWidth,
+          left: node.getBoundingClientRect().left,
+          right: node.getBoundingClientRect().right,
+        })),
+        createBox: createBox && {
+          left: createBox.left,
+          right: createBox.right,
+          top: createBox.top,
+          width: createBox.width,
+        },
+        scrollWidth: document.documentElement.scrollWidth,
+        clientWidth: document.documentElement.clientWidth,
+      }
+    })
+    if (
+      setup.includes("regions-list") ||
+      setup.includes("refund-reasons") ||
+      setup.includes("roles")
+    ) {
+      if (
+        width < 768 &&
+        (proof.headingLayout.headerDirection !== "column" ||
+          proof.headingLayout.controlsTop <
+            proof.headingLayout.headingBottom - 1 ||
+          proof.headingLayout.textBounds.some(
+            (node) =>
+              node.scrollWidth > node.clientWidth + 1 ||
+              node.left < 0 ||
+              node.right > width
+          ))
+      )
+        issues.push("native-settings:phone_heading_squeezed")
+      if (
+        proof.headingLayout.createBox &&
+        proof.headingLayout.createBox.right > width
+      )
+        issues.push("native-settings:create_clipped")
+    }
+    await restoreFixture()
+    if (setup.includes("role-detail")) {
+      proof.roleAssignmentBoundary = await page.evaluate(() => ({
+        checkboxes: [
+          ...document.querySelectorAll('main [role="checkbox"]'),
+        ].map((node) => ({
+          name: node.getAttribute("aria-label"),
+          disabled: node.disabled,
+          checked: node.getAttribute("aria-checked"),
+        })),
+        mutationControls: [...document.querySelectorAll("main button,main a")]
+          .filter((node) =>
+            ["Add", "Remove", "Manage permissions"].includes(
+              node.textContent.trim()
+            )
+          )
+          .map((node) => node.textContent.trim()),
+        strayZero: [...document.querySelectorAll("main h1")].some((heading) =>
+          [...heading.parentElement.childNodes].some(
+            (node) =>
+              node.nodeType === Node.TEXT_NODE &&
+              node.textContent.trim() === "0"
+          )
+        ),
+      }))
+      if (
+        proof.roleAssignmentBoundary.checkboxes.length !== 4 ||
+        proof.roleAssignmentBoundary.checkboxes.some(
+          (node) => !node.disabled || node.checked !== "false" || !node.name
+        ) ||
+        proof.roleAssignmentBoundary.mutationControls.length ||
+        proof.roleAssignmentBoundary.strayZero
+      )
+        issues.push("native-settings:role_assignment_permission_changed")
+      proof.roleSummary = await page.evaluate(() => {
+        const wrappers = [
+          ...document.querySelectorAll("main .inline-flex.min-w-0.max-w-full"),
+        ].filter((node) => node.textContent.includes("+ 1 more"))
+        return wrappers.map((node) => {
+          const rect = node.getBoundingClientRect()
+          const more = [...node.querySelectorAll("span")].find(
+            (item) => item.textContent.trim() === "+ 1 more"
+          )
+          const moreRect = more?.getBoundingClientRect()
+          return {
+            text: node.textContent,
+            left: rect.left,
+            right: rect.right,
+            width: rect.width,
+            moreRight: moreRect?.right,
+            parentRight: node.parentElement.getBoundingClientRect().right,
+          }
+        })
+      })
+      if (
+        proof.roleSummary.length !== 2 ||
+        proof.roleSummary.some(
+          (node) => node.right > width || node.moreRight > node.parentRight + 1
+        )
+      )
+        issues.push("native-settings:role_summary_clipped")
+    }
+    if (setup.includes("regions-list") || setup.includes("refund-reasons")) {
+      const order = () =>
+        page.$$eval("main table thead th", (nodes) =>
+          nodes.map((node) => node.textContent.trim())
+        )
+      const before = await order()
+      await page.evaluate(() => {
+        window.nativeDragActivationEvents = []
+        document.addEventListener("keydown", (event) => {
+          if (!event.target?.getAttribute("aria-label")?.startsWith("Reorder "))
+            return
+          queueMicrotask(() =>
+            window.nativeDragActivationEvents.push({
+              key: event.key,
+              code: event.code,
+              prevented: event.defaultPrevented,
+              target: event.target.outerHTML,
+            })
+          )
+        })
+      })
+      await page.focus('main button[aria-label="Reorder Name"]')
+      await page.evaluate(
+        () =>
+          new Promise((resolve) =>
+            requestAnimationFrame(() => requestAnimationFrame(resolve))
+          )
+      )
+      await page.keyboard.press("Space")
+      proof.dragActivation = await page.evaluate(() => ({
+        events: window.nativeDragActivationEvents,
+        announcements: [...document.querySelectorAll("[aria-live]")].map(
+          (node) => node.textContent
+        ),
+      }))
+      await page.waitForFunction(
+        () =>
+          document
+            .querySelector('main button[aria-label="Reorder Name"]')
+            ?.getAttribute("aria-pressed") === "true"
+      )
+      // Installed KeyboardSensor attaches its document key listener in the
+      // next task. Wait for the active drag's rendered frame before moving.
+      await page.evaluate(
+        () =>
+          new Promise((resolve) =>
+            requestAnimationFrame(() => requestAnimationFrame(resolve))
+          )
+      )
+      await page.keyboard.press("ArrowRight")
+      await page.waitForFunction(() =>
+        [...document.querySelectorAll("[aria-live]")].some((node) =>
+          node.textContent.includes("over droppable area created_at")
+        )
+      )
+      proof.dragActivation.afterArrow = await page.evaluate(() => ({
+        announcements: [...document.querySelectorAll("[aria-live]")].map(
+          (node) => node.textContent
+        ),
+        events: window.nativeDragActivationEvents,
+      }))
+      await page.keyboard.press("Space")
+      await page.waitForFunction(
+        () =>
+          document.querySelector("main table thead th")?.textContent.trim() ===
+          "Created"
+      )
+      const afterKeyboard = await order()
+      const source = await page.$('main button[aria-label="Reorder Created"]')
+      const target = await page.$('main button[aria-label="Reorder Name"]')
+      const sourceBox = await source.boundingBox()
+      const targetBox = await target.boundingBox()
+      const dragClient = await page.createCDPSession()
+      const { result: dragDocument } = await dragClient.send(
+        "Runtime.evaluate",
+        { expression: "document", objectGroup: "native-drag-readiness" }
+      )
+      const dragListeners = () =>
+        dragClient.send("DOMDebugger.getEventListeners", {
+          objectId: dragDocument.objectId,
+        })
+      await page.mouse.move(
+        sourceBox.x + sourceBox.width / 2,
+        sourceBox.y + sourceBox.height / 2
+      )
+      await page.mouse.down()
+      await page.mouse.move(
+        targetBox.x + targetBox.width / 2,
+        targetBox.y + targetBox.height / 2,
+        { steps: 12 }
+      )
+      const duringDrag = (await dragListeners()).listeners.filter(
+        (listener) =>
+          listener.type === "click" &&
+          listener.useCapture &&
+          /\.stopPropagation\(\)/u.test(listener.handler?.description ?? "")
+      )
+      if (duringDrag.length !== 1)
+        throw new Error("Exact native drag click shield was not identified")
+      const shield = duringDrag[0]
+      await page.mouse.up()
+      const cleanupDeadline = Date.now() + 2000
+      let cleanupReads = 0
+      while (
+        (await dragListeners()).listeners.some(
+          (listener) =>
+            listener.type === shield.type &&
+            listener.useCapture === shield.useCapture &&
+            listener.scriptId === shield.scriptId &&
+            listener.lineNumber === shield.lineNumber &&
+            listener.columnNumber === shield.columnNumber
+        )
+      ) {
+        if (Date.now() >= cleanupDeadline)
+          throw new Error("Native drag click shield did not detach")
+        cleanupReads++
+        await page.evaluate(() => new Promise(requestAnimationFrame))
+      }
+      proof.pointerCleanup = {
+        exactCapturedShield: {
+          type: shield.type,
+          useCapture: shield.useCapture,
+          scriptId: shield.scriptId,
+          lineNumber: shield.lineNumber,
+          columnNumber: shield.columnNumber,
+          description: shield.handler.description,
+        },
+        cleanupReads,
+        detached: true,
+      }
+      await dragClient.send("Runtime.releaseObjectGroup", {
+        objectGroup: "native-drag-readiness",
+      })
+      await dragClient.detach()
+      await page.waitForFunction(
+        () =>
+          document.querySelector("main table thead th")?.textContent.trim() ===
+          "Name"
+      )
+      const afterPointer = await order()
+      proof.reorder = {
+        before,
+        afterKeyboard,
+        afterPointer,
+        nativeKeyboard: true,
+        nativePointer: true,
+      }
+      await page.waitForFunction(
+        () => !document.querySelector('main button[aria-pressed="true"]')
+      )
+      await page.evaluate(
+        () =>
+          new Promise((resolve) =>
+            requestAnimationFrame(() => requestAnimationFrame(resolve))
+          )
+      )
+      const sort = await page.$$("main table thead th button")
+      let sorted = false
+      for (const button of sort) {
+        if (
+          await button.evaluate((node) => node.textContent.trim() === "Name")
+        ) {
+          await button.focus()
+          proof.independentSortTrigger = await button.evaluate((node) => ({
+            html: node.outerHTML,
+            focused: document.activeElement === node,
+          }))
+          await page.keyboard.press("Enter")
+          sorted = true
+          break
+        }
+      }
+      if (!sorted) throw new Error("Native named sort button was not found")
+      await page.waitForFunction(() =>
+        [...new URLSearchParams(location.search)].some(
+          ([key, value]) =>
+            (key === "order" || key.endsWith("_order")) &&
+            ["name", "label"].includes(value)
+        )
+      )
+      proof.reorder = {
+        before,
+        afterKeyboard,
+        afterPointer,
+        nativeKeyboard: true,
+        nativePointer: true,
+        independentSortSearch: new URL(page.url()).search,
+      }
+      await restoreFixture()
+    }
+    if (
+      setup.includes("store") ||
+      setup.includes("region-detail") ||
+      setup.includes("region-editor")
+    ) {
+      await page.waitForSelector(
+        'main [role="checkbox"][aria-label="Select all"]'
+      )
+      const header = 'main [role="checkbox"][aria-label="Select all"]'
+      const rows = await page.$$eval(
+        'main [role="checkbox"][aria-label^="Select "]:not([aria-label="Select all"])',
+        (nodes) =>
+          nodes.map((node) => ({
+            name: node.getAttribute("aria-label"),
+            checked: node.getAttribute("aria-checked"),
+            disabled: node.hasAttribute("disabled"),
+          }))
+      )
+      if (rows.length !== 2 || rows.some((row) => !row.name.trim()))
+        throw new Error(
+          "Native Settings fixture requires two identified selections"
+        )
+      const row = selectorByName("checkbox", rows[0].name)
+      await page.focus(row)
+      await page.keyboard.press("Space")
+      await page.waitForFunction(
+        (target) =>
+          document.querySelector(target)?.getAttribute("aria-checked") ===
+          "true",
+        {},
+        row
+      )
+      await page.waitForFunction(
+        (target) =>
+          document.querySelector(target)?.getAttribute("aria-checked") ===
+          "mixed",
+        {},
+        header
+      )
+      await page.focus(header)
+      await page.keyboard.press("Space")
+      await page.waitForFunction(
+        (target) =>
+          document.querySelector(target)?.getAttribute("aria-checked") ===
+          "true",
+        {},
+        header
+      )
+      await page.keyboard.press("Space")
+      await page.waitForFunction(
+        (target) =>
+          document.querySelector(target)?.getAttribute("aria-checked") ===
+          "false",
+        {},
+        header
+      )
+      proof.selection = {
+        rows,
+        spaceToggles: true,
+        indeterminate: true,
+        allPage: true,
+        cleared: true,
+        routeUnchanged: new URL(page.url()).pathname === route,
+      }
+    }
+    // Settings groups use their translated labels in the actual responsive shell.
+    if (width < 1024) {
+      await page.focus('button[data-medusa-navigation-toggle="mobile"]')
+      await page.keyboard.press("Space")
+      await page.waitForSelector('[role="dialog"][data-state="open"]')
+    }
+    const groupSelector = `${width < 1024 ? '[role="dialog"] ' : ""}[aria-label="General"][aria-expanded]`
+    await page.waitForSelector(groupSelector)
+    await page.focus(groupSelector)
+    await page.keyboard.press("Space")
+    await page.waitForFunction(
+      (target) =>
+        document.querySelector(target)?.getAttribute("aria-expanded") ===
+        "false",
+      {},
+      groupSelector
+    )
+    await page.keyboard.press("Enter")
+    await page.waitForFunction(
+      (target) =>
+        document.querySelector(target)?.getAttribute("aria-expanded") ===
+        "true",
+      {},
+      groupSelector
+    )
+    proof.group = await page.$eval(groupSelector, (node) => ({
+      name: node.getAttribute("aria-label"),
+      expanded: node.getAttribute("aria-expanded"),
+      controls: node.getAttribute("aria-controls"),
+      focusRetained: document.activeElement === node,
+    }))
+    if (width < 1024) {
+      await page.keyboard.press("Escape")
+      await page.waitForFunction(
+        () => !document.querySelector('[role="dialog"][data-state="open"]')
+      )
+      await page.waitForFunction(
+        () =>
+          document.activeElement ===
+          document.querySelector(
+            'button[data-medusa-navigation-toggle="mobile"]'
+          )
+      )
+    }
+    if (setup.includes("region-editor")) {
+      await restoreFixture()
+      await page.focus('main button[aria-label="Open actions"]')
+      await page.keyboard.press("Enter")
+      await page.waitForSelector('a[role="menuitem"][href$="/edit"]')
+      await page.focus('a[role="menuitem"][href$="/edit"]')
+      await page.keyboard.press("Enter")
+      await page.waitForSelector('[role="dialog"] input[name="name"]')
+      await page.waitForFunction(() => {
+        const dialog = document.querySelector('[role="dialog"]')
+        return (
+          dialog &&
+          !dialog
+            .getAnimations({ subtree: true })
+            .some(
+              (animation) =>
+                animation.playState === "running" || animation.pending
+            )
+        )
+      })
+      const currency =
+        '[role="dialog"] button[role="combobox"][aria-label="Currency"]'
+      await page.focus(currency)
+      await page.keyboard.press("Space")
+      await page.waitForSelector('[role="option"]')
+      const currencyOptions = await page.$$eval('[role="option"]', (nodes) =>
+        nodes.map((node) => node.textContent.trim())
+      )
+      await page.keyboard.press("Escape")
+      await page.waitForFunction(
+        (target) =>
+          document.activeElement === document.querySelector(target) &&
+          document.querySelector(target)?.getAttribute("aria-expanded") ===
+            "false",
+        {},
+        currency
+      )
+      if (!(await page.$('[role="dialog"] input[name="name"]')))
+        throw new Error("Currency list dismissal closed Region editor")
+      proof.currency = {
+        name: "Currency",
+        options: currencyOptions,
+        nativeSelect: true,
+        escapeRestores: true,
+        valueUnchanged: true,
+      }
+      const combo = '[role="dialog"] input[role="combobox"]'
+      await page.focus(combo)
+      await page.keyboard.press("ArrowDown")
+      await page.waitForFunction(
+        (target) =>
+          document.querySelector(target)?.getAttribute("aria-expanded") ===
+          "true",
+        {},
+        combo
+      )
+      await page.waitForSelector('[role="option"]')
+      const options = await page.$$eval('[role="option"]', (nodes) =>
+        nodes.map((node) => node.textContent.trim())
+      )
+      await page.screenshot({
+        fullPage: true,
+        path: screenshotPath.replace(/\.png$/u, "-providers-open.png"),
+      })
+      await page.keyboard.press("Escape")
+      await page.waitForFunction(
+        (target) =>
+          document.querySelector(target)?.getAttribute("aria-expanded") ===
+          "false",
+        {},
+        combo
+      )
+      if (!(await page.$('[role="dialog"] input[name="name"]')))
+        throw new Error("First Escape closed native Region editor")
+      const firstEscape = await page.$eval(combo, (node) => ({
+        expanded: node.getAttribute("aria-expanded"),
+        focusRetained: document.activeElement === node,
+      }))
+      proof.editor = {
+        options,
+        firstEscape,
+        secondEscapeCloses: false,
+        noSave: true,
+      }
+      await page.keyboard.press("Tab")
+      const tabFocus = await page.evaluate(
+        () => document.activeElement.outerHTML
+      )
+      await page.keyboard.down("Shift")
+      await page.keyboard.press("Tab")
+      await page.keyboard.up("Shift")
+      const shiftTabFocus = await page.evaluate(
+        () => document.activeElement.outerHTML
+      )
+      // Native Combobox opens on focus. Close that reopened list before
+      // independently dismissing the unchanged drawer from its name field.
+      if (
+        await page.$eval(
+          combo,
+          (node) => node.getAttribute("aria-expanded") === "true"
+        )
+      ) {
+        await page.keyboard.press("Escape")
+        await page.waitForFunction(
+          (target) =>
+            document.querySelector(target)?.getAttribute("aria-expanded") ===
+            "false",
+          {},
+          combo
+        )
+      }
+      await page.focus('[role="dialog"] input[name="name"]')
+      await page.keyboard.press("Escape")
+      await page.waitForFunction(
+        (expected) =>
+          new URL(location.href).pathname === expected &&
+          !document.querySelector('[role="dialog"][data-state="open"]'),
+        {},
+        route
+      )
+      proof.editor = {
+        options,
+        firstEscape,
+        secondEscapeCloses: true,
+        tabFocus,
+        shiftTabFocus,
+        noSave: true,
+      }
+      await restoreFixture()
+    }
+    nativeSettingsProof = proof
+    proof.closedPopoverReadiness = await page.evaluate(() =>
+      [
+        ...document.querySelectorAll('[role="dialog"][data-state="closed"]'),
+      ].map((node) => ({
+        html: node.outerHTML.slice(0, 1000),
+        opacity: getComputedStyle(node).opacity,
+        visibility: getComputedStyle(node).visibility,
+        display: getComputedStyle(node).display,
+        animations: node.getAnimations({ subtree: true }).map((animation) => ({
+          state: animation.playState,
+          pending: animation.pending,
+        })),
+      }))
+    )
+    await page.waitForFunction(() =>
+      [
+        ...document.querySelectorAll('[role="dialog"][data-state="closed"]'),
+      ].every((node) => {
+        const style = getComputedStyle(node)
+        return (
+          ((node.hidden && !node.getClientRects().length) ||
+            style.display === "none" ||
+            style.visibility === "hidden") &&
+          !node
+            .getAnimations({ subtree: true })
+            .some(
+              (animation) =>
+                animation.playState === "running" || animation.pending
+            )
+        )
+      })
+    )
+  }
+  if (isNativeProductCase) {
+    const selector = (label) => `button[aria-label="${label}"]`
+    const keyboardOpen = async (target) => {
+      await page.focus(target)
+      await page.keyboard.press("Space")
+    }
+    const waitForNativeTooltipReadiness = () =>
+      page.waitForFunction(() =>
+        Array.from(
+          document.querySelectorAll(".shadow-elevation-tooltip")
+        ).every((tooltip) => {
+          const style = getComputedStyle(tooltip)
+          const intentionallyHidden =
+            style.display === "none" ||
+            style.visibility === "hidden" ||
+            (tooltip.hidden && tooltip.getClientRects().length === 0)
+          return (
+            intentionallyHidden &&
+            !tooltip
+              .getAnimations({ subtree: true })
+              .some(
+                (animation) =>
+                  animation.playState === "running" || animation.pending
+              )
+          )
+        })
+      )
+    const keyboardDismiss = async (label) => {
+      // Axe's aria-hidden-focus probe can focus other triggers and leave fading
+      // tooltip layers. Test native dismissal after those real layers unmount.
+      if (
+        await page.evaluate(() =>
+          Array.from(
+            document.querySelectorAll(".shadow-elevation-tooltip")
+          ).some((tooltip) => {
+            const style = getComputedStyle(tooltip)
+            return (
+              style.display !== "none" &&
+              style.visibility !== "hidden" &&
+              !(tooltip.hidden && tooltip.getClientRects().length === 0)
+            )
+          })
+        )
+      ) {
+        await page.keyboard.press("Escape")
+        await waitForNativeTooltipReadiness()
+      }
+      if (!(await page.$('[role="menu"][data-state="open"]'))) {
+        await page.waitForFunction(
+          (name) => document.activeElement?.getAttribute("aria-label") === name,
+          {},
+          label
+        )
+        return
+      }
+      await page.keyboard.press("Escape")
+      await page.waitForFunction(
+        (name) =>
+          document.activeElement?.getAttribute("aria-label") === name &&
+          !document.querySelector('[role="menu"]') &&
+          !document.querySelector("main")?.closest('[aria-hidden="true"]'),
+        {},
+        label
+      )
+    }
+    const auditState = async (state) => {
+      const modalMenu = state.endsWith("-menu")
+      await waitForNativeTooltipReadiness()
+      let modalProof = null
+      if (modalMenu) {
+        const trigger = await page.$eval(
+          '[role="menu"][data-state="open"]',
+          (menu) => {
+            const id = menu.getAttribute("aria-labelledby")
+            const button = document.getElementById(id)
+            if (!button?.getAttribute("aria-label"))
+              throw new Error("Native menu has no named invoking button")
+            return { id, name: button.getAttribute("aria-label") }
+          }
+        )
+        const requireMenuFocus = async () =>
+          page.waitForFunction(
+            () =>
+              document.activeElement?.closest(
+                '[role="menu"][data-state="open"]'
+              ) && !document.activeElement.closest('[aria-hidden="true"]')
+          )
+        await requireMenuFocus()
+        await page.keyboard.press("Tab")
+        await requireMenuFocus()
+        await page.keyboard.down("Shift")
+        try {
+          await page.keyboard.press("Tab")
+        } finally {
+          await page.keyboard.up("Shift")
+        }
+        await requireMenuFocus()
+        await page.evaluate(() => {
+          const button = document.querySelector(
+            'main button[aria-label="Open actions"]'
+          )
+          if (!button?.closest('[aria-hidden="true"]'))
+            throw new Error("Native modal does not hide background content")
+          button.focus()
+        })
+        await requireMenuFocus()
+        await page.evaluate(() => {
+          const guard = document.querySelector("[data-radix-focus-guard]")
+          if (!guard) throw new Error("Native modal focus guard is absent")
+          guard.focus()
+        })
+        await requireMenuFocus()
+        await keyboardDismiss(trigger.name)
+        await keyboardOpen(`[id="${trigger.id}"]`)
+        await requireMenuFocus()
+        await page.evaluate(
+          () =>
+            new Promise((resolve) =>
+              requestAnimationFrame(() => requestAnimationFrame(resolve))
+            )
+        )
+        await page.mouse.click(5, 60)
+        await page.waitForFunction(
+          () =>
+            !document.querySelector('[role="menu"]') &&
+            !document.querySelector("main")?.closest('[aria-hidden="true"]') &&
+            document.body.style.pointerEvents !== "none"
+        )
+        await keyboardOpen(`[id="${trigger.id}"]`)
+        await requireMenuFocus()
+        modalProof = {
+          trigger: trigger.name,
+          tabTrapped: true,
+          shiftTabTrapped: true,
+          hiddenBackgroundRedirected: true,
+          focusGuardRedirected: true,
+          escapeRestoresTrigger: true,
+          outsideClickDismisses: true,
+        }
+      }
+      await page.evaluate(
+        () =>
+          new Promise((resolve) =>
+            requestAnimationFrame(() => requestAnimationFrame(resolve))
+          )
+      )
+      if (modalProof)
+        await page.waitForFunction(() => {
+          const menu = document.querySelector(
+            '[role="menu"][data-state="open"]'
+          )
+          return (
+            menu &&
+            getComputedStyle(menu).opacity === "1" &&
+            !menu
+              .getAnimations({ subtree: true })
+              .some(
+                (animation) =>
+                  animation.playState === "running" || animation.pending
+              )
+          )
+        })
+      let axe = await new AxePuppeteer(page).include("html").analyze()
+      let transitionScan = null
+      if (
+        modalProof &&
+        [...axe.violations, ...axe.incomplete].some(
+          ({ id, nodes }) =>
+            id === "color-contrast" &&
+            nodes.some(
+              ({ html, target }) =>
+                html.includes('data-state="closed"') &&
+                target.some((selector) =>
+                  selector.includes("shadow-elevation-tooltip")
+                )
+            )
+        )
+      ) {
+        transitionScan = {
+          violations: axe.violations,
+          incomplete: axe.incomplete,
+        }
+        await keyboardDismiss(modalProof.trigger)
+        await keyboardOpen(selector(modalProof.trigger))
+        await page.waitForFunction(() =>
+          document.activeElement?.closest('[role="menu"][data-state="open"]')
+        )
+        await waitForNativeTooltipReadiness()
+        await page.evaluate(
+          () =>
+            new Promise((resolve) =>
+              requestAnimationFrame(() => requestAnimationFrame(resolve))
+            )
+        )
+        await page.waitForFunction(() => {
+          const menu = document.querySelector(
+            '[role="menu"][data-state="open"]'
+          )
+          return (
+            menu &&
+            getComputedStyle(menu).opacity === "1" &&
+            !menu
+              .getAnimations({ subtree: true })
+              .some(
+                (animation) =>
+                  animation.playState === "running" || animation.pending
+              )
+          )
+        })
+        axe = await new AxePuppeteer(page).include("html").analyze()
+      }
+      const path = screenshotPath.replace(/\.png$/u, `-${state}.png`)
+      await page.screenshot({ fullPage: true, path })
+      // Retain every all-rules result. Global document/hidden-background rules
+      // are contextual while the proven native modal menu hides the app; the
+      // full default page and retained-filter state never use this classifier.
+      const modalNodeContexts = modalProof
+        ? await page.evaluate(
+            (findings) =>
+              findings.map(({ id, nodes }) => ({
+                id,
+                nodes: nodes.map(({ target, html }) =>
+                  target.map((selector) => {
+                    const element =
+                      typeof selector === "string"
+                        ? document.querySelector(selector)
+                        : null
+                    const retainedNode = new DOMParser().parseFromString(
+                      html,
+                      "text/html"
+                    ).body.firstElementChild
+                    const retainedNativeGuard = Boolean(
+                      retainedNode?.matches(
+                        'span[data-radix-focus-guard][tabindex="0"][aria-hidden="true"][data-aria-hidden="true"]'
+                      ) &&
+                        document.querySelector(
+                          'span[data-radix-focus-guard][tabindex="0"][aria-hidden="true"][data-aria-hidden="true"]'
+                        )
+                    )
+                    const hiddenApp = document.querySelector(
+                      '[data-aria-hidden="true"][aria-hidden="true"] main'
+                    )
+                    return {
+                      selectorResolved: Boolean(element),
+                      retainedNativeGuard,
+                      documentRoot:
+                        element === document.documentElement &&
+                        Boolean(hiddenApp) &&
+                        !Array.from(document.querySelectorAll("main")).some(
+                          (main) => !main.closest('[aria-hidden="true"]')
+                        ),
+                      visibleMenu:
+                        Boolean(
+                          element?.closest(
+                            '[role="menu"][data-state="open"]'
+                          ) ||
+                            (element?.matches(
+                              "[data-radix-popper-content-wrapper]"
+                            ) &&
+                              element.querySelector(
+                                '[role="menu"][data-state="open"]'
+                              ))
+                        ) && !element.closest('[aria-hidden="true"]'),
+                      hiddenApp: Boolean(
+                        element?.matches(
+                          '[data-aria-hidden="true"][aria-hidden="true"]'
+                        ) && element.querySelector("main")
+                      ),
+                      focusGuard: Boolean(
+                        element?.hasAttribute("data-radix-focus-guard") ||
+                          (!element && retainedNativeGuard)
+                      ),
+                    }
+                  })
+                ),
+              })),
+            [...axe.violations, ...axe.incomplete]
+          )
+        : []
+      const contextualModalFinding = ({ id, nodes }, index) => {
+        if (!modalProof) return false
+        const contexts = modalNodeContexts[index]?.nodes
+        if (
+          !nodes.length ||
+          !contexts?.length ||
+          contexts.some((targets) => !targets.length)
+        )
+          return false
+        if (
+          ["landmark-one-main", "page-has-heading-one", "bypass"].includes(id)
+        )
+          return contexts.every((targets) =>
+            targets.every(({ documentRoot }) => documentRoot)
+          )
+        if (id === "region")
+          return contexts.every((targets) =>
+            targets.every(({ visibleMenu }) => visibleMenu)
+          )
+        if (id === "aria-hidden-focus")
+          return contexts.every((targets) =>
+            targets.every(
+              ({ hiddenApp, focusGuard }) => hiddenApp || focusGuard
+            )
+          )
+        return false
+      }
+      if (
+        [...axe.violations, ...axe.incomplete].some(
+          (finding, index) => !contextualModalFinding(finding, index)
+        )
+      ) {
+        issues.push(`native-product:${state}:axe_findings`)
+      }
+      nativeProductStates.push({
+        state,
+        path,
+        axeViolations: axe.violations.map(({ id, nodes }) => ({
+          id,
+          nodes: nodes.map(({ html, target, failureSummary }) => ({
+            html,
+            target,
+            failureSummary,
+          })),
+        })),
+        axeIncomplete: axe.incomplete.map(({ id, nodes }) => ({
+          id,
+          nodes: nodes.map(({ html, target, failureSummary }) => ({
+            html,
+            target,
+            failureSummary,
+          })),
+        })),
+        search: new URL(page.url()).search,
+        modalProof,
+        modalNodeContexts,
+        transitionScan,
+        focus: await page.evaluate(() => ({
+          activeElement: document.activeElement?.outerHTML.slice(0, 1000),
+          hiddenAncestor:
+            document.activeElement?.closest('[aria-hidden="true"]')?.tagName ??
+            null,
+          visibleMenus: Array.from(
+            document.querySelectorAll('[role="menu"], [role="dialog"]'),
+            (element) => ({
+              role: element.getAttribute("role"),
+              state: element.getAttribute("data-state"),
+              expanded: element.getAttribute("aria-expanded"),
+              text: element.textContent.trim().slice(0, 200),
+            })
+          ),
+        })),
+      })
+    }
+    await page.waitForFunction(() =>
+      document.querySelector("main tbody")?.textContent.includes("Black Vinyl")
+    )
+    await keyboardOpen('main tbody button[aria-label="Open row actions"]')
+    await page.waitForFunction(() =>
+      document.activeElement?.closest('[role="menu"][data-state="open"]')
+    )
+    await page.keyboard.press("Escape")
+    await page.waitForFunction(
+      () =>
+        !document.querySelector('[role="menu"]') &&
+        document.activeElement?.getAttribute("aria-label") ===
+          "Open row actions"
+    )
+    await page.evaluate(() => {
+      const title = Array.from(
+        document.querySelectorAll("main thead button")
+      ).find((button) => button.textContent.trim() === "Title")
+      if (!title)
+        throw new Error("Reachable native title sorting header is absent")
+      title.focus()
+    })
+    await page.keyboard.press("Tab")
+    nativeInitialKeyboardProof = await page.evaluate(() => {
+      const button = document.activeElement
+      if (button?.textContent.trim() !== "SKU" || !button.closest("main thead"))
+        throw new Error("Real Tab did not reach the native SKU header")
+      const style = getComputedStyle(button)
+      return {
+        beforeAnyScanner: true,
+        rowEscapeRestoredTrigger: true,
+        tabReachedSku: true,
+        focusVisiblePseudo: button.matches(":focus-visible"),
+        width: button.getBoundingClientRect().width,
+        height: button.getBoundingClientRect().height,
+        outlineStyle: style.outlineStyle,
+        boxShadow: style.boxShadow,
+        html: button.outerHTML,
+      }
+    })
+    nativeFunctionalTextContrast = await page.evaluate(() => {
+      const color = (value) => {
+        if (!/^rgba?\(/u.test(value))
+          throw new Error(`Unsupported computed color: ${value}`)
+        const channels = value.match(/[\d.]+/gu).map(Number)
+        return [...channels.slice(0, 3), channels[3] ?? 1]
+      }
+      const blend = (front, back) =>
+        front
+          .slice(0, 3)
+          .map(
+            (channel, index) =>
+              channel * front[3] + back[index] * (1 - front[3])
+          )
+      const luminance = (channels) =>
+        channels
+          .map((value) => {
+            const channel = value / 255
+            return channel <= 0.04045
+              ? channel / 12.92
+              : ((channel + 0.055) / 1.055) ** 2.4
+          })
+          .reduce(
+            (sum, value, index) =>
+              sum + value * [0.2126, 0.7152, 0.0722][index],
+            0
+          )
+      const contexts = [
+        [
+          "breadcrumb",
+          [...document.querySelectorAll('header a[href="/app/products"]')],
+        ],
+        [
+          "breadcrumb title",
+          [...document.querySelectorAll("header span")].filter(
+            (node) => node.textContent === "Ashes of the Last Sun"
+          ),
+        ],
+        [
+          "nested navigation",
+          [
+            ...document.querySelectorAll(
+              'a[href="/app/collections"],a[href="/app/categories"],a[href="/app/product-options"]'
+            ),
+          ],
+        ],
+        [
+          "search shortcut",
+          [...document.querySelectorAll("button p")].filter(
+            (node) => node.textContent === "⌘K"
+          ),
+        ],
+        [
+          "search placeholder",
+          [...document.querySelectorAll('main input[type="search"]')],
+          "::placeholder",
+        ],
+        [
+          "media guidance",
+          [...document.querySelectorAll("main p")].filter(
+            (node) =>
+              node.textContent ===
+              "Add media to showcase it in your storefront."
+          ),
+        ],
+      ]
+      return contexts.flatMap(([context, nodes, pseudo]) =>
+        nodes.map((node) => {
+          const rect = node.getBoundingClientRect()
+          if (
+            !rect.width ||
+            !rect.height ||
+            getComputedStyle(node).visibility === "hidden"
+          )
+            return { context, text: node.textContent, rendered: false }
+          const ancestors = []
+          for (let element = node; element; element = element.parentElement)
+            ancestors.unshift(element)
+          let background = [255, 255, 255]
+          const layers = ancestors.map((element) => {
+            const style = getComputedStyle(element)
+            if (style.backgroundImage !== "none" || Number(style.opacity) !== 1)
+              throw new Error(
+                "Functional text contrast needs a settled solid-color backdrop"
+              )
+            background = blend(color(style.backgroundColor), background)
+            return { tag: element.tagName, background: style.backgroundColor }
+          })
+          const textStyle = getComputedStyle(node, pseudo)
+          if (Number(textStyle.opacity) !== 1)
+            throw new Error("Functional text contrast needs opaque text")
+          const foreground = blend(color(textStyle.color), background)
+          const foregroundLuminance = luminance(foreground),
+            backgroundLuminance = luminance(background)
+          return {
+            context,
+            text: pseudo ? node.getAttribute("placeholder") : node.textContent,
+            pseudo: pseudo ?? null,
+            rendered: true,
+            foreground,
+            background,
+            layers,
+            ratio:
+              (Math.max(foregroundLuminance, backgroundLuminance) + 0.05) /
+              (Math.min(foregroundLuminance, backgroundLuminance) + 0.05),
+          }
+        })
+      )
+    })
+    if (
+      !nativeFunctionalTextContrast.some(
+        (node) => node.context === "media guidance" && node.rendered
+      ) ||
+      nativeFunctionalTextContrast.some(
+        (node) => node.rendered && node.ratio < 4.5
+      )
+    )
+      issues.push("native-product:functional_text_contrast")
+    await page.goto(`${baseUrl}${route}`, { waitUntil: "networkidle0" })
+    await page.waitForFunction(() =>
+      document.querySelector("main tbody")?.textContent.includes("Black Vinyl")
+    )
+    await keyboardOpen(selector("Filter"))
+    await page.waitForSelector('[role="menuitem"]')
+    await auditState("filter-menu")
+    await page.goto(`${baseUrl}${route}`, { waitUntil: "networkidle0" })
+    await page.waitForFunction(() =>
+      document.querySelector("main tbody")?.textContent.includes("Black Vinyl")
+    )
+    await keyboardOpen(selector("Filter"))
+    await page.waitForSelector('[role="menuitem"]')
+    await page.evaluate(() => {
+      const item = Array.from(
+        document.querySelectorAll('[role="menuitem"]')
+      ).find((element) => element.textContent.trim() === "Manage inventory")
+      if (!item) throw new Error("Native Manage inventory filter is missing")
+      item.focus()
+    })
+    await page.keyboard.press("Enter")
+    await page.waitForSelector('[role="dialog"]')
+    await page.evaluate(() => {
+      const choice = Array.from(
+        document.querySelectorAll(
+          '[role="dialog"] [role="radio"], [role="dialog"] [role="option"], [role="dialog"] button, [role="dialog"] [role="listitem"]'
+        )
+      ).find((element) => element.textContent.trim() === "Yes")
+      if (!choice) throw new Error("Native inventory Yes choice is missing")
+      choice.focus()
+    })
+    await page.keyboard.press("Enter")
+    await page.waitForFunction(
+      () =>
+        new URL(location.href).searchParams.get("pv_manage_inventory") ===
+        '"true"'
+    )
+    await page.keyboard.press("Escape")
+    await page.waitForFunction(
+      () =>
+        !document.querySelector('[role="dialog"][data-state="open"]') &&
+        document.activeElement?.textContent.trim() === "Yes"
+    )
+    await page.waitForSelector(selector("Remove: Manage inventory"))
+    await page.waitForFunction(
+      () => !document.querySelector("main")?.closest('[aria-hidden="true"]')
+    )
+    await auditState("active-filter")
+    await page.focus(selector("Remove: Manage inventory"))
+    await page.keyboard.press("Enter")
+    await page.waitForFunction(
+      () => !new URL(location.href).searchParams.has("pv_manage_inventory")
+    )
+    await keyboardOpen(selector("Sort"))
+    await page.waitForSelector('[role="menuitemradio"]')
+    await auditState("sort-menu")
+    await page.goto(`${baseUrl}${route}`, { waitUntil: "networkidle0" })
+    await page.waitForFunction(() =>
+      document.querySelector("main tbody")?.textContent.includes("Black Vinyl")
+    )
+    await keyboardOpen(selector("Sort"))
+    await page.waitForSelector('[role="menuitemradio"]')
+    await page.evaluate(() => {
+      const item = Array.from(
+        document.querySelectorAll('[role="menuitemradio"]')
+      ).find((element) => element.textContent.trim() === "Title")
+      if (!item) throw new Error("Native Title sort is missing")
+      item.focus()
+    })
+    await page.keyboard.press("Enter")
+    await page.waitForFunction(
+      () => new URL(location.href).searchParams.get("pv_order") === "title"
+    )
+    await keyboardDismiss("Sort")
+    await page.goto(`${baseUrl}${route}`, { waitUntil: "networkidle0" })
+    await page.waitForFunction(() =>
+      document.querySelector("main tbody")?.textContent.includes("Black Vinyl")
+    )
+    const actions = 'main button[aria-label="Open actions"]'
+    await keyboardOpen(actions)
+    await page.waitForSelector('[role="menuitem"]')
+    await auditState("actions-menu")
+    await page.goto(`${baseUrl}${route}`, { waitUntil: "networkidle0" })
+    await page.waitForFunction(() =>
+      document.querySelector("main tbody")?.textContent.includes("Black Vinyl")
+    )
+    await keyboardOpen('main tbody button[aria-label="Open row actions"]')
+    await page.waitForSelector('[role="menuitem"]')
+    await auditState("row-actions-menu")
+    await page.goto(`${baseUrl}${route}`, { waitUntil: "networkidle0" })
+    await page.waitForFunction(() =>
+      document.querySelector("main tbody")?.textContent.includes("Black Vinyl")
+    )
+    if (
+      !(await page.$('button[aria-label="Notifications"]')) ||
+      !(await page.$('button[aria-label="Toggle navigation"]'))
+    )
+      throw new Error("Native app shell controls are unnamed")
+    if (width === 390) {
+      const focusNavigationTrigger = () =>
+        page.evaluate(() => {
+          const button = Array.from(
+            document.querySelectorAll('button[aria-label="Toggle navigation"]')
+          ).find((element) => element.getBoundingClientRect().width > 0)
+          if (!button)
+            throw new Error("Visible mobile navigation trigger is absent")
+          button.focus()
+        })
+      await focusNavigationTrigger()
+      await page.keyboard.press("Space")
+      await page.waitForSelector(
+        '[role="dialog"][data-state="open"] button[aria-label="Close Navigation"]'
+      )
+      const closeTarget = await page.$eval(
+        'button[aria-label="Close Navigation"]',
+        (button) => ({
+          name: button.getAttribute("aria-label"),
+          width: button.getBoundingClientRect().width,
+          height: button.getBoundingClientRect().height,
+        })
+      )
+      if (closeTarget.width < 24 || closeTarget.height < 24)
+        throw new Error("Native mobile navigation close target is undersized")
+      await page.keyboard.press("Tab")
+      await page.waitForFunction(
+        () =>
+          document.activeElement?.closest(
+            '[role="dialog"][data-state="open"]'
+          ) && !document.activeElement.closest('[aria-hidden="true"]')
+      )
+      await page.keyboard.down("Shift")
+      try {
+        await page.keyboard.press("Tab")
+      } finally {
+        await page.keyboard.up("Shift")
+      }
+      await page.waitForFunction(
+        () =>
+          document.activeElement?.closest(
+            '[role="dialog"][data-state="open"]'
+          ) && !document.activeElement.closest('[aria-hidden="true"]')
+      )
+      const drawerPath = screenshotPath.replace(
+        /\.png$/u,
+        "-navigation-drawer.png"
+      )
+      await page.waitForFunction(() => {
+        const dialog = document.querySelector(
+          '[role="dialog"][data-state="open"]'
+        )
+        return (
+          dialog &&
+          getComputedStyle(dialog).opacity === "1" &&
+          !dialog
+            .getAnimations({ subtree: true })
+            .some(
+              (animation) =>
+                animation.playState === "running" || animation.pending
+            )
+        )
+      })
+      const visualReadiness = await page.$eval(
+        '[role="dialog"][data-state="open"]',
+        (dialog) => ({
+          opacity: getComputedStyle(dialog).opacity,
+          background: getComputedStyle(dialog).backgroundColor,
+          pendingAnimations: dialog
+            .getAnimations({ subtree: true })
+            .filter(
+              (animation) =>
+                animation.playState === "running" || animation.pending
+            ).length,
+        })
+      )
+      await page.screenshot({ fullPage: true, path: drawerPath })
+      await page.keyboard.press("Escape")
+      await page.waitForFunction(
+        () =>
+          !document.querySelector('[role="dialog"]') &&
+          document.activeElement?.getAttribute("aria-label") ===
+            "Toggle navigation"
+      )
+      await focusNavigationTrigger()
+      await page.keyboard.press("Space")
+      await page.waitForSelector('button[aria-label="Close Navigation"]')
+      await page.focus('button[aria-label="Close Navigation"]')
+      await page.keyboard.press("Enter")
+      await page.waitForFunction(
+        () =>
+          !document.querySelector('[role="dialog"]') &&
+          document.activeElement?.getAttribute("aria-label") ===
+            "Toggle navigation"
+      )
+      nativeDrawerProof = {
+        closeTarget,
+        visualReadiness,
+        path: drawerPath,
+        tabRetainsVisibleDialogFocus: true,
+        shiftTabRetainsVisibleDialogFocus: true,
+        escapeRestoresTrigger: true,
+        keyboardCloseRestoresTrigger: true,
+      }
+    }
   }
   if (setup.startsWith("native-order-list-")) {
     const selector =
@@ -1635,6 +3460,42 @@ try {
       throw new Error(
         `Native order Summary does not fit: ${JSON.stringify(overlaps)}`
       )
+    }
+    if (width === 390) {
+      await page.bringToFront()
+      const before = await page.evaluate(() => navigator.clipboard.readText())
+      let copied
+      try {
+        await page.click('button[aria-label="Copy item SKU"]')
+        await page.waitForFunction(
+          (sku) =>
+            navigator.clipboard.readText().then((value) => value === sku),
+          {},
+          summaryItem.variant_sku
+        )
+        copied = await page.evaluate(() => navigator.clipboard.readText())
+        if (copied !== summaryItem.variant_sku)
+          throw new Error(
+            "Native SKU clipboard bytes differ from the rendered SKU"
+          )
+      } finally {
+        await page.evaluate(
+          (value) => navigator.clipboard.writeText(value),
+          before
+        )
+      }
+      const restored = await page.evaluate(() => navigator.clipboard.readText())
+      if (restored !== before)
+        throw new Error("Owned browser clipboard was not restored")
+      nativeClipboardProof = {
+        expected: summaryItem.variant_sku,
+        copied,
+        beforeByteLength: new TextEncoder().encode(before).length,
+        exactBytes: true,
+        restored: true,
+        navigatorRead: true,
+        nativeClick: true,
+      }
     }
   }
   if (setup === "native-refund-reason-validation") {
@@ -2220,6 +4081,7 @@ try {
   }, axeInclude)
 
   const focusOrder = []
+  const documentFocusObservations = []
   for (let index = 0; index < 40; index += 1) {
     await page.keyboard.press("Tab")
     await page.evaluate(
@@ -2233,6 +4095,9 @@ try {
       const root = document.querySelector(selector) ?? document.body
       if (!(element instanceof HTMLElement) || !root.contains(element)) {
         return null
+      }
+      if (element === document.body || element === document.documentElement) {
+        return { documentFocus: true, tag: element.tagName.toLowerCase() }
       }
       const style = getComputedStyle(element)
       const rect = element.getBoundingClientRect()
@@ -2296,14 +4161,17 @@ try {
         tag: element.tagName.toLowerCase(),
       }
     }, axeInclude)
-    if (focused) {
-      focusOrder.push(focused)
-    }
+    if (focused?.documentFocus)
+      documentFocusObservations.push({ index, ...focused })
+    else if (focused) focusOrder.push(focused)
   }
 
   const findingCodes = [
     ...(!hasMain ? ["main_landmark_missing"] : []),
-    ...(`${layout.path}${layout.search}` !== route ? ["route_mismatch"] : []),
+    ...(`${layout.path}${layout.search}` !==
+    (isNativeProductTypeCase ? "/app/settings/product-types/create" : route)
+      ? ["route_mismatch"]
+      : []),
     ...(layout.scrollWidth - layout.clientWidth > 1
       ? ["horizontal_overflow"]
       : []),
@@ -2362,10 +4230,18 @@ try {
         accessibility,
         failedResponses,
         focusOrder,
+        documentFocusObservations,
         fixtureRequests: Object.fromEntries(fixtureRequests),
         findingCodes: uniqueFindingCodes,
         issues: issues.slice(0, 20),
         layout,
+        nativeProductStates,
+        nativeClipboardProof,
+        nativeDrawerProof,
+        nativeInitialKeyboardProof,
+        nativeFunctionalTextContrast,
+        nativeProductTypeProof,
+        nativeSettingsProof,
         reviewCodes,
         screenshotPath,
         status: uniqueFindingCodes.length === 0 ? "passed" : "failed",
@@ -2383,6 +4259,110 @@ try {
     )
   }
 } catch (error) {
+  if (isNativeProductTypeCase && page) {
+    await page
+      .screenshot({
+        fullPage: true,
+        path: screenshotPath.replace(/\.png$/u, "-failure.png"),
+      })
+      .catch(() => undefined)
+    console.error(
+      JSON.stringify({
+        nativeProductTypeProof,
+        failureDom: await page
+          .evaluate(() => ({
+            pathname: location.pathname,
+            activeElement:
+              document.activeElement?.tagName === "BODY"
+                ? "<body>"
+                : document.activeElement?.outerHTML,
+            dialogs: [...document.querySelectorAll('[role="dialog"]')].map(
+              (node) => node.outerHTML.slice(0, 4000)
+            ),
+            create: [...document.querySelectorAll("main a")]
+              .filter((node) => node.textContent.trim() === "Create")
+              .map((node) => ({
+                html: node.outerHTML,
+                hidden: !!node.closest('[aria-hidden="true"], [inert]'),
+                visible: !!node.getClientRects().length,
+              })),
+          }))
+          .catch(() => null),
+      })
+    )
+  }
+  if (isNativeSettingsCase && page) {
+    await page
+      .screenshot({
+        fullPage: true,
+        path: screenshotPath.replace(/\.png$/u, "-failure.png"),
+      })
+      .catch(() => undefined)
+    console.error(
+      JSON.stringify({
+        nativeSettingsProof,
+        failureDom: await page
+          .evaluate(() => ({
+            controls: Array.from(
+              document.querySelectorAll(
+                'button,[role="checkbox"],[role="combobox"]'
+              ),
+              (node) => node.outerHTML.slice(0, 1200)
+            ),
+            activeElement: document.activeElement?.outerHTML.slice(0, 1200),
+            location: `${location.pathname}${location.search}`,
+            dragEvents: window.nativeDragActivationEvents,
+            announcements: [...document.querySelectorAll("[aria-live]")].map(
+              (node) => node.textContent
+            ),
+            headers: [...document.querySelectorAll("main thead th")].map(
+              (node) => ({
+                text: node.textContent,
+                rect: node.getBoundingClientRect().toJSON(),
+              })
+            ),
+          }))
+          .catch(() => null),
+      })
+    )
+  }
+  if (isNativeProductCase && page) {
+    await page
+      .screenshot({
+        fullPage: true,
+        path: screenshotPath.replace(/\.png$/u, "-failure.png"),
+      })
+      .catch(() => undefined)
+    console.error(
+      JSON.stringify({
+        nativeProductStates,
+        failureFocus: await page
+          .evaluate(() => ({
+            activeElement: document.activeElement?.outerHTML.slice(0, 1000),
+            tooltips: Array.from(
+              document.querySelectorAll(".shadow-elevation-tooltip"),
+              (element) => ({
+                html: element.outerHTML.slice(0, 1500),
+                animation: getComputedStyle(element).animation,
+                opacity: getComputedStyle(element).opacity,
+                animations: element.getAnimations().map((animation) => ({
+                  state: animation.playState,
+                  currentTime: animation.currentTime,
+                })),
+              })
+            ),
+            menus: Array.from(
+              document.querySelectorAll('[role="menu"], [role="dialog"]'),
+              (element) => ({
+                state: element.getAttribute("data-state"),
+                text: element.textContent.trim().slice(0, 200),
+              })
+            ),
+          }))
+          .catch(() => null),
+      })
+    )
+  }
   console.error(
     JSON.stringify({
       navigations: navigations.slice(0, 20),

@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process"
-import { mkdir } from "node:fs/promises"
+import { mkdir, writeFile } from "node:fs/promises"
 import { dirname, isAbsolute, join } from "node:path"
 import { promisify } from "node:util"
 
@@ -25,6 +25,49 @@ if (!Number.isInteger(concurrency) || concurrency < 1 || concurrency > 4) {
 }
 
 const cases = [
+  ...[
+    ["regions-list", "/app/settings/regions"],
+    ["refund-reasons", "/app/settings/refund-reasons"],
+    ["store", "/app/settings/store"],
+    ["region-detail", "/app/settings/regions/reg_acceptance"],
+    ["region-editor", "/app/settings/regions/reg_acceptance"],
+    ["role-detail", "/app/settings/roles/role_acceptance"],
+  ].flatMap(([kind, route]) =>
+    [458, 1440].map((width) => ({
+      axeInclude: "html",
+      height: 1200,
+      width,
+      route,
+      name: `native-settings-${kind}-${width}`,
+      setup: `native-settings-${kind}`,
+    }))
+  ),
+  {
+    axeInclude: "html",
+    height: 1200,
+    width: 458,
+    route: "/app/settings/roles",
+    name: "native-settings-roles-458",
+    setup: "native-settings-roles",
+  },
+  ...["light", "dark"].flatMap((theme) =>
+    [390, 1440].map((width) => ({
+      axeInclude: "html",
+      height: 1000,
+      name: `native-product-controls-${theme}-${width}`,
+      route: "/app/products/product_acceptance",
+      setup: `native-product-controls-${theme}`,
+      width,
+    }))
+  ),
+  ...[458, 1440].map((width) => ({
+    axeInclude: '[role="dialog"][data-state="open"]',
+    height: 1200,
+    width,
+    route: "/app/settings/product-types",
+    name: `native-product-type-cancel-focus-${width}`,
+    setup: "native-product-type-cancel-focus",
+  })),
   ...[390, 1440].map((width) => ({
     height: 1000,
     name: `native-order-list-links-${width}`,
@@ -382,7 +425,7 @@ const runCase = async (acceptanceCase) => {
   }
 
   try {
-    const { stdout } = await execFileAsync(
+    const { stdout, stderr } = await execFileAsync(
       process.execPath,
       [acceptanceScript],
       {
@@ -391,6 +434,16 @@ const runCase = async (acceptanceCase) => {
         maxBuffer: 8 * 1024 * 1024,
         timeout: 90_000,
       }
+    )
+    await writeFile(
+      join(screenshotDirectory, `${acceptanceCase.name}.stdout.log`),
+      stdout,
+      { mode: 0o600 }
+    )
+    await writeFile(
+      join(screenshotDirectory, `${acceptanceCase.name}.stderr.log`),
+      stderr,
+      { mode: 0o600 }
     )
     return {
       case: acceptanceCase,
@@ -401,6 +454,20 @@ const runCase = async (acceptanceCase) => {
       error && typeof error === "object" && "stdout" in error
         ? String(error.stdout)
         : ""
+    const stderr =
+      error && typeof error === "object" && "stderr" in error
+        ? String(error.stderr)
+        : ""
+    await writeFile(
+      join(screenshotDirectory, `${acceptanceCase.name}.stdout.log`),
+      stdout,
+      { mode: 0o600 }
+    )
+    await writeFile(
+      join(screenshotDirectory, `${acceptanceCase.name}.stderr.log`),
+      stderr,
+      { mode: 0o600 }
+    )
     const report = stdout ? parseReport(stdout, acceptanceCase.name) : null
     return {
       case: acceptanceCase,

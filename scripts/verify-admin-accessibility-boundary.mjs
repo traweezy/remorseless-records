@@ -78,6 +78,71 @@ for (const findingCode of [
   assert.match(acceptanceSource, new RegExp(`"${findingCode}"`, "u"))
 }
 
+assert.match(
+  matrixSource,
+  /name: `native-product-controls-\$\{theme\}-\$\{width\}`/u
+)
+assert.match(matrixSource, /axeInclude: "html"/u)
+assert.match(
+  matrixSource,
+  /name: `native-product-type-cancel-focus-\$\{width\}`/u
+)
+assert.ok(
+  acceptanceSource.includes('for (const dismissal of ["Cancel", "Escape"])')
+)
+assert.ok(acceptanceSource.includes("realTabReachedCreate"))
+assert.ok(acceptanceSource.includes("mutationFencesRetained"))
+assert.ok(dashboardPatchSource.includes("handleCloseAutoFocus"))
+assert.ok(dashboardPatchSource.includes("queueMicrotask"))
+assert.ok(dashboardPatchSource.includes("RouteFocusModal.Title"))
+assert.ok(dashboardPatchSource.includes("RouteFocusModal.Description"))
+assert.ok(dashboardPatchSource.includes("event.defaultPrevented"))
+assert.ok(dashboardPatchSource.includes("HTMLButtonElement"))
+assert.ok(acceptanceSource.includes("field.emptySubmit"))
+assert.ok(
+  acceptanceSource.includes('input?.getAttribute("aria-invalid") === "true"')
+)
+
+for (const state of [
+  "filter-menu",
+  "active-filter",
+  "sort-menu",
+  "actions-menu",
+  "row-actions-menu",
+]) {
+  assert.ok(acceptanceSource.includes(`auditState("${state}")`))
+}
+assert.ok(acceptanceSource.includes("pv_manage_inventory"))
+assert.ok(acceptanceSource.includes("Remove: Manage inventory"))
+for (const component of [
+  "filter-menu",
+  "sorting-menu",
+  "action-cell",
+  "filter",
+  "filter-bar",
+  "toolbar",
+]) {
+  for (const distribution of ["cjs", "esm"]) {
+    assert.ok(
+      uiPatchSource.includes(
+        `dist/${distribution}/blocks/data-table/components/data-table-${component}.js`
+      )
+    )
+  }
+}
+for (const label of ["Filter results", "Sort results", "Open row actions"]) {
+  assert.ok(uiPatchSource.includes(`"aria-label":`))
+  assert.ok(uiPatchSource.includes(label))
+}
+for (const component of [
+  "shell/shell.tsx",
+  "notifications/notifications.tsx",
+]) {
+  assert.ok(dashboardPatchSource.includes(`src/components/layout/${component}`))
+}
+assert.ok(dashboardPatchSource.includes('"Toggle navigation"'))
+assert.ok(dashboardPatchSource.includes('t("notifications.domain")'))
+
 for (const caseName of [
   "native-refund-reason-validation",
   "product-create-validation-200-percent",
