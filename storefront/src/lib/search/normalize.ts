@@ -138,10 +138,10 @@ export const normalizeFormatValue = (
     return null
   }
 
-  if (/\bdvd\b/i.test(raw)) {
+  if (/\b(?:\d+\s*)?dvd\b/i.test(raw)) {
     return "DVD"
   }
-  if (/\b(?:cassettes?|tapes?|cs)\b/i.test(raw)) {
+  if (/\b(?:\d+\s*)?(?:cassettes?|tapes?|cs)\b/i.test(raw)) {
     return "Cassette"
   }
 
@@ -149,15 +149,46 @@ export const normalizeFormatValue = (
     return /\bcds?\b/i.test(raw) ? "CD" : "Cassette"
   }
 
-  if (/\b(?:vinyl|lp)\b|\b(?:7|10|12)["″]/i.test(raw)) {
+  if (/\b(?:\d+\s*)?(?:vinyl|lp)\b|\b(?:7|10|12)["″]/i.test(raw)) {
     return "Vinyl"
   }
 
-  if (/\bcds?\b/i.test(raw)) {
+  if (/\b(?:\d+\s*)?cds?\b/i.test(raw)) {
     return "CD"
   }
 
   return null
+}
+
+export const countCanonicalProductFormats = (
+  hits: readonly Pick<
+    ProductSearchHit,
+    "id" | "format" | "defaultVariant" | "formats" | "variantTitles"
+  >[]
+): Record<string, number> => {
+  const formatsByProduct = new Map<string, Set<string>>()
+  hits.forEach((hit) => {
+    const formats = formatsByProduct.get(hit.id) ?? new Set<string>()
+    const candidates = [
+      hit.format,
+      hit.defaultVariant?.title,
+      ...(hit.formats ?? []),
+      ...(hit.variantTitles ?? []),
+    ]
+    candidates.forEach((value) => {
+      const canonical = normalizeFormatValue(value)
+      if (canonical) formats.add(canonical)
+    })
+    formatsByProduct.set(hit.id, formats)
+  })
+
+  const counts: Record<string, number> = {}
+  formatsByProduct.forEach((formats) => {
+    formats.forEach((format) => {
+      counts[format] = (counts[format] ?? 0) + 1
+    })
+  })
+  return counts
 }
 
 export const normalizeSearchHit = (
@@ -501,7 +532,7 @@ export const extractFacetMaps = (
   )
 
   const format = coerceFacetRecord(
-    facetDistribution.format ?? facetDistribution.formats
+    facetDistribution.formats ?? facetDistribution.format
   )
 
   const categories = coerceFacetRecord(

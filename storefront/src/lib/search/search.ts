@@ -1,5 +1,7 @@
 import type { FacetMap } from "@/lib/search/normalize"
+import { ProviderRequestError } from "@/lib/http/provider-boundary"
 import {
+  countCanonicalProductFormats,
   extractFacetMaps,
   normalizeFormatValue,
   normalizeSearchHit,
@@ -236,48 +238,15 @@ const buildFilter = (
   return { filterExpression, postFilters }
 }
 
-const canonicalizeFormatFacets = (facet: FacetMap): FacetMap => {
+const canonicalFormatFacet = (facet: FacetMap): FacetMap => {
   const canonical: FacetMap = {}
   Object.entries(facet).forEach(([rawKey, count]) => {
     const normalized = normalizeFormatValue(rawKey)
-    if (!normalized) {
+    if (!normalized || rawKey !== normalized) {
       return
     }
-    canonical[normalized] = (canonical[normalized] ?? 0) + count
+    canonical[normalized] = count
   })
-  return canonical
-}
-
-const buildCanonicalFormatFacet = (
-  formatFacet: FacetMap,
-  variantFacet: FacetMap | undefined,
-  hits: ProductSearchHit[]
-): FacetMap => {
-  const canonical: FacetMap = canonicalizeFormatFacets(formatFacet)
-
-  if (variantFacet) {
-    Object.entries(variantFacet).forEach(([rawKey, count]) => {
-      const normalized = normalizeFormatValue(rawKey)
-      if (!normalized) {
-        return
-      }
-      canonical[normalized] = (canonical[normalized] ?? 0) + count
-    })
-  }
-
-  hits.forEach((hit) => {
-    const add = (value: string | null | undefined) => {
-      const normalized = normalizeFormatValue(value)
-      if (!normalized) {
-        return
-      }
-      canonical[normalized] = (canonical[normalized] ?? 0) + 1
-    }
-    add(hit.format)
-    hit.variantTitles?.forEach(add)
-    hit.formats?.forEach(add)
-  })
-
   return canonical
 }
 
@@ -388,7 +357,7 @@ export const computeFacetCounts = (
 } => {
   const genres: FacetMap = {}
   const metalGenres: FacetMap = {}
-  const format: FacetMap = {}
+  const format = countCanonicalProductFormats(hits)
   const categories: FacetMap = {}
   const variants: FacetMap = {}
   const productTypes: FacetMap = {}
@@ -406,13 +375,6 @@ export const computeFacetCounts = (
         genres[key] = (genres[key] ?? 0) + 1
       }
     })
-
-    if (hit.format) {
-      const key = hit.format.trim()
-      if (key.length) {
-        format[key] = (format[key] ?? 0) + 1
-      }
-    }
 
     hit.categoryHandles?.forEach((handle) => {
       if (!handle) {
@@ -543,15 +505,11 @@ export const searchProductsWithClient = async (
     facetDistribution: SearchResponse<
       Record<string, unknown>
     >["facetDistribution"],
-    hits: ProductSearchHit[]
+    hits: ProductSearchHit[],
+    formatCounts: FacetMap
   ): ProductSearchResponse["facets"] => {
     const facetsFromIndex = extractFacetMaps(facetDistribution)
     const fallbackFacets = computeFacetCounts(hits)
-
-    const formatFacetSource =
-      Object.keys(facetsFromIndex.format).length > 0
-        ? facetsFromIndex.format
-        : fallbackFacets.format
 
     return {
       genres: Object.keys(facetsFromIndex.genres).length
@@ -560,11 +518,7 @@ export const searchProductsWithClient = async (
       metalGenres: Object.keys(facetsFromIndex.metalGenres).length
         ? facetsFromIndex.metalGenres
         : fallbackFacets.metalGenres,
-      format: buildCanonicalFormatFacet(
-        formatFacetSource,
-        facetsFromIndex.variants,
-        hits
-      ),
+      format: formatCounts,
       categories:
         filterable.has("category_handles") &&
         Object.keys(facetsFromIndex.categories).length
@@ -614,6 +568,68 @@ export const searchProductsWithClient = async (
       .filter((hit) => hit.handle.trim().length > 0)
       .slice(0, requestedLimit)
     const estimatedTotal = response.estimatedTotalHits
+    const rawFormatFacet = response.facetDistribution?.formats
+    // The multi-valued index stores a canonical label once per product as
+    // well as authored labels. Adding alias, primary, variant or page-hit
+    // counts counts the same product again and changes with pagination.
+    const indexedFormats = canonicalFormatFacet(
+      extractFacetMaps(response.facetDistribution).format
+    )
+    if (
+      rawFormatFacet !== undefined &&
+      (rawFormatFacet === null ||
+        typeof rawFormatFacet !== "object" ||
+        Array.isArray(rawFormatFacet) ||
+        Object.values(rawFormatFacet).some(
+          (count) => !Number.isSafeInteger(count) || count < 0
+        ))
+    ) {
+      throw new ProviderRequestError("unavailable")
+    }
+    const hasCanonicalFormats =
+      rawFormatFacet !== undefined &&
+      (Object.keys(indexedFormats).length > 0 ||
+        Object.keys(rawFormatFacet).length === 0)
+    let formatCounts: FacetMap
+    if (hasCanonicalFormats) {
+      const pageFormats = countCanonicalProductFormats(
+        response.hits.map((hit, index) => ({
+          id: typeof hit.id === "string" ? hit.id : `page-${index}`,
+          formats: Array.isArray(hit.formats)
+            ? hit.formats.filter(
+                (value): value is string => typeof value === "string"
+              )
+            : [],
+          format: null,
+          defaultVariant: null,
+          variantTitles: [],
+        }))
+      )
+      if (
+        Object.entries(pageFormats).some(
+          ([format, count]) => (indexedFormats[format] ?? 0) < count
+        )
+      ) {
+        throw new ProviderRequestError("unavailable")
+      }
+      formatCounts = indexedFormats
+    } else if (requestedLimit === 0 && response.hits.length === 0) {
+      // The public API rejects zero limits; preserve the empty direct-call
+      // result without presenting any format counts.
+      formatCounts = {}
+    } else {
+      const completeResult =
+        (estimatedTotal === 0 && response.hits.length === 0) ||
+        (requestedOffset === 0 &&
+          (typeof estimatedTotal === "number"
+            ? Number.isSafeInteger(estimatedTotal) &&
+              estimatedTotal === response.hits.length
+            : response.hits.length < requestedLimit))
+      // Legacy indexes may omit canonical facets. Only a complete result
+      // can replace them; a page's counts cannot describe the entire query.
+      if (!completeResult) throw new ProviderRequestError("unavailable")
+      formatCounts = countCanonicalProductFormats(hits)
+    }
     const total = Math.min(
       typeof estimatedTotal === "number" && Number.isFinite(estimatedTotal)
         ? Math.max(0, Math.trunc(estimatedTotal))
@@ -626,7 +642,7 @@ export const searchProductsWithClient = async (
       hits,
       total,
       offset: requestedOffset,
-      facets: buildFacets(response.facetDistribution, hits),
+      facets: buildFacets(response.facetDistribution, hits, formatCounts),
       hasMore: nextOffset < total,
       nextOffset,
     }
@@ -638,12 +654,12 @@ export const searchProductsWithClient = async (
   let remainingToCollect = requestedLimit
   let totalFiltered = 0
   let collected: ProductSearchHit[] = []
+  // As with the existing bounded post-filter total, these facets describe
+  // the examined matching products when the 2048-row work limit is reached.
+  const matchingHits: ProductSearchHit[] = []
   let hasMore = false
   let rawOffset = 0
   let rawHitsExamined = 0
-  let facetDistribution: SearchResponse<
-    Record<string, unknown>
-  >["facetDistribution"]
   const maxBatches = Math.ceil(SEARCH_MAX_POST_FILTER_HITS / batchSize)
 
   for (let batch = 0; batch < maxBatches; batch++) {
@@ -669,8 +685,6 @@ export const searchProductsWithClient = async (
     }
     rawHitsExamined += response.hits.length
 
-    facetDistribution ??= response.facetDistribution
-
     let hits = response.hits
       .map((hit) => normalizeSearchHit(hit))
       .filter((hit) => hit.handle.trim().length > 0)
@@ -680,6 +694,7 @@ export const searchProductsWithClient = async (
     }
 
     totalFiltered += hits.length
+    matchingHits.push(...hits)
 
     if (skipFiltered >= hits.length) {
       skipFiltered -= hits.length
@@ -723,7 +738,7 @@ export const searchProductsWithClient = async (
       SEARCH_MAX_RESULT_WINDOW
     ),
     offset: filteredOffset,
-    facets: buildFacets(facetDistribution, collected),
+    facets: computeFacetCounts(matchingHits),
     hasMore,
     nextOffset,
   }

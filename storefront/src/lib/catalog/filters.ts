@@ -1,4 +1,4 @@
-import { normalizeFormatValue } from "@/lib/search/normalize"
+import { countCanonicalProductFormats } from "@/lib/search/normalize"
 import type { ProductSearchHit } from "@/types/product"
 
 export type CatalogFilterOption = {
@@ -124,42 +124,25 @@ const canonicalProductType = (
   return definition?.values[0] ?? normalized
 }
 
-const productFormats = (hit: ProductSearchHit): Set<string> => {
-  const formats = new Set<string>()
-  const add = (value: string | null | undefined) => {
-    const normalized = normalizeFormatValue(value)
-    if (normalized) {
-      formats.add(normalized)
-    }
-  }
-
-  add(hit.format)
-  add(hit.defaultVariant?.title)
-  hit.formats?.forEach(add)
-  hit.variantTitles?.forEach(add)
-  return formats
-}
-
 const buildFormatOptions = (
   hits: ProductSearchHit[]
 ): CatalogFilterOption[] => {
-  const counts = new Map<string, number>()
-  hits.forEach((hit) => {
-    productFormats(hit).forEach((format) => {
-      counts.set(format, (counts.get(format) ?? 0) + 1)
-    })
-  })
+  const counts = countCanonicalProductFormats(hits)
 
-  return Array.from(counts, ([value, count]) => ({
-    value,
-    label: value,
-    count,
-  })).sort(
-    (left, right) =>
-      (FORMAT_ORDER.get(left.value) ?? Number.MAX_SAFE_INTEGER) -
-        (FORMAT_ORDER.get(right.value) ?? Number.MAX_SAFE_INTEGER) ||
-      left.label.localeCompare(right.label, undefined, { sensitivity: "base" })
-  )
+  return Object.entries(counts)
+    .map(([value, count]) => ({
+      value,
+      label: value,
+      count,
+    }))
+    .sort(
+      (left, right) =>
+        (FORMAT_ORDER.get(left.value) ?? Number.MAX_SAFE_INTEGER) -
+          (FORMAT_ORDER.get(right.value) ?? Number.MAX_SAFE_INTEGER) ||
+        left.label.localeCompare(right.label, undefined, {
+          sensitivity: "base",
+        })
+    )
 }
 
 const buildGenreOptions = (

@@ -127,10 +127,10 @@ const loadInitialSearchResponse = unstable_cache(
       }
     }
   },
-  ["catalog-initial-search-v1"],
+  ["catalog-initial-search-v2"],
   {
     revalidate: 300,
-    tags: ["products", "catalog-initial-search-v1"],
+    tags: ["products", "catalog-initial-search-v2"],
   }
 )
 

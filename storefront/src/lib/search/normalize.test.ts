@@ -36,6 +36,10 @@ describe("normalizeFormatValue", () => {
   })
 
   it.each([
+    ["3CD Bundle", "CD"],
+    ["3LP Bundle", "Vinyl"],
+    ["2DVD Bundle", "DVD"],
+    ["2CS Bundle", "Cassette"],
     ["3x CDs", "CD"],
     ["3x Cassettes", "Cassette"],
     ["CS", "Cassette"],

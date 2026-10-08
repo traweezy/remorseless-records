@@ -169,4 +169,86 @@ describe("getFullCatalogHits", () => {
       region_id: regionId,
     })
   })
+
+  it("refreshes old mapped caches and counts bundles through the real full-catalog mapper", async () => {
+    const products = Array.from({ length: 101 }, (_, index) => ({
+      id: `prod_${index}`,
+      handle: `catalog-product-${index}`,
+      title:
+        index === 100
+          ? "Concrete Winds - Discography Bundle"
+          : `Release ${index}`,
+      options: [
+        {
+          title: "Format",
+          values:
+            index === 100
+              ? [{ value: "3CD Bundle" }, { value: "3LP Bundle" }]
+              : [{ value: "CD" }],
+        },
+      ],
+      variants:
+        index === 100
+          ? [
+              { id: "variant_bundle_cd", title: "3CD Bundle" },
+              { id: "variant_bundle_lp", title: "3LP Bundle" },
+            ]
+          : [{ id: `variant_${index}`, title: "CD" }],
+    }))
+    const cache = new Map<string, unknown>([
+      ["full-catalog-hits-v4", []],
+      ["catalog-format-options-v2", [{ value: "CD", label: "CD", count: 100 }]],
+    ])
+    vi.doMock("next/cache", () => ({
+      unstable_cache:
+        (callback: () => Promise<unknown>, key: string[]) => async () => {
+          const name = key.join(":")
+          if (!cache.has(name)) cache.set(name, await callback())
+          return cache.get(name)
+        },
+    }))
+    const list = vi.fn().mockImplementation(async (_path, init) => ({
+      products: products.filter((product) =>
+        init.query.id.includes(product.id)
+      ),
+    }))
+    vi.doMock("@/lib/medusa/read-client", () => ({
+      fetchMedusaStoreRead: list,
+    }))
+    vi.doMock("@/lib/regions", () => ({
+      resolveRegionId: vi.fn().mockResolvedValue("region_us"),
+    }))
+    vi.doMock("@/lib/data/products", async (importOriginal) => ({
+      ...(await importOriginal<typeof import("@/lib/data/products")>()),
+      getAllProductHandles: vi.fn().mockResolvedValue(
+        products.map((product) => ({
+          id: product.id,
+          handle: product.handle,
+          updatedAt: null,
+        }))
+      ),
+      PRODUCT_LIST_FIELDS: "id,handle,title,*variants,*options",
+    }))
+    vi.doMock("@/lib/data/categories", () => ({
+      getMetalGenreCategories: vi.fn(),
+    }))
+    vi.doMock("@/lib/search/server", () => ({ searchProductsServer: vi.fn() }))
+    vi.doUnmock("@/lib/products/transformers")
+    vi.doUnmock("@/lib/catalog/all")
+
+    const { getFullCatalogHits } = await import("@/lib/catalog/all")
+    const { getCatalogFormatOptions } = await import(
+      "@/lib/catalog/filters.server"
+    )
+    expect(await getFullCatalogHits()).toHaveLength(101)
+    const expected = [
+      { value: "Vinyl", label: "Vinyl", count: 1 },
+      { value: "CD", label: "CD", count: 101 },
+    ]
+    await expect(getCatalogFormatOptions()).resolves.toEqual(expected)
+    await expect(getCatalogFormatOptions()).resolves.toEqual(expected)
+    expect(list).toHaveBeenCalledTimes(2)
+    expect(list.mock.calls[0]?.[1].query.id).toHaveLength(100)
+    expect(list.mock.calls[1]?.[1].query.id).toEqual(["prod_100"])
+  })
 })

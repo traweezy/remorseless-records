@@ -8,7 +8,7 @@ import { mapStoreProductToSearchHit } from "@/lib/products/transformers"
 import { resolveRegionId } from "@/lib/regions"
 import type { ProductSearchHit } from "@/types/product"
 
-const CATALOG_CACHE_KEY = "full-catalog-hits-v4"
+const CATALOG_CACHE_KEY = "full-catalog-hits-v5"
 const FULL_CATALOG_MAX_PRODUCTS = 1_000
 const FULL_CATALOG_BATCH_SIZE = 100
 

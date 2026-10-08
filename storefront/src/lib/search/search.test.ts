@@ -5,6 +5,8 @@ import {
   computeFacetCounts,
   searchProductsWithClient,
 } from "@/lib/search/search"
+import { normalizeSearchHit } from "@/lib/search/normalize"
+import { ProviderRequestError } from "@/lib/http/provider-boundary"
 import type { ProductSearchHit } from "@/types/product"
 
 type MockIndex = {
@@ -116,11 +118,179 @@ describe("computeFacetCounts", () => {
       bundleTypes: {},
     })
   })
+
+  it("counts each product once for every physical format across aliases", () => {
+    const hit = makeHit({
+      id: "discography-bundle",
+      formats: ["CD", "Vinyl", "LP"],
+      format: "CD",
+      variant_titles: ["3CD Bundle", "3LP Bundle", "CD"],
+    })
+    const normalized = normalizeSearchHit(hit)
+
+    expect(computeFacetCounts([normalized, normalized]).format).toEqual({
+      CD: 1,
+      Vinyl: 1,
+    })
+  })
 })
 
 describe("searchProductsWithClient", () => {
   beforeEach(() => {
     faker.seed(222)
+  })
+
+  it("keeps full-query format counts stable across populated result pages", async () => {
+    const index: MockIndex = {
+      uid: "products-format-counts",
+      getSettings: vi.fn(),
+      search: vi.fn().mockImplementation(async (_query, { offset }) => ({
+        hits: [
+          makeHit({
+            id: `product-${offset}`,
+            format: offset ? "CD" : "Vinyl",
+            formats: offset ? ["CD"] : ["Vinyl", "CD"],
+            variant_titles: offset ? ["CD"] : ["Vinyl", "CD"],
+          }),
+        ],
+        estimatedTotalHits: 400,
+        facetDistribution: {
+          formats: {
+            CD: 282,
+            "3CD Bundle": 1,
+            "CD - A5 Digipak": 1,
+            Vinyl: 126,
+            "3LP Bundle": 1,
+            "Vinyl - Black": 24,
+            Cassette: 130,
+            "Cassette - Black Shell": 12,
+            DVD: 1,
+          },
+          format: { CD: 200, Vinyl: 80, Cassette: 119, DVD: 1 },
+          variant_titles: { CD: 282, Vinyl: 126, Cassette: 130, DVD: 1 },
+        },
+      })),
+    }
+
+    const first = await searchProductsWithClient(makeClient(index), {
+      query: "",
+      limit: 1,
+      offset: 0,
+    })
+    const next = await searchProductsWithClient(makeClient(index), {
+      query: "",
+      limit: 1,
+      offset: 60,
+    })
+
+    expect(first.hits[0]?.id).not.toBe(next.hits[0]?.id)
+    expect(first.facets.format).toEqual({
+      CD: 282,
+      Vinyl: 126,
+      Cassette: 130,
+      DVD: 1,
+    })
+    expect(next.facets.format).toEqual(first.facets.format)
+    expect(index.search).toHaveBeenCalledTimes(2)
+  })
+
+  it("derives legacy facets only when the entire query result is present", async () => {
+    const index: MockIndex = {
+      uid: "products-complete-legacy-facets",
+      getSettings: vi.fn(),
+      search: vi.fn().mockResolvedValue({
+        hits: [
+          makeHit({ formats: ["CD", "LP"], variant_titles: ["CD", "LP"] }),
+        ],
+        estimatedTotalHits: 1,
+        facetDistribution: {
+          format: { LP: 1 },
+          variant_titles: { LP: 1, CD: 1 },
+        },
+      }),
+    }
+    const response = await searchProductsWithClient(makeClient(index), {
+      query: "",
+      limit: 1,
+    })
+    expect(response.facets.format).toEqual({ CD: 1, Vinyl: 1 })
+  })
+
+  it.each([undefined, {}, { formats: { LP: 9 } }])(
+    "refuses to report partial-page counts as global when canonical facets are absent: %j",
+    async (facetDistribution) => {
+      const index: MockIndex = {
+        uid: "products-missing-canonical-facets",
+        getSettings: vi.fn(),
+        search: vi.fn().mockResolvedValue({
+          hits: [makeHit({ formats: ["LP"] })],
+          estimatedTotalHits: 9,
+          facetDistribution,
+        }),
+      }
+      await expect(
+        searchProductsWithClient(makeClient(index), { query: "", limit: 1 })
+      ).rejects.toBeInstanceOf(ProviderRequestError)
+      expect(index.search).toHaveBeenCalledTimes(1)
+    }
+  )
+
+  it.each([{ CD: 1 }, {}, { Vinyl: 0 }, { Vinyl: -1 }, { Vinyl: 0.5 }])(
+    "refuses sparse or invalid canonical index facets contradicting actual page formats: %j",
+    async (formats) => {
+      const index: MockIndex = {
+        uid: "products-invalid-canonical-facets",
+        getSettings: vi.fn(),
+        search: vi.fn().mockResolvedValue({
+          hits: [makeHit({ formats: ["Vinyl"] })],
+          estimatedTotalHits: 1,
+          facetDistribution: { formats },
+        }),
+      }
+      await expect(
+        searchProductsWithClient(makeClient(index), { query: "" })
+      ).rejects.toBeInstanceOf(ProviderRequestError)
+    }
+  )
+
+  it("counts every matched post-filtered product instead of only the output page", async () => {
+    const raw = Array.from({ length: 70 }, (_, index) =>
+      makeHit({
+        id: `product-${index}`,
+        genres: index % 2 === 0 ? ["Doom"] : ["Death"],
+        category_handles: [],
+        category_labels: [],
+        format: index % 3 === 0 ? "CD" : "Vinyl",
+        formats: index % 3 === 0 ? ["CD"] : ["Vinyl"],
+        variant_titles: index % 3 === 0 ? ["CD"] : ["LP"],
+      })
+    )
+    const index: MockIndex = {
+      uid: "products-post-filter-counts",
+      getSettings: vi.fn(),
+      search: vi.fn().mockImplementation(async (_query, { offset, limit }) => ({
+        hits: raw.slice(offset, offset + limit),
+        estimatedTotalHits: raw.length,
+        facetDistribution: {
+          formats: { CD: 24, Vinyl: 46 },
+          genres: { Doom: 35, Death: 35 },
+        },
+      })),
+    }
+
+    const response = await searchProductsWithClient(
+      makeClient(index),
+      { query: "", limit: 2, offset: 7, filters: { genres: ["Doom"] } },
+      []
+    )
+
+    expect(response.hits.map((hit) => hit.id)).toEqual([
+      "product-14",
+      "product-16",
+    ])
+    expect(response.total).toBe(35)
+    expect(response.facets.format).toEqual({ CD: 12, Vinyl: 23 })
+    expect(index.search).toHaveBeenCalledTimes(2)
   })
 
   it("queries meilisearch with server-side filter expression and sort", async () => {
@@ -635,7 +805,7 @@ describe("searchProductsWithClient", () => {
       getSettings: vi.fn(),
       search: vi.fn().mockResolvedValue({
         estimatedTotalHits: 20_000,
-        facetDistribution: undefined,
+        facetDistribution: { formats: { CD: 5_000, Vinyl: 10_000 } },
         hits: [makeHit()],
       }),
     }
@@ -669,10 +839,13 @@ describe("searchProductsWithClient", () => {
     const index: MockIndex = {
       uid: "products-bounded-post-filter",
       getSettings: vi.fn(),
-      search: vi.fn().mockResolvedValue({
+      search: vi.fn().mockImplementation(async (_query, { offset }) => ({
         facetDistribution: undefined,
-        hits: rawBatch,
-      }),
+        hits: rawBatch.map((hit, index) => ({
+          ...hit,
+          id: `bounded-${offset + index}`,
+        })),
+      })),
     }
 
     const response = await searchProductsWithClient(
@@ -689,6 +862,7 @@ describe("searchProductsWithClient", () => {
     expect(response.hits).toHaveLength(60)
     expect(response.total).toBe(1_000)
     expect(response.hasMore).toBe(true)
+    expect(response.facets.format).toEqual({ CD: 2_048, Vinyl: 2_048 })
   })
 
   it("does not advertise a post-filter page beyond the result window", async () => {

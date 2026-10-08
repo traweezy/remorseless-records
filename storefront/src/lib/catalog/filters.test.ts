@@ -33,6 +33,19 @@ const makeHit = (
 })
 
 describe("buildCatalogFilterDefinitions", () => {
+  it("counts a quantity-prefixed discography bundle once per format and product", () => {
+    const bundle = makeHit("concrete-winds-discography-bundle", {
+      variantTitles: ["3CD Bundle", "3LP Bundle"],
+    })
+
+    expect(buildCatalogFilterDefinitions([bundle, bundle], []).formats).toEqual(
+      [
+        { value: "Vinyl", label: "Vinyl", count: 1 },
+        { value: "CD", label: "CD", count: 1 },
+      ]
+    )
+  })
+
   it("counts actual media formats without treating album titles or sizes as formats", () => {
     const definitions = buildCatalogFilterDefinitions(
       [
