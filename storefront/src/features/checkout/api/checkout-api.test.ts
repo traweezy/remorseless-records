@@ -6,6 +6,7 @@ import {
   getCheckout,
   getCheckoutReceipt,
   getCheckoutShippingOptions,
+  getCheckoutStatus,
   prepareCheckoutPayment,
 } from "@/features/checkout/api/checkout-api"
 
@@ -54,6 +55,143 @@ afterEach(() => {
 })
 
 describe("semantic checkout API client", () => {
+  it("treats the explicit missing recovery identity as a terminal cart state", async () => {
+    const fetchMock = vi.fn(() =>
+      Promise.resolve(
+        Response.json(
+          {
+            type: "https://remorselessrecords.com/problems/cart-missing",
+            title: "Cart not found",
+            status: 404,
+            code: "cart_missing",
+            detail: "Add an item to your cart before starting checkout.",
+          },
+          { status: 404 }
+        )
+      )
+    )
+    vi.stubGlobal("fetch", fetchMock)
+
+    await expect(getCheckoutStatus()).resolves.toBe("cart_missing")
+    expect(fetchMock).toHaveBeenCalledOnce()
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/checkout/status",
+      expect.objectContaining({
+        cache: "no-store",
+        credentials: "same-origin",
+        method: "GET",
+      })
+    )
+  })
+
+  it.each([
+    [404, "unknown_recovery_code", "recovery_required"],
+    [503, "cart_missing", "cart_missing"],
+    [503, "recovery_required", "recovery_required"],
+    [429, "rate_limited", "rate_limited"],
+    [409, "cart_completed", "cart_completed"],
+    [404, "receipt_missing", "receipt_missing"],
+  ] as const)(
+    "keeps the %s %s recovery problem nonterminal",
+    async (status, code, expectedCode) => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(() =>
+          Promise.resolve(
+            Response.json(
+              {
+                type: "https://remorselessrecords.com/problems/recovery",
+                title: "Recovery is unavailable",
+                status,
+                code,
+                detail: "Do not pay again. Retry the status check.",
+              },
+              { status }
+            )
+          )
+        )
+      )
+
+      await expect(getCheckoutStatus()).rejects.toMatchObject({
+        problem: { status, code: expectedCode },
+      })
+    }
+  )
+
+  it.each([
+    [503, 404],
+    [404, 503],
+  ] as const)(
+    "keeps HTTP %s with a conflicting problem status %s nonterminal",
+    async (httpStatus, problemStatus) => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(() =>
+          Promise.resolve(
+            Response.json(
+              {
+                type: "https://remorselessrecords.com/problems/cart-missing",
+                title: "Cart not found",
+                status: problemStatus,
+                code: "cart_missing",
+                detail: "Add an item to your cart before starting checkout.",
+              },
+              { status: httpStatus }
+            )
+          )
+        )
+      )
+
+      await expect(getCheckoutStatus()).rejects.toMatchObject({
+        httpStatus,
+        problem: { status: problemStatus, code: "cart_missing" },
+      })
+    }
+  )
+
+  it("retains recovery for an unparseable status 404", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => Promise.resolve(new Response("Not found", { status: 404 })))
+    )
+
+    await expect(getCheckoutStatus()).rejects.toMatchObject({
+      problem: { status: 404, code: "recovery_required" },
+    })
+  })
+
+  it("retains recovery when the status request cannot be reached", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => Promise.reject(new Error("offline")))
+    )
+
+    await expect(getCheckoutStatus()).rejects.toMatchObject({
+      problem: { status: 503, code: "recovery_required" },
+    })
+  })
+
+  it("retains the bounded status timeout as an uncertain recovery error", async () => {
+    vi.useFakeTimers()
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        (_input: RequestInfo | URL, init?: RequestInit) =>
+          new Promise<Response>((_resolve, reject) => {
+            init?.signal?.addEventListener("abort", () =>
+              reject(new DOMException("aborted", "AbortError"))
+            )
+          })
+      )
+    )
+
+    const status = expect(getCheckoutStatus()).rejects.toMatchObject({
+      problem: { status: 504, code: "recovery_required" },
+    })
+    await vi.advanceTimersByTimeAsync(12_000)
+    await status
+  })
+
   it.each([
     [
       404,

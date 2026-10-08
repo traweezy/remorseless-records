@@ -65,6 +65,50 @@ describe("CheckoutRecovery", () => {
     expect(routerMocks.replace).not.toHaveBeenCalledWith("/checkout")
   })
 
+  it("stops polling and returns a definite missing cart to the catalog", async () => {
+    apiMocks.getCheckoutStatus.mockResolvedValue("cart_missing")
+
+    render(<CheckoutRecovery />)
+
+    await waitFor(() => {
+      expect(routerMocks.replace).toHaveBeenCalledWith("/catalog")
+    })
+    await vi.advanceTimersByTimeAsync(15_000)
+    expect(apiMocks.getCheckoutStatus).toHaveBeenCalledOnce()
+    expect(routerMocks.replace).toHaveBeenCalledOnce()
+    expect(routerMocks.replace).not.toHaveBeenCalledWith("/checkout")
+    expect(routerMocks.replace).not.toHaveBeenCalledWith(
+      "/checkout/confirmation"
+    )
+  })
+
+  it("keeps an uncertain response in recovery through processing and finalization", async () => {
+    apiMocks.getCheckoutStatus
+      .mockRejectedValueOnce(new Error("Status temporarily unavailable"))
+      .mockResolvedValueOnce("payment_processing")
+      .mockResolvedValueOnce("finalizing_order")
+      .mockResolvedValueOnce("order_confirmed")
+
+    render(<CheckoutRecovery />)
+
+    await waitFor(() => {
+      expect(apiMocks.getCheckoutStatus).toHaveBeenCalledOnce()
+    })
+    expect(routerMocks.replace).not.toHaveBeenCalled()
+    await vi.advanceTimersByTimeAsync(1_500)
+    await vi.advanceTimersByTimeAsync(2_500)
+    expect(routerMocks.replace).not.toHaveBeenCalled()
+    await vi.advanceTimersByTimeAsync(4_000)
+
+    await waitFor(() => {
+      expect(routerMocks.replace).toHaveBeenCalledWith("/checkout/confirmation")
+    })
+    expect(apiMocks.getCheckoutStatus).toHaveBeenCalledTimes(4)
+    expect(routerMocks.replace).toHaveBeenCalledOnce()
+    expect(routerMocks.replace).not.toHaveBeenCalledWith("/checkout")
+    expect(routerMocks.replace).not.toHaveBeenCalledWith("/catalog")
+  })
+
   it.each([
     "cart_active",
     "payment_action_required",

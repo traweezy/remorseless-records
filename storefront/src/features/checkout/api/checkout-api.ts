@@ -277,11 +277,13 @@ export type CheckoutRecoveryState = z.infer<
 >["checkout"]["state"]
 
 export class CheckoutApiError extends Error {
+  readonly httpStatus: number | null
   readonly problem: CheckoutProblem
 
-  constructor(problem: CheckoutProblem) {
+  constructor(problem: CheckoutProblem, httpStatus: number | null = null) {
     super(problem.detail)
     this.name = "CheckoutApiError"
+    this.httpStatus = httpStatus
     this.problem = problem
   }
 }
@@ -356,7 +358,8 @@ const request = async <TSchema extends z.ZodType>(
               path,
               response.status,
               "We could not complete that checkout step. Try again."
-            )
+            ),
+        response.status
       )
     }
 
@@ -485,8 +488,22 @@ export const completeCheckout = async (
 }
 
 export const getCheckoutStatus = async (): Promise<CheckoutRecoveryState> => {
-  const response = await request("/api/checkout/status", checkoutStatusSchema)
-  return response.checkout.state
+  try {
+    const response = await request("/api/checkout/status", checkoutStatusSchema)
+    return response.checkout.state
+  } catch (error: unknown) {
+    // Missing signed identity is definite absence, while unavailable or
+    // unrecognized status responses must retain conservative recovery.
+    if (
+      error instanceof CheckoutApiError &&
+      error.httpStatus === 404 &&
+      error.problem.code === "cart_missing" &&
+      error.problem.status === 404
+    ) {
+      return "cart_missing"
+    }
+    throw error
+  }
 }
 
 export const getCheckoutReceipt = async (
