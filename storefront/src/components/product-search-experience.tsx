@@ -1698,7 +1698,7 @@ const ProductSearchExperience = ({
               >
                 {isFetching ? "Refreshing…" : `${totalResults} results`}
               </p>
-              <p className="hidden text-[0.7rem] uppercase tracking-[0.24rem] text-muted-foreground/80 sm:block">
+              <p className="hidden text-[0.7rem] uppercase tracking-[0.24rem] text-muted-foreground sm:block">
                 Tuned in · Brutalized
               </p>
             </div>
@@ -1903,6 +1903,7 @@ const ProductSearchExperience = ({
             aria-label="Catalog results"
             className="space-y-4 px-2 sm:px-4 lg:px-6"
           >
+            <h2 className="sr-only">Catalog results</h2>
             {isFetching && !deferredResults.length ? (
               <div
                 className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3"
