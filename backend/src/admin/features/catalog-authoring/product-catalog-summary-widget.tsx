@@ -169,8 +169,14 @@ const ProductCatalogSummaryWidgetContent =
         </div>
         {query.data.catalog.profile || query.data.catalog.media.length > 0 ? (
           <Text className="px-6 py-4 text-ui-fg-subtle" size="small">
-            Product and variant artwork is managed in Catalog. Choose primary
-            images there; native thumbnails are synchronized automatically.
+            Choose primary artwork and reorder existing images in the{" "}
+            <Link
+              className="underline"
+              to={`/catalog/products/${encodeURIComponent(data.id)}#product-authoring-gallery`}
+            >
+              Catalog gallery
+            </Link>
+            . Saving the gallery synchronizes native thumbnails.
           </Text>
         ) : null}
       </Container>

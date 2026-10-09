@@ -7,6 +7,7 @@ import {
   assertVariantBelongsToProduct,
 } from "../../../utils"
 import { PUT } from "./route"
+import { hashCatalogCommand } from "@/modules/catalog/catalog-command"
 
 jest.mock("@/lib/catalog/product-media-authoring", () => {
   const actual = jest.requireActual(
@@ -83,6 +84,103 @@ beforeEach(() => {
 })
 
 describe("PUT /admin/catalog/products/:product_id/media", () => {
+  it.each([
+    { actor_id: "user_2", actor_type: "user", type: "conflict" },
+    { actor_id: "user_1", actor_type: "customer", type: "unauthorized" },
+    { actor_id: "user_1", actor_type: undefined, type: "unauthorized" },
+    { actor_id: "customer_1", actor_type: "user", type: "unauthorized" },
+  ])(
+    "rejects a changed or non-user actor before any service access: %j",
+    async ({ type, ...auth_context }) => {
+      const req = requestFixture({
+        expectedVersion: 0,
+        expectedActorId: "user_1",
+        idempotencyKey: "00000000-0000-4000-8000-000000000001",
+        media: [],
+      })
+      Object.assign(req, { auth_context })
+      await expect(PUT(req, responseFixture().res)).rejects.toMatchObject({
+        type,
+      })
+      expect(req.scope.resolve).not.toHaveBeenCalled()
+      expect(assertProductExistsMock).not.toHaveBeenCalled()
+      expect(assertVariantBelongsMock).not.toHaveBeenCalled()
+      expect(workflowMock).not.toHaveBeenCalled()
+      expect(loadResponseMock).not.toHaveBeenCalled()
+    }
+  )
+
+  it.each([null, 4, "", "customer_1", `user_${"a".repeat(249)}`, {}])(
+    "rejects an invalid optional actor precondition: %j",
+    async (expectedActorId) => {
+      const req = requestFixture({
+        expectedVersion: 0,
+        expectedActorId,
+        idempotencyKey: "00000000-0000-4000-8000-000000000001",
+        media: [],
+      })
+      await expect(PUT(req, responseFixture().res)).rejects.toThrow(
+        "Invalid catalog product media payload"
+      )
+      expect(req.scope.resolve).not.toHaveBeenCalled()
+      expect(assertProductExistsMock).not.toHaveBeenCalled()
+      expect(workflowMock).not.toHaveBeenCalled()
+    }
+  )
+
+  it("checks the native user precondition without changing the legacy digest or workflow contract", async () => {
+    const run = jest
+      .fn()
+      .mockResolvedValue({ result: { productId: "prod_1", version: 1 } })
+    workflowMock.mockReturnValue({ run } as never)
+    const body = {
+      expectedVersion: 0,
+      idempotencyKey: "00000000-0000-4000-8000-000000000001",
+      media: [],
+    }
+    const req = requestFixture({ ...body, expectedActorId: "user_1" })
+    Object.assign(req, {
+      auth_context: { actor_id: "user_1", actor_type: "user" },
+    })
+    await PUT(req, responseFixture().res)
+    const input = run.mock.calls[0]![0].input
+    expect(input.actorId).toBe("user_1")
+    expect(input.requestSha256).toBe(
+      hashCatalogCommand({
+        command: "catalog.product-media.replace",
+        expectedVersion: 0,
+        media: [],
+        productId: "prod_1",
+      })
+    )
+    expect(input).not.toHaveProperty("expectedActorId")
+    await PUT(requestFixture(body), responseFixture().res)
+    expect(run.mock.calls[1]![0].input).toEqual(input)
+  })
+
+  it("returns the current gallery projection after an immutable operation replay", async () => {
+    const run = jest.fn().mockResolvedValue({
+      result: { productId: "prod_1", version: 1, replayed: true },
+    })
+    workflowMock.mockReturnValue({ run } as never)
+    loadResponseMock.mockResolvedValue({
+      media: [],
+      productId: "prod_1",
+      version: 4,
+    })
+    const req = requestFixture({
+      expectedVersion: 0,
+      idempotencyKey: "00000000-0000-4000-8000-000000000001",
+      media: [],
+    })
+    const { res, state } = responseFixture()
+    await PUT(req, res)
+    expect(state).toEqual({
+      status: 200,
+      body: { media: [], productId: "prod_1", version: 4 },
+    })
+  })
+
   it("never forwards claimed parent lease ownership from an HTTP payload", async () => {
     const run = jest
       .fn()

@@ -66,6 +66,7 @@ import {
   type ProductProfileResponse,
 } from "../../features/catalog-authoring/catalog-authoring-response"
 import { requestAdminJson } from "../../lib/admin-request"
+import { ProductGalleryEditor } from "../../features/catalog-authoring/product-gallery-editor"
 
 const productStatuses = ["draft", "published", "proposed", "rejected"] as const
 const referenceKinds = [
@@ -97,6 +98,7 @@ const productAuthoringTasks = [
   { href: "#product-authoring-artists", label: "Artists" },
   { href: "#product-authoring-classification", label: "Genres and tags" },
   { href: "#product-authoring-structured", label: "Structured content" },
+  { href: "#product-authoring-gallery", label: "Gallery" },
   { href: "#product-authoring-variants", label: "Variants" },
   { href: "#product-authoring-bundle", label: "Bundle" },
 ] as const satisfies readonly AdminTaskNavigationItem[]
@@ -463,6 +465,7 @@ type ProductAuthoringForms = {
   bundleVersion: number
   product: ProductFormState
   profile: ProfileFormState
+  profileId: string | null
   profileVersion: number
   variants: VariantProfileFormLine[]
 }
@@ -508,11 +511,18 @@ const fetchProductAuthoringForms = async ({
       }),
     }))
   )
+  if (
+    profileResponse.profile &&
+    profileResponse.profile.productId !== product.id
+  ) {
+    throw new Error("The catalog profile belongs to another product.")
+  }
   return {
     bundle: toBundleForm(bundleResponse),
     bundleVersion: bundleResponse.bundle?.version ?? 0,
     product: toProductForm(product),
     profile: toProfileForm(profileResponse, references),
+    profileId: profileResponse.profile?.id ?? null,
     profileVersion: profileResponse.profile?.version ?? 0,
     variants: variantResponses.map(({ variantId, response }) =>
       toVariantProfileLine(variantId, response.profile, references)
@@ -553,6 +563,10 @@ const ProductAuthoringWorkspaceContent = memo<ProductAuthoringWorkspaceProps>(
       productId ?? null
     )
     const [profileVersion, setProfileVersion] = useState(0)
+    const [loadedProfile, setLoadedProfile] = useState<{
+      productId: string
+      id: string | null
+    } | null>(null)
     const [bundleVersion, setBundleVersion] = useState(0)
     const [loading, setLoading] = useState(false)
     const [saving, setSaving] = useState(false)
@@ -764,6 +778,7 @@ const ProductAuthoringWorkspaceContent = memo<ProductAuthoringWorkspaceProps>(
             keepDefaultValues: true,
           })
           setProfileVersion(0)
+          setLoadedProfile(null)
           setBundleVersion(0)
           setFormIssues([])
           setSavedFingerprint(null)
@@ -771,6 +786,7 @@ const ProductAuthoringWorkspaceContent = memo<ProductAuthoringWorkspaceProps>(
         }
 
         setLoading(true)
+        setLoadedProfile(null)
         setError(null)
         try {
           const forms = await fetchProductAuthoringForms({
@@ -781,6 +797,7 @@ const ProductAuthoringWorkspaceContent = memo<ProductAuthoringWorkspaceProps>(
             keepDefaultValues: true,
           })
           setProfileVersion(forms.profileVersion)
+          setLoadedProfile({ productId: product.id, id: forms.profileId })
           setBundleVersion(forms.bundleVersion)
           setFormIssues([])
           setSavedFingerprint(
@@ -1238,6 +1255,10 @@ const ProductAuthoringWorkspaceContent = memo<ProductAuthoringWorkspaceProps>(
             productAuthoringDraft(snapshot)
           )
           setProfileVersion(snapshot.profileVersion)
+          setLoadedProfile({
+            productId: refreshedProduct.id,
+            id: snapshot.profileId,
+          })
           setBundleVersion(snapshot.bundleVersion)
           setVariantProfiles((current) =>
             current.map((variant) => ({
@@ -1955,6 +1976,18 @@ const ProductAuthoringWorkspaceContent = memo<ProductAuthoringWorkspaceProps>(
                       </div>
                     </div>
                   </section>
+
+                  <ProductGalleryEditor
+                    disabled={busy}
+                    key={selectedProduct.id}
+                    productId={selectedProduct.id}
+                    profileId={
+                      loadedProfile?.productId === selectedProduct.id
+                        ? loadedProfile.id
+                        : undefined
+                    }
+                    variants={selectedProduct.variants ?? []}
+                  />
 
                   <section
                     className="min-w-0 scroll-mt-24 space-y-4 outline-none"

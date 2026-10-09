@@ -1,5 +1,6 @@
 import type { MedusaRequest, MedusaResponse } from "@medusajs/framework"
 import { MedusaError } from "@medusajs/framework/utils"
+import { z } from "zod"
 
 import {
   catalogProductMediaReplaceSchema,
@@ -14,6 +15,13 @@ import {
   assertVariantBelongsToProduct,
   type CatalogService,
 } from "../../../utils"
+
+const httpMediaReplaceSchema = catalogProductMediaReplaceSchema.extend({
+  expectedActorId: z
+    .string()
+    .regex(/^user_[A-Za-z0-9_-]{1,248}$/u)
+    .optional(),
+})
 
 const productIdFromRequest = (req: MedusaRequest): string => {
   const productId = req.params.product_id?.trim()
@@ -42,12 +50,34 @@ export const PUT = async (
   req: MedusaRequest,
   res: MedusaResponse
 ): Promise<void> => {
-  const parsed = catalogProductMediaReplaceSchema.safeParse(req.body ?? {})
+  const parsed = httpMediaReplaceSchema.safeParse(req.body ?? {})
   if (!parsed.success) {
     throw new MedusaError(
       MedusaError.Types.INVALID_DATA,
       "Invalid catalog product media payload."
     )
+  }
+  const context = (
+    req as MedusaRequest & {
+      auth_context?: { actor_id?: string | null; actor_type?: string }
+    }
+  ).auth_context
+  const actorId = context?.actor_id ?? null
+  if (parsed.data.expectedActorId !== undefined) {
+    if (
+      context?.actor_type !== "user" ||
+      typeof actorId !== "string" ||
+      !/^user_[A-Za-z0-9_-]{1,248}$/u.test(actorId)
+    )
+      throw new MedusaError(
+        MedusaError.Types.UNAUTHORIZED,
+        "An authenticated Admin user is required for the gallery actor precondition."
+      )
+    if (parsed.data.expectedActorId !== actorId)
+      throw new MedusaError(
+        MedusaError.Types.CONFLICT,
+        "The authenticated Admin user changed after the gallery review."
+      )
   }
   const productId = productIdFromRequest(req)
   await assertProductExists(req, productId)
@@ -57,13 +87,6 @@ export const PUT = async (
       await assertVariantBelongsToProduct(req, productId, variantId)
     }
   }
-
-  const actorId =
-    (
-      req as MedusaRequest & {
-        auth_context?: { actor_id?: string | null }
-      }
-    ).auth_context?.actor_id ?? null
   const { expectedVersion, idempotencyKey, media } = parsed.data
   const requestSha256 = hashCatalogCommand({
     command: "catalog.product-media.replace",

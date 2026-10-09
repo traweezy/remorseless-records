@@ -111,8 +111,9 @@ describe("ProductCatalogSummaryWidget", () => {
     expect(markup).toContain("Catalog completion")
     expect(markup).toContain("Customer availability")
     expect(markup).toContain("Managed media")
+    expect(markup).toContain("Catalog gallery")
     expect(markup).toContain(
-      "Product and variant artwork is managed in Catalog"
+      'href="/catalog/products/prod_01#product-authoring-gallery"'
     )
     expect(markup).toContain("Offerings")
     expect(markup).toContain('href="/catalog/products/prod_01"')
@@ -148,7 +149,9 @@ describe("ProductCatalogSummaryWidget", () => {
         </MemoryRouter>
       )
       expect(
-        markup.includes("Product and variant artwork is managed in Catalog")
+        markup.includes(
+          'href="/catalog/products/prod_01#product-authoring-gallery"'
+        )
       ).toBe(hasProfile)
       queryClient.clear()
     }

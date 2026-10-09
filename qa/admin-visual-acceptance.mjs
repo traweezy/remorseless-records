@@ -1034,6 +1034,9 @@ const fixtureFor = (url) => {
       },
     }
   }
+  if (pathname === "/admin/catalog/products/product_acceptance/media") {
+    return { productId: "product_acceptance", version: 0, media: [] }
+  }
   if (pathname === "/admin/catalog/products/product_acceptance/profile") {
     return {
       artists: [
