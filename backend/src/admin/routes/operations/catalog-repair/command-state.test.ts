@@ -25,7 +25,7 @@ const context = {
   productId: "prod_missing",
   sha: "a".repeat(40),
 }
-const nonce = "79368c83-8dc1-443a-9b96-2a92a6e9b0cb"
+const nonce = "00000000-0000-4000-8000-000000000001"
 const preview = (): RepairPreview => ({
   actorId: "user_original",
   manifestSha256: "b".repeat(64),
@@ -295,7 +295,7 @@ describe("durable Catalog repair identity", () => {
     })
     const first = beginRepair(context, preview(), boundary, () => nonce)
     await sending
-    const secondUuid = jest.fn(() => "38efc8c1-a829-4948-bef2-0a4b1f5ae0b3")
+    const secondUuid = jest.fn(() => "00000000-0000-4000-8000-000000000002")
     await expect(
       beginRepair(context, preview(), { ...boundary }, secondUuid)
     ).rejects.toThrow("Another tab")
@@ -510,7 +510,7 @@ describe("durable Catalog repair identity", () => {
         ...saved,
         body: {
           ...saved.body,
-          idempotencyKey: "38efc8c1-a829-4948-bef2-0a4b1f5ae0b3",
+          idempotencyKey: "00000000-0000-4000-8000-000000000002",
         },
       })
     ).toThrow("already saved")

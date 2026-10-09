@@ -30,3 +30,14 @@ d389a76a63b2e3b13f9526674ea7a9f0a99f72d9:storefront/src/features/checkout/server
 # Active fixtures now use an explicit low-entropy UUID. Retain only this exact
 # immutable historical fingerprint; all other commits, paths and values scan.
 2a76107f44214133b846029a00e1920c1ae661bf:backend/src/lib/pinned-http-parser-security.test.ts:generic-api-key:283
+
+# These seven findings are synthetic Admin request UUIDs, not credentials.
+# Active tests now use explicit low-entropy, schema-valid UUIDs. Match only
+# immutable historical fingerprints; retain all rules, paths and future scans.
+549c18c8ad5d3d1a1abf074d6afd2b786737d3bd:backend/src/admin/routes/operations/catalog-repair/command-state.test.ts:generic-api-key:513
+549c18c8ad5d3d1a1abf074d6afd2b786737d3bd:backend/src/admin/routes/operations/catalog-repair/page.test.tsx:generic-api-key:168
+549c18c8ad5d3d1a1abf074d6afd2b786737d3bd:backend/src/admin/routes/operations/catalog-repair/query.test.ts:generic-api-key:79
+7788f908baf6260a27812048b112df38d1a5a3de:backend/src/admin/features/catalog-authoring/product-gallery-query.test.ts:generic-api-key:139
+7788f908baf6260a27812048b112df38d1a5a3de:backend/src/admin/features/catalog-authoring/product-gallery-query.test.ts:generic-api-key:154
+7788f908baf6260a27812048b112df38d1a5a3de:backend/src/admin/features/catalog-authoring/product-gallery-query.test.ts:generic-api-key:173
+7788f908baf6260a27812048b112df38d1a5a3de:backend/src/admin/features/catalog-authoring/product-gallery-editor.test.tsx:generic-api-key:73

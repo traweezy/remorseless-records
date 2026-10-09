@@ -42,6 +42,20 @@ that the repository CLI wrapper rejects this repair entrypoint before child
 bootstrap and still executes unrelated native scripts normally. Full Medusa
 exec preview is not read-only or an alternative to this initialized boundary.
 
+### Pre-push history secret scan
+
+Shared QA and normal local push hooks do not invoke Gitleaks. For a corrective
+release, reproduce the full Git-history scan with the exact version and verified
+archive checksum in `.github/actions/gitleaks/action.yml`, using
+`gitleaks git --redact --no-banner --verbose .` after the final local commit.
+A current-files scan cannot replace this history check. Retain redacted private
+receipts; never print candidate secrets. Classify findings from historical
+source before correction. Synthetic test UUIDs should use clearly artificial,
+schema-valid fixtures. If already committed, the existing `.gitleaksignore`
+convention permits only individually reviewed immutable commit/path/rule/line
+fingerprints, never a blanket test-directory or detector exclusion. Exact
+GitHub push checks and deployment acceptance remain separate release gates.
+
 ---
 
 ## 1. Accessibility & Performance Sweep

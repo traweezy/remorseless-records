@@ -76,7 +76,7 @@ const body: RepairBody = {
   sha: context.sha,
   expectedActorId: "user_original",
   expectedManifestSha256: "b".repeat(64),
-  idempotencyKey: "79368c83-8dc1-443a-9b96-2a92a6e9b0cb",
+  idempotencyKey: "00000000-0000-4000-8000-000000000001",
 }
 const reply: RepairResult = {
   operationId: "catop_repair",

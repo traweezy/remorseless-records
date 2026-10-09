@@ -105,6 +105,15 @@ contracts before applying generic framework examples from those files.
 
 ## Verified continuation boundary
 
+**October 8 evening CI repair:** the grouped push reached `5aba8a5`; Root,
+Backend and Storefront fail on seven synthetic request-UUID findings in Git
+history, while Runtime Images passes. The previous `b6e494f` instances continue
+running; no corrective release is accepted. Active fixture normalization and
+seven exact historical fingerprints pass a local pinned full-history scan and
+154 affected tests. Read the current opening handoff before the correction push
+and new exact CI/Railway/live acceptance. The entries below retain older
+pre-push evidence; client cloning remains paused.
+
 **October 8 evening reentry:** remote staging stays `b6e494f`; the seven saved
 local commits are preserved and the managed Gallery / native Variant parent
 corrections are added. Fresh strict scans, ten real initialized HTTP cases,

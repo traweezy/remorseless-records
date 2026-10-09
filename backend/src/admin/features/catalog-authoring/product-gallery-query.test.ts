@@ -136,7 +136,7 @@ describe("managed product gallery API and existing link controls", () => {
     const body = {
       expectedActorId: "user_original",
       expectedVersion: 11,
-      idempotencyKey: "79368c83-8dc1-443a-9b96-2a92a6e9b0cb",
+      idempotencyKey: "00000000-0000-4000-8000-000000000001",
       media: galleryInputs(gallery().media),
     }
     await putProductGallery("product_acceptance", body, { client })
@@ -151,7 +151,7 @@ describe("managed product gallery API and existing link controls", () => {
     const body = {
       expectedActorId: "user_original",
       expectedVersion: 11,
-      idempotencyKey: "79368c83-8dc1-443a-9b96-2a92a6e9b0cb",
+      idempotencyKey: "00000000-0000-4000-8000-000000000001",
       media: [
         {
           ...galleryInputs(gallery().media)[0]!,
@@ -170,7 +170,7 @@ describe("managed product gallery API and existing link controls", () => {
     const body = {
       expectedActorId: "user_original",
       expectedVersion: 11,
-      idempotencyKey: "79368c83-8dc1-443a-9b96-2a92a6e9b0cb",
+      idempotencyKey: "00000000-0000-4000-8000-000000000001",
       media: [],
     }
     await expect(

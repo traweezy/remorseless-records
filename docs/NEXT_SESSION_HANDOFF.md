@@ -2,6 +2,37 @@
 
 Last updated: 2026-10-08 (America/New_York)
 
+## Corrective release CI repair — October 8 evening
+
+The grouped direct staging push reached `5aba8a5` with normal hooks. All four
+original push workflows completed: 15 required checks passed, three Gitleaks
+jobs failed and five dependent checks skipped. Runtime Images passed. This
+revision is not accepted; Railway held its four candidates and the previously
+accepted `b6e494f` application instances continued running. Candidate terminal
+causes require their own provider evidence; absence from latest/active fields
+alone does not prove cancellation or skipping.
+
+Pinned Gitleaks 8.30.1 independently reproduced exactly seven full-history
+findings in synthetic Admin request UUID test bodies. Historical source proves
+mock SDK/storage, fake Product/user IDs and no credential use. Six active test
+files now use explicit low-entropy, valid v4 UUIDs; `.gitleaksignore` records
+only the seven immutable commit/path/rule/line fingerprints, following its
+existing convention. No rule, path, severity or future commit is excluded.
+The corrected local full-history scan passes and all six affected suites /
+154 tests pass. There is no verified earlier local Gitleaks scan to describe
+as having missed these findings: shared QA/pre-push do not run that scanner.
+
+Complete normal hooks and a fresh full-history scan of the committed correction,
+then make one direct staging corrective push. All four exact workflows / 23
+checks and the new exact Railway/live acceptance remain required. Preserve the
+failed CI and original scanner receipts under
+`artifacts/end-to-end-audit-2026-10-08/resume-2345/receipts/`. Revision-pinned
+`5aba8a5` private deployment/live helpers are obsolete for the correction;
+create and review fresh copies for its final full SHA before any provider action.
+Continue Batch 6 after acceptance. The three owned gallery re-saves, initialized
+repair and remaining executed audit remain open; orders #8–#11 must not repeat.
+Batch 7 client cloning remains paused, and production is untouched.
+
 ## Resumed corrective audit — October 8 evening
 
 Batch 6 continues. Remote staging is freshly verified at `b6e494f`; the seven

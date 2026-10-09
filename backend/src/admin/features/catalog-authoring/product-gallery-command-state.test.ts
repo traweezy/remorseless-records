@@ -16,7 +16,7 @@ import {
 } from "./product-gallery-command-state"
 import { type ProductGallery } from "./product-gallery-query"
 
-const nonce = "79368c83-8dc1-443a-9b96-2a92a6e9b0cb"
+const nonce = "00000000-0000-4000-8000-000000000001"
 const context = {
   productId: "product_acceptance",
   backendOrigin: "https://admin.example.test",

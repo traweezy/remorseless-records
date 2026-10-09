@@ -1,5 +1,22 @@
 # Storefront, Admin and Stripe end-to-end audit
 
+### Corrective release scan — October 8 evening
+
+The grouped push reached `5aba8a5`; its original four workflows completed with
+15 required passes, three Gitleaks failures and five dependent skips. Runtime
+Images passed, but this release is not accepted. Railway held the new candidates
+and the previous accepted `b6e494f` instances continued running.
+
+The pinned full-history scanner reproduces seven synthetic idempotency UUID
+findings from two earlier test commits. Six active tests now use clearly
+artificial, schema-valid UUIDs; only the seven exact historical fingerprints
+are recorded. Full-history scanning with the correction and 154 affected tests
+pass. All other rules, files and future findings remain enforced. Normal gates,
+a scan of the committed correction, the corrective staging push and all its
+exact CI/deployment/live checks remain required. Existing `5aba8a5` private
+release helper copies must not be executed for the new correction. No live
+repair/re-save, client clone or production action is established by these tests.
+
 ### Evening continuation — October 8
 
 The approved scanner publication blocker is resolved without a waiver or
