@@ -68,6 +68,12 @@ MinIO, tax-provider and telemetry credentials/routing with empty or safe test
 values so those files cannot re-enable these integrations. A synthetic `.env`
 regression verifies that override behavior against the installed loader.
 
+The runner also explicitly enables native Medusa RBAC before starting the test
+process, overriding omitted or disabled ambient flags. The initialized HTTP
+repair, Gallery and native Variant tests require actual RBAC and disposable
+signing configuration; they fail closed when either prerequisite is absent.
+This fixture setting does not change application or Railway configuration.
+
 The suite also exercises native catalog persistence, including shelf creation,
 replay/stale versions, minimal profiles, new artist/vocabulary links, managed
 asset writes and URL media reuse. Its media provider is stubbed; real S3 upload

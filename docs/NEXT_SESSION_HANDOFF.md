@@ -2,6 +2,52 @@
 
 Last updated: 2026-10-08 (America/New_York)
 
+## Native RBAC fixture correction — October 8 evening
+
+The direct correction push reached `6c3713c` with normal hooks and a clean
+1,157-commit pinned history scan. All three exact secret scans, both application
+coverage/build checks, Root, Storefront and Runtime Images workflows pass.
+All four original push workflows are terminal: Backend fails only disposable
+integration, leaving 22 required passes and one failure. This revision remains
+unaccepted, and the previously accepted `b6e494f` instances continue running.
+Actual exact-ID reads mark the `5aba8a5` and `6c3713c` candidates skipped;
+the provider's skip causes remain unverified. No new app instance started.
+
+The integration log proves 121 of 131 native tests pass; the ten new initialized
+HTTP cases stop at their actual native RBAC prerequisites, before their mutation
+assertions. The normal disposable environment omitted `MEDUSA_FF_RBAC`, while
+the earlier private full fixture supplied it explicitly. The narrow correction
+pins RBAC on before the normal test process starts. It preserves all ten
+fail-closed prerequisites, native permissions and assertions and changes no
+application/Railway policy. Twenty-nine runner tests pass, including omitted,
+empty and false inherited flags and an installed Medusa loader proof that a
+hostile `.env.test` cannot disable the flag or re-enable external providers.
+
+Fresh strict PostgreSQL/Redis fixture scans pass with the approved October 8
+19:05 UTC database: zero UNKNOWN/HIGH/CRITICAL; three/one MEDIUM findings remain
+retained. The new full-only fixture deliberately inherits RBAC `false` and
+asserts the normal runner supplies `true` before starting its tests. Its full
+aggregate passes all 233 tests, including 131 native and 44 payment cases.
+All 662 runtime/test source hashes remain unchanged; 345 owned relay connections
+close with zero active clients. Independent reads verify no remaining owned
+containers, networks, volumes, listeners or unreaped relay children.
+The normal boundary coverage gate passes 111 tests with no skips or failures.
+A first invocation named the parent scan directory and failed before startup;
+that original failure is retained, and the actual nested image directory is
+used for the prepared retry. No image gate or HTTP assertion was relaxed.
+
+Complete normal hooks, the final committed history scan and one direct staging
+correction. Immutable local evidence is retained in
+`artifacts/end-to-end-audit-2026-10-08/isolated-http-ci-rbac-20261009-0115/`.
+Require its four exact workflows / 23 checks, exact app/Migrations/Recovery
+identities, all-nine observation and fresh live acceptance before owned UI writes.
+The older `5aba8a5` and `6c3713c` pinned private release helpers must stay
+unexecuted; create and review fresh copies for the correction's final full SHA.
+Native signed-in UI independently identifies the existing user without token
+export, but its old-deployment preparation receipt must be refreshed after
+acceptance before any owned repair or re-save. Batch 6 continues; Batch 7 client
+cloning remains paused, and orders #8–#11 and production remain untouched.
+
 ## Corrective release CI repair — October 8 evening
 
 The grouped direct staging push reached `5aba8a5` with normal hooks. All four

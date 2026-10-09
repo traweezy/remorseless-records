@@ -1,5 +1,28 @@
 # Storefront, Admin and Stripe end-to-end audit
 
+### Native RBAC fixture correction — October 8 evening
+
+Correction `6c3713c` clears all exact secret scans and passes Root, Storefront
+and Runtime Images. Backend fails only disposable integration: 22 required
+checks pass, one fails, and all four workflows are terminal. The actual native
+suite passes 121/131 tests; ten initialized HTTP cases reject missing RBAC at
+their prerequisites before mutation assertions. The earlier private full run
+set that flag, while the normal disposable runner did not.
+
+The runner now enables actual RBAC before child startup without changing
+application policy or the fail-closed HTTP checks. Twenty-nine boundary tests
+prove omitted/disabled ambient flags and a hostile installed-loader `.env`
+cannot disable it. Fresh strict image scans pass; the full-only normal aggregate
+with deliberately disabled parent RBAC passes all 233 tests. All 662 source
+hashes remain unchanged and all 345 relay connections close. Independent reads
+verify no owned containers, networks, volumes, listeners or relay children remain.
+The normal boundary coverage gate passes 111 tests. Retain the original CI,
+private path-selection failure and fresh cleanup evidence. No new revision
+is deployed or accepted. Existing native user identity was read in Profile and
+Users and its edit canceled unchanged, with no credential/session export;
+refresh that evidence on the accepted deployment before the three owned gallery
+re-saves and initialized repair. Client cloning remains paused.
+
 ### Corrective release scan — October 8 evening
 
 The grouped push reached `5aba8a5`; its original four workflows completed with

@@ -62,6 +62,7 @@ export const integrationEnvironment = (environment) => {
     INTEGRATION_TESTS_ENABLED: "1",
     JWT_SECRET: "disposable_jwt_secret",
     MEDUSA_DISABLE_TELEMETRY: "true",
+    MEDUSA_FF_RBAC: "true",
     RESEND_API_KEY: "",
     RESEND_FROM_EMAIL: "",
     RESEND_FROM: "",

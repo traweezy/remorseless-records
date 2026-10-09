@@ -105,6 +105,17 @@ contracts before applying generic framework examples from those files.
 
 ## Verified continuation boundary
 
+**October 8 native RBAC fixture correction:** `6c3713c` clears the historical
+secret findings; its four workflows finish with 22 required passes and one
+disposable-integration failure. Ten new HTTP cases reject missing native RBAC
+before assertions. The normal runner now pins RBAC on; 29 boundary/loader tests
+pass, fresh image scans pass and all 233 normal service tests pass with inherited
+RBAC disabled. Source hashes stay unchanged; 345 relay clients close. The normal
+boundary coverage gate passes 111 tests; independent owned-fixture cleanup passes.
+Previous `b6e494f` services stay running. Read the opening handoff for the final
+normal service, corrective push and new exact CI/deployment/live gates; earlier
+entries below are history. Client cloning remains paused.
+
 **October 8 evening CI repair:** the grouped push reached `5aba8a5`; Root,
 Backend and Storefront fail on seven synthetic request-UUID findings in Git
 history, while Runtime Images passes. The previous `b6e494f` instances continue

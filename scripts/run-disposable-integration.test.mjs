@@ -173,6 +173,16 @@ test("builds before startup, verifies actual image IDs, runs full aggregate and 
   assertNoListeners(fixture.signals)
 })
 
+test("enables native RBAC before the test process starts despite missing or disabled ambient flags", async () => {
+  for (const value of [undefined, "", "false"]) {
+    const fixture = fakeRunner()
+    const environment = value === undefined ? {} : { MEDUSA_FF_RBAC: value }
+    assert.equal(await fixture.invoke({ environment }), 0)
+    const tests = fixture.calls.find((call) => stage(call) === "tests")
+    assert.equal(tests.options.environment.MEDUSA_FF_RBAC, "true")
+  }
+})
+
 test("no-build requires scanned IDs and never rebuilds or pulls after scan", async () => {
   const fixture = fakeRunner()
   assert.equal(
@@ -510,10 +520,10 @@ test("installed Medusa loadEnv cannot re-enable explicitly disabled external pro
     )
     await writeFile(
       join(directory, ".env.test"),
-      "OTEL_SDK_DISABLED=false\nTAX_RATE_LOOKUP_PROVIDER=external\nTAX_RATE_LOOKUP_MODE=external\n",
+      "OTEL_SDK_DISABLED=false\nMEDUSA_FF_RBAC=false\nTAX_RATE_LOOKUP_PROVIDER=external\nTAX_RATE_LOOKUP_MODE=external\n",
       { mode: 0o600 }
     )
-    const script = `require(${JSON.stringify(utils)}).loadEnv("test", ${JSON.stringify(directory)});process.stdout.write(JSON.stringify(Object.fromEntries(${JSON.stringify([...keys, "OTEL_SDK_DISABLED", "OTEL_TRACES_EXPORTER", "OTEL_METRICS_EXPORTER", "OTEL_LOGS_EXPORTER", "TAX_RATE_LOOKUP_PROVIDER", "TAX_RATE_LOOKUP_MODE"])}.map(key=>[key,process.env[key]]))))`
+    const script = `require(${JSON.stringify(utils)}).loadEnv("test", ${JSON.stringify(directory)});process.stdout.write(JSON.stringify(Object.fromEntries(${JSON.stringify([...keys, "MEDUSA_FF_RBAC", "OTEL_SDK_DISABLED", "OTEL_TRACES_EXPORTER", "OTEL_METRICS_EXPORTER", "OTEL_LOGS_EXPORTER", "TAX_RATE_LOOKUP_PROVIDER", "TAX_RATE_LOOKUP_MODE"])}.map(key=>[key,process.env[key]]))))`
     const result = JSON.parse(
       await runIntegrationCommand(process.execPath, ["-e", script], {
         environment: safe,
@@ -521,6 +531,7 @@ test("installed Medusa loadEnv cannot re-enable explicitly disabled external pro
       })
     )
     for (const key of keys) assert.equal(result[key], "", key)
+    assert.equal(result.MEDUSA_FF_RBAC, "true")
     assert.equal(result.OTEL_SDK_DISABLED, "true")
     for (const key of [
       "OTEL_TRACES_EXPORTER",
