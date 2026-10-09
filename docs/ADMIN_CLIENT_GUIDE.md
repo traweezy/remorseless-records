@@ -82,6 +82,23 @@ Variant catalog presentation uses its own edit drawer. Native price and stock
 evidence is shown beside the customer-facing label and availability so the
 operator can compare them before saving.
 
+### Arrange existing artwork
+
+Open **Catalog details → Gallery**, or follow **Catalog gallery** from the Product's
+catalog summary. Product images and each Variant's images have separate groups.
+Use **Make primary**, **Earlier**, and **Later** to choose the artwork and its
+order, then **Save gallery**. This saves only the gallery and synchronizes the
+native Product and Variant thumbnails; other unsaved product fields stay in
+the editor. **Refresh gallery** reloads the images and discards their unsaved
+arrangement while keeping the other product fields.
+
+If the screen says the saved request needs confirmation, keep it and use
+**Retry saved gallery request** in the same browser and administrator session.
+It retains the original images, version, and request identity. After a matching
+current result is confirmed, **Edit gallery again** permits another edit.
+Gallery recovery requests do not expire automatically. This editor arranges
+existing managed images; it does not upload files or edit their metadata.
+
 ### Merchandise the catalog
 
 Open **Catalog merchandising**. Choose or create a shelf, configure its

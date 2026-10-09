@@ -1,5 +1,42 @@
 # Storefront, Admin and Stripe end-to-end audit
 
+### Evening continuation — October 8
+
+The approved scanner publication blocker is resolved without a waiver or
+alternate registry. All ten actual initialized native HTTP cases pass: repair
+three, managed gallery two and Variant ownership five. The unchanged full
+normal disposable services pass 233 tests, including 131 native integration
+and 44 payment regressions. Source hashes remain unchanged and all owned
+fixtures, listeners and relay clients are cleaned up. A prior full repeat hit
+the real rate limit after focused tests reused its Redis window; that failure
+is retained and a fresh full fixture passes without changing limits/assertions.
+
+Catalog details now supplies the missing managed Gallery path. It arranges
+existing images, preserves the seven link fields, asset metadata and other
+form drafts, and uses one durable UUID/body with cross-tab locking and native
+actor verification. Exact replay returns the current gallery after a later
+writer; independent operation history remains the historical receipt. The
+87 focused UI / 15 API tests, shared QA, both builds and 313 Backend coverage
+suites / 2,959 tests pass. All 18 compiled phone/desktop cases and 24 main-scoped
+Axe scans pass on the final build with zero violations/incompletes; all frames
+are inspected. Cursor, keyboard focus, contained images and recovery controls
+pass. Missing alert roles exposed by four original failures were corrected;
+raw failures and the bounded rounded-edge focus-oracle diagnostic are retained.
+The Storefront build uses owned deterministic read-only fixture inputs and
+passes the 112-client-asset secret and Trusted Types policy gate.
+
+The original native Variant diagnostic confirmed foreign-parent and mixed
+200/title mutations without reparenting. Its narrow guard now checks every
+update ID before delegation. Real native cases prove same-parent create/update
+success, missing/foreign 404 with no partial writes, denied-role 403 and the
+existing terminal delete 409, preserving native validation and policy groups.
+
+These are local results. The grouped staging push, four exact workflows / 23
+checks, app/Migrations/RecoveryBackups identities, all-nine Railway observation
+and live acceptance remain required. The three actual owned gallery re-saves,
+initialized repair and exhaustive executed audit ledger remain open. Client
+cloning remains paused; never repeat completed orders #8–#11.
+
 ### Continuing corrective audit — October 8
 
 Staging `b6e494f` now passes all four exact push workflows / 23 required checks,

@@ -138,6 +138,35 @@ authorization; this procedure does not grant production or client access.
   must agree after save. If the read-back check fails, leave the bundle
   unchanged and escalate rather than repairing relationships manually.
 
+### Existing managed artwork
+
+Use **Catalog details → Gallery** for primary-image and ordering changes.
+**Save gallery** uses the versioned catalog media workflow and synchronizes
+native thumbnails. The native Product media dialog cannot replace managed
+catalog artwork. Gallery saves preserve the other product form drafts and do
+not upload, delete, quarantine, or edit managed assets.
+
+The browser saves one immutable request before sending it and coordinates
+tabs for that Product. Storage or locking failures disable saving. A saved
+request belongs to its original server and native administrator; signing in
+as someone else does not transfer it. Keep its visible request identity for
+private investigation, without exporting browser storage or session secrets.
+
+For **The saved request needs confirmation**, retry the existing request
+unchanged. Do not clear storage, replace its UUID, change its images, or rebase
+its version after a conflict or timeout. A matching successful HTTP result
+confirms the current gallery, rather than an immutable historical receipt.
+If another writer has since changed the gallery, an exact retry can return
+that newer projection while the original operation remains successful. Keep
+the saved request and investigate its independent operation history. A new
+GET or preview alone is insufficient acknowledgement.
+
+**Edit gallery again** is available only after a matching result was confirmed
+and the same administrator is checked again. Gallery requests never expire
+automatically. A profile association, unavailable asset, duplicate position,
+or ambiguous primary-image warning must be resolved deliberately before the
+first send; an unchanged re-save must not silently normalize those fields.
+
 ### Catalog merchandising
 
 - Manual shelves cannot contain the same Product twice. Automatic shelves need

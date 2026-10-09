@@ -19,6 +19,20 @@ production/launch acceptance to batch 8. This supersedes the seven-batch plan.
 pause before the client clone. Batch 7 must not start until the user explicitly
 resumes it; earlier continuation requests do not override this stop point.
 
+**October 8 evening continuation:** strict fresh approved fixture scans and
+all ten actual initialized HTTP cases pass. The full normal disposable service
+aggregate passes 233 tests with verified cleanup. The managed Gallery editor
+and native Variant parent guard preserve existing workflows, native permissions,
+assets and drafts; both builds, shared QA and 313 Backend coverage suites /
+2,959 tests pass. Eighteen compiled Gallery browser cases and 24 inspected,
+clear main-scoped Axe frames verify recovery, cursors, focus and artwork.
+Original findings and private setup/rate-window/focus diagnostics remain
+retained without security waivers. The grouped staging push, all exact CI,
+app/Migrations/RecoveryBackups identities, all-nine live acceptance and owned
+re-saves/repair remain required. Batch 6's executed audit ledger stays open.
+The older summary below predates this evidence; its expired scanner gate is
+superseded. Client cloning stays paused and production stays untouched.
+
 **October 8 continuing correction:** staging `b6e494f` passes all four exact
 workflows / 23 checks, its app/Migrations deployments, runtime/role proof,
 ordinary health and correlated application logs. All 13 deployed artwork/404

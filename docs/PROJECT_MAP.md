@@ -105,6 +105,19 @@ contracts before applying generic framework examples from those files.
 
 ## Verified continuation boundary
 
+**October 8 evening reentry:** remote staging stays `b6e494f`; the seven saved
+local commits are preserved and the managed Gallery / native Variant parent
+corrections are added. Fresh strict scans, ten real initialized HTTP cases,
+233 full normal disposable tests, shared QA, both builds and 313 Backend
+coverage suites / 2,959 tests pass. Eighteen compiled Gallery cases have
+24 inspected clear Axe frames with verified focus/cursors/contained artwork.
+Original failures and verified disposable cleanup are retained. All-nine
+monitoring runs with its explicit pause gap and zero fault samples. The grouped
+push, exact CI/deployments/live acceptance and owned repair/re-saves remain
+required; no new release, client clone or production action is claimed. Use
+the opening handoff/audit for current evidence. The continuation below retains
+the earlier scanner failure as history.
+
 **Current October 8 continuation:** Store Batch 6 continues at `b6e494f`.
 All four exact workflows / 23 checks, exact app/Migrations deployments,
 runtime/role proof, ordinary health and correlated application logs pass.

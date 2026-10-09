@@ -2,6 +2,84 @@
 
 Last updated: 2026-10-08 (America/New_York)
 
+## Resumed corrective audit — October 8 evening
+
+Batch 6 continues. Remote staging is freshly verified at `b6e494f`; the seven
+saved local commits through `b4ca8da` are preserved. The managed Gallery and
+native Variant ownership corrections are saved as `7788f90` and `dae531f`,
+respectively, with normal hooks and logical Conventional Commits.
+No new staging push, production action or client clone has started at this
+checkpoint. The grouped corrective release and Batch 6 are not yet accepted.
+
+The approved scanner publication blocker is resolved. Strict fresh scans of
+the exact PostgreSQL/Redis fixture images pass with the October 8 19:05 UTC
+approved database, without a mirror, freshness waiver or severity exclusion.
+Actual initialized native HTTP checks pass all ten cases: three failed-creation,
+two managed-gallery and five native Variant ownership cases. The unchanged full
+normal disposable service aggregate passes 233 tests: 131 native integration,
+44 payment, 38 PostgreSQL recovery/roles, eight Redis capacity, two AOF, one
+Redis aggregate, three API and six session-rotation cases. All 662 runtime/test
+source hashes remain unchanged; 345 owned relay connections close, with no
+remaining fixture containers, networks, volumes, listeners or unreaped clients.
+
+Retain the setup failures and original findings. The private fixture follows
+the installed utility's literal `localhost` SSL convention and verifies its
+owned disposable transport. A focused-then-full run originally passed 130
+normal native tests and hit one real 429 because both runs shared the same
+10-request/60-second Redis window. A separate fresh full fixture passes without
+changing production limits, test assertions or source. No live full-bootstrap
+Medusa exec repair was used.
+
+The missing managed **Catalog details → Gallery** path now arranges existing
+Product/Variant artwork through the existing versioned API. It preserves all
+seven link fields, assets and other form drafts; it persists an immutable
+UUID/body, coordinates tabs and verifies the actual native administrator.
+Uncertain requests cannot expire, rebase or become new writes. The API returns
+the current gallery after replay; independent operation history remains the
+historical receipt. This editor does not upload files or edit assets.
+
+Final local gates pass: 87 focused Gallery UI tests, 15 media API tests,
+139 focused native guard/middleware tests, shared QA, both production builds
+and 313 Backend coverage suites / 2,959 tests. The Storefront webpack build
+uses an owned GET-only Medusa fixture and ephemeral distinct synthetic server
+secrets; its 112 static assets pass the secret/Trusted Types bundle gate.
+All 18 compiled Gallery browser cases pass on the final Admin build, with
+24 clear main-scoped Axe scans and inspected phone/desktop frames. Cursor,
+keyboard focus, contained artwork, drafts and recovery states pass. Four first
+browser failures exposed missing alert roles and led to a semantic fix. The
+private focus oracle's initial 5-pass/1-fail result and diagnostic are retained:
+a 2-pixel rectangular corner hit the immediate parent beside a measured
+6-pixel rounded button; strict viewport bounds and nine valid interior hit
+points then pass. No application, mutation fence or Axe exclusion was changed.
+
+The actual original native Variant diagnostic confirmed foreign-parent and
+mixed title-only writes returning 200 without reparenting. The narrow guard
+now checks every update ID against the URL Product before any mixed workflow
+runs. Real native HTTP proves legitimate create/update success, missing and
+foreign 404 with no partial writes, unchanged denied-role 403, and the existing
+terminal hard-delete 409. Native validation and conjunctive permissions remain.
+These local fixture passes establish neither live writes nor deployment.
+
+The sole all-nine observer is session 61737, restarted at 23:46:54.348 UTC.
+Its intentional 41,547.284-second gap follows the pause; no continuous window
+is claimed. Through 00:39:55.239 UTC it has 87 successful samples, zero faults
+or unverified services and unchanged deployment identities. Exception events
+in watcher stdout are reviewed separately from successful history. Redis keeps
+its existing run identity and healthy persistence, with no restart. Durable
+observer snapshots are copied before hashing. RecoveryBackups' effective
+manifest uses the reviewed Dockerfile despite its raw instance builder field.
+
+Current private evidence starts in
+`artifacts/end-to-end-audit-2026-10-08/resume-2345/receipts/`; the real HTTP/full
+service join is in `isolated-http-full-normal-20261009-0035/`. The older pause
+below is history: its expired-scanner and unrun-HTTP statements are superseded.
+Complete the grouped fast-forward staging push, all four exact push workflows /
+23 checks, exact app/Migrations/RecoveryBackups deployment identities, all-nine
+observation and live acceptance before the three owned gallery re-saves and
+initialized failed-creation repair. Keep actual request identities; never use
+the old offline planner UUIDs or repeat orders #8–#11. The remaining exhaustive
+executed audit ledger stays open. Batch 7 client cloning remains paused.
+
 ## Pause checkpoint — October 8, 12:26 UTC
 
 The user requested a good stopping point. Current Batch 6 corrections are

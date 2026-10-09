@@ -145,13 +145,26 @@ staging Backend and SHA checks run before inspection or mutation. The route
 reuses the already initialized request scope, avoiding a second full Medusa
 bootstrap. No new policy, role, credential or authorization authority is added.
 
-The six delegates only add the shared Catalog artwork ownership guard and
+The six delegates add the shared Catalog artwork ownership guard and
 disable nonempty Product/Variant batch hard-deletion lists. CSV confirmation
 retains its existing import capability and guards the actual parsed artwork
 update plan before native batch execution. No new thumbnail field is enabled
 in a native creation or import DTO, and ordinary native validation and error
 handling remain unchanged. See [the media boundary](../MEDIA_SECURITY.md) and
 [HTTP error contracts](../API_PROBLEM_CONTRACT.md) for the specific 409 paths.
+
+The October 8 corrective batch also guards native Variant batch parent identity
+before delegation. The installed handler can update a foreign Variant's title
+while retaining its original Product; injecting the URL Product into an update
+does not prevent that write. The exact batch middleware reuses Medusa's native
+validator and unchanged conjunctive Variant create/update/delete policy group
+before reading ownership. It checks every requested update ID against the URL
+Product in bounded queries before any native workflow runs. Missing or foreign
+IDs return 404 and a mixed batch cannot partially create or update records.
+Create-only batches avoid the lookup; every nonempty delete list retains the
+existing terminal `catalog_hard_deletion_disabled` 409. No role, grant, custom
+authorization authority or whole-batch size limit is added. Exact HTTP and
+release acceptance are tracked in the current handoff.
 
 Catalog authoring and taxonomy each use complete CRUD capability sets.
 Catalog merchandising deliberately has only read/create/update: shelf archive
