@@ -126,10 +126,21 @@ export const validateHardenedFixtureWiring = ({
   const postgresLines = significant(postgresDockerfile).map((line) =>
     line.trim()
   )
-  for (const instruction of [
-    "ADD --checksum=sha256:63d339f0da5ab53635a56f2490a7984dfe12dfcff22ad749f63edaf590168445 https://go.dev/dl/go1.27.1.linux-amd64.tar.gz /tmp/go.tar.gz",
-    "ADD --checksum=sha256:3450b45a3f9ee8568792736a5c5e70a1f2e9b36c35a8f74958c03e51d7d92bec https://go.dev/dl/go1.27.1.linux-arm64.tar.gz /tmp/go.tar.gz",
+  const postgresArtifactPins = [
+    "ADD --checksum=sha256:ecbadb99091a3f46e31f5f934b068b1864eafa7995211b39eaddf76996045fe5 https://go.dev/dl/go1.27.2.linux-amd64.tar.gz /tmp/go.tar.gz",
+    "ADD --checksum=sha256:94f3e30b8e374bc285e7dadc11e0865726b9bc6e85b841ccceaabc0214c6b7c8 https://go.dev/dl/go1.27.2.linux-arm64.tar.gz /tmp/go.tar.gz",
     "ADD --checksum=sha256:33d7537d588ea49458b9509bcf4554bdf5ceacc66da71e5caa1058ea3b689c3b https://codeload.github.com/tianon/gosu/tar.gz/6456aaa0f3c854d199d0f037f068eb97515b7513 /tmp/gosu.tar.gz",
+  ]
+  assert.deepEqual(
+    postgresLines.filter(
+      (line, index) =>
+        /^ADD(?:\s|$)/iu.test(line) &&
+        (index === 0 || !postgresLines[index - 1].endsWith("\\"))
+    ),
+    postgresArtifactPins,
+    "Only exact checksum-pinned Go and gosu artifacts may enter the PostgreSQL fixture"
+  )
+  for (const instruction of [
     "&& echo '0475f1708db81d718b633faf2d9dd64695037eabdc8562125060607bcb01b2ba  go.mod' | sha256sum -c - \\",
     "&& echo '2a8f3fb6adb84839bbb9999f12f1416fb86c184135aaa1c2e489b35203c08346  go.sum' | sha256sum -c - \\",
     "&& /opt/go/bin/go mod edit -go=1.25.0 -require=golang.org/x/sys@v0.44.0 \\",
@@ -158,6 +169,21 @@ export const validateHardenedFixtureWiring = ({
     )
   const finalStage = postgresLines.slice(
     postgresLines.findLastIndex((line) => line.startsWith("FROM "))
+  )
+  assert.equal(
+    [
+      ...finalStage
+        .join("\n")
+        .matchAll(/com\.remorseless\.integration\.gosu\.toolchain/gu),
+    ].length,
+    1,
+    "PostgreSQL fixture must declare only its reviewed Go toolchain"
+  )
+  assert.ok(
+    finalStage.includes(
+      'com.remorseless.integration.gosu.toolchain="go1.27.2"'
+    ),
+    "PostgreSQL compiler label must match the checksum-pinned Go release"
   )
   assert.equal(
     finalStage.some((line) => /^(?:ENTRYPOINT|CMD|USER|ENV) /u.test(line)),

@@ -2,6 +2,49 @@
 
 Last updated: 2026-10-08 (America/New_York)
 
+## Disposable image compiler correction — October 8 evening
+
+The RBAC correction is committed and pushed directly as `e5cecff`, with normal
+commit/push hooks and a clean 1,158-commit pinned history scan. Its Backend CI
+fails earlier than native tests: the exact disposable-image scan rejects
+thirteen UNKNOWN Go standard-library findings in PostgreSQL gosu/Go 1.27.1.
+All four original push workflows are terminal, with 22 required checks passing
+and this image scan as the sole failure. PostgreSQL retains three MEDIUM
+findings and zero HIGH/CRITICAL; Redis retains one MEDIUM with zero
+UNKNOWN/HIGH/CRITICAL. Native integration and persistent
+Redis runtime execution do not run on this failed CI attempt. This is separate
+from the corrected RBAC failure at `6c3713c`.
+
+The digest-verified artifact and all thirteen records are retained in
+`artifacts/end-to-end-audit-2026-10-08/resume-2345/receipts/` with exact job,
+step and original push identities. The failed artifact has no accepted image
+or database identity, so do not infer an exact earlier-local/CI DB comparison.
+The reviewed correction uses official checksum-pinned Go 1.27.2 archives for
+both architecture builds of the existing gosu source. It uses standing delegated
+security authority; no npm cooling or scanner severity policy changes.
+
+The rebuilt Linux amd64 image verifies Go 1.27.2, unchanged module hashes and
+the real gosu privilege drop. Its fresh approved October 9 01:16 UTC Trivy
+database scan retains zero UNKNOWN/HIGH/CRITICAL and three/one MEDIUM findings;
+database bytes remain identical before and after scanning. The normal boundary
+coverage gate passes 112 tests. The new full-only normal fixture binds the new
+image and all 663 source hashes, retaining the hostile inherited RBAC flag and
+actual child override proof. Its normal aggregate passes all 233 tests, including
+131 native and 44 payment cases; all 663 hashes remain unchanged and all 344
+relay connections close with zero active clients. Independent reads prove all
+343 spawned clients are reaped, both relay ports are closed and exact owned
+containers, network and volumes are absent. Normal hooks and committed history
+scanning still precede a direct correction. Fresh evidence is retained in
+`artifacts/end-to-end-audit-2026-10-08/isolated-http-go1272-20261009-0145/`;
+the strict image receipt is retained under the operational re-entry directory's
+`fixture-go1272-refresh-20261009T013808107Z/` subdirectory.
+Require new exact CI, app/Migrations/Recovery identities, all-nine observation,
+ordinary heartbeat/runtime/logs and deployed acceptance before the three owned
+Gallery re-saves, initialized repair and mystery payment. All release helpers
+pinned to `e5cecff` or older revisions remain unexecuted and become obsolete
+for that correction. Old accepted `b6e494f` instances continue running.
+Batch 6 continues; client cloning remains paused and orders #8–#11 must not repeat.
+
 ## Native RBAC fixture correction — October 8 evening
 
 The direct correction push reached `6c3713c` with normal hooks and a clean

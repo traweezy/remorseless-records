@@ -105,6 +105,17 @@ contracts before applying generic framework examples from those files.
 
 ## Verified continuation boundary
 
+**October 8 image compiler correction:** `e5cecff` clears the prior RBAC runner
+and secret-scan corrections, but its disposable image scan rejects thirteen
+UNKNOWN Go standard-library findings before native tests run. The same gosu
+source is rebuilt with reviewed, checksum-pinned Go 1.27.2 and passes its fresh
+strict scan and 112 boundary tests; all image severity gates remain intact.
+All four original CI workflows are terminal with 22 passes and one failure.
+The normal full services pass all 233 tests with 663 unchanged source hashes
+and 344 closed relay connections; independent owned-resource cleanup passes.
+Read the opening handoff for new exact release acceptance. Old accepted apps remain running;
+owned UI writes and client cloning have not started.
+
 **October 8 native RBAC fixture correction:** `6c3713c` clears the historical
 secret findings; its four workflows finish with 22 required passes and one
 disposable-integration failure. Ten new HTTP cases reject missing native RBAC

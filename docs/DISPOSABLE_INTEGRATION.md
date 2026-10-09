@@ -8,6 +8,19 @@ and a Linux host with Docker Linux/amd64 support (client-reaping verification
 uses `/proc`). The fixture and real recovery suite reject
 client/server version drift before creating a test database.
 
+The PostgreSQL fixture builds its existing gosu source with checksum-pinned Go
+1.27.2 for Linux amd64 and arm64. This reviewed compiler security correction
+addresses the preceding CI's Go 1.27.1 UNKNOWN findings; it does not upgrade
+PostgreSQL or a live service. Preserve its exact module hashes, privilege-drop
+smokes and zero UNKNOWN/HIGH/CRITICAL scan policy. The dependency audit records
+the official sources and standing delegated security decision.
+The actual rebuilt amd64 image verifies compiler/module hashes and privilege
+drop, passes a fresh strict scan, and passes all 112 boundary coverage tests.
+Its normal full services pass all 233 tests with 663 unchanged source hashes
+and 344 closed relay connections. Independent reads verify all owned resources,
+relay ports and spawned clients absent. Normal hooks and committed history
+scanning still precede the corrective staging push.
+
 ## Local functional verification
 
 ```bash

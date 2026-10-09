@@ -1,5 +1,30 @@
 # Dependency Migration Audit — 2026-07-23
 
+## Disposable PostgreSQL compiler security correction — October 8, 2026
+
+Exact staging CI at `e5cecff` rejects thirteen UNKNOWN-severity Go standard
+library findings in the isolated PostgreSQL fixture's `gosu` binary. Its Go
+1.27.1 compiler is pinned in the existing recipe; the digest-verified CI report
+lists fixed releases 1.26.9 and 1.27.2. The scanner stops before service tests.
+No exact database-hash comparison with the preceding local scan is established.
+
+Select the same-line Go 1.27.2 security patch under the user's standing delegated
+hardening authority. The [official release history](https://go.dev/doc/devel/release#go1.27.2)
+dates it October 8; the [official download metadata](https://go.dev/dl/?mode=json)
+independently supplies both Linux architecture checksums. This is a recorded
+delegated security decision, not a claim of separate approval or seven-day age.
+The npm cooling manifest, lockfile, licenses and application toolchains stay
+unchanged. Only the fixture compiler/archive and its enforced label change;
+PostgreSQL, the base digest, gosu source, x/sys and module hashes remain pinned.
+The rebuilt amd64 image verifies the new compiler, unchanged module hashes and
+real privilege drop. Fresh strict scans retain zero UNKNOWN/HIGH/CRITICAL and
+three/one MEDIUM findings; all 112 boundary coverage tests and all 233 normal
+service tests pass with 663 unchanged source hashes. Independent cleanup proves
+all owned resources, relay listeners and spawned clients absent. Keep this
+policy and require normal hooks and new exact CI before acceptance. Neither
+the earlier local database nor its findings are relabelled as the newly
+downloaded October 9 scan database.
+
 ## Native order navigation and remaining receipts — October 7, 2026 UTC
 
 Extend the existing MIT Dashboard 2.18.0 and UI 4.2.0 patches without changing

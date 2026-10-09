@@ -1,5 +1,32 @@
 # Storefront, Admin and Stripe end-to-end audit
 
+### Disposable image compiler correction — October 8 evening
+
+The direct RBAC correction push `e5cecff` passes its normal hooks and the full
+1,158-commit history scan. Backend CI stops at the disposable-image scan before
+native tests: PostgreSQL gosu/Go 1.27.1 has thirteen UNKNOWN findings with fixed
+Go versions reported. PostgreSQL retains three MEDIUM and no HIGH/CRITICAL;
+Redis retains one MEDIUM and no UNKNOWN/HIGH/CRITICAL. Preserve the exact failed
+job and digest-verified reports; no earlier-local/CI database hash match is proved.
+All four original push workflows are terminal: 22 required passes, one failure.
+
+The narrow fixture correction rebuilds the same gosu source with official
+checksum-pinned Go 1.27.2 for both architectures. Standing delegated security
+authority is recorded in the dependency audit. Database/base/module pins,
+application policy, npm cooling and scanner thresholds remain unchanged.
+The rebuilt amd64 image verifies Go 1.27.2, unchanged module hashes and real
+gosu privilege drop. Fresh strict scans retain zero UNKNOWN/HIGH/CRITICAL and
+three/one MEDIUM findings with unchanged database bytes across scanning.
+All 112 boundary coverage tests pass. The new full-only normal fixture passes
+all 233 tests, including 131 native and 44 payment cases. All 663 source hashes
+remain unchanged and all 344 relay connections close with zero active clients.
+Independent reads prove 343 spawned clients are reaped, both relay ports closed
+and exact owned containers, network and volumes absent. Its immutable
+evidence is under `isolated-http-go1272-20261009-0145/` in the October 8 audit
+artifacts. The preceding 233-test local pass is retained separately. No new
+release, Gallery re-save, initialized repair or mystery payment is accepted.
+Continue exact corrective CI/Railway/live acceptance first; client clone stays paused.
+
 ### Native RBAC fixture correction — October 8 evening
 
 Correction `6c3713c` clears all exact secret scans and passes Root, Storefront

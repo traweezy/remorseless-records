@@ -1,10 +1,10 @@
 # Disposable integration fixture only; PostgreSQL itself remains the pinned build.
 # Go checksums: https://go.dev/dl/?mode=json
 FROM postgres:18.6-alpine3.24@sha256:d3e1620b530c944afa6e887d22eb899824da68e19c52024bf98f5220c88a65b2 AS toolchain-amd64
-ADD --checksum=sha256:63d339f0da5ab53635a56f2490a7984dfe12dfcff22ad749f63edaf590168445 https://go.dev/dl/go1.27.1.linux-amd64.tar.gz /tmp/go.tar.gz
+ADD --checksum=sha256:ecbadb99091a3f46e31f5f934b068b1864eafa7995211b39eaddf76996045fe5 https://go.dev/dl/go1.27.2.linux-amd64.tar.gz /tmp/go.tar.gz
 
 FROM postgres:18.6-alpine3.24@sha256:d3e1620b530c944afa6e887d22eb899824da68e19c52024bf98f5220c88a65b2 AS toolchain-arm64
-ADD --checksum=sha256:3450b45a3f9ee8568792736a5c5e70a1f2e9b36c35a8f74958c03e51d7d92bec https://go.dev/dl/go1.27.1.linux-arm64.tar.gz /tmp/go.tar.gz
+ADD --checksum=sha256:94f3e30b8e374bc285e7dadc11e0865726b9bc6e85b841ccceaabc0214c6b7c8 https://go.dev/dl/go1.27.2.linux-arm64.tar.gz /tmp/go.tar.gz
 
 FROM toolchain-${TARGETARCH} AS gosu-build
 # gosu 1.19 source, independently matched to Alpine's published archive checksum.
@@ -44,7 +44,7 @@ RUN mkdir -p /opt/gosu-src /out/licenses/gosu \
 FROM postgres:18.6-alpine3.24@sha256:d3e1620b530c944afa6e887d22eb899824da68e19c52024bf98f5220c88a65b2
 LABEL com.remorseless.integration.fixture="postgres" \
     com.remorseless.integration.gosu.revision="6456aaa0f3c854d199d0f037f068eb97515b7513" \
-    com.remorseless.integration.gosu.toolchain="go1.27.1"
+    com.remorseless.integration.gosu.toolchain="go1.27.2"
 # Existing Alpine trusted keys verify this exact official repository transaction.
 RUN apk --no-cache \
     --repositories-file /dev/null \

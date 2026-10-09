@@ -262,8 +262,10 @@ test("rejects PostgreSQL package, source, toolchain or module-integrity pin remo
     "libssl3=3.5.9-r0",
     "libuuid=2.42.3-r1",
     "libcurl=8.22.0-r0",
-    "go1.27.1.linux-amd64.tar.gz",
-    "go1.27.1.linux-arm64.tar.gz",
+    "go1.27.2.linux-amd64.tar.gz",
+    "go1.27.2.linux-arm64.tar.gz",
+    "ecbadb99091a3f46e31f5f934b068b1864eafa7995211b39eaddf76996045fe5",
+    "94f3e30b8e374bc285e7dadc11e0865726b9bc6e85b841ccceaabc0214c6b7c8",
     "33d7537d588ea49458b9509bcf4554bdf5ceacc66da71e5caa1058ea3b689c3b",
     "6456aaa0f3c854d199d0f037f068eb97515b7513",
     "0475f1708db81d718b633faf2d9dd64695037eabdc8562125060607bcb01b2ba",
@@ -280,6 +282,46 @@ test("rejects PostgreSQL package, source, toolchain or module-integrity pin remo
       validateHardenedFixtureWiring(
         mutate("postgresDockerfile", pin, "removed_security_pin")
       )
+    )
+})
+
+test("rejects vulnerable Go archive rollback or stale compiler labels", () => {
+  for (const [from, to] of [
+    [
+      "ADD --checksum=sha256:ecbadb99091a3f46e31f5f934b068b1864eafa7995211b39eaddf76996045fe5 https://go.dev/dl/go1.27.2.linux-amd64.tar.gz /tmp/go.tar.gz",
+      "ADD --checksum=sha256:63d339f0da5ab53635a56f2490a7984dfe12dfcff22ad749f63edaf590168445 https://go.dev/dl/go1.27.1.linux-amd64.tar.gz /tmp/go.tar.gz",
+    ],
+    [
+      "ADD --checksum=sha256:94f3e30b8e374bc285e7dadc11e0865726b9bc6e85b841ccceaabc0214c6b7c8 https://go.dev/dl/go1.27.2.linux-arm64.tar.gz /tmp/go.tar.gz",
+      "ADD --checksum=sha256:3450b45a3f9ee8568792736a5c5e70a1f2e9b36c35a8f74958c03e51d7d92bec https://go.dev/dl/go1.27.1.linux-arm64.tar.gz /tmp/go.tar.gz",
+    ],
+    [
+      'com.remorseless.integration.gosu.toolchain="go1.27.2"',
+      'com.remorseless.integration.gosu.toolchain="go1.27.1"',
+    ],
+    [
+      'com.remorseless.integration.gosu.toolchain="go1.27.2"',
+      'com.remorseless.integration.gosu.toolchain="go1.27.2"\nLABEL com.remorseless.integration.gosu.toolchain="go1.27.1"',
+    ],
+    [
+      'com.remorseless.integration.gosu.toolchain="go1.27.2"',
+      'com.remorseless.integration.gosu.toolchain="go1.27.2"\nLABEL com.remorseless.integration.gosu.toolchain=go1.27.1',
+    ],
+    [
+      "ADD --checksum=sha256:ecbadb99091a3f46e31f5f934b068b1864eafa7995211b39eaddf76996045fe5 https://go.dev/dl/go1.27.2.linux-amd64.tar.gz /tmp/go.tar.gz",
+      "ADD --checksum=sha256:ecbadb99091a3f46e31f5f934b068b1864eafa7995211b39eaddf76996045fe5 https://go.dev/dl/go1.27.2.linux-amd64.tar.gz /tmp/go.tar.gz\nADD --checksum=sha256:63d339f0da5ab53635a56f2490a7984dfe12dfcff22ad749f63edaf590168445 https://go.dev/dl/go1.27.1.linux-amd64.tar.gz /tmp/go.tar.gz",
+    ],
+    [
+      "ADD --checksum=sha256:94f3e30b8e374bc285e7dadc11e0865726b9bc6e85b841ccceaabc0214c6b7c8 https://go.dev/dl/go1.27.2.linux-arm64.tar.gz /tmp/go.tar.gz",
+      "ADD --checksum=sha256:94f3e30b8e374bc285e7dadc11e0865726b9bc6e85b841ccceaabc0214c6b7c8 https://go.dev/dl/go1.27.2.linux-arm64.tar.gz /tmp/go.tar.gz\nADD --checksum=sha256:3450b45a3f9ee8568792736a5c5e70a1f2e9b36c35a8f74958c03e51d7d92bec https://go.dev/dl/go1.27.1.linux-arm64.tar.gz /tmp/go.tar.gz",
+    ],
+    [
+      "ADD --checksum=sha256:ecbadb99091a3f46e31f5f934b068b1864eafa7995211b39eaddf76996045fe5 https://go.dev/dl/go1.27.2.linux-amd64.tar.gz /tmp/go.tar.gz",
+      "ADD --checksum=sha256:ecbadb99091a3f46e31f5f934b068b1864eafa7995211b39eaddf76996045fe5 https://go.dev/dl/go1.27.2.linux-amd64.tar.gz /tmp/go.tar.gz\nadd\t--checksum=sha256:63d339f0da5ab53635a56f2490a7984dfe12dfcff22ad749f63edaf590168445 https://go.dev/dl/go1.27.1.linux-amd64.tar.gz /tmp/go.tar.gz",
+    ],
+  ])
+    assert.throws(() =>
+      validateHardenedFixtureWiring(mutate("postgresDockerfile", from, to))
     )
 })
 
