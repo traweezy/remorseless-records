@@ -23,6 +23,7 @@ import middlewares, {
   disabledNativeCatalogDeletionAdminRoutes,
   failedCreationRepairAdminMiddlewareRoutes,
   nativeAdminPolicyOverlayRoutes,
+  nativeVariantBatchParentMiddlewareRoutes,
   operationsAdminMiddlewareRoutes,
   operationsAdminPolicyRoutes,
   productImportAdminPolicyRoutes,
@@ -66,6 +67,99 @@ type PinnedRouteSorter = new (
 ) => {
   sort: () => PinnedSortableRoute[]
 }
+
+describe("native Variant batch parent middleware", () => {
+  it("reuses the installed grouped batch policy without new grants or body limits", () => {
+    const nativePath = path.join(
+      path.dirname(require.resolve("@medusajs/medusa")),
+      "api/admin/products/middlewares.js"
+    )
+    const { adminProductRoutesMiddlewares } = jest.requireActual<{
+      adminProductRoutesMiddlewares: (MiddlewareRoute & { method?: string[] })[]
+    }>(nativePath)
+    const installed = adminProductRoutesMiddlewares.find(
+      (route) =>
+        route.matcher === "/admin/products/:id/variants/batch" &&
+        route.method?.includes("POST")
+    )
+    expect(installed).toBeDefined()
+    expect(nativeVariantBatchParentMiddlewareRoutes).toHaveLength(1)
+    const configured = nativeVariantBatchParentMiddlewareRoutes[0]!
+    expect(configured.matcher).toBe(installed!.matcher)
+    expect(configured.methods).toEqual(["POST"])
+    expect(configured.policies).toEqual(installed!.policies)
+    expect(configured.policies).toEqual([
+      {
+        resource: "product_variant",
+        operation: ["create", "update", "delete"],
+      },
+    ])
+    expect(configured.middlewares).toHaveLength(2)
+    expect(Object.hasOwn(configured, "bodyParser")).toBe(false)
+    expect(middlewares.routes).toContainEqual(configured)
+  })
+
+  it("applies the same native body transform before ownership without rewriting the input", async () => {
+    const body = {
+      update: [
+        { id: "variant_01", manage_inventory: "false", title: "Native title" },
+      ],
+      delete: [],
+    }
+    const graph = jest.fn().mockResolvedValue({
+      data: [{ id: "variant_01", product_id: "prod_01" }],
+    })
+    const req = {
+      body,
+      params: { id: "prod_01" },
+      scope: { resolve: jest.fn(() => ({ graph })) },
+    } as unknown as MedusaRequest
+    const nativePath = path.join(
+      path.dirname(require.resolve("@medusajs/medusa")),
+      "api/admin/products/middlewares.js"
+    )
+    const { adminProductRoutesMiddlewares } = jest.requireActual<{
+      adminProductRoutesMiddlewares: (MiddlewareRoute & { method?: string[] })[]
+    }>(nativePath)
+    const installed = adminProductRoutesMiddlewares.find(
+      (route) =>
+        route.matcher === "/admin/products/:id/variants/batch" &&
+        route.method?.includes("POST")
+    )!
+    const nativeReq = { body } as unknown as MedusaRequest
+    const next = jest.fn()
+    await installed.middlewares![0]!(nativeReq, {} as MedusaResponse, next)
+    expect(next).toHaveBeenLastCalledWith()
+    next.mockClear()
+    const configured = nativeVariantBatchParentMiddlewareRoutes[0]!
+    await configured.middlewares[0]!(req, {} as MedusaResponse, next)
+    expect(next).toHaveBeenLastCalledWith()
+    expect(req.validatedBody).toEqual(nativeReq.validatedBody)
+    expect(req.body).toBe(body)
+    await configured.middlewares[1]!(req, {} as MedusaResponse, next)
+    expect(graph).toHaveBeenCalledTimes(1)
+    expect(next).toHaveBeenCalledTimes(2)
+  })
+
+  it("keeps native invalid-body rejection before any ownership lookup", async () => {
+    const resolve = jest.fn()
+    const req = {
+      body: { update: [{ id: "variant_01", title: 42 }] },
+      params: { id: "prod_01" },
+      scope: { resolve },
+    } as unknown as MedusaRequest
+    const next = jest.fn()
+    await nativeVariantBatchParentMiddlewareRoutes[0]!.middlewares[0]!(
+      req,
+      {} as MedusaResponse,
+      next
+    )
+    expect(next).toHaveBeenCalledTimes(1)
+    expect(next).not.toHaveBeenCalledWith()
+    expect(resolve).not.toHaveBeenCalled()
+    expect(req.validatedBody).toBeUndefined()
+  })
+})
 
 describe("failed-creation repair operational middleware", () => {
   it("bounds exact preview/apply routes separately from native policy authorization", () => {

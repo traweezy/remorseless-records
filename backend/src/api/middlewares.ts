@@ -1,10 +1,16 @@
 import {
   defineMiddlewares,
+  validateAndTransformBody,
   type MedusaNextFunction,
   type MedusaRequest,
   type MedusaResponse,
   type MiddlewareRoute,
 } from "@medusajs/framework/http"
+import {
+  AdminBatchUpdateProductVariant,
+  CreateProductVariant,
+} from "@medusajs/medusa/api/admin/products/validators"
+import { createBatchBody } from "@medusajs/medusa/api/utils/validators"
 
 import {
   adminAuthorizationPolicyRoutes,
@@ -15,6 +21,7 @@ import {
   productImportAdminActions,
 } from "../lib/admin-permissions"
 import { STORE_CORS } from "../lib/constants"
+import { enforceNativeVariantBatchParentOwnership } from "../lib/catalog/native-variant-parent-guard"
 import {
   attachRequestCorrelation,
   sendApiProblem,
@@ -421,6 +428,28 @@ export const nativeAdminPolicyOverlayRoutes = [
   },
 ] satisfies MiddlewareRoute[]
 
+// Project middleware may precede the native batch validator. Reuse its exact
+// validator and grouped policy before reading ownership; the native pipeline
+// still performs its ordinary validation, permissions and response handling.
+export const nativeVariantBatchParentMiddlewareRoutes = [
+  {
+    matcher: "/admin/products/:id/variants/batch",
+    methods: ["POST"],
+    policies: [
+      {
+        resource: nativeAdminActions.productVariant.update.resource,
+        operation: ["create", "update", "delete"],
+      },
+    ],
+    middlewares: [
+      validateAndTransformBody(
+        createBatchBody(CreateProductVariant, AdminBatchUpdateProductVariant)
+      ),
+      enforceNativeVariantBatchParentOwnership,
+    ],
+  },
+] satisfies MiddlewareRoute[]
+
 export const disabledNativeCatalogDeletionAdminRoutes = [
   {
     matcher: /^\/admin\/collections\/[^/]+\/?$/i,
@@ -531,6 +560,7 @@ export default defineMiddlewares({
     },
     ...adminAuthorizationPolicyRoutes,
     ...nativeAdminPolicyOverlayRoutes,
+    ...nativeVariantBatchParentMiddlewareRoutes,
     ...disabledNativeCatalogDeletionAdminRoutes,
     ...operationsAdminMiddlewareRoutes,
     ...failedCreationRepairAdminMiddlewareRoutes,

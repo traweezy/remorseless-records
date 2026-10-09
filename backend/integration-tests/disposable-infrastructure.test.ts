@@ -95,6 +95,8 @@ import { registerNativeCatalogBatchHttpTests } from "./helpers/native-catalog-ba
 import { registerNativeArtworkImportIntegration } from "./helpers/native-artwork-import"
 import { registerCatalogSharedMediaIntegration } from "./helpers/catalog-shared-media"
 import { registerFailedCreationRepairHttpTests } from "./helpers/failed-creation-repair-http"
+import { registerCatalogProductMediaHttpTests } from "./helpers/catalog-product-media-http"
+import { registerNativeVariantParentHttpTests } from "./helpers/native-variant-parent-http"
 import { catalogProductCreateSchema } from "../src/lib/catalog/product-create-contract"
 import {
   inspectFailedCatalogCreation,
@@ -461,6 +463,8 @@ medusaIntegrationTestRunner({
       registerNativeCatalogBatchHttpTests(api, getContainer)
       registerNativeArtworkImportIntegration(getContainer)
       registerFailedCreationRepairHttpTests(api, failedCreationFixture)
+      registerCatalogProductMediaHttpTests(api, catalogCreationFixture)
+      registerNativeVariantParentHttpTests(api, getContainer)
       registerCatalogSharedMediaIntegration(
         getContainer,
         catalogCreationFixture
