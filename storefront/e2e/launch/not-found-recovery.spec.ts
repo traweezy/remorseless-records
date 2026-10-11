@@ -8,6 +8,8 @@ const missingRoutes = [
   "/music-release/ci-missing-release",
   "/bundle/ci-missing-bundle",
   "/merch/ci-missing-merch",
+  "/products/ci-missing-merch",
+  "/products/ci-missing-bundle",
   "/ci-missing-route",
 ]
 

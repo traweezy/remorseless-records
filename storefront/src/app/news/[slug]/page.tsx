@@ -27,12 +27,12 @@ export const generateMetadata = async ({
   const rawParams = await params
   const slug = normalizeSlug(rawParams.slug)
   if (!slug) {
-    return { title: "News · Remorseless Records" }
+    return { title: { absolute: "News · Remorseless Records" } }
   }
 
   const entry = await getNewsEntryBySlug(slug)
   if (!entry) {
-    return { title: "News · Remorseless Records" }
+    return { title: { absolute: "News · Remorseless Records" } }
   }
 
   const canonical = `${siteMetadata.siteUrl}/news/${entry.slug}`
@@ -41,7 +41,7 @@ export const generateMetadata = async ({
     entry.seoDescription ?? entry.excerpt ?? "Dispatches from the label."
 
   return {
-    title,
+    title: { absolute: title },
     description,
     alternates: { canonical },
     openGraph: {

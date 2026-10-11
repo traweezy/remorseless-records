@@ -113,6 +113,9 @@ for (const destination of ["product", "news"] as const) {
     })
     await expect(formatted).toBeVisible()
     if (destination === "news") {
+      await expect(page).toHaveTitle(
+        "Rich text navigation dispatch · Remorseless Records"
+      )
       await expect(page.locator(".news-richtext li")).toHaveCount(2)
       await expect(page.getByRole("link", { name: "Unsafe link" })).toHaveCount(
         0
@@ -126,6 +129,10 @@ for (const destination of ["product", "news"] as const) {
     await page.goBack()
     await titleLink.click()
     await expect(formatted).toBeVisible()
+    if (destination === "news")
+      await expect(page).toHaveTitle(
+        "Rich text navigation dispatch · Remorseless Records"
+      )
     await expect(
       page.getByRole("heading", { name: "A TRACK SKIPPED", exact: true })
     ).toHaveCount(0)
