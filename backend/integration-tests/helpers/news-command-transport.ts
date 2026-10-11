@@ -48,6 +48,9 @@ export const createNewsLostReplyTransport = async ({
   )
     throw new Error("News transport must target the exact owned loopback post")
   const detail = `/admin/news/${entryId}`
+  // Incoming URL text must never select the upstream authority or a redirect.
+  const actorTarget = new URL("/admin/users/me", origin)
+  const entryTarget = new URL(detail, origin)
   const sockets = new Set<Socket>()
   const connectionClosures: Promise<void>[] = []
   const inFlight = new Set<Promise<void>>()
@@ -78,16 +81,20 @@ export const createNewsLostReplyTransport = async ({
         const body = request.method === "PUT" ? await readBody(request) : null
         if (body !== null) puts.push(body)
         else actorRequests += 1
-        const upstream = await fetch(new URL(request.url, nativeOrigin), {
-          method: request.method,
-          headers: {
-            ...headers,
-            "content-type": "application/json",
-            connection: "close",
-          },
-          ...(body === null ? {} : { body }),
-          signal: AbortSignal.timeout(15_000),
-        })
+        const upstream = await fetch(
+          request.method === "PUT" ? entryTarget : actorTarget,
+          {
+            method: request.method,
+            redirect: "error",
+            headers: {
+              ...headers,
+              "content-type": "application/json",
+              connection: "close",
+            },
+            ...(body === null ? {} : { body }),
+            signal: AbortSignal.timeout(15_000),
+          }
+        )
         const bytes = Buffer.from(await upstream.arrayBuffer())
         if (request.method === "PUT") {
           statuses.push(upstream.status)

@@ -1,6 +1,15 @@
 import assert from "node:assert/strict"
 import { createHash, randomBytes } from "node:crypto"
-import { mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises"
+import {
+  mkdir,
+  mkdtemp,
+  readdir,
+  readlink,
+  rm,
+  symlink,
+  truncate,
+  writeFile,
+} from "node:fs/promises"
 import { createServer, request as httpRequest } from "node:http"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
@@ -10,6 +19,7 @@ import {
   startNativeNewsLoopbackProxy,
   validateNewsLoopbackOrigin,
 } from "./native-news-loopback-proxy.mjs"
+import { readPinnedNativeAsset } from "./pinned-native-asset.mjs"
 
 // Real loopback transport units. These do not start Medusa or establish native
 // persistence, browser session/reload, screenshots or release acceptance.
@@ -266,6 +276,44 @@ test("rejects pinned asset symlinks before reading their contents", async (t) =>
   } finally {
     await proxy.close()
   }
+})
+test("bounds descriptor reads and rejects directory links without leaking handles", async (t) => {
+  const { root, asset } = await setup(t)
+  const outside = await mkdtemp(join(tmpdir(), "rr-news-owned-outside-"))
+  t.after(() => rm(outside, { recursive: true, force: true }))
+  await writeFile(join(outside, "owned.js"), asset)
+  await symlink(outside, join(root, "linked-directory"))
+  await mkdir(join(root, "directory.js"))
+  await writeFile(join(root, "large.js"), "")
+  await truncate(join(root, "large.js"), 32 * 1_024 * 1_024 + 1)
+  await writeFile(join(root, "empty.js"), "")
+  const ownedDescriptors = async () => {
+    const entries = await readdir("/proc/self/fd")
+    const targets = await Promise.all(
+      entries.map((fd) => readlink(`/proc/self/fd/${fd}`).catch(() => ""))
+    )
+    return targets
+      .filter(
+        (target) =>
+          target.startsWith(`${root}/`) || target.startsWith(`${outside}/`)
+      )
+      .sort()
+  }
+  const before = await ownedDescriptors()
+  assert.deepEqual(await readPinnedNativeAsset(root, "assets/owned.js"), asset)
+  assert.deepEqual(
+    await readPinnedNativeAsset(root, "empty.js"),
+    Buffer.alloc(0)
+  )
+  for (const name of [
+    "linked-directory/owned.js",
+    "directory.js",
+    "large.js",
+    "absent.js",
+    "../outside.js",
+  ])
+    assert.equal(await readPinnedNativeAsset(root, name), null)
+  assert.deepEqual(await ownedDescriptors(), before)
 })
 test("forwards native bytes, native errors and session cookies without recording secrets", async (t) => {
   const cookie = `connect.sid=${randomBytes(24).toString("hex")}`

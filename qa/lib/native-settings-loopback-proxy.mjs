@@ -1,9 +1,10 @@
 import assert from "node:assert/strict"
 import { createHash, timingSafeEqual } from "node:crypto"
-import { lstat, readFile, realpath } from "node:fs/promises"
+import { lstat, realpath } from "node:fs/promises"
 import { Agent, createServer, request as httpRequest } from "node:http"
 import { dirname, extname, isAbsolute, resolve, sep } from "node:path"
 import { performance } from "node:perf_hooks"
+import { readPinnedNativeAsset } from "./pinned-native-asset.mjs"
 
 const hash = (bytes) => createHash("sha256").update(bytes).digest("hex")
 const methods = new Set(["GET", "HEAD", "POST", "DELETE"])
@@ -1153,8 +1154,15 @@ const forward = ({
       else resolvePromise(value)
     }
     const request = httpRequest(
-      new URL(path, upstream),
-      { method, headers, agent },
+      {
+        // Keep request path/query text separate from the fixed owned authority.
+        hostname: "127.0.0.1",
+        port: upstream.port,
+        path,
+        method,
+        headers,
+        agent,
+      },
       async (response) => {
         try {
           settle(null, {
@@ -1310,13 +1318,9 @@ export const startNativeSettingsLoopbackProxy = async ({
           if (!Object.hasOwn(pinnedHashes, relative))
             return deny(response, 404, "settings_static_unknown")
           const filename = resolve(root, relative)
-          if (
-            !filename.startsWith(`${root}${sep}`) ||
-            (await lstat(filename)).isSymbolicLink() ||
-            (await realpath(filename)) !== filename
-          )
+          const bytes = await readPinnedNativeAsset(root, relative)
+          if (bytes === null)
             return deny(response, 403, "settings_static_path_denied")
-          const bytes = await readFile(filename)
           if (hash(bytes) !== pinnedHashes[relative])
             return deny(response, 409, "settings_static_hash_changed")
           response.writeHead(200, {

@@ -131,7 +131,6 @@ test("forwards exact native GET bytes without fabricating API data", async (t) =
     createHash("sha256").update(bytes).digest("hex")
   )
 })
-
 test("denies unknown Settings routes, foreign IDs and query IDs before upstream", async (t) => {
   const { send, calls } = await setup(t)
   for (const path of [
@@ -1078,7 +1077,7 @@ test("denies nonliteral Settings layout zones, suffixes, queries and every alter
       `${path}?q=owned`,
       `/admin/layouts/${zone}.extra/configuration`,
       `/admin/layouts/${zone.toUpperCase()}/configuration`,
-      `/admin/layouts/${zone.replace(".", "%2E")}/configuration`,
+      `/admin/layouts/${zone.replaceAll(".", "%2E")}/configuration`,
     ])
       assert.equal((await send(alternate)).status, 403)
     for (const method of ["HEAD", "POST", "DELETE", "PUT", "PATCH", "OPTIONS"])
@@ -1683,6 +1682,17 @@ test("binds static bytes to their manifest and refuses changed artifacts", async
   assert.equal((await send("/app", "POST", {})).status, 403)
   await writeFile(join(root, "index.html"), "Changed output")
   assert.equal((await send("/app/settings/store")).status, 409)
+})
+
+test("rejects a replaced static symlink or directory through the opened descriptor", async (t) => {
+  const { send, root } = await setup(t)
+  await writeFile(join(root, "owned-target.html"), "Private fixture bytes")
+  await rm(join(root, "index.html"))
+  await symlink(join(root, "owned-target.html"), join(root, "index.html"))
+  assert.equal((await send("/app/settings/store")).status, 403)
+  await rm(join(root, "index.html"))
+  await mkdir(join(root, "index.html"))
+  assert.equal((await send("/app/settings/store")).status, 403)
 })
 
 test("delays one actual native permissions response and then restores normal forwarding", async (t) => {

@@ -7,6 +7,118 @@ are recorded in the handoff linked below.
 
 ## October 11 continuation boundary
 
+October 11, 19:47 UTC current local acceptance: the complete unchanged service
+command finishes naturally with exit 0 at 19:47:10 UTC (852.734 seconds overall;
+815.161 Jest seconds). All four native suites / 162 cases pass, including all
+four Settings modes (57 checkpoints each) and News modes (12 each). The chained
+44 payment, 38 PostgreSQL, eight Redis capacity, two AOF, one live aggregate,
+three API-contract and six session cases all pass. Independent cleanup proves
+2,047 unchanged inputs, 630 closed relays, 769 known process identities absent,
+and owned resources/listeners absent. Every browser closes naturally; Root
+sends no signals. Unobserved descendants remain outside this finite proof.
+The source freeze is released. Three representative desktop/phone screenshots
+are visually inspected and fit their viewports.
+
+The private relay disables accepted-socket Nagle buffering with
+`setNoDelay(true)`. The benchmark and full-run timing are retained; the current
+full run is about one minute faster than the prior cache candidate. No cache,
+command, case, native authorization, validator or 900/240-second deadline is
+relaxed. All 108 restored proxy regressions pass. Keep the documented AOF
+cancellation-ownership follow-up open: this successful natural run does not
+repair the interrupted Docker-creation path. Normal commit/push gates, pinned
+history scanning, a direct corrective staging push, all 23 exact CI checks and
+deployed acceptance remain required. `b2c8820` still has failed application
+CodeQL checks and has not deployed; the old `15f7217` pair remains serving.
+Batch 6 stays open and the client clone remains paused.
+Evidence: `artifacts/end-to-end-audit-2026-10-11/native-settings-news-codeql-native-nodelay-full/`.
+
+October 11, 19:31 UTC timing correction: the static-cache candidate still
+hits the unchanged aggregate deadline (875.239 Jest seconds), after all 162
+native cases, all eight browser modes, 44 payment, 38 PostgreSQL and eight
+Redis capacity cases pass. AOF has one pass and one cancellation; later chains
+remain unrun. The first cleanup check catches one newly created, exited-zero
+synthetic AOF container. Its exact image, creation time, command and bind mounts
+are rechecked before removing only that container, without force. Subsequent
+independent cleanup proves 2,047 unchanged inputs, 629 closed relays, 770 known
+process identities absent and owned resources/listeners absent. All browsers
+close naturally; the failure and initial cleanup rejection remain retained.
+The freeze is released, and the cache candidate is removed.
+A separate Node 26.9.0 owned loopback benchmark verifies every split-response
+byte. Both 30-exchange buffered samples take about 1,200 ms (29 above 20 ms);
+both unbuffered samples take about 34 ms (none above 20 ms). Every benchmark
+socket/timer closes. This demonstrates a buffering delay in that benchmark,
+not yet causation in the full gate. The next full run changes only the private
+relay's accepted socket to `setNoDelay(true)`; exact container/image checks,
+actual protocol bytes, all original commands/cases, native authentication,
+validators, 900/240-second deadlines and cleanup stay intact. Application/QA
+cache behavior is restored; all 108 restored proxy cases and the fresh reviewed
+image scan pass. Retain a follow-up for AOF cancellation ownership: a detached
+Docker creation can finish after its CLI is interrupted, before the test has
+registered its returned container ID. The manual exact-container cleanup does
+not repair or accept that cancellation path. CI and deployed acceptance remain pending; Batch 6
+is open and the client clone stays paused.
+Evidence: `artifacts/end-to-end-audit-2026-10-11/native-settings-news-codeql-static-cache-full/`,
+`relay-nodelay-benchmark.json`, and `native-settings-news-codeql-native-nodelay-full/`.
+See the [Node socket contract](https://nodejs.org/api/net.html#socketsetnodelaynodelay).
+
+October 11, 19:05 UTC retained timing result: the actor-join candidate still
+needs 882.192 Jest seconds. All 162 native cases and all eight browser modes
+pass, as do the 44 payment cases. The unchanged aggregate deadline interrupts
+PostgreSQL recovery (34 passed, one cancelled); later chains do not run.
+Independent cleanup verifies 2,049 unchanged inputs, 674 closed relays and
+821 known process identities absent, with all owned resources/listeners absent.
+All browsers close naturally; the source freeze is released. The actor-join
+candidate is removed because it demonstrates no material improvement.
+The next measured candidate privately caches only fingerprinted, pinned
+compiled JS/CSS within the owned browser context. HTML stays `no-store`;
+native authentication, authorization, requests, descriptor/hash checks and
+final whole-bundle integrity remain unchanged. Every test, validator and
+900/240-second deadline remains intact. All 110 proxy regressions and shared lint/types pass. The fresh scan with
+reviewed Trivy 0.70.0 also passes; the system 0.75.0 attempt is rejected and
+retained. The unchanged full command is now measured serially with this
+cache boundary. Exact CI and deployment acceptance
+are still pending, and Batch 6 stays open with client cloning paused.
+Evidence: `artifacts/end-to-end-audit-2026-10-11/native-settings-news-codeql-joined-actors-full/`.
+The cache boundary follows [hashed-asset caching](https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/Caching).
+
+October 11, 18:46 UTC timing correction: the serial full run also reaches
+all 162 native cases (882.148 Jest seconds) and all eight browser modes, then
+hits the same 900-second aggregate deadline during AOF verification. Its
+44 payment, 38 PostgreSQL and eight Redis-capacity cases pass; later chains
+remain unrun. Independent cleanup proves 2,047 unchanged inputs, 634 closed
+relays and 777 known processes absent. The failure is retained and the freeze
+released. Current setup preserves the owner-first shared policy creation,
+then joins at most four independent native account workflows before retaining
+any failure. Fresh Settings logins, native RBAC/ACK/readbacks, every case and
+all deadlines remain unchanged. Six focused transport/join checks pass;
+shared checks and the complete original command must still pass.
+Evidence: `artifacts/end-to-end-audit-2026-10-11/native-settings-news-codeql-serial-full/`.
+
+October 11, 18:24 UTC retained full-run failure: all 162 initialized native
+cases pass in 872.223 Jest seconds, including all eight browser modes. The
+44 payment, 38 PostgreSQL recovery, eight Redis capacity and two AOF checks
+pass. The aggregate's unchanged 900-second deadline interrupts the final
+Redis aggregate case; API/session chains remain unrun. This is a failed gate,
+not acceptance. Independent cleanup proves 2,047 unchanged inputs, 631 closed
+relays, 780 known processes absent and owned resources/listeners absent.
+All eight browsers close naturally, and the source freeze is released.
+Evidence: `artifacts/end-to-end-audit-2026-10-11/native-settings-news-codeql-full/`.
+Retry the unchanged command serially after other local gates have finished;
+no deadline, case, validator or cleanup requirement is relaxed.
+
+October 11, 18:08 UTC corrective CI checkpoint: `b2c8820` is pushed directly
+with normal gates. Root and Runtime Images pass; both application workflows
+reject six new CodeQL findings in the owned audit harnesses. The secret scans
+pass. Current repairs separate incoming paths from fixed loopback destinations,
+reject News redirects, read bounded static bytes through one validated file
+descriptor, and encode every dot in the negative layout-path fixture. No CodeQL
+exception, scan scope, test deadline or authentication boundary is weakened.
+The initial 107 proxy cases and two News destination regressions pass. The full
+original native/service gate is being rerun; a new corrective staging push,
+exact CI and deployed acceptance remain required. The old `15f7217` application
+pair remains serving, and current nine-service reads show no failed/crashed
+state. Batch 6 stays open; the client clone remains paused.
+
 The cohesive staging push `74e87db` passes normal local gates but both service
 secret scans flag one synthetic News route UUID. A pinned history scan
 reproduces only that finding. The active fixture and exact historical

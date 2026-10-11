@@ -1,8 +1,9 @@
 import assert from "node:assert/strict"
 import { createHash, timingSafeEqual } from "node:crypto"
-import { lstat, readFile, realpath } from "node:fs/promises"
+import { lstat, realpath } from "node:fs/promises"
 import { createServer, request as httpRequest } from "node:http"
 import { extname, resolve, sep } from "node:path"
+import { readPinnedNativeAsset } from "./pinned-native-asset.mjs"
 
 const hash = (bytes) => createHash("sha256").update(bytes).digest("hex")
 const record = (value) =>
@@ -385,8 +386,15 @@ export const startNativeNewsLoopbackProxy = async ({
         else done(value)
       }
       const request = httpRequest(
-        new URL(path, upstream),
-        { method, headers: { ...headers, connection: "close" }, agent: false },
+        {
+          // Path and query text cannot change the literal loopback destination.
+          hostname: "127.0.0.1",
+          port: upstream.port,
+          path,
+          method,
+          headers: { ...headers, connection: "close" },
+          agent: false,
+        },
         async (response) => {
           try {
             finish(null, {
@@ -459,11 +467,8 @@ export const startNativeNewsLoopbackProxy = async ({
           if (!name || !Object.hasOwn(pinned, name))
             return deny(response, method, pathname, 404, "news_static_unknown")
           const filename = resolve(root, name)
-          if (
-            !filename.startsWith(`${root}${sep}`) ||
-            !(await lstat(filename)).isFile() ||
-            (await realpath(filename)) !== filename
-          )
+          const bytes = await readPinnedNativeAsset(root, name)
+          if (bytes === null)
             return deny(
               response,
               method,
@@ -471,7 +476,6 @@ export const startNativeNewsLoopbackProxy = async ({
               403,
               "news_static_path_denied"
             )
-          const bytes = await readFile(filename)
           if (hash(bytes) !== pinned[name])
             return deny(
               response,
