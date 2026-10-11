@@ -126,7 +126,7 @@ index 4e3f1c436a5ee20218efba9c85800d0a302ad718..3a15664a3217c19c189ed9471700115c
 -//# sourceMappingURL=data-table-filter.d.ts.map
 \ No newline at end of file
 diff --git a/dist/cjs/blocks/data-table/components/data-table-filter.js b/dist/cjs/blocks/data-table/components/data-table-filter.js
-index 78bfe4312542dca1b7dfced8af2ddd0a6768f9ca..216d27250714074a8234386e89f444ebddeed757 100644
+index 78bfe4312542dca1b7dfced8af2ddd0a6768f9ca..1edd1ed4f192ccb8fb565525ad1f8763dd9de9bf 100644
 --- a/dist/cjs/blocks/data-table/components/data-table-filter.js
 +++ b/dist/cjs/blocks/data-table/components/data-table-filter.js
 @@ -21,7 +21,7 @@ const DEFAULT_FORMAT_DATE_VALUE = (d) => d.toLocaleDateString(undefined, {
@@ -138,7 +138,7 @@ index 78bfe4312542dca1b7dfced8af2ddd0a6768f9ca..216d27250714074a8234386e89f444eb
      const { instance } = (0, use_data_table_context_1.useDataTableContext)();
      // Initialize open state based on isNew prop
      const [open, setOpen] = React.useState(isNew);
-@@ -153,19 +153,19 @@ const DataTableFilter = ({ id, filter, isNew = false, onUpdate, onRemove }) => {
+@@ -153,21 +153,21 @@ const DataTableFilter = ({ id, filter, isNew = false, onUpdate, onRemove }) => {
      return (React.createElement(popover_1.Popover, { open: open, onOpenChange: onOpenChange, modal: true },
          React.createElement("div", { className: (0, clx_1.clx)("bg-ui-bg-field flex flex-shrink-0 items-stretch overflow-hidden rounded-md", "txt-compact-small-plus shadow-borders-base") },
              !hasValue && isNew && React.createElement(popover_1.Popover.Anchor, null),
@@ -160,8 +160,11 @@ index 78bfe4312542dca1b7dfced8af2ddd0a6768f9ca..216d27250714074a8234386e89f444eb
 -                React.createElement("button", { type: "button", className: "flex size-7 items-center justify-center text-ui-fg-muted outline-none hover:bg-ui-bg-base-hover active:bg-ui-bg-base-pressed transition-fg", onClick: removeFilter },
 +                React.createElement("button", { type: "button", "aria-label": `${removeFilterLabel}: ${typeof label === "string" && label.trim() ? label : id}`, style: { minWidth: 24, minHeight: 24, flexShrink: 0, cursor: "pointer" }, className: "flex size-7 items-center justify-center text-ui-fg-muted outline-none focus-visible:shadow-borders-focus hover:bg-ui-bg-base-hover active:bg-ui-bg-base-pressed transition-fg", onClick: removeFilter },
                      React.createElement(icons_1.XMark, null))))),
-         React.createElement(popover_1.Popover.Content, { align: "start", sideOffset: 8, collisionPadding: 16, hideWhenDetached: true, className: "bg-ui-bg-component p-0 outline-none", onOpenAutoFocus: (e) => {
+-        React.createElement(popover_1.Popover.Content, { align: "start", sideOffset: 8, collisionPadding: 16, hideWhenDetached: true, className: "bg-ui-bg-component p-0 outline-none", onOpenAutoFocus: (e) => {
++        React.createElement(popover_1.Popover.Content, { "aria-label": typeof label === "string" && label.trim() ? label : id, align: "start", sideOffset: 8, collisionPadding: 16, hideWhenDetached: true, className: "bg-ui-bg-component p-0 outline-none", onOpenAutoFocus: (e) => {
                  if (isNew) {
+                     // For new filters, ensure the first input gets focus
+                     const target = e.currentTarget;
 @@ -177,8 +177,9 @@ const DataTableFilter = ({ id, filter, isNew = false, onUpdate, onRemove }) => {
                      }
                  }
@@ -209,7 +212,7 @@ index ec84fba000b2c19c0ad947190e41fe818b155663..87059120441d92e30783acacd4f9f6be
  export declare const DataTableSortableHeaderCell: React.ForwardRefExoticComponent<DataTableSortableHeaderCellProps & React.RefAttributes<HTMLTableCellElement>>;
  export {};
 diff --git a/dist/cjs/blocks/data-table/components/data-table-sortable-header-cell.js b/dist/cjs/blocks/data-table/components/data-table-sortable-header-cell.js
-index f38c9a5d60b9ad4aa6bc199622eb35383db03ad5..ab8a25112ef3cc57627b7bb4b8fdb6fa4019a727 100644
+index f38c9a5d60b9ad4aa6bc199622eb35383db03ad5..a32277cfbc02e05e89a3692d96e3479587aea3b1 100644
 --- a/dist/cjs/blocks/data-table/components/data-table-sortable-header-cell.js
 +++ b/dist/cjs/blocks/data-table/components/data-table-sortable-header-cell.js
 @@ -7,8 +7,10 @@ const sortable_1 = require("@dnd-kit/sortable");
@@ -234,7 +237,6 @@ index f38c9a5d60b9ad4aa6bc199622eb35383db03ad5..ab8a25112ef3cc57627b7bb4b8fdb6fa
 +            React.createElement(icon_button_1.IconButton, { ...attributes, ...listeners, ref: setActivatorNodeRef, type: "button", variant: "transparent", size: "2xsmall", "aria-label": `Reorder ${columnName || id}`, style: { minWidth: 24, minHeight: 24, flexShrink: 0, cursor: isDragging ? "grabbing" : "grab" } }, React.createElement(icons_1.DotsSix, { "aria-hidden": true })))));
  });
  exports.DataTableSortableHeaderCell.displayName = "DataTableSortableHeaderCell";
-\ No newline at end of file
 -//# sourceMappingURL=data-table-sortable-header-cell.js.map
 \ No newline at end of file
 diff --git a/dist/cjs/blocks/data-table/components/data-table-sorting-menu.js b/dist/cjs/blocks/data-table/components/data-table-sorting-menu.js
@@ -257,9 +259,18 @@ index bea5569de7517aed4d8c4bcf848d57eb4bd3e399..8ac8b3ee6f8ff66daf8d8496dbad5f96
 -//# sourceMappingURL=data-table-sorting-menu.js.map
 \ No newline at end of file
 diff --git a/dist/cjs/blocks/data-table/components/data-table-table.js b/dist/cjs/blocks/data-table/components/data-table-table.js
-index f4f642d4973114af2a1bc7ab6354e9901411e5f2..5b647419bc25856821231a939cf8cfae9f570678 100644
+index f4f642d4973114af2a1bc7ab6354e9901411e5f2..d6f33d4bcf2756b46c028e41ea55a8fafdf774e6 100644
 --- a/dist/cjs/blocks/data-table/components/data-table-table.js
 +++ b/dist/cjs/blocks/data-table/components/data-table-table.js
+@@ -130,7 +130,7 @@ const DataTableTable = (props) => {
+     return (React.createElement("div", { className: "flex w-full flex-1 flex-col overflow-hidden" },
+         instance.emptyState === types_1.DataTableEmptyState.POPULATED &&
+             (instance.enableColumnOrder ? (React.createElement(core_1.DndContext, { sensors: sensors, collisionDetection: core_1.closestCenter, onDragEnd: handleDragEnd },
+-                React.createElement("div", { ref: scrollableRef, onScroll: handleHorizontalScroll, className: "min-h-0 w-full flex-1 overflow-auto overscroll-auto border-y" },
++                React.createElement("div", { ref: scrollableRef, onScroll: handleHorizontalScroll, tabIndex: 0, className: "min-h-0 w-full flex-1 overflow-auto overscroll-auto border-y" },
+                     React.createElement(table_1.Table, { className: "relative isolate w-full table-fixed" },
+                         React.createElement(table_1.Table.Header, { className: "shadow-ui-border-base sticky inset-x-0 top-0 z-[1] w-full border-b-0 border-t-0 shadow-[0_1px_1px_0]", style: { transform: "translate3d(0,0,0)" } }, instance.getHeaderGroups().map((headerGroup) => (React.createElement(table_1.Table.Row, { key: headerGroup.id, className: (0, clx_1.clx)("border-b-0", {
+                                 "[&_th:last-of-type]:whitespace-nowrap": hasActions,
 @@ -160,7 +160,7 @@ const DataTableTable = (props) => {
                                  const HeaderCellComponent = isDraggable
                                      ? data_table_sortable_header_cell_1.DataTableSortableHeaderCell
@@ -278,6 +289,15 @@ index f4f642d4973114af2a1bc7ab6354e9901411e5f2..5b647419bc25856821231a939cf8cfae
                                              ? (e) => e.stopPropagation()
                                              : undefined, className: (0, clx_1.clx)("group flex cursor-default items-center gap-2", {
                                              "cursor-pointer": canSort,
+@@ -224,7 +224,7 @@ const DataTableTable = (props) => {
+                                         }
+                                         : undefined }, renderAlignedCell(cell)));
+                             })));
+-                        })))))) : (React.createElement("div", { ref: scrollableRef, onScroll: handleHorizontalScroll, className: "min-h-0 w-full flex-1 overflow-auto overscroll-auto border-y" },
++                        })))))) : (React.createElement("div", { ref: scrollableRef, onScroll: handleHorizontalScroll, tabIndex: 0, className: "min-h-0 w-full flex-1 overflow-auto overscroll-auto border-y" },
+                 React.createElement(table_1.Table, { className: "relative isolate w-full" },
+                     React.createElement(table_1.Table.Header, { className: "shadow-ui-border-base sticky inset-x-0 top-0 z-[1] w-full border-b-0 border-t-0 shadow-[0_1px_1px_0]", style: { transform: "translate3d(0,0,0)" } }, instance.getHeaderGroups().map((headerGroup) => (React.createElement(table_1.Table.Row, { key: headerGroup.id, className: (0, clx_1.clx)("border-b-0", {
+                             "[&_th:last-of-type]:w-[1%] [&_th:last-of-type]:whitespace-nowrap": hasActions,
 @@ -262,7 +262,7 @@ const DataTableTable = (props) => {
                                      minWidth: header.column.columnDef.minSize,
                                  }
@@ -392,7 +412,7 @@ index 6ea1f86918580489c889f10ec09dd47d7cf20749..60e544736afd1d57c6a044d40028657e
  });
  DrawerHeader.displayName = "Drawer.Header";
 diff --git a/dist/cjs/components/focus-modal/focus-modal.js b/dist/cjs/components/focus-modal/focus-modal.js
-index 5be6359427533fd2e19c1a507c32f88bc6c495b5..2283c76f90dac483e25956d53cdf5dd66e0ac306 100644
+index 5be6359427533fd2e19c1a507c32f88bc6c495b5..15ea763d684afcf65186ff663e215b7c74f112f2 100644
 --- a/dist/cjs/components/focus-modal/focus-modal.js
 +++ b/dist/cjs/components/focus-modal/focus-modal.js
 @@ -64,7 +64,7 @@ const FocusModalHeader = React.forwardRef(({ children, className, ...props }, re
@@ -404,6 +424,15 @@ index 5be6359427533fd2e19c1a507c32f88bc6c495b5..2283c76f90dac483e25956d53cdf5dd6
                      React.createElement(icons_1.XMark, null))),
              React.createElement(kbd_1.Kbd, null, "esc")),
          children));
+@@ -83,7 +83,7 @@ FocusModalFooter.displayName = "FocusModal.Footer";
+  * It accepts props from the [Radix UI Dialog Title](https://www.radix-ui.com/primitives/docs/components/dialog#title) component.
+  */
+ const FocusModalTitle = React.forwardRef(({ className, ...props }, ref) => {
+-    return (React.createElement(radix_ui_1.Dialog.Title, { ref: ref, ...props }));
++    return (React.createElement(radix_ui_1.Dialog.Title, { ref: ref, className: className, ...props }));
+ });
+ FocusModalTitle.displayName = "FocusModal.Title";
+ /**
 diff --git a/dist/cjs/components/input/input.js b/dist/cjs/components/input/input.js
 index f58e986689e39dd2761f71e8d75c0edbffb5a38b..89ee3d9bf9bd79a592744cbfde4bedb90dab0fb8 100644
 --- a/dist/cjs/components/input/input.js
@@ -417,6 +446,55 @@ index f58e986689e39dd2761f71e8d75c0edbffb5a38b..89ee3d9bf9bd79a592744cbfde4bedb9
              React.createElement(icons_1.MagnifyingGlassMini, null))),
          isPassword && (React.createElement("div", { className: (0, clx_1.clx)("absolute bottom-0 right-0 flex items-center justify-center border-l", {
                  "h-8 w-8": size === "base",
+diff --git a/dist/cjs/components/toast/toast.js b/dist/cjs/components/toast/toast.js
+index 1af59331e52a03a3285b81a26b534bf038ebaaec..638003775dc8f645b38bd01d8b8cb5074f9f06db 100644
+--- a/dist/cjs/components/toast/toast.js
++++ b/dist/cjs/components/toast/toast.js
+@@ -89,7 +89,7 @@ dismissable = true, }) => {
+                 !!action && (React.createElement("button", { type: "button", className: (0, clx_1.clx)("txt-compact-small-plus text-ui-fg-base bg-ui-bg-base flex w-fit items-center rounded-[4px] transition-colors", "focus-visible:shadow-borders-focus", "hover:text-ui-fg-subtle", "disabled:text-ui-fg-disabled", {
+                         "text-ui-fg-error": action.variant === "destructive",
+                     }), onClick: action.onClick }, action.label)))),
+-        !!dismissable && (React.createElement(icon_button_1.IconButton, { size: "2xsmall", variant: "transparent", type: "button", onClick: () => sonner_1.toast.dismiss(id) },
++        !!dismissable && (React.createElement(icon_button_1.IconButton, { "aria-label": "Dismiss notification", size: "xsmall", variant: "transparent", type: "button", onClick: () => sonner_1.toast.dismiss(id) },
+             React.createElement(icons_1.XMark, null)))));
+ };
+ exports.Toast = Toast;
+diff --git a/dist/cjs/components/toaster/toaster.js b/dist/cjs/components/toaster/toaster.js
+index 76852a3de27a2df6c7e120aa1e22085a63b10d3b..2d3a84707a8a3c09b1709a6ef97ea2913e369740 100644
+--- a/dist/cjs/components/toaster/toaster.js
++++ b/dist/cjs/components/toaster/toaster.js
+@@ -21,7 +21,9 @@ gap = 12,
+ /**
+  * The space from the edges of the screen.
+  */
+-offset = 24, 
++// Keep native form headings and sticky footer actions clear.
++offset = { top: 24, right: 24, bottom: 88, left: 24 },
++mobileOffset = { top: 16, right: 16, bottom: "calc(88px + env(safe-area-inset-bottom))", left: 16 }, 
+ /**
+  * The time in milliseconds that a toast is shown before it's
+  * automatically dismissed.
+@@ -34,6 +36,7 @@ duration, ...props }) => {
+         position,
+         gap,
+         offset,
++        mobileOffset,
+         cn: clx_1.clx,
+         toastOptions: {
+             duration,
+diff --git a/dist/cjs/utils/toast.js b/dist/cjs/utils/toast.js
+index fa7b188f52d524efd4bd103acb8a35e47cced0b3..5e22fbd7a1a0fc0db6b1652c1be28e792ac4b78b 100644
+--- a/dist/cjs/utils/toast.js
++++ b/dist/cjs/utils/toast.js
+@@ -55,7 +55,7 @@ function error(
+  * The props of the toast.
+  */
+ props = {
+-    position: DEFAULT_TOAST_POSITION,
++    position: "bottom-right",
+ }) {
+     return create("error", title, props);
+ }
 diff --git a/dist/esm/blocks/data-table/components/data-table-action-cell.js b/dist/esm/blocks/data-table/components/data-table-action-cell.js
 index 2da85f7e39d055141109c6341ebf2d54c1d1aead..580e3dcee1a09c0851ed1f1ae3871187d27d9140 100644
 --- a/dist/esm/blocks/data-table/components/data-table-action-cell.js
@@ -545,7 +623,7 @@ index 4e3f1c436a5ee20218efba9c85800d0a302ad718..3a15664a3217c19c189ed9471700115c
 -//# sourceMappingURL=data-table-filter.d.ts.map
 \ No newline at end of file
 diff --git a/dist/esm/blocks/data-table/components/data-table-filter.js b/dist/esm/blocks/data-table/components/data-table-filter.js
-index 0abcdd48238c4c2c6c63e144edacb78aaa7c8230..9291dea9414e63592ddd064fc7dc407c31bf4987 100644
+index 0abcdd48238c4c2c6c63e144edacb78aaa7c8230..a66168b0f53df8372849855ea4701df116aceadb 100644
 --- a/dist/esm/blocks/data-table/components/data-table-filter.js
 +++ b/dist/esm/blocks/data-table/components/data-table-filter.js
 @@ -17,7 +17,7 @@ const DEFAULT_FORMAT_DATE_VALUE = (d) => d.toLocaleDateString(undefined, {
@@ -557,7 +635,7 @@ index 0abcdd48238c4c2c6c63e144edacb78aaa7c8230..9291dea9414e63592ddd064fc7dc407c
      const { instance } = useDataTableContext();
      // Initialize open state based on isNew prop
      const [open, setOpen] = React.useState(isNew);
-@@ -149,19 +149,19 @@ const DataTableFilter = ({ id, filter, isNew = false, onUpdate, onRemove }) => {
+@@ -149,21 +149,21 @@ const DataTableFilter = ({ id, filter, isNew = false, onUpdate, onRemove }) => {
      return (React.createElement(Popover, { open: open, onOpenChange: onOpenChange, modal: true },
          React.createElement("div", { className: clx("bg-ui-bg-field flex flex-shrink-0 items-stretch overflow-hidden rounded-md", "txt-compact-small-plus shadow-borders-base") },
              !hasValue && isNew && React.createElement(Popover.Anchor, null),
@@ -579,8 +657,11 @@ index 0abcdd48238c4c2c6c63e144edacb78aaa7c8230..9291dea9414e63592ddd064fc7dc407c
 -                React.createElement("button", { type: "button", className: "flex size-7 items-center justify-center text-ui-fg-muted outline-none hover:bg-ui-bg-base-hover active:bg-ui-bg-base-pressed transition-fg", onClick: removeFilter },
 +                React.createElement("button", { type: "button", "aria-label": `${removeFilterLabel}: ${typeof label === "string" && label.trim() ? label : id}`, style: { minWidth: 24, minHeight: 24, flexShrink: 0, cursor: "pointer" }, className: "flex size-7 items-center justify-center text-ui-fg-muted outline-none focus-visible:shadow-borders-focus hover:bg-ui-bg-base-hover active:bg-ui-bg-base-pressed transition-fg", onClick: removeFilter },
                      React.createElement(XMark, null))))),
-         React.createElement(Popover.Content, { align: "start", sideOffset: 8, collisionPadding: 16, hideWhenDetached: true, className: "bg-ui-bg-component p-0 outline-none", onOpenAutoFocus: (e) => {
+-        React.createElement(Popover.Content, { align: "start", sideOffset: 8, collisionPadding: 16, hideWhenDetached: true, className: "bg-ui-bg-component p-0 outline-none", onOpenAutoFocus: (e) => {
++        React.createElement(Popover.Content, { "aria-label": typeof label === "string" && label.trim() ? label : id, align: "start", sideOffset: 8, collisionPadding: 16, hideWhenDetached: true, className: "bg-ui-bg-component p-0 outline-none", onOpenAutoFocus: (e) => {
                  if (isNew) {
+                     // For new filters, ensure the first input gets focus
+                     const target = e.currentTarget;
 @@ -173,8 +173,9 @@ const DataTableFilter = ({ id, filter, isNew = false, onUpdate, onRemove }) => {
                      }
                  }
@@ -628,7 +709,7 @@ index ec84fba000b2c19c0ad947190e41fe818b155663..87059120441d92e30783acacd4f9f6be
  export declare const DataTableSortableHeaderCell: React.ForwardRefExoticComponent<DataTableSortableHeaderCellProps & React.RefAttributes<HTMLTableCellElement>>;
  export {};
 diff --git a/dist/esm/blocks/data-table/components/data-table-sortable-header-cell.js b/dist/esm/blocks/data-table/components/data-table-sortable-header-cell.js
-index 83aa6ba238f1b56f9069c68ec0d4f67002a2e588..8d14285c64ef8fd7d3c5437946559f2b0d7fbc6b 100644
+index 83aa6ba238f1b56f9069c68ec0d4f67002a2e588..5d77dbdf8a61896bae1123ee8c3ae8a1dba2cc0b 100644
 --- a/dist/esm/blocks/data-table/components/data-table-sortable-header-cell.js
 +++ b/dist/esm/blocks/data-table/components/data-table-sortable-header-cell.js
 @@ -1,10 +1,12 @@
@@ -655,7 +736,6 @@ index 83aa6ba238f1b56f9069c68ec0d4f67002a2e588..8d14285c64ef8fd7d3c5437946559f2b
 +            React.createElement(IconButton, { ...attributes, ...listeners, ref: setActivatorNodeRef, type: "button", variant: "transparent", size: "2xsmall", "aria-label": `Reorder ${columnName || id}`, style: { minWidth: 24, minHeight: 24, flexShrink: 0, cursor: isDragging ? "grabbing" : "grab" } }, React.createElement(DotsSix, { "aria-hidden": true })))));
  });
  DataTableSortableHeaderCell.displayName = "DataTableSortableHeaderCell";
-\ No newline at end of file
 -//# sourceMappingURL=data-table-sortable-header-cell.js.map
 \ No newline at end of file
 diff --git a/dist/esm/blocks/data-table/components/data-table-sorting-menu.js b/dist/esm/blocks/data-table/components/data-table-sorting-menu.js
@@ -678,9 +758,18 @@ index 0b7cf39ae083064dc9a989f9562a86b71f5d71c1..0028c228af3481a921a87ed20b2b1243
 -//# sourceMappingURL=data-table-sorting-menu.js.map
 \ No newline at end of file
 diff --git a/dist/esm/blocks/data-table/components/data-table-table.js b/dist/esm/blocks/data-table/components/data-table-table.js
-index 6bf39ec827c9dc07a491f0beac08f74b439cb627..8aeecb4e610025cebce636183391b742851bdb7e 100644
+index 6bf39ec827c9dc07a491f0beac08f74b439cb627..e7a24632e4f4b5edb981f97928a248a8e04808fa 100644
 --- a/dist/esm/blocks/data-table/components/data-table-table.js
 +++ b/dist/esm/blocks/data-table/components/data-table-table.js
+@@ -126,7 +126,7 @@ const DataTableTable = (props) => {
+     return (React.createElement("div", { className: "flex w-full flex-1 flex-col overflow-hidden" },
+         instance.emptyState === DataTableEmptyState.POPULATED &&
+             (instance.enableColumnOrder ? (React.createElement(DndContext, { sensors: sensors, collisionDetection: closestCenter, onDragEnd: handleDragEnd },
+-                React.createElement("div", { ref: scrollableRef, onScroll: handleHorizontalScroll, className: "min-h-0 w-full flex-1 overflow-auto overscroll-auto border-y" },
++                React.createElement("div", { ref: scrollableRef, onScroll: handleHorizontalScroll, tabIndex: 0, className: "min-h-0 w-full flex-1 overflow-auto overscroll-auto border-y" },
+                     React.createElement(Table, { className: "relative isolate w-full table-fixed" },
+                         React.createElement(Table.Header, { className: "shadow-ui-border-base sticky inset-x-0 top-0 z-[1] w-full border-b-0 border-t-0 shadow-[0_1px_1px_0]", style: { transform: "translate3d(0,0,0)" } }, instance.getHeaderGroups().map((headerGroup) => (React.createElement(Table.Row, { key: headerGroup.id, className: clx("border-b-0", {
+                                 "[&_th:last-of-type]:whitespace-nowrap": hasActions,
 @@ -156,7 +156,7 @@ const DataTableTable = (props) => {
                                  const HeaderCellComponent = isDraggable
                                      ? DataTableSortableHeaderCell
@@ -699,6 +788,15 @@ index 6bf39ec827c9dc07a491f0beac08f74b439cb627..8aeecb4e610025cebce636183391b742
                                              ? (e) => e.stopPropagation()
                                              : undefined, className: clx("group flex cursor-default items-center gap-2", {
                                              "cursor-pointer": canSort,
+@@ -220,7 +220,7 @@ const DataTableTable = (props) => {
+                                         }
+                                         : undefined }, renderAlignedCell(cell)));
+                             })));
+-                        })))))) : (React.createElement("div", { ref: scrollableRef, onScroll: handleHorizontalScroll, className: "min-h-0 w-full flex-1 overflow-auto overscroll-auto border-y" },
++                        })))))) : (React.createElement("div", { ref: scrollableRef, onScroll: handleHorizontalScroll, tabIndex: 0, className: "min-h-0 w-full flex-1 overflow-auto overscroll-auto border-y" },
+                 React.createElement(Table, { className: "relative isolate w-full" },
+                     React.createElement(Table.Header, { className: "shadow-ui-border-base sticky inset-x-0 top-0 z-[1] w-full border-b-0 border-t-0 shadow-[0_1px_1px_0]", style: { transform: "translate3d(0,0,0)" } }, instance.getHeaderGroups().map((headerGroup) => (React.createElement(Table.Row, { key: headerGroup.id, className: clx("border-b-0", {
+                             "[&_th:last-of-type]:w-[1%] [&_th:last-of-type]:whitespace-nowrap": hasActions,
 @@ -258,7 +258,7 @@ const DataTableTable = (props) => {
                                      minWidth: header.column.columnDef.minSize,
                                  }
@@ -813,7 +911,7 @@ index edf9dcae3b155e30d720f22046fa22e6ff339f3d..d6afc2d241e207a8cc833aede808ed7e
  });
  DrawerHeader.displayName = "Drawer.Header";
 diff --git a/dist/esm/components/focus-modal/focus-modal.js b/dist/esm/components/focus-modal/focus-modal.js
-index eac3496e8ba5962b725c12422a3dd57c55b82f72..10f5a19c86d916a09f2cf50ad4bd4aaa0b2917ef 100644
+index eac3496e8ba5962b725c12422a3dd57c55b82f72..0c43c8f19eaa63db83ec4e3433ba7a4cbee8ad38 100644
 --- a/dist/esm/components/focus-modal/focus-modal.js
 +++ b/dist/esm/components/focus-modal/focus-modal.js
 @@ -60,7 +60,7 @@ const FocusModalHeader = React.forwardRef(({ children, className, ...props }, re
@@ -825,6 +923,15 @@ index eac3496e8ba5962b725c12422a3dd57c55b82f72..10f5a19c86d916a09f2cf50ad4bd4aaa
                      React.createElement(XMark, null))),
              React.createElement(Kbd, null, "esc")),
          children));
+@@ -79,7 +79,7 @@ FocusModalFooter.displayName = "FocusModal.Footer";
+  * It accepts props from the [Radix UI Dialog Title](https://www.radix-ui.com/primitives/docs/components/dialog#title) component.
+  */
+ const FocusModalTitle = React.forwardRef(({ className, ...props }, ref) => {
+-    return (React.createElement(RadixDialog.Title, { ref: ref, ...props }));
++    return (React.createElement(RadixDialog.Title, { ref: ref, className: className, ...props }));
+ });
+ FocusModalTitle.displayName = "FocusModal.Title";
+ /**
 diff --git a/dist/esm/components/input/input.js b/dist/esm/components/input/input.js
 index 18c6a7e2667e7da56ff845ebcc150e82553403be..d35b7008a1ef55da4a2fe0c9c184f97f5a829223 100644
 --- a/dist/esm/components/input/input.js
@@ -838,3 +945,53 @@ index 18c6a7e2667e7da56ff845ebcc150e82553403be..d35b7008a1ef55da4a2fe0c9c184f97f
              React.createElement(MagnifyingGlassMini, null))),
          isPassword && (React.createElement("div", { className: clx("absolute bottom-0 right-0 flex items-center justify-center border-l", {
                  "h-8 w-8": size === "base",
+diff --git a/dist/esm/components/toast/toast.js b/dist/esm/components/toast/toast.js
+index 2a3cbaa8aea7182acb92b0d7c36179fa7a2bd3f3..47a80460a3b9a41d38c1ccff9536353074e3dcb4 100644
+--- a/dist/esm/components/toast/toast.js
++++ b/dist/esm/components/toast/toast.js
+@@ -85,7 +85,7 @@ dismissable = true, }) => {
+                 !!action && (React.createElement("button", { type: "button", className: clx("txt-compact-small-plus text-ui-fg-base bg-ui-bg-base flex w-fit items-center rounded-[4px] transition-colors", "focus-visible:shadow-borders-focus", "hover:text-ui-fg-subtle", "disabled:text-ui-fg-disabled", {
+                         "text-ui-fg-error": action.variant === "destructive",
+                     }), onClick: action.onClick }, action.label)))),
+-        !!dismissable && (React.createElement(IconButton, { size: "2xsmall", variant: "transparent", type: "button", onClick: () => toast.dismiss(id) },
++        !!dismissable && (React.createElement(IconButton, { "aria-label": "Dismiss notification", size: "xsmall", variant: "transparent", type: "button", onClick: () => toast.dismiss(id) },
+             React.createElement(XMark, null)))));
+ };
+ //# sourceMappingURL=toast.js.map
+\ No newline at end of file
+diff --git a/dist/esm/components/toaster/toaster.js b/dist/esm/components/toaster/toaster.js
+index 2d4933bc481307da0af657b74c215d51ac4b6026..707f8eed5d4200c782f6caabbc8644815346f742 100644
+--- a/dist/esm/components/toaster/toaster.js
++++ b/dist/esm/components/toaster/toaster.js
+@@ -17,7 +17,9 @@ gap = 12,
+ /**
+  * The space from the edges of the screen.
+  */
+-offset = 24, 
++// Keep native form headings and sticky footer actions clear.
++offset = { top: 24, right: 24, bottom: 88, left: 24 },
++mobileOffset = { top: 16, right: 16, bottom: "calc(88px + env(safe-area-inset-bottom))", left: 16 }, 
+ /**
+  * The time in milliseconds that a toast is shown before it's
+  * automatically dismissed.
+@@ -30,6 +32,7 @@ duration, ...props }) => {
+         position,
+         gap,
+         offset,
++        mobileOffset,
+         cn: clx,
+         toastOptions: {
+             duration,
+diff --git a/dist/esm/utils/toast.js b/dist/esm/utils/toast.js
+index 69280853ccc88f90838bed628030289556bfba69..e87843292ee44e3d1a433b1fc1c7640efcd3dd09 100644
+--- a/dist/esm/utils/toast.js
++++ b/dist/esm/utils/toast.js
+@@ -51,7 +51,7 @@ function error(
+  * The props of the toast.
+  */
+ props = {
+-    position: DEFAULT_TOAST_POSITION,
++    position: "bottom-right",
+ }) {
+     return create("error", title, props);
+ }

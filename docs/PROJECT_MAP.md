@@ -5,6 +5,63 @@ and 98 documentation/reference files, excluding unrelated `Default/` and
 generated/dependency outputs. Current security work and release acceptance
 are recorded in the handoff linked below.
 
+## October 11 continuation boundary
+
+The current full native/service gate passes: all 162 cases, four Settings
+modes (57 checkpoints each), four News modes (12 each), payment lifecycle,
+PostgreSQL recovery, Redis, API and session checks. Independent cleanup proves
+2,045 unchanged inputs, 632 closed relays and 785 known processes absent.
+Both application builds, shared lint/types and eighteen storefront browser
+cases pass. Commit the cohesive correction and require exact staging CI,
+all-service rollout and live acceptance; Batch 6 stays open and cloning paused.
+
+Earlier October 11 failures and corrections remain recorded below.
+
+Batch 6 resumes; the client clone remains paused. The original full native
+gate finishes 160/162: both desktop Settings and all four News modes pass;
+both phone modes expose success feedback covering a currency-row action.
+Independent cleanup releases the source freeze. Current same-version patches
+scope the new placement to errors and repair Product Tags query translation;
+media timestamps are retained through serialization. All 266 installed
+regressions, 46 focused media tests and the 336-file fixture build pass.
+The corrected phone-light diagnostic passes all 57 checkpoints and cleanup;
+full native and release acceptance were pending at that diagnostic checkpoint.
+The complete local run recorded above subsequently passes. See the
+[October 11 handoff](NEXT_SESSION_HANDOFF.md) for exact evidence and next work.
+
+The later reviewed Chrome run completes every Settings/News UI checkpoint but
+finishes 161/162 because News phone-dark checks process absence before an
+observed descendant is naturally reaped. Independent cleanup releases the
+source freeze with all 707 known processes absent. Six process regressions
+pass after joining natural removal within the existing deadline; the original
+failure remains retained; the complete local run above subsequently passes.
+Exact staging CI and deployed acceptance remain required.
+
+## October 10 continuation boundary
+
+The focused Settings phase-timing diagnostic (original session 73356) finishes
+with exit 0 on October 9, 23:23:44–23:29:35 UTC: 154 ordinary checks plus the
+original desktop-light Settings case pass (155 passed, 3 skipped, 158 total
+in four suites). All 57 selected checkpoints and five cleanup actions pass.
+The other three Settings modes, every News mode, post-Jest payment lifecycle
+and later chained families are unrun. This is diagnostic evidence only; the
+original all-eight/162 gate, native acceptance and release acceptance remain
+incomplete. Retained phase timings do not establish a cause or optimization.
+
+Root independently verifies cleanup on October 10 at 21:28:53 UTC
+(`f8fc1d0a…`): 1,038 source inputs and separately frozen Doc4 are unchanged,
+56 recorded process identities and 509 relay host PIDs are absent, all
+509 relays are closed, and the exact owned containers, Compose resources and
+relay listeners are absent. Unobserved descendants remain outside the proof.
+A separate Root join (`66c27a67…`) rechecks immutable bindings and runner
+absence, then releases the source freeze at 21:29:17 UTC. Root sends no signals.
+
+The user redirects active work to the professional profile/resume refresh.
+Store Batch 6 remains paused with the same 49 paths uncommitted/unpushed; the
+390 px phone-light Toast covering Edit role remains open. Client cloning stays
+paused. Resume with the timing evidence and unchanged full gate, checkpoint,
+Axe, screenshot, mutation-fence and 900/240-second boundaries.
+
 ## Start here
 
 1. Read [NEXT_SESSION_HANDOFF.md](NEXT_SESSION_HANDOFF.md) for the latest accepted
@@ -104,6 +161,401 @@ subscribers,workflows}/`; the email provider has its own
 contracts before applying generic framework examples from those files.
 
 ## Verified continuation boundary
+
+**October 9, 23:07 UTC repeated service-timeout boundary:**
+
+Original all-eight TTY run 60637 reaches the unchanged 900-second service
+deadline (22:45:47.038–23:00:47.075 UTC). All four Settings modes finish all
+57 checkpoints and all five cleanup actions. News desktop-light, desktop-dark
+and phone-light each finish twelve checkpoints. News phone-dark retains eight
+PNGs and twenty partial artifacts without a final result. Execution has no
+numeric result field; seven mode finals, no 162-test aggregate and no later
+chained service-family results remain. The full gate is incomplete; complete
+News path coverage, native acceptance and release acceptance remain unverified.
+No TTY fix, click lookup savings or timeout cause is established by this run.
+
+Actual scoped cleanup `522e7a6a…` checks 1,036 unchanged inputs, separately
+frozen Doc4, 554 closed relays and absence of 186 known process identities,
+the two owned containers, Compose resources and recorded relay listeners.
+The incomplete News phone-dark browser root and proxy-listener identity remain
+unknown; unobserved descendants are not inferred absent. Root release join
+`7567d738…` rechecks source, Doc4, executable/helper bindings and the original
+Node's absence, then releases the freeze at 23:06:48.537 UTC. Root issued no
+signals or CUA actions during the run and scoped cleanup.
+
+After release, Root applies only checkpoint phase timing `707e6442…` to the
+Settings QA source at 23:07:11.782 UTC. The bounded ledger preserves original
+operations, result schema, native authority and 900/240-second limits. Phase
+measurement and the private focused diagnostic remain pending; no timings,
+performance cause, savings or native acceptance are claimed from this change.
+
+The earlier 390 px phone-light Toast covering the Edit role heading remains
+an open layout finding; peer `0eeba5a4…` and the original frame are retained.
+The same 49 paths remain uncommitted/unpushed, Batch 6 stays open and the client
+clone remains paused. Preserve completed-body readiness, every checkpoint,
+Axe scan, screenshot, mutation fence and unchanged 900/240-second limits.
+
+**October 9, 22:24 UTC original service-timeout boundary:**
+
+Original all-eight TTY run 7169 reaches the unchanged 900-second service
+deadline (22:01:58.198–22:16:58.227 UTC). All four Settings modes finish all
+57 checkpoints; News desktop-light, desktop-dark and phone-light each finish
+all twelve. News phone-dark retains eight PNGs without a final result. Seven
+mode finals are verified; the 162-test aggregate and later chained service
+families are absent. This is a timed-out full gate, not accepted verification
+or proof that TTY fixes the earlier SIGTERM interruptions.
+
+Actual scoped cleanup `c58ce74a…` verifies 1,036 unchanged inputs, separately
+frozen Doc4, 556 closed relays and absence of 181 known process identities,
+the two owned containers, Compose resources and recorded relay listeners.
+The incomplete News phone-dark browser root and proxy-listener identity remain
+unknown; unobserved descendants are not inferred absent. Root release join
+`5c2907e1…` rechecks source, Doc4, executable/helper bindings and the original
+Node's absence, then releases the freeze at 22:24:34 UTC. Root issued no signals
+during this run or cleanup.
+
+The earlier 390 px phone-light Toast covering the Edit role heading remains
+an open layout finding; peer `0eeba5a4…` and the original frame are retained.
+The same 49 paths remain uncommitted/unpushed, Batch 6 stays open and the client
+clone remains paused. Source-only browser-runtime efficiency review is pending.
+Preserve native authority, completed-body readiness, every checkpoint, Axe
+scan, screenshot, mutation fence and unchanged 900/240-second limits.
+
+**October 9, 21:45 UTC node-only signal boundary:**
+
+Original all-eight run 39766 is interrupted by SIGTERM (exit 143).
+Desktop-light, desktop-dark and phone-light Settings each finish all 57
+checkpoints and all five cleanup actions. Phone-dark has 41 PNGs and 41 Axe
+artifacts without a final result; these remain partial evidence. Five mode
+finals and the 162-test aggregate are absent; later service families are unrun.
+
+Node-only trace `9d981888…` records an immediate SI_USER SIGTERM sender of
+PID 19536, UID 1000. Current two-stable identity receipt `b7f63cf2…` identifies
+that PID as the installed Codex executable; it does not establish its executable
+at the signal moment or the ultimate reason for termination. Root issued no
+CUA actions or signals during the run. No application cause or fix is proved.
+
+Root later sends one TERM to the exact owned browser root, without group
+signals or KILL escalation. Actual cleanup `88c9e023…` verifies 1,036 unchanged
+inputs, separately frozen Doc4, 156 closed relays, 107 known process identities,
+separate Node/tracer absence, the two owned containers, Compose resources and
+recorded relay listeners absent. Unobserved descendants and the incomplete
+phone-dark proxy listener are not inferred absent. Release join `15665475…`
+also verifies separate executable and tracer-helper bindings, then releases
+the source freeze at 21:45:59 UTC after that cleanup.
+
+Phone-light frame `44-native-role-response-loss-committed-projection.png`
+shows the native error Toast covering the Edit role heading at 390 px; peer
+`0eeba5a4…` retains this layout defect. Name, Description and Cancel/Save remain
+visible; no page-overflow claim follows. Correct Toast placement before calling
+Batch 6's layout audit complete.
+
+The same 49 paths remain uncommitted/unpushed, Batch 6 stays open and the client
+clone remains paused. Tags v3 stays private and unapplied. A documented outer
+PTY trial is pending: keep the original all-eight gate, native authority,
+body completion, every check and 900/240-second limits, retain private output
+files and use explicit null stdin. Native children still inherit those streams
+with CI enabled. PTY support is not proof that it fixes the termination.
+
+**October 9, 21:06 UTC Chrome-interruption boundary:**
+
+Chrome comparison 6706 is interrupted by SIGTERM (exit 143). Desktop-light
+and desktop-dark Settings each finish all 57 checkpoints with all five cleanup
+actions passing. Phone-light has 33 PNGs and 33 Axe artifacts, without a final
+result; these are partial evidence, not checkpoint outcomes. Six mode finals
+and the 162-test aggregate are absent. Later chained service families are unrun.
+The original signal's cause is unknown; this comparison is not accepted.
+
+Root later sends one TERM to the exact owned browser root, without group
+signals or KILL escalation. Actual independent cleanup `564917c0…` verifies
+1,036 unchanged inputs, separately frozen Doc4, 148 closed relays, 41 known
+process identities, the two owned containers, Compose resources and relay
+listeners absent. Release join `f661432f…` retains the scoped limitations:
+unobserved descendants and the incomplete phone-light proxy listener are not
+inferred absent. Source peer `eba5bb02…` is postdated to Root's cleanup execution.
+
+Auth-free local control 4722 passes six fresh-profile sequences with body
+completion and intact observation. No reload is observed in its bounded windows;
+Helium's known component reports the DNS/blocking capability conjunction, while
+Chrome's missing target remains unknown. This is diagnostic nonreproduction,
+not native acceptance or proof of the earlier reload's cause or a fix. Earlier
+Helium retry 26102 remains 161/162, including its phone-light startup failure.
+
+The same 49 paths remain uncommitted/unpushed, Batch 6 stays open and the client
+clone remains paused. Tags v3 stays private and unapplied. Investigate the long
+signal/interruption diagnostics, then require the original all-eight full gate;
+native authority, body completion, every check and 900/240-second limits remain.
+
+**October 9, 20:31 UTC full-retry boundary:**
+
+Original all-eight retry 26102 closes naturally with 161/162 tests passing.
+All 154 ordinary native cases pass. Desktop-light, desktop-dark and phone-dark
+Settings pass all 57 checkpoints each; all four News modes pass twelve each.
+Phone-light Settings fails initial navigation before credentials or checkpoints,
+retaining its native-session 401 cleanup failure. Later chained service families
+are unrun; the full gate remains unaccepted.
+
+Independent cleanup `30e553f5…` verifies 1,036 unchanged inputs, 552 closed
+relays, all eight naturally closed browser roots and recorded owned resources
+absent. Join `e9432e5b…` verifies the three finite snapshots' 77-process union
+and original runner absent. Unobserved or short-lived descendants are not
+inferred; source freeze was released only after actual scoped cleanup.
+
+Trace `835e85…` positively records a same-URL reload about 1.10 seconds after
+initial navigation starts and 0.77 seconds after its native load returns.
+The old-document Store GET has an acknowledged continuation but no observed
+body terminal. No renderer navigation request or later Page command is observed
+within the bounded capture; the initial Page command predates observation.
+The reload's cause remains unknown. An auth-free owned-local browser comparison
+is being prepared; it is diagnostic only and changes no native gate.
+
+The same 49 paths remain uncommitted/unpushed, Batch 6 remains open and the
+client clone stays paused. Tags v3 remains private and unapplied, with runtime
+validation pending. Preserve native authority, body completion, every check
+and unchanged 900/240-second limits.
+
+**October 9, 20:11 UTC interrupted full-run boundary:**
+
+Original full run 48348 is interrupted by SIGTERM (exit 143), with no final
+162-test summary or browser-mode results. Its 56 desktop-light screenshots and
+56 Axe artifacts remain partial evidence; no checkpoint outcome or natural
+browser closure is inferred. The original signal's cause is unknown.
+
+Root later sends one TERM to the exact owned browser root, without group
+signals or KILL escalation. Independent cleanup `67878675…` verifies 1,036
+unchanged inputs, 133 closed relays, 46 observed process identities, both owned
+containers, Compose resources and recorded relay listeners absent. Missing
+proxy-listener identity and unobserved descendants remain explicit limits.
+
+An unchanged original all-eight retry is pending; preserve every check and
+900/240-second budgets. The startup cause remains unproved. The private Tags
+v3 proposal preserves unknown-key strict rejection while normalizing only
+recognized table placeholders; it is unapplied and runtime validation is
+pending. The same 49 paths remain uncommitted/unpushed, Batch 6 remains open
+and the client clone stays paused.
+
+**October 9, 19:42 UTC desktop-dark diagnostic boundary:**
+
+Diagnostic 40388 passes the original 17 native Settings HTTP cases and all
+57 desktop-dark checkpoints; the other three modes are skipped. Independent
+cleanup `89da1ee6…` verifies 1,036 unchanged inputs, 134 closed relays and owned
+resources absent. Join `6db4d41b…` verifies both finite snapshots' 37-process
+union and original root absent; unseen descendants are not inferred.
+
+Both initial captures contain one document and completed bodies, with no
+readiness deadline or additional observed Page navigation command. The initial
+Page command predates observation. The intermittent startup failure is not
+reproduced and its cause remains unproved. Full run 38190 remains unaccepted
+at 161/162; an original all-eight matrix with passive observation is pending.
+Preserve native authority, body completion, every checkpoint and accessibility
+check, mutation fences and unchanged 900/240-second limits.
+
+A read-only Product Types comparison renders an editable empty Value filter
+without the Product Tags 400. Back restores the URL but leaves the chip;
+explicit Clear all removes its chip and input. No Save or CRUD occurred.
+The private Tags loader proposal is unapplied. The 49-path release remains
+uncommitted/unpushed, Batch 6 remains open and the client clone stays paused.
+
+**October 9, 19:23 UTC full result and cleanup boundary:**
+
+Original full normal run 38190 closes naturally with 161/162 tests passing.
+All 154 ordinary native cases pass, including the unchanged shared-asset
+creation-compensation regression. Desktop-light, phone-light and phone-dark
+Settings pass all 57 checkpoints each; all four News modes pass twelve each.
+Desktop-dark Settings fails the initial 30-second wait before credentials or
+checkpoints, retaining its native-session 401 cleanup failure. Later chained
+service families are unrun; the full gate is not accepted.
+
+Independent cleanup `c229decb…` verifies 1,036 unchanged inputs, 551 closed
+relays, all eight naturally closed browser roots and recorded owned resources
+absent. Join `2f3b02b1…` verifies the five finite snapshots' 100-process union
+and original root absent. Unobserved, short-lived or reparented descendants
+are not inferred; source freeze was released only after actual cleanup.
+
+Current local checks pass: 79 navigation/transport boundaries, 23 media units,
+220 emitted regressions, shared QA and Backend coverage (317 suites/3,115 tests).
+Both Admin builds bind 893 current inputs and 336 outputs each; six compiled
+checks per build pass. The SQL correction permits at most three fresh attempts
+for exact early `40001`/`40P01` conflicts. It flushes the pending audit insert
+before media writes; once that flush succeeds, later errors are never retried.
+Media writes, compensation and commit errors are not retried. The real
+compensation regression now passes without alteration.
+
+The failed desktop-dark trace records two same-URL documents on one client and
+frame, then an old-loader Store GET without a recorded body terminal. The
+second-document cause remains unknown. Continue with source-backed observation
+before any correction; preserve body completion, native authority, every
+checkpoint and accessibility check, mutation fences and 900/240-second limits.
+
+A read-only live review of accepted staging `15f7217` reports all nine services
+healthy, but Product Tags Filter → Value renders a 400 after creating the empty
+`ptag_value=%22%22` filter. Source localization `17d75ab7…` suggests the route
+loader forwards that UI-prefixed key to the strict native API. This remains an
+inference without the live API request journal; no Save or data write occurred.
+The 49-path release plan remains uncommitted/unpushed, native and release
+acceptance remain open, Batch 6 remains open and the client clone stays paused.
+
+**October 9, 18:56 UTC SQL and navigation boundary:**
+
+Full normal run 3771 fails with 158/162 passing: 153/154 ordinary native
+cases, phone-light Settings (all 57 checkpoints), and all four News modes
+(twelve each) pass. The shared-asset creation-compensation test fails on a
+PostgreSQL serialization conflict inserting its pending audit operation.
+The other three Settings modes fail initial navigation before checkpoints;
+their native-session 401 cleanup failures remain recorded. Later chained
+service families are unrun. Preserve the original exact three-update assertion.
+
+Independent cleanup `49a45a17…` verifies 1,036 unchanged inputs, 541 closed
+relays, all eight naturally closed browser roots and recorded owned resources
+absent. Join `cd4a814b…` verifies the finite 42-process union and original root
+absent; unobserved descendants are not inferred.
+
+Diagnostic 49244 passes the original 17 native Settings HTTP cases and one
+desktop-light sequence (57 checkpoints). Cleanup `babca469…` and finite
+34-process/root absence join `03431037…` pass. Both initial captures contain
+one document, completed bodies and no readiness deadline; the failed full run's
+second-document/pending Store request is not reproduced. Its cause remains
+unproved. This diagnostic does not replace the original full matrix.
+
+The SQL correction was applied at 18:54 UTC. It flushes the pending audit
+insert before media writes and allows at most three fresh transaction attempts
+for exact early `40001`/`40P01` conflicts. It never retries media writes,
+compensation or commit errors. Against the old implementation, the ten new
+regressions produced seven failures and three passes, with 13 original cases
+skipped. The current implementation passed all 23 cases, and shared QA passed.
+Backend coverage, refreshed Admin builds and the unchanged full gate remain
+pending. This is bounded preflight recovery, not complete serialization
+resilience. Preserve native
+authority, body completion, mutation fences, accessibility and 900/240-second
+limits. The 49-path release plan remains uncommitted/unpushed; staging stays
+`15f7217`, Batch 6 remains open and the client clone stays paused. Native and
+release acceptance remain open.
+
+**October 9, 18:12 UTC remaining initial navigation boundary:**
+
+All 79 navigation/transport boundary tests and shared QA pass. The original
+desktop-light run 5208 passes all 57 Settings checkpoints; independent cleanup
+`2514a8e9…` and the finite 36-process join `09ca3e8b…` pass.
+
+Full normal run 84938 fails with 160/162 passing: all 154 ordinary
+native cases, desktop-light and phone-dark Settings (57 checkpoints each), and
+all four News modes (twelve each) pass. Desktop-dark and phone-light Settings
+fail initial Store navigation before credentials or checkpoints, retaining a
+pending Store GET and native 401 reads. Their unauthorized native-session
+cleanup failures remain recorded. Later chained service families are unrun.
+
+Independent cleanup `67fba8cb…` verifies 1,036 unchanged inputs, 544 closed
+relays, all eight naturally closed browser roots and recorded owned resources
+absent. Join `de55011a…` verifies the finite 38-process snapshot and owned root
+absent; unobserved descendants are not inferred. Next, diagnose one original
+desktop-dark case with passive network observation before correcting the proven
+cause and rerunning the complete gate. Preserve body completion, native
+authority, mutation fences, accessibility checks and 900/240-second limits.
+Source is uncommitted/unpushed; staging remains `15f7217`, Batch 6 stays open and
+the client clone stays paused. Full native and release acceptance remain open.
+
+**October 9, 17:13 UTC authenticated navigation boundary:**
+
+The public CDP Network correction counts actual request bodies instead of
+Fetch-only duplicate interceptions. All 75 boundary tests and shared QA pass;
+a true same-origin child stream also finishes before 500 milliseconds of quiet
+on both repeated navigations. These controlled checks do not prove native
+Settings acceptance. Original full run 41626 still finishes with 158/162 passing:
+154 ordinary tests and all four News modes pass, with twelve checkpoints each.
+All four Settings modes time out after sign-in before their first checkpoint.
+
+Independent cleanup `fdeeccef…` verifies 1,036 unchanged inputs, 550 closed
+relays, all eight naturally closed browser roots and recorded owned resources
+absent. The finite snapshot join `22970434…` verifies all 38 recorded process
+identities absent; unobserved descendants are not inferred. Later chained
+families remain unrun. A bounded, hashed navigation-state observer is applied
+without changing load, body, quiet, deadline, authentication or mutation gates.
+Next, use one original authenticated Settings mode for diagnosis, correct the
+proven cause, then rerun the unchanged complete matrix and release checks.
+Source is uncommitted/unpushed; staging remains `15f7217`, Batch 6 stays open
+and the client clone stays paused. Preserve the failed runs and diagnostics.
+
+**October 9, 16:24 UTC navigation boundary:** original full run 13703 closes
+naturally with 158/162 passing tests: all 154 ordinary cases and four News
+modes pass. Four Settings modes fail after native sign-in at the first Store
+navigation wait, before any checkpoint; later families are unrun. Cleanup
+`5821ae58…` verifies 1,036 unchanged inputs, 549 closed relays, all eight browser
+roots and recorded owned resources absent; a separate finite join verifies
+all 28 recorded process identities absent. All 201 installed files, 220 emitted
+regressions, shared QA, both Admin builds/six compiled checks and Storefront
+build/thirteen browser checks pass. Synthetic navigation tests do not establish
+the authenticated cause or native acceptance. Follow the opening handoff for
+the bounded diagnostic and unchanged complete gate. Source is uncommitted and
+unpushed, staging remains `15f7217`, Batch 6 is open and clone remains paused.
+
+**October 9 current contrast and fixture checks:** all 201 reviewed package
+files, 214 emitted regressions, shared QA, both fresh Admin builds and five
+compiled checks per build pass. The current-lock Storefront build and thirteen
+browser checks pass. Three joined workers create only twenty-one independent
+no-grant fixture accounts; serial Region/Tax writes, native authority and
+readbacks remain intact. Thirty static PNG captures verify identical pixels
+and faster encoding; all checkpoints, fences and 900/240-second limits remain.
+Full 28070 times out after four Settings modes and one News mode; the actual
+“Clear all” contrast defect is now corrected. Cleanup `218e387d…` verifies the
+recorded resources absent, retaining the interrupted News process-journal
+limitation. The corrected original full gate and exact release remain pending;
+source is uncommitted/unpushed, staging stays `15f7217` and clone stays paused.
+
+**October 9 compiled integration boundary:** full normal 18580 passes 159/162;
+independent cleanup passes. Shared FormProvider mutation and stylesheet order
+defeat the direct label/color corrections, and an open date-filter popover
+needs its native name. Follow the opening handoff for the cohesive correction,
+compiled regressions and complete normal/release gates. Clone remains paused.
+
+**October 9 remaining controls:** the focused run verifies the original
+native error/recovery fixes, then exposes date-filter semantics, sorting-menu
+scope and protected content mounting during permission loading. Cleanup passes.
+Follow the opening handoff for the current 198-case/source/build checks and next
+correction; full native and release acceptance remain open, clone paused.
+
+**October 9 Settings boundary:** 43 focused checkpoints pass before native
+Role Edit naming, event-error and response-loss failures. Independent cleanup
+passes. The same-version native corrections and exact committed-response-loss
+boundary test are applied, with current builds and full native acceptance still
+pending. Follow the opening handoff; staging is `15f7217`, client clone paused.
+
+**October 9 focused continuation:** phone-light News passes twelve checkpoints
+and native USD restoration passes. Region Create's exact uppercase request
+expectation is corrected. A subsequent Settings-only run exposes a no-op role
+permission removal; source confirms its incomplete first-page assignable scope.
+Independent cleanup passes. The page-scope fix preserves unseen assignments
+and passes 150 installed regressions, fresh coverage, builds and shared checks.
+Follow the opening handoff for compiled native and complete normal/release
+gates. Staging remains `15f7217`, with the client clone paused.
+
+**October 9 local correction:** installed component verification passes 134
+cases and current builds/shared checks pass. The latest normal run passes 154
+ordinary native cases and both desktop News modes; Settings's currency setup
+and both phone News heading checks remain open. Independent cleanup passes.
+Follow the opening handoff for the applied QA prerequisite and focused
+diagnosis; staging remains accepted at `15f7217` and the client clone is paused.
+
+**October 8 deployed correction and audit continuation:** exact staging
+`15f7217` passes four original workflows / 23 checks, exact app/Migrations
+and runtime/heartbeat/log/search gates. Three owned Gallery saves and same-UUID
+checks complete; Root accepts the scoped deployed correction after verifying
+all 44 evidence bindings. Original expired collection/classifier failures remain retained
+with separate narrow reconciliation. All-nine observation continues with its
+explicit replacement gap. Actual native News creation exposes a pre-flush
+undefined-timestamp bug; its transaction fix passes all six initialized HTTP
+cases. The expanded native run passes 151/154; three actual Settings failures
+require correction before the full service/browser gates. Owned repair has one
+independently verified completion and saved-state refresh, with retained
+assets/history. Country flags,
+a media translation and duplicated News titles are also corrected locally.
+The single new Mystery purchase is order #12, captured and fully refunded for
+$32 through native cancellation. Provider/native inventory, tax, webhooks and
+delivered-notification evidence agree; actual receipt expiry/retry passes. Never
+repeat it. The latest run retains 153/154 native passes and eight compiled UI
+failures while their fixes and owned catalog visibility cleanup continue.
+Read the opening handoff for unfinished browser/payment/cleanup and exact evidence.
+Batch 6 stays open, client cloning paused, production untouched.
+
 
 **October 8 image compiler correction:** `e5cecff` clears the prior RBAC runner
 and secret-scan corrections, but its disposable image scan rejects thirteen

@@ -57,7 +57,7 @@ assert.match(
 )
 assert.equal(
   packageManifest.scripts?.["qa:admin-accessibility-boundary"],
-  "node --test qa/admin-static-server.test.mjs && node scripts/verify-admin-accessibility-boundary.mjs"
+  "node --test qa/admin-static-server.test.mjs qa/lib/native-settings-loopback-proxy.test.mjs qa/lib/native-news-loopback-proxy.test.mjs qa/lib/native-news-browser-process.test.mjs && node scripts/verify-admin-accessibility-boundary.mjs"
 )
 assert.match(
   rootWorkflowSource,

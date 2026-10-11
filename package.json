@@ -26,7 +26,7 @@
     "qa:service-container-resolution": "node scripts/verify-service-container-resolution.mjs",
     "qa:storefront-response-boundary": "node scripts/verify-storefront-response-boundary.mjs",
     "qa:admin-browser-boundary": "node scripts/verify-admin-browser-boundary.mjs",
-    "qa:admin-accessibility-boundary": "node --test qa/admin-static-server.test.mjs && node scripts/verify-admin-accessibility-boundary.mjs",
+    "qa:admin-accessibility-boundary": "node --test qa/admin-static-server.test.mjs qa/lib/native-settings-loopback-proxy.test.mjs qa/lib/native-news-loopback-proxy.test.mjs qa/lib/native-news-browser-process.test.mjs && node scripts/verify-admin-accessibility-boundary.mjs",
     "qa:railway-iac": "node --no-warnings scripts/verify-railway-iac.mjs",
     "qa:client-staging-preflight": "node --test --experimental-test-coverage --test-coverage-include=scripts/lib/client-staging-preflight.mjs --test-coverage-lines=80 --test-coverage-branches=80 --test-coverage-functions=80 scripts/client-staging-preflight.test.mjs",
     "client-staging:preflight": "node scripts/client-staging-preflight.mjs",

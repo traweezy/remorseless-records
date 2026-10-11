@@ -11,6 +11,10 @@ import {
   CreateProductVariant,
 } from "@medusajs/medusa/api/admin/products/validators"
 import { createBatchBody } from "@medusajs/medusa/api/utils/validators"
+import {
+  AdminCreateRegion,
+  AdminUpdateRegion,
+} from "@medusajs/medusa/api/admin/regions/validators"
 
 import {
   adminAuthorizationPolicyRoutes,
@@ -28,6 +32,7 @@ import {
 } from "../lib/http/correlation"
 import { ensureDatabaseDiagnostics } from "../lib/observability/database-diagnostics"
 import { resolveClientIp } from "../lib/security/client-ip"
+import { enforceNativeRegionCurrency } from "../lib/regions/native-currency-guard"
 import {
   buildBackendSecurityHeaders,
   shouldDefaultToNoStore,
@@ -405,6 +410,11 @@ export const productImportAdminPolicyRoutes = [
 
 export const nativeAdminPolicyOverlayRoutes = [
   {
+    matcher: /^\/admin\/rbac\/roles\/?$/i,
+    methods: ["POST"],
+    policies: [{ resource: "rbac_role", operation: "create" }],
+  },
+  {
     matcher: /^\/admin\/products\/prod_[^/]+\/?$/i,
     methods: ["POST"],
     policies: [nativeAdminActions.product.update],
@@ -425,6 +435,30 @@ export const nativeAdminPolicyOverlayRoutes = [
       /^\/admin\/products\/prod_[^/]+\/images\/img_[^/]+\/variants\/batch\/?$/i,
     methods: ["POST"],
     policies: [nativeAdminActions.productVariant.update],
+  },
+] satisfies MiddlewareRoute[]
+
+// Reuse the native validators and existing mutation policies before querying
+// the initialized Currency module. Native Region handlers and workflows remain
+// responsible for all persistence and response handling.
+export const nativeRegionCurrencyMiddlewareRoutes = [
+  {
+    matcher: "/admin/regions",
+    methods: ["POST"],
+    policies: [{ resource: "region", operation: "create" }],
+    middlewares: [
+      validateAndTransformBody(AdminCreateRegion),
+      enforceNativeRegionCurrency,
+    ],
+  },
+  {
+    matcher: "/admin/regions/:id",
+    methods: ["POST"],
+    policies: [{ resource: "region", operation: "update" }],
+    middlewares: [
+      validateAndTransformBody(AdminUpdateRegion),
+      enforceNativeRegionCurrency,
+    ],
   },
 ] satisfies MiddlewareRoute[]
 
@@ -560,6 +594,7 @@ export default defineMiddlewares({
     },
     ...adminAuthorizationPolicyRoutes,
     ...nativeAdminPolicyOverlayRoutes,
+    ...nativeRegionCurrencyMiddlewareRoutes,
     ...nativeVariantBatchParentMiddlewareRoutes,
     ...disabledNativeCatalogDeletionAdminRoutes,
     ...operationsAdminMiddlewareRoutes,

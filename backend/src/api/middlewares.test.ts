@@ -23,6 +23,7 @@ import middlewares, {
   disabledNativeCatalogDeletionAdminRoutes,
   failedCreationRepairAdminMiddlewareRoutes,
   nativeAdminPolicyOverlayRoutes,
+  nativeRegionCurrencyMiddlewareRoutes,
   nativeVariantBatchParentMiddlewareRoutes,
   operationsAdminMiddlewareRoutes,
   operationsAdminPolicyRoutes,
@@ -332,6 +333,8 @@ describe("operations Admin RBAC middleware", () => {
 
 describe("native Admin mutation policy overlays", () => {
   it.each([
+    ["/admin/rbac/roles", { resource: "rbac_role", operation: "create" }],
+    ["/ADMIN/RBAC/ROLES/", { resource: "rbac_role", operation: "create" }],
     ["/admin/products/prod_01", nativeAdminActions.product.update],
     ["/ADMIN/PRODUCTS/PROD_01/", nativeAdminActions.product.update],
     [
@@ -350,7 +353,7 @@ describe("native Admin mutation policy overlays", () => {
       "/admin/products/prod_01/images/img_01/variants/batch",
       nativeAdminActions.productVariant.update,
     ],
-  ])("protects POST %s with the exact update action", (requestPath, action) => {
+  ])("protects POST %s with its exact native action", (requestPath, action) => {
     expect(
       policyFor(nativeAdminPolicyOverlayRoutes, "POST", requestPath)
     ).toEqual([action])
@@ -361,6 +364,9 @@ describe("native Admin mutation policy overlays", () => {
 
   it.each([
     ["GET", "/admin/products/prod_01"],
+    ["GET", "/admin/rbac/roles"],
+    ["POST", "/admin/rbac/roles/role_01"],
+    ["POST", "/admin/rbac/roles/assignable"],
     ["POST", "/admin/products/product_01"],
     ["POST", "/admin/products/import"],
     ["POST", "/admin/products/imports"],
@@ -449,6 +455,119 @@ describe("native Admin mutation policy overlays", () => {
       )
     })
   })
+})
+
+describe("native Region currency and Role collection boundaries", () => {
+  const nativeRoutes = <T extends object>(file: string): T =>
+    jest.requireActual<T>(
+      path.join(path.dirname(require.resolve("@medusajs/medusa")), file)
+    )
+
+  it("sorts the missing native Role create policy before the unchanged native validator and handler", () => {
+    const { adminRbacRoleRoutesMiddlewares } = nativeRoutes<{
+      adminRbacRoleRoutesMiddlewares: (MiddlewareRoute & {
+        method?: string[]
+      })[]
+    }>("api/admin/rbac/roles/middlewares.js")
+    const installed = adminRbacRoleRoutesMiddlewares.find(
+      (route) =>
+        route.matcher === "/admin/rbac/roles" && route.method?.includes("POST")
+    )!
+    expect(installed).toBeDefined()
+    expect(installed.policies).toBeUndefined()
+    expect(installed.middlewares).toHaveLength(2)
+    const overlay = nativeAdminPolicyOverlayRoutes.find((route) =>
+      routeMatches(route, "POST", "/admin/rbac/roles")
+    )!
+    expect(overlay.policies).toEqual([
+      { resource: "rbac_role", operation: "create" },
+    ])
+    expect(Object.hasOwn(overlay, "middlewares")).toBe(false)
+    const { RoutesSorter } = jest.requireActual<{
+      RoutesSorter: PinnedRouteSorter
+    }>(
+      path.join(
+        path.dirname(require.resolve("@medusajs/framework")),
+        "http/routes-sorter.js"
+      )
+    )
+    const markers = new RoutesSorter([
+      { ...installed, marker: "native-validator" },
+      {
+        matcher: "/admin/rbac/roles",
+        method: "POST",
+        isRoute: true,
+        marker: "native-handler",
+      },
+      { ...overlay, marker: "project-policy" },
+    ])
+      .sort()
+      .map((route) => route.marker)
+    expect(markers.indexOf("project-policy")).toBeLessThan(
+      markers.indexOf("native-validator")
+    )
+    expect(markers.indexOf("project-policy")).toBeLessThan(
+      markers.indexOf("native-handler")
+    )
+  })
+
+  it.each([
+    ["/admin/regions", "create"],
+    ["/admin/regions/:id", "update"],
+  ])(
+    "preserves exact native Region policies and body validation for %s",
+    async (matcher, operation) => {
+      const { adminRegionRoutesMiddlewares } = nativeRoutes<{
+        adminRegionRoutesMiddlewares: (MiddlewareRoute & {
+          method?: string[]
+        })[]
+      }>("api/admin/regions/middlewares.js")
+      const installed = adminRegionRoutesMiddlewares.find(
+        (route) => route.matcher === matcher && route.method?.includes("POST")
+      )!
+      const configured = nativeRegionCurrencyMiddlewareRoutes.find(
+        (route) => route.matcher === matcher
+      )!
+      expect(configured.methods).toEqual(["POST"])
+      expect(configured.policies).toEqual(installed.policies)
+      expect(configured.policies).toEqual([{ resource: "region", operation }])
+      expect(configured.middlewares).toHaveLength(2)
+      expect(middlewares.routes).toContainEqual(configured)
+      const body = {
+        name: "Owned Region",
+        currency_code: "USD",
+        countries: ["US"],
+      }
+      const req = { body } as unknown as MedusaRequest
+      const nativeReq = { body } as unknown as MedusaRequest
+      const next = jest.fn()
+      await installed.middlewares![0]!(nativeReq, {} as MedusaResponse, next)
+      expect(next).toHaveBeenLastCalledWith()
+      await configured.middlewares[0]!(req, {} as MedusaResponse, next)
+      expect(next).toHaveBeenLastCalledWith()
+      expect(req.validatedBody).toEqual(nativeReq.validatedBody)
+      expect(req.body).toBe(body)
+      expect(Object.hasOwn(configured, "bodyParser")).toBe(false)
+    }
+  )
+
+  it.each([0, 1])(
+    "keeps native malformed currency rejection ahead of module lookup",
+    async (index) => {
+      const configured = nativeRegionCurrencyMiddlewareRoutes[index]!
+      const resolve = jest.fn()
+      const req = {
+        body: { name: "Owned Region", currency_code: 42 },
+        scope: { resolve },
+      } as unknown as MedusaRequest
+      const next = jest.fn()
+      await configured.middlewares[0]!(req, {} as MedusaResponse, next)
+      expect(next).toHaveBeenCalledTimes(1)
+      expect(next).not.toHaveBeenCalledWith()
+      expect(req.validatedBody).toBeUndefined()
+      expect(resolve).not.toHaveBeenCalled()
+    }
+  )
 })
 
 describe("Admin middleware composition", () => {

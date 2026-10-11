@@ -62,7 +62,12 @@ const nativeArrow = (entry, name, root = dashboardRoot) => {
   return matches[0].getText(parsed)
 }
 
-const nativeMenuHarness = (distribution, component, instance) => {
+const nativeMenuHarness = (
+  distribution,
+  component,
+  instance,
+  overrides = {}
+) => {
   const expression = nativeArrow(
     `${distribution}/blocks/data-table/components/data-table-${component}.js`,
     component === "action-cell"
@@ -139,6 +144,7 @@ const nativeMenuHarness = (distribution, component, instance) => {
       clx: (...classes) =>
         classes.filter((value) => typeof value === "string").join(" "),
     },
+    ...overrides,
   })
 }
 
@@ -153,6 +159,70 @@ const menuNodes = (tree, type) => {
 }
 
 for (const distribution of ["esm", "cjs"]) {
+  test(`${distribution}: native toast has an accessible exact-ID dismiss action`, () => {
+    const expression = nativeArrow(
+      `${distribution}/components/toast/toast.js`,
+      "Toast",
+      uiRoot
+    )
+    const dismissed = []
+    const toast = { dismiss: (id) => dismissed.push(id) }
+    const icons = Object.fromEntries(
+      [
+        "CheckCircleSolid",
+        "ExclamationCircleSolid",
+        "InformationCircleSolid",
+        "Spinner",
+        "XCircleSolid",
+        "XMark",
+      ].map((name) => [name, name])
+    )
+    const clx = (...classes) =>
+      classes.filter((value) => typeof value === "string").join(" ")
+    const render = vm.runInNewContext(`(${expression})`, {
+      React: {
+        createElement: (type, props, ...children) => ({
+          type,
+          props: { ...props, children: children.flat() },
+        }),
+      },
+      ...icons,
+      icons_1: icons,
+      IconButton: "icon-button",
+      icon_button_1: { IconButton: "icon-button" },
+      toast,
+      sonner_1: { toast },
+      clx,
+      clx_1: { clx },
+    })
+    let actionCalls = 0
+    const props = {
+      id: "owned-notification-id",
+      title: "Saved",
+      variant: "success",
+      action: { label: "Review", onClick: () => actionCalls++ },
+    }
+    const tree = render(props)
+    const close = menuNodes(tree, "icon-button")
+    assert.equal(close.length, 1)
+    assert.equal(close[0].props["aria-label"], "Dismiss notification")
+    assert.equal(close[0].props.size, "xsmall")
+    assert.equal(close[0].props.type, "button")
+    assert.equal(close[0].props.variant, "transparent")
+    close[0].props.onClick()
+    assert.deepEqual(dismissed, ["owned-notification-id"])
+    assert.equal(actionCalls, 0)
+    const action = menuNodes(tree, "button")
+    assert.equal(action.length, 1)
+    action[0].props.onClick()
+    assert.equal(actionCalls, 1)
+    assert.deepEqual(dismissed, ["owned-notification-id"])
+    assert.equal(
+      menuNodes(render({ ...props, dismissable: false }), "icon-button").length,
+      0
+    )
+  })
+
   test(`${distribution}: native row actions retain exact row and event boundaries`, () => {
     let seen
     let stopped = false
@@ -1222,7 +1292,7 @@ for (const artifact of [
       ? "const Provider = reactHookForm.FormProvider;"
       : artifact.includes("draft-order")
         ? "const Provider = FormProvider;"
-        : "var Provider = FormProvider;"
+        : "var Provider = "
     const start = source.indexOf(provider)
     const formSymbol = artifact.includes("draft-order") ? "Form$2" : "Form"
     const formStart = source.indexOf(
@@ -1876,7 +1946,7 @@ for (const entry of ["chunk-ZUBJF5QL.mjs", "app.js"]) {
 }
 
 for (const distribution of ["esm", "cjs"]) {
-  test(`${distribution}: native sortable-header target preserves sorting and plain headers`, () => {
+  test(`${distribution}: native table preserves keyboard scrolling and sorting`, () => {
     const expression = nativeArrow(
       `${distribution}/blocks/data-table/components/data-table-table.js`,
       "DataTableTable",
@@ -1901,13 +1971,18 @@ for (const distribution of ["esm", "cjs"]) {
     })
     const flexRender = (value, ctx) =>
       typeof value === "function" ? value(ctx) : value
+    const sensorCalls = []
     const core = {
       DndContext: "drag",
       closestCenter: "center",
       KeyboardSensor: "keyboard",
       PointerSensor: "pointer",
-      useSensor: () => null,
-      useSensors: () => [],
+      useSensor: (sensor, options) => {
+        const captured = { sensor, options }
+        sensorCalls.push(captured)
+        return captured
+      },
+      useSensors: (...sensors) => sensors,
     }
     const sortable = {
       arrayMove: () => {},
@@ -1971,7 +2046,20 @@ for (const distribution of ["esm", "cjs"]) {
     const nativeTable = vm.runInNewContext(`(${expression})`, context)
     for (const enableColumnOrder of [false, true]) {
       instance.enableColumnOrder = enableColumnOrder
+      sensorCalls.length = 0
       const rendered = nativeTable({})
+      assert.equal(sensorCalls.length, 2)
+      assert.equal(sensorCalls[0].sensor, "pointer")
+      assert.equal(sensorCalls[0].options.activationConstraint.distance, 8)
+      assert.equal(sensorCalls[1].sensor, "keyboard")
+      assert.equal(sensorCalls[1].options.coordinateGetter, "coords")
+      const scrollRegions = menuNodes(rendered, "div").filter((node) =>
+        node.props.className?.includes("overflow-auto overscroll-auto")
+      )
+      assert.equal(scrollRegions.length, 1)
+      assert.equal(scrollRegions[0].props.tabIndex, 0)
+      assert.equal(typeof scrollRegions[0].props.onScroll, "function")
+      assert.equal(typeof scrollRegions[0].props.ref, "object")
       const buttons = menuNodes(rendered, "button")
       assert.equal(buttons.length, 1)
       const button = buttons[0]
@@ -1993,6 +2081,57 @@ for (const distribution of ["esm", "cjs"]) {
       assert.equal(plain.props.onClick, undefined)
     }
     assert.equal(sorted, 2)
+  })
+}
+
+for (const entry of ["region-list-476M4XVG.mjs", "app.js"]) {
+  test(`${entry}: native Regions Actions header is translated and reactive`, () => {
+    const expression = nativeArrow(
+      entry,
+      entry === "app.js" ? "useColumns31" : "useColumns"
+    )
+    const base = [{ id: "name" }]
+    const columnHelper = { display: (props) => props }
+    const jsx = (type, props) => ({ type, props })
+    const t = (key) => {
+      assert.equal(key, "fields.actions")
+      return "Translated actions"
+    }
+    let dependencies
+    const useMemo = (factory, deps) => {
+      dependencies = deps
+      return factory()
+    }
+    const useTranslation = () => ({ t })
+    const context = {
+      useMemo,
+      useTranslation,
+      useRegionTableColumns: () => base,
+      columnHelper,
+      jsx,
+      RegionListTableActions: "region-actions",
+    }
+    for (const token of new Set(expression.match(/[A-Za-z_]\w*/gu))) {
+      if (/^columnHelper\d*$/u.test(token)) context[token] = columnHelper
+      if (/^jsx\d*$/u.test(token)) context[token] = jsx
+      if (/^useTranslation\d*$/u.test(token)) context[token] = useTranslation
+      if (/^import_react\d*$/u.test(token)) context[token] = { useMemo }
+      if (/^import_react_i18next\d*$/u.test(token))
+        context[token] = { useTranslation }
+      if (/^import_jsx_runtime\d*$/u.test(token)) context[token] = { jsx }
+    }
+    const useColumns = vm.runInNewContext(`(${expression})`, context)
+    const columns = useColumns()
+    assert.equal(columns[0], base[0])
+    const actions = columns.find((column) => column.id === "actions")
+    assert.equal(actions.header, "Translated actions")
+    assert.ok(dependencies.includes(base))
+    assert.ok(dependencies.includes(t))
+    const region = { id: "reg_owned_native_test" }
+    const cell = actions.cell({ row: { original: region } })
+    assert.equal(cell.type, "region-actions")
+    assert.deepEqual(Object.keys(cell.props), ["region"])
+    assert.equal(cell.props.region, region)
   })
 }
 
@@ -2167,6 +2306,8 @@ for (const distribution of ["esm", "cjs"]) {
     assert.equal(handle.props.style.minHeight, 24)
     assert.equal(handle.props.style.minWidth, 24)
     assert.equal(handle.props.role, "button")
+    assert.equal(handle.props.tabIndex, 0)
+    assert.equal(handle.props["aria-describedby"], "native-dnd-instructions")
     assert.equal(handle.props.onKeyDown, keyHandler)
     assert.equal(handle.props.onPointerDown, pointerHandler)
     assert.equal(menuNodes(cell, "button")[0], sort)
@@ -2690,5 +2831,3511 @@ for (const entry of ["chunk-6HTZNHPT.mjs", "app.js"]) {
       assert.equal(event.prevented, 1)
     }
     assert.equal(submissions.length, 6)
+  })
+}
+
+const nativeSettingsContext = (expression, extra = {}) => {
+  const jsx = (type, props) => ({ type, props })
+  const translation = () => ({ t: (key) => key })
+  const memo = (factory) => factory()
+  const context = { jsx, jsxs: jsx, useMemo: memo, ...extra }
+  for (const token of new Set(expression.match(/[A-Za-z_]\w*/gu))) {
+    if (/^jsx\d*$|^jsxs\d*$/u.test(token)) context[token] = jsx
+    if (/^useTranslation\d*$/u.test(token)) context[token] = translation
+    if (/^import_jsx_runtime\d*$/u.test(token))
+      context[token] = { jsx, jsxs: jsx }
+    if (/^import_react_i18next(?:\d*|_tax_table)$/u.test(token))
+      context[token] = { useTranslation: translation }
+    if (/^import_react\d*$/u.test(token)) context[token] = { useMemo: memo }
+    if (/^(?:Container|Heading|Text|Button)\d*$/u.test(token))
+      context[token] = token.replace(/\d+$/u, "").toLowerCase()
+    if (/^import_ui\d*$/u.test(token))
+      context[token] = {
+        Container: "container",
+        Heading: "heading",
+        Text: "text",
+        Button: "button",
+      }
+    if (/^import_react_query\d*$/u.test(token))
+      context[token] = { keepPreviousData: "keep-previous" }
+  }
+  return context
+}
+
+for (const entry of ["chunk-QIJSUXW3.mjs", "app.js"]) {
+  test(`${entry}: native global search requires open and current nonempty text`, () => {
+    const expression = nativeArrow(entry, "useDynamicSearchResults")
+    const hooks = [
+      ...new Set(
+        expression.match(
+          /\buse(?:Orders|Products|Variants|ProductCategories|Collections|Customers|CustomerGroups|InventoryItems|Promotions|Campaigns|PriceLists|Users|Regions|TaxRegions|ReturnReasons|SalesChannels|ProductTypes|ProductTags|StockLocations|ShippingProfiles|ApiKeys)\b/gu
+        )
+      ),
+    ]
+    assert.equal(hooks.length, 21)
+    for (const [open, q, debounced, area, enabled] of [
+      [false, "record", "record", "all", 0],
+      [true, undefined, "record", "all", 0],
+      [true, "", "record", "all", 0],
+      [true, "  ", "record", "all", 0],
+      [true, "record", "  ", "all", 0],
+      [true, "record", "record", "navigation", 0],
+      [true, " record ", " record ", "all", 22],
+      [true, "#12", "#12", "order", 1],
+    ]) {
+      const calls = []
+      const context = nativeSettingsContext(expression, {
+        useDebouncedSearch: () => debounced,
+        useCallback2: (fn) => fn,
+        isAreaEnabled: (current, target) =>
+          current === "all" || current === target,
+        transformDynamicSearchResults: () => ({ items: [] }),
+        keepPreviousData: "keep-previous",
+      })
+      for (const token of new Set(expression.match(/\bimport_react\d*\b/gu)))
+        context[token] = { useMemo: (fn) => fn(), useCallback: (fn) => fn }
+      for (const hook of hooks)
+        context[hook] = (query, options) => {
+          calls.push({ hook, query, options })
+          return { count: 0, isFetching: false }
+        }
+      vm.runInNewContext(`(${expression})`, context)(area, 3, q, open)
+      assert.equal(calls.length, 22, "Hooks stay mounted in the same order")
+      assert.equal(calls.filter((call) => call.options.enabled).length, enabled)
+      assert.ok(calls.every((call) => call.query.limit === 3))
+      const order = calls.find((call) => call.hook === "useOrders")
+      assert.equal(order.query.q, debounced?.replace(/^#/, ""))
+      const product = calls.find((call) => call.hook === "useProducts")
+      assert.equal(product.query.q, debounced, "Wire query text is preserved")
+    }
+    const outer = nativeArrow(entry, "useSearchResults")
+    let forwarded
+    vm.runInNewContext(`(${outer})`, {
+      useStaticSearchResults: () => [],
+      useDynamicSearchResults: (...args) => {
+        forwarded = args
+        return {}
+      },
+    })({ q: "record", limit: 7, area: "product", isOpen: false })
+    assert.deepEqual(JSON.parse(JSON.stringify(forwarded)), [
+      "product",
+      7,
+      "record",
+      false,
+    ])
+  })
+}
+
+for (const entry of ["user-list-NEIF3D5L.mjs", "app.js"]) {
+  test(`${entry}: native Users preserves date queries and recovers malformed JSON`, () => {
+    const expression = nativeArrow(entry, "UserListTable")
+    const gte = { $gte: "2026-10-01T00:00:00.000Z" }
+    const lt = { $lt: "2026-10-09T00:00:00.000Z" }
+    const eq = { $eq: "2026-10-01T00:00:00.000Z" }
+    const range = { ...gte, ...lt }
+    const cases = [
+      [undefined, undefined, undefined, undefined],
+      ["", "", undefined, undefined],
+      [JSON.stringify(gte), JSON.stringify(lt), gte, lt],
+      [JSON.stringify(range), JSON.stringify(range), range, range],
+      [JSON.stringify(eq), JSON.stringify(eq), eq, eq],
+      ["not-json", JSON.stringify(lt), undefined, lt],
+      [JSON.stringify(gte), "{", gte, undefined],
+      ["not-json", "[", undefined, undefined],
+      // Valid JSON still reaches native validation with its original shape.
+      ["false", "[1]", false, [1]],
+      ["null", "null", null, null],
+    ]
+    for (const [created, updated, expectedCreated, expectedUpdated] of cases) {
+      let requested, params, placeholder
+      let reads = 0
+      const context = nativeSettingsContext(expression, {
+        useQueryParams: (keys) => {
+          requested = keys
+          return {
+            q: "owned",
+            order: "-email",
+            offset: "20",
+            created_at: created,
+            updated_at: updated,
+          }
+        },
+        useUsers: (query, options) => {
+          reads++
+          params = query
+          placeholder = options.placeholderData
+          return { users: [], count: 21 }
+        },
+        useColumns: () => [],
+        useColumns39: () => [],
+        useFilters: () => [],
+        useFilters3: () => [],
+        PAGE_SIZE: 20,
+        PAGE_SIZE52: 20,
+        DataTable: "table",
+        Container: "container",
+        keepPreviousData: "keep-previous",
+      })
+      vm.runInNewContext(`(${expression})`, context)()
+      assert.equal(reads, 1)
+      assert.ok(
+        requested.includes("created_at") && requested.includes("updated_at")
+      )
+      assert.equal(params.q, "owned")
+      assert.equal(params.order, "-email")
+      assert.equal(params.offset, 20)
+      assert.equal(params.limit, 20)
+      assert.equal(placeholder, "keep-previous")
+      assert.equal(
+        JSON.stringify(params.created_at),
+        JSON.stringify(expectedCreated)
+      )
+      assert.equal(
+        JSON.stringify(params.updated_at),
+        JSON.stringify(expectedUpdated)
+      )
+    }
+  })
+}
+
+for (const distribution of ["esm", "cjs"]) {
+  test(`${distribution}: native Users date chips remain removable for malformed URL text`, () => {
+    const datePredicate = nativeArrow(
+      `${distribution}/blocks/data-table/utils/is-date-comparison-operator.js`,
+      "isDateComparisonOperator",
+      uiRoot
+    )
+    assert.match(
+      datePredicate,
+      /^(?:export )?function isDateComparisonOperator\(value\) \{/u
+    )
+    const isDateComparisonOperator = vm.runInNewContext(
+      `(${datePredicate.startsWith("export ") ? datePredicate.slice(7) : datePredicate})`
+    )
+    const isDateFilterProps = vm.runInNewContext(
+      `(${nativeArrow(
+        `${distribution}/blocks/data-table/components/data-table-filter.js`,
+        "isDateFilterProps",
+        uiRoot
+      )})`
+    )
+    const removed = []
+    const formatted = []
+    const gte = { $gte: "2026-10-01T00:00:00.000Z" }
+    const meta = {
+      type: "date",
+      label: "Created at",
+      options: [{ value: gte, label: "Owned preset" }],
+      rangeOptionStartLabel: "Starting",
+      rangeOptionEndLabel: "Ending",
+      formatDateValue: (date) => {
+        assert.ok(Number.isFinite(date.getTime()))
+        formatted.push(date.toISOString())
+        return date.toISOString().slice(0, 10)
+      },
+    }
+    const filter = nativeMenuHarness(
+      distribution,
+      "filter",
+      {
+        getFilterMeta: () => meta,
+        removeFilter: (id) => removed.push(id),
+      },
+      {
+        isDateComparisonOperator,
+        is_date_comparison_operator_1: { isDateComparisonOperator },
+        isDateFilterProps,
+        DataTableFilterDateContent: "date-content",
+      }
+    )
+    for (const raw of ["not-json", "{", "["]) {
+      const tree = filter({ id: "created_at", filter: raw })
+      const remove = menuNodes(tree, "button").find(
+        (node) => node.props["aria-label"] === "Remove: Created at"
+      )
+      assert.ok(remove)
+      assert.equal(remove.props.type, "button")
+      assert.equal(menuNodes(tree, "date-content").length, 1)
+      // An unsupported raw URL value is not presented as a valid date range.
+      assert.deepEqual(menuNodes(tree, "button")[0].props.children, ["\u00a0"])
+      assert.equal(formatted.length, 0)
+      remove.props.onClick()
+      assert.equal(removed.at(-1), "created_at")
+      let prevented = false
+      menuNodes(tree, "popover-content")[0].props.onCloseAutoFocus({
+        preventDefault: () => {
+          prevented = true
+        },
+      })
+      assert.equal(prevented, false)
+    }
+    assert.deepEqual(removed, ["created_at", "created_at", "created_at"])
+    const preset = filter({ id: "created_at", filter: gte })
+    assert.deepEqual(menuNodes(preset, "button")[0].props.children, [
+      "Owned preset",
+    ])
+    const range = filter({
+      id: "created_at",
+      filter: { ...gte, $lte: "2026-10-09T00:00:00.000Z" },
+    })
+    assert.deepEqual(menuNodes(range, "button")[0].props.children, [
+      "2026-10-01 - 2026-10-09",
+    ])
+    assert.deepEqual(formatted, [
+      "2026-10-01T00:00:00.000Z",
+      "2026-10-09T00:00:00.000Z",
+    ])
+  })
+}
+
+for (const entry of ["tax-region-list-A4DKSYFI.mjs", "app.js"]) {
+  test(`${entry}: native Tax regions honors selected order and country default`, () => {
+    const expression = nativeArrow(entry, "TaxRegionListView")
+    for (const order of [undefined, "created_at", "-updated_at"]) {
+      let params
+      const context = nativeSettingsContext(expression, {
+        useTaxRegionTableQuery: () => ({
+          searchParams: { order, offset: 20, limit: 20 },
+          raw: {},
+        }),
+        useTaxRegions: (query) => {
+          params = query
+          return { tax_regions: [], count: 21 }
+        },
+        useTaxRegionTable: () => ({ table: {} }),
+        TaxRegionTable: "tax-table",
+        Container: "container",
+        Heading: "heading",
+        Text: "text",
+        PAGE_SIZE: 20,
+        PAGE_SIZE78: 20,
+        keepPreviousData: "keep-previous",
+      })
+      // The emitted CJS page-size symbol is scoped by its compiled function.
+      for (const token of expression.match(/\bPAGE_SIZE\d*\b/gu) || [])
+        context[token] = 20
+      vm.runInNewContext(`(${expression})`, context)()
+      assert.equal(params.order, order ?? "country_code")
+      assert.equal(params.parent_id, "null")
+      assert.equal(params.offset, 20)
+      assert.equal(params.limit, 20)
+    }
+  })
+}
+
+for (const entry of ["chunk-Q6FVJ7BC.mjs", "app.js"]) {
+  test(`${entry}: native Tax sort has translated typed choices in both loading states`, () => {
+    const expression = nativeArrow(entry, "TaxRegionTable")
+    const table = {
+      getState: () => ({ pagination: { pageIndex: 0, pageSize: 20 } }),
+      getRowModel: () => ({ rows: [] }),
+      getCanNextPage: () => true,
+      getCanPreviousPage: () => false,
+      nextPage: () => {},
+      previousPage: () => {},
+      getPageCount: () => 2,
+    }
+    const context = nativeSettingsContext(expression, {
+      DataTableOrderBy: "sort",
+      LocalizedTablePagination: "pagination",
+      Link: "link",
+      NoRecords: "empty",
+      NoResults: "no-results",
+      TaxRegionCard: "card",
+      TableFooterSkeleton: "skeleton",
+      Button: "button",
+    })
+    for (const token of expression.match(/\bimport_react_router_dom\d*\b/gu) ||
+      [])
+      context[token] = { Link: "link" }
+    const render = vm.runInNewContext(`(${expression})`, context)
+    const pending = render({
+      isPending: true,
+      table,
+      action: {},
+      queryObject: {},
+    })
+    assert.equal(menuNodes(pending, "sort").length, 0)
+    const tree = render({
+      isPending: false,
+      count: 21,
+      prefix: "p",
+      table,
+      action: { label: "Create", to: "create" },
+      queryObject: { order: "-updated_at" },
+    })
+    const sort = menuNodes(tree, "sort")[0]
+    assert.equal(sort.props.prefix, "p")
+    assert.deepEqual(JSON.parse(JSON.stringify(sort.props.keys)), [
+      { key: "updated_at", label: "fields.updatedAt" },
+      { key: "created_at", label: "fields.createdAt" },
+    ])
+    assert.equal(menuNodes(tree, "pagination")[0].props.prefix, "p")
+  })
+}
+
+for (const entry of ["tax-region-detail-3IQOYPXE.mjs", "app.js"]) {
+  test(`${entry}: native Tax province controls and reads share the p query namespace`, () => {
+    const expression = nativeArrow(entry, "TaxRegionProvinceSection")
+    const queryPrefixes = [],
+      tablePrefixes = []
+    const context = nativeSettingsContext(expression, {
+      useTaxRegionTableQuery: (options) => {
+        queryPrefixes.push(options.prefix)
+        return { searchParams: {}, raw: {} }
+      },
+      useTaxRegions: () => ({ tax_regions: [], count: 21 }),
+      useTaxRegionTable: (options) => {
+        tablePrefixes.push(options.prefix)
+        return { table: {} }
+      },
+      getCountryProvinceObjectByIso2: () => ({ type: "province" }),
+      TaxRegionTable: "tax-table",
+      Container: "container",
+      Heading: "heading",
+      keepPreviousData: "keep-previous",
+    })
+    for (const token of expression.match(/\bPREFIX\d*\b/gu) || [])
+      context[token] = "p"
+    for (const token of expression.match(/\bPAGE_SIZE\d*\b/gu) || [])
+      context[token] = 10
+    const tree = vm.runInNewContext(
+      `(${expression})`,
+      context
+    )({
+      taxRegion: { id: "txreg_owned", country_code: "us", children: [] },
+      showSublevelRegions: true,
+    })
+    assert.deepEqual(queryPrefixes, ["p"])
+    assert.deepEqual(tablePrefixes, ["p"])
+    assert.equal(menuNodes(tree, "tax-table")[0].props.prefix, "p")
+  })
+}
+
+// Render the shipped field callbacks with the real React 18, native Form/Slot
+// and Medusa Select. These are label/control regressions, not browser or native
+// mutation acceptance substitutes.
+const nativeSelectField = (entry, component, fieldName) => {
+  const ts = backendRequire("typescript")
+  const expression = nativeArrow(entry, component)
+  const parsed = ts.createSourceFile(
+    entry,
+    expression,
+    ts.ScriptTarget.Latest,
+    true
+  )
+  const matches = []
+  const visit = (node) => {
+    if (ts.isObjectLiteralExpression(node)) {
+      const property = (name) =>
+        node.properties.find(
+          (candidate) =>
+            ts.isPropertyAssignment(candidate) &&
+            candidate.name.getText(parsed) === name
+        )
+      const name = property("name")?.initializer
+      const render = property("render")?.initializer
+      if (
+        name &&
+        ts.isStringLiteral(name) &&
+        name.text === fieldName &&
+        render &&
+        ts.isArrowFunction(render)
+      )
+        matches.push(render.getText(parsed))
+    }
+    ts.forEachChild(node, visit)
+  }
+  visit(parsed)
+  assert.equal(matches.length, 1)
+  return matches[0]
+}
+
+const nativeSelectRenderContext = (expression, extra = {}) => {
+  const react = dashboardRequire("react")
+  const hookForm = dashboardRequire("react-hook-form")
+  const ui = dashboardRequire("@medusajs/ui")
+  const jsxRuntime = dashboardRequire("react/jsx-runtime")
+  const source = readFileSync(
+    join(dashboardRoot, "dist/chunk-OBQI23QM.mjs"),
+    "utf8"
+  )
+  const start = source.indexOf("var Provider = ")
+  const formStart = source.indexOf("Form = Object.assign(Provider", start)
+  const end = source.indexOf("\n});", formStart) + 4
+  assert.ok(start >= 0 && formStart > start && end > formStart)
+  const translation = () => ({
+    t: (key) =>
+      ({
+        "store.defaultCurrency": "Default currency",
+        "fields.currency": "Currency",
+        "fields.province": "Province",
+      })[key] ?? key,
+  })
+  const { Form, FormFieldContext, FormItemContext } = vm.runInNewContext(
+    `${source.slice(start, end)}; ({ Form, FormFieldContext, FormItemContext });`,
+    {
+      ...react,
+      ...hookForm,
+      ...ui,
+      ...jsxRuntime,
+      LabelComponent: ui.Label,
+      HintComponent: ui.Hint,
+      Slot: dashboardRequire("radix-ui").Slot,
+      useTranslation: translation,
+    }
+  )
+  const context = {
+    ...react,
+    ...ui,
+    ...jsxRuntime,
+    Form,
+    direction: "ltr",
+    t: translation().t,
+    t5: translation().t,
+    useTranslation: translation,
+    ...extra,
+  }
+  for (const token of new Set(expression.match(/[A-Za-z_]\w*/gu))) {
+    if (/^jsx\d*$/u.test(token)) context[token] = jsxRuntime.jsx
+    if (/^jsxs\d*$/u.test(token)) context[token] = jsxRuntime.jsxs
+    if (/^import_jsx_runtime\d*$/u.test(token)) context[token] = jsxRuntime
+    if (/^import_ui\d*$/u.test(token)) context[token] = ui
+    if (/^import_react\d*$/u.test(token)) context[token] = react
+    if (/^import_react_i18next\d*$/u.test(token))
+      context[token] = { useTranslation: translation }
+  }
+  const render = vm.runInNewContext(`(${expression})`, context)
+  const markup = (fieldName, content) => {
+    const Host = () => {
+      const form = hookForm.useForm({ defaultValues: { [fieldName]: "" } })
+      assert.equal(content.type, Form.Item)
+      // Supply the post-mount native Form.Item context explicitly for static
+      // rendering; no fake control, DOM assignment or browser acceptance.
+      const itemContext = {
+        id: "native_owned_field",
+        hasLabel: true,
+        hasHint: false,
+        hasMessage: false,
+      }
+      return react.createElement(
+        Form,
+        { ...form },
+        react.createElement(
+          FormFieldContext.Provider,
+          { value: { name: fieldName } },
+          react.createElement(
+            FormItemContext.Provider,
+            { value: itemContext },
+            content.props.children
+          )
+        )
+      )
+    }
+    return dashboardRequire("react-dom/server").renderToStaticMarkup(
+      react.createElement(Host)
+    )
+  }
+  const assertTarget = (html, label) => {
+    const labels = [
+      ...html.matchAll(/<label\b([^>]*)>([^<]*)<\/label>/gu),
+    ].filter((match) => match[2] === label)
+    assert.equal(labels.length, 1)
+    const target = labels[0][1].match(/\bfor="([^"]+)"/u)?.[1]
+    assert.ok(target, "Native label must have a concrete for target")
+    const buttons = [
+      ...html.matchAll(/<button\b([^>]*)>([\s\S]*?)<\/button>/gu),
+    ].filter((match) => match[1].match(/\bid="([^"]+)"/u)?.[1] === target)
+    assert.equal(
+      buttons.length,
+      1,
+      "Native label must identify the real Select trigger"
+    )
+    assert.match(buttons[0][1], /\brole="combobox"/u)
+    const labelId = labels[0][1].match(/\bid="([^"]+)"/u)?.[1]
+    assert.ok(labelId)
+    assert.equal(
+      buttons[0][1].match(/\baria-labelledby="([^"]+)"/u)?.[1],
+      labelId
+    )
+    assert.equal(
+      [...html.matchAll(/\bid="([^"]+)"/gu)].filter(
+        (match) => match[1] === target
+      ).length,
+      1
+    )
+  }
+  return { render, markup, assertTarget, Form, react, ui }
+}
+
+for (const [lazy, component, fieldName, label, values, selected, texts] of [
+  [
+    "store-edit-W24ZGNNJ.mjs",
+    "EditStoreForm",
+    "default_currency_code",
+    "Default currency",
+    ["usd", "eur"],
+    "usd",
+    ["USD", "EUR"],
+  ],
+  [
+    "region-create-UOKF5UOS.mjs",
+    "CreateRegionForm",
+    "currency_code",
+    "Currency",
+    ["USD", "EUR"],
+    "USD",
+    ["US Dollar", "Euro"],
+  ],
+  [
+    "region-edit-KMTFCMZN.mjs",
+    "EditRegionForm",
+    "currency_code",
+    "Currency",
+    ["USD", "EUR"],
+    "USD",
+    ["USD", "EUR"],
+  ],
+]) {
+  for (const entry of [lazy, "app.js"]) {
+    test(`${entry} ${component}: native label identifies its real Select trigger and preserves currency state`, () => {
+      const expression = nativeSelectField(entry, component, fieldName)
+      const currencies = [
+        { code: "USD", name: "US Dollar" },
+        { code: "EUR", name: "Euro" },
+      ]
+      const harness = nativeSelectRenderContext(expression, {
+        currencies,
+        currencies2: currencies,
+        store: {
+          supported_currencies: [
+            { currency_code: "usd" },
+            { currency_code: "eur" },
+          ],
+        },
+      })
+      const changes = []
+      const blur = () => {},
+        ref = () => {}
+      const onChange = (value) => changes.push(value)
+      const tree = harness.render({
+        field: {
+          name: fieldName,
+          value: selected,
+          onChange,
+          onBlur: blur,
+          ref,
+        },
+      })
+      const select = menuNodes(tree, harness.ui.Select)
+      assert.equal(select.length, 1)
+      assert.equal(select[0].props.value, selected)
+      assert.equal(select[0].props.name, fieldName)
+      assert.equal(select[0].props.dir, "ltr")
+      assert.equal(select[0].props.onValueChange, onChange)
+      const controls = menuNodes(tree, harness.Form.Control)
+      assert.equal(controls.length, 1)
+      assert.equal(controls[0].props.children.type, harness.ui.Select.Trigger)
+      assert.equal(controls[0].props.children.ref, ref)
+      assert.equal(menuNodes(controls[0], harness.ui.Select).length, 0)
+      const options = menuNodes(tree, harness.ui.Select.Item)
+      assert.deepEqual(
+        options.map((option) => option.props.value),
+        values
+      )
+      assert.deepEqual(
+        options.map((option) => option.props.children),
+        texts
+      )
+      select[0].props.onValueChange(values[1])
+      assert.deepEqual(changes, [values[1]])
+      harness.assertTarget(harness.markup(fieldName, tree), label, texts[0])
+    })
+  }
+}
+
+for (const entry of ["tax-region-province-create-CPXYTVAN.mjs", "app.js"]) {
+  test(`${entry}: native ProvinceSelect forwards mounted label/control attributes to its real trigger`, () => {
+    const ts = backendRequire("typescript")
+    const parsed = ts.createSourceFile(
+      entry,
+      readFileSync(join(dashboardRoot, "dist", entry), "utf8"),
+      ts.ScriptTarget.Latest,
+      true
+    )
+    const matches = []
+    const visit = (node) => {
+      const assigned =
+        ts.isVariableDeclaration(node) &&
+        node.name.getText(parsed) === "ProvinceSelect"
+          ? node.initializer
+          : ts.isBinaryExpression(node) &&
+              node.left.getText(parsed) === "ProvinceSelect"
+            ? node.right
+            : null
+      if (
+        assigned &&
+        ts.isCallExpression(assigned) &&
+        assigned.expression.getText(parsed).includes("forwardRef") &&
+        ts.isArrowFunction(assigned.arguments[0])
+      )
+        matches.push(assigned.arguments[0].getText(parsed))
+      ts.forEachChild(node, visit)
+    }
+    visit(parsed)
+    assert.equal(matches.length, 1)
+    const harness = nativeSelectRenderContext(matches[0], {
+      getCountryProvinceObjectByIso2: (country) =>
+        country === "ca"
+          ? { type: "province", options: { ON: "Ontario", QC: "Quebec" } }
+          : undefined,
+    })
+    const NativeProvince = harness.react.forwardRef(harness.render)
+    const fieldName = "province_code"
+    const label = harness.react.createElement(
+      harness.Form.Label,
+      {},
+      "Province"
+    )
+    const control = harness.react.createElement(
+      harness.Form.Control,
+      {},
+      harness.react.createElement(NativeProvince, {
+        name: fieldName,
+        country_code: "ca",
+        value: "ON",
+        onChange: () => {},
+      })
+    )
+    const tree = harness.react.createElement(
+      harness.Form.Item,
+      {},
+      label,
+      control
+    )
+    harness.assertTarget(harness.markup(fieldName, tree), "Province", "Ontario")
+    const proof = {
+      id: "native-province-trigger",
+      "aria-labelledby": "native-province-label",
+      "aria-describedby": "native-province-help",
+      "aria-invalid": true,
+      "aria-label": "Owned province",
+    }
+    const Host = () =>
+      harness.react.createElement(NativeProvince, {
+        ...proof,
+        name: fieldName,
+        country_code: "ca",
+        value: "ON",
+        onChange: () => {},
+      })
+    const html = dashboardRequire("react-dom/server").renderToStaticMarkup(
+      harness.react.createElement(Host)
+    )
+    const button = [...html.matchAll(/<button\b([^>]*)>/gu)].find((match) =>
+      match[1].includes('id="native-province-trigger"')
+    )
+    assert.ok(button)
+    for (const [name, value] of Object.entries(proof))
+      assert.ok(
+        button[1].includes(`${name}="${value}"`),
+        `Native trigger must preserve ${name}`
+      )
+    assert.equal(
+      [...html.matchAll(/\bid="native-province-trigger"/gu)].length,
+      1
+    )
+  })
+}
+
+// Render each shipped NoRecords and NoResults implementation with native
+// React 18, Medusa Text/Button and router links. Preserve empty-state semantics
+// while guarding the real message class used by the observed dark-role failure.
+const nativeEmptyStateHarness = (entry) => {
+  const react = dashboardRequire("react")
+  const ui = dashboardRequire("@medusajs/ui")
+  const icons = dashboardRequire("@medusajs/icons")
+  const router = dashboardRequire("react-router-dom")
+  const { StaticRouter } = dashboardRequire("react-router-dom/server")
+  const jsxRuntime = dashboardRequire("react/jsx-runtime")
+  const translation = () => ({
+    t: (key) =>
+      ({
+        "general.noRecordsTitle": "No records",
+        "general.noRecordsMessage": "No records have been created.",
+        "general.noResultsTitle": "No results",
+        "general.noResultsMessage": "Change your search and try again.",
+      })[key] ?? key,
+  })
+  const context = {
+    ...react,
+    ...ui,
+    ...icons,
+    ...router,
+    ...jsxRuntime,
+    Text: ui.Text,
+    Button: ui.Button,
+    clx: ui.clx,
+    useTranslation: translation,
+  }
+  const expressions = Object.fromEntries(
+    [
+      "DefaultButton",
+      "TransparentIconLeftButton",
+      "NoRecords",
+      "NoResults",
+    ].map((name) => [name, nativeArrow(entry, name)])
+  )
+  for (const expression of Object.values(expressions)) {
+    for (const token of new Set(expression.match(/[A-Za-z_]\w*/gu))) {
+      if (/^import_jsx_runtime\d*$/u.test(token)) context[token] = jsxRuntime
+      if (/^import_ui\d*$/u.test(token)) context[token] = ui
+      if (/^import_icons\d*$/u.test(token)) context[token] = icons
+      if (/^import_react_router_dom\d*$/u.test(token)) context[token] = router
+      if (/^import_react_i18next\d*$/u.test(token))
+        context[token] = { useTranslation: translation }
+    }
+  }
+  for (const name of ["DefaultButton", "TransparentIconLeftButton"])
+    context[name] = vm.runInNewContext(`(${expressions[name]})`, context)
+  const components = Object.fromEntries(
+    ["NoRecords", "NoResults"].map((name) => [
+      name,
+      vm.runInNewContext(`(${expressions[name]})`, context),
+    ])
+  )
+  return {
+    react,
+    render: (name, props = {}) =>
+      dashboardRequire("react-dom/server").renderToStaticMarkup(
+        react.createElement(
+          StaticRouter,
+          { location: "/settings/roles/role_owned" },
+          react.createElement(components[name], props)
+        )
+      ),
+  }
+}
+
+for (const entry of ["chunk-EMIHDNB7.mjs", "app.js"]) {
+  test(`${entry} native NoRecords: readable message preserves empty-table content and actions`, () => {
+    const harness = nativeEmptyStateHarness(entry)
+    const roleMessage = "This role doesn't have users."
+    const encodedRoleMessage = roleMessage.replaceAll("'", "&#x27;")
+    const html = harness.render("NoRecords", { message: roleMessage })
+    assert.match(html, /h-\[150px\]/u)
+    assert.match(html, /No records/u)
+    assert.ok(html.includes(encodedRoleMessage))
+    assert.equal([...html.matchAll(/<svg\b/gu)].length, 1)
+    assert.equal([...html.matchAll(/<a\b/gu)].length, 0)
+    assert.equal([...html.matchAll(/<button\b/gu)].length, 0)
+    assert.ok(!html.includes('role="alert"'))
+    const paragraphs = [...html.matchAll(/<p\b([^>]*)>([\s\S]*?)<\/p>/gu)]
+    const message = paragraphs.filter(
+      (match) => match[2] === encodedRoleMessage
+    )
+    assert.equal(message.length, 1)
+    assert.doesNotMatch(message[0][1], /\baria-hidden="true"/u)
+
+    const fallback = harness.render("NoRecords")
+    assert.match(fallback, /No records have been created\./u)
+    const custom = harness.render("NoRecords", {
+      title: "No assigned users",
+      message: roleMessage,
+      className: "owned-empty-layout",
+      action: {
+        to: "/settings/roles/role_owned/add-users",
+        label: "Add users",
+      },
+      icon: harness.react.createElement("span", {
+        role: "img",
+        "aria-label": "Owned empty illustration",
+      }),
+    })
+    assert.match(custom, /owned-empty-layout/u)
+    assert.match(custom, /No assigned users/u)
+    assert.match(custom, /href="\/settings\/roles\/role_owned\/add-users"/u)
+    assert.match(custom, /<button\b[^>]*>Add users<\/button>/u)
+    assert.match(custom, /role="img" aria-label="Owned empty illustration"/u)
+    assert.equal([...custom.matchAll(/<svg\b/gu)].length, 0)
+    const transparent = harness.render("NoRecords", {
+      message: roleMessage,
+      buttonVariant: "transparentIconLeft",
+      action: {
+        to: "/settings/roles/role_owned/add-users",
+        label: "Add users",
+      },
+    })
+    assert.match(
+      transparent,
+      /href="\/settings\/roles\/role_owned\/add-users"/u
+    )
+    assert.match(transparent, /text-ui-fg-interactive/u)
+    assert.match(transparent, /Add users/u)
+
+    const results = harness.render("NoResults", {
+      title: "No matching users",
+      message: "Change the search filter.",
+      className: "owned-results-layout",
+    })
+    assert.match(results, /h-\[400px\]/u)
+    assert.match(results, /owned-results-layout/u)
+    assert.match(results, /No matching users/u)
+    const resultsMessage = [
+      ...results.matchAll(/<p\b([^>]*)>([\s\S]*?)<\/p>/gu),
+    ].filter((match) => match[2] === "Change the search filter.")
+    assert.equal(resultsMessage.length, 1)
+    assert.match(resultsMessage[0][1], /\btext-ui-fg-subtle\b/u)
+    assert.equal([...results.matchAll(/<a\b/gu)].length, 0)
+    assert.equal([...results.matchAll(/<button\b/gu)].length, 0)
+    // The observed real paragraph must use the same readable existing token
+    // as native NoResults. Actual browser Axe remains a separate acceptance.
+    assert.match(message[0][1], /\btext-ui-fg-subtle\b/u)
+    assert.doesNotMatch(message[0][1], /\btext-ui-fg-muted\b/u)
+  })
+}
+
+// Exercise both emitted FocusModal.Title forwarding callbacks and render their
+// actual Radix Title with native React 18. Class names belong to caller styling;
+// refs, arbitrary primitive props and heading semantics must stay intact.
+for (const distribution of ["esm", "cjs"]) {
+  test(`${distribution} native FocusModal.Title: forwards caller class with primitive props and ref`, () => {
+    const uiRequire = createRequire(join(uiRoot, "package.json"))
+    const react = uiRequire("react")
+    const dialog = uiRequire("radix-ui").Dialog
+    const entry = `${distribution}/components/focus-modal/focus-modal.js`
+    const ts = backendRequire("typescript")
+    const parsed = ts.createSourceFile(
+      entry,
+      readFileSync(join(uiRoot, "dist", entry), "utf8"),
+      ts.ScriptTarget.Latest,
+      true
+    )
+    const matches = []
+    const visit = (node) => {
+      if (
+        ts.isVariableDeclaration(node) &&
+        node.name.getText(parsed) === "FocusModalTitle" &&
+        node.initializer &&
+        ts.isCallExpression(node.initializer) &&
+        node.initializer.expression.getText(parsed).endsWith(".forwardRef") &&
+        ts.isArrowFunction(node.initializer.arguments[0])
+      )
+        matches.push(node.initializer.arguments[0].getText(parsed))
+      ts.forEachChild(node, visit)
+    }
+    visit(parsed)
+    assert.equal(matches.length, 1)
+    const render = vm.runInNewContext(`(${matches[0]})`, {
+      React: react,
+      RadixDialog: dialog,
+      radix_ui_1: { Dialog: dialog },
+    })
+    const ref = react.createRef()
+    const clicked = () => "owned-title-click"
+    const props = {
+      id: "owned-modal-title",
+      className: "owned-modal-heading text-ui-fg-base txt-large-plus",
+      "aria-describedby": "owned-modal-description",
+      "data-owned-context": "publication",
+      onClick: clicked,
+      children: "Readable native News title",
+    }
+    const element = render(props, ref)
+    assert.equal(element.type, dialog.Title)
+    assert.equal(element.ref, ref)
+    assert.equal(element.props.id, props.id)
+    assert.equal(element.props["aria-describedby"], props["aria-describedby"])
+    assert.equal(
+      element.props["data-owned-context"],
+      props["data-owned-context"]
+    )
+    assert.equal(element.props.onClick, clicked)
+    assert.equal(element.props.children, props.children)
+    const childElement = render({ ...props, asChild: true }, ref)
+    assert.equal(childElement.props.asChild, true)
+    assert.equal(childElement.ref, ref)
+    const unstyled = render({ children: "Unstyled title" }, ref)
+    assert.equal(unstyled.props.className, undefined)
+    assert.equal(unstyled.props.children, "Unstyled title")
+    const Title = react.forwardRef(render)
+    const html = uiRequire("react-dom/server").renderToStaticMarkup(
+      react.createElement(
+        dialog.Root,
+        { open: true },
+        react.createElement(Title, props)
+      )
+    )
+    const headings = [...html.matchAll(/<h2\b([^>]*)>([^<]*)<\/h2>/gu)]
+    assert.equal(headings.length, 1)
+    assert.equal(headings[0][2], props.children)
+    assert.match(headings[0][1], /\bid="owned-modal-title"/u)
+    assert.match(
+      headings[0][1],
+      /\baria-describedby="owned-modal-description"/u
+    )
+    assert.match(headings[0][1], /\bdata-owned-context="publication"/u)
+    assert.doesNotMatch(headings[0][1], /\baria-hidden="true"/u)
+    // These assertions fail on the real shipped className-drop defect; no
+    // fabricated Title or post-render DOM/style assignment is involved.
+    assert.equal(element.props.className, props.className)
+    assert.equal(childElement.props.className, props.className)
+    assert.ok(headings[0][1].includes(`class="${props.className}"`))
+  })
+}
+
+// Execute the shipped form against server pages; its emitted code owns the diff.
+const nativeRolePolicyHarness = (entry, roleIds, failures = {}) => {
+  const expression = nativeArrow(entry, "EditRolePermissionsForm")
+  const calls = {
+    queries: [],
+    added: [],
+    removed: [],
+    errors: [],
+    successes: 0,
+  }
+  const refs = []
+  let state,
+    refIndex = 0,
+    effects = [],
+    formPolicies = [...roleIds]
+  let page = { offset: 0, ids: [], pending: false, error: null }
+  const form = {
+    setValue: (field, value) => {
+      assert.equal(field, "policies")
+      formPolicies = Array.from(value)
+    },
+    handleSubmit: (submit) => () => submit({ policies: [...formPolicies] }),
+  }
+  const react = {
+    useMemo: (callback) => callback(),
+    useState: (initial) => {
+      state ??= { ...initial }
+      return [
+        state,
+        (value) => {
+          state = typeof value === "function" ? value(state) : value
+        },
+      ]
+    },
+    useRef: (initial) => {
+      const index = refIndex++
+      refs[index] ??= { current: initial }
+      return refs[index]
+    },
+    useEffect: (callback) => effects.push(callback),
+  }
+  const useRbacAssignablePolicies = (query) => {
+    calls.queries.push(query ? { ...query } : null)
+    if (!query) {
+      return {
+        data: {
+          policies: Array.from({ length: 20 }, (_, i) => ({
+            id: "policy_" + i,
+          })),
+          count: 42,
+        },
+        isPending: false,
+      }
+    }
+    assert.equal(query.limit, 20)
+    assert.equal(query.offset, page.offset)
+    return {
+      data: { policies: page.ids.map((id) => ({ id })), count: 42 },
+      isPending: page.pending,
+      isError: !!page.error,
+      error: page.error,
+    }
+  }
+  const useAddRbacRolePolicies = (roleId) => {
+    assert.equal(roleId, "role_owned")
+    return {
+      isPending: false,
+      mutateAsync: async (body) => {
+        calls.added.push(Array.from(body.policies))
+        if (failures.add) throw failures.add
+      },
+    }
+  }
+  const useMutation = ({ mutationFn, onSuccess }) => ({
+    isPending: false,
+    mutateAsync: async (value) => {
+      await mutationFn(value)
+      await onSuccess?.()
+    },
+  })
+  const ui = {
+    Button: "role-button",
+    toast: { error: (message) => calls.errors.push(message) },
+  }
+  const context = nativeSettingsContext(expression, {
+    ...react,
+    Error,
+    useForm: () => form,
+    zodResolver: () => undefined,
+    EditRolePermissionsSchema: {},
+    useRbacAssignablePolicies,
+    useAddRbacRolePolicies,
+    useMutation,
+    keepPreviousData: "previous",
+    Button: ui.Button,
+    toast: ui.toast,
+    useRouteModal: () => ({ handleSuccess: () => calls.successes++ }),
+    useQueryParams: () => ({ offset: String(page.offset) }),
+    usePolicyColumns: () => [],
+    usePolicyColumns2: () => [],
+    RouteDrawer: {
+      Form: "role-form",
+      Body: "role-body",
+      Footer: "role-footer",
+      Close: "role-close",
+    },
+    KeyboundForm: "role-keybound",
+    DataTable: "role-table",
+    sdk: {
+      admin: {
+        rbacRole: {
+          removePolicy: async (roleId, policyId) => {
+            assert.equal(roleId, "role_owned")
+            calls.removed.push(policyId)
+            if (failures.remove) throw failures.remove
+          },
+        },
+      },
+    },
+    queryClient: { invalidateQueries: () => {} },
+    rbacRolesQueryKeys: {
+      policies: (id) => [id, "policies"],
+      detail: (id) => [id, "detail"],
+      lists: () => ["roles"],
+    },
+  })
+  context.Button = ui.Button
+  for (const token of new Set(expression.match(/[A-Za-z_]\w*/gu))) {
+    if (/^import_react\d*$/u.test(token)) context[token] = react
+    if (/^import_react_hook_form\d*$/u.test(token))
+      context[token] = { useForm: () => form }
+    if (/^import_zod\d*$/u.test(token))
+      context[token] = { zodResolver: () => undefined }
+    if (/^import_ui\d*$/u.test(token)) context[token] = ui
+    if (/^import_react_query\d*$/u.test(token))
+      context[token] = { useMutation, keepPreviousData: "previous" }
+    if (/^PAGE_SIZE\d*$/u.test(token)) context[token] = 20
+    if (/^PREFIX\d*$/u.test(token)) context[token] = "rp"
+  }
+  const native = vm.runInNewContext("(" + expression + ")", context)
+  let tree
+  const render = (offset, ids, changes = {}) => {
+    page = { offset, ids, pending: false, error: null, ...changes }
+    refIndex = 0
+    effects = []
+    tree = native({
+      role: { id: "role_owned", policies: roleIds.map((id) => ({ id })) },
+    })
+    return tree
+  }
+  const changeSelection = (update) => {
+    const table = menuNodes(tree, "role-table")
+    assert.equal(table.length, 1)
+    table[0].props.rowSelection.onRowSelectionChange(update)
+  }
+  const submit = () => {
+    const keybound = menuNodes(tree, "role-keybound")
+    assert.equal(keybound.length, 1)
+    return keybound[0].props.onSubmit()
+  }
+  const save = () =>
+    menuNodes(tree, "role-button").find((node) => node.props.type === "submit")
+  return {
+    calls,
+    render,
+    changeSelection,
+    submit,
+    save,
+    flushEffects: () => {
+      const pending = effects
+      effects = []
+      pending.forEach((run) => run())
+    },
+    // Selection's retained first effect updates RHF, before the seen-page effect.
+    flushSelectionEffect: () => effects.shift()?.(),
+  }
+}
+
+for (const entry of ["role-permissions-NPOK4K7X.mjs", "app.js"]) {
+  test(
+    entry +
+      ": native role policy removal beyond first20 preserves unseen sibling before page effect",
+    async () => {
+      const h = nativeRolePolicyHarness(entry, ["policy_late", "policy_hidden"])
+      h.render(20, ["policy_late"])
+      h.changeSelection((previous) => {
+        const next = { ...previous }
+        delete next.policy_late
+        return next
+      })
+      h.render(20, ["policy_late"])
+      h.flushSelectionEffect()
+      await h.submit()
+      assert.deepEqual(h.calls.removed, ["policy_late"])
+      assert.deepEqual(h.calls.added, [])
+      assert.equal(h.calls.successes, 1)
+      assert.equal(h.calls.queries.filter((query) => query === null).length, 0)
+    }
+  )
+
+  test(
+    entry +
+      ": native role policy removal retains previously visited page scope",
+    async () => {
+      const h = nativeRolePolicyHarness(entry, [
+        "policy_visited",
+        "policy_hidden",
+      ])
+      h.render(20, ["policy_visited"])
+      h.flushEffects()
+      h.changeSelection((previous) => {
+        const next = { ...previous }
+        delete next.policy_visited
+        return next
+      })
+      h.render(40, ["policy_other"])
+      h.flushEffects()
+      await h.submit()
+      assert.deepEqual(h.calls.removed, ["policy_visited"])
+      assert.deepEqual(h.calls.added, [])
+      assert.equal(h.calls.successes, 1)
+    }
+  )
+
+  test(
+    entry + ": native role policy selections persist across server pages",
+    async () => {
+      const h = nativeRolePolicyHarness(entry, ["policy_hidden"])
+      h.render(0, ["policy_first"])
+      h.flushEffects()
+      h.changeSelection((previous) => ({ ...previous, policy_first: true }))
+      h.render(0, ["policy_first"])
+      h.flushEffects()
+      h.render(20, ["policy_second"])
+      h.flushEffects()
+      h.changeSelection((previous) => ({ ...previous, policy_second: true }))
+      h.render(20, ["policy_second"])
+      h.flushEffects()
+      await h.submit()
+      assert.deepEqual(h.calls.added, [["policy_first", "policy_second"]])
+      assert.deepEqual(h.calls.removed, [])
+      assert.equal(h.calls.successes, 1)
+    }
+  )
+
+  test(entry + ": native role policy pending page disables Save", () => {
+    const h = nativeRolePolicyHarness(entry, ["policy_hidden"])
+    h.render(20, ["policy_late"], { pending: true })
+    assert.equal(h.save().props.disabled, true)
+    assert.deepEqual(h.calls.added, [])
+    assert.deepEqual(h.calls.removed, [])
+    assert.equal(h.calls.successes, 0)
+  })
+
+  test(
+    entry + ": native role policy page failure retains native error boundary",
+    () => {
+      const expected = new Error("Owned policy page failed")
+      const h = nativeRolePolicyHarness(entry, ["policy_hidden"])
+      assert.throws(
+        () => h.render(20, [], { error: expected }),
+        (error) => error === expected
+      )
+      assert.deepEqual(h.calls.added, [])
+      assert.deepEqual(h.calls.removed, [])
+      assert.equal(h.calls.successes, 0)
+    }
+  )
+
+  test(
+    entry + ": native role policy add failure stops removal and success",
+    async () => {
+      const h = nativeRolePolicyHarness(entry, ["policy_0", "policy_hidden"], {
+        add: new Error("Owned policy add failed"),
+      })
+      h.render(0, ["policy_0", "policy_new"])
+      h.flushEffects()
+      h.changeSelection((previous) => {
+        const next = { ...previous, policy_new: true }
+        delete next.policy_0
+        return next
+      })
+      h.render(0, ["policy_0", "policy_new"])
+      h.flushEffects()
+      await h.submit()
+      assert.deepEqual(h.calls.added, [["policy_new"]])
+      assert.deepEqual(h.calls.removed, [])
+      assert.deepEqual(h.calls.errors, ["Owned policy add failed"])
+      assert.equal(h.calls.successes, 0)
+    }
+  )
+
+  test(
+    entry + ": native role policy remove failure retains error and open drawer",
+    async () => {
+      const h = nativeRolePolicyHarness(entry, ["policy_0", "policy_hidden"], {
+        remove: new Error("Owned policy remove failed"),
+      })
+      h.render(0, ["policy_0"])
+      h.flushEffects()
+      h.changeSelection((previous) => {
+        const next = { ...previous }
+        delete next.policy_0
+        return next
+      })
+      h.render(0, ["policy_0"])
+      h.flushEffects()
+      await h.submit()
+      assert.deepEqual(h.calls.added, [])
+      assert.deepEqual(h.calls.removed, ["policy_0"])
+      assert.deepEqual(h.calls.errors, ["Owned policy remove failed"])
+      assert.equal(h.calls.successes, 0)
+    }
+  )
+  test(
+    entry +
+      ": native role policy projected selection never strips an unseen sibling",
+    async () => {
+      const h = nativeRolePolicyHarness(entry, ["policy_0", "policy_hidden"])
+      h.render(0, ["policy_0"])
+      h.flushEffects()
+      // A partial row-selection projection omits the hidden membership. Removal
+      // remains scoped to policies actually returned by the server, not all IDs.
+      h.changeSelection(() => ({}))
+      h.render(0, ["policy_0"])
+      h.flushEffects()
+      await h.submit()
+      assert.deepEqual(h.calls.removed, ["policy_0"])
+      assert.deepEqual(h.calls.added, [])
+      assert.equal(h.calls.successes, 1)
+    }
+  )
+}
+
+// Execute both shipped handlers; callback/promise and native Title ownership
+// are regression evidence, not initialized authorization or browser acceptance.
+const nativeFeedbackArrow = (entry, name) => nativeArrow(entry, name)
+const nativeFeedbackContext = (expression, extra, ui, jsxRuntime) => {
+  const context = nativeSettingsContext(expression, extra)
+  // The generic factory fills bare/imported UI names. Restore the owned bindings
+  // after it has run, including the genuine Heading used with Radix asChild.
+  Object.assign(context, ui)
+  for (const token of new Set(expression.match(/[A-Za-z_]\w*/gu))) {
+    if (/^import_ui\d*$/u.test(token)) context[token] = ui
+    if (/^import_icons\d*$/u.test(token))
+      context[token] = {
+        PencilSquare: extra.PencilSquare,
+        Trash: extra.Trash,
+      }
+    if (/^useTranslation\d*$/u.test(token))
+      context[token] = extra.useTranslation
+    if (/^import_react_i18next\d*$/u.test(token))
+      context[token] = { useTranslation: extra.useTranslation }
+    if (/^import_react_router_dom\d*$/u.test(token))
+      context[token] = {
+        useNavigate: extra.useNavigate,
+        useParams: extra.useParams,
+      }
+    if (/^import_react_hook_form\d*$/u.test(token))
+      context[token] = { useForm: extra.useForm }
+    if (/^import_zod\d*$/u.test(token))
+      context[token] = { zodResolver: extra.zodResolver }
+    if (jsxRuntime && /^jsx\d*$|^jsxs\d*$/u.test(token))
+      context[token] = token.startsWith("jsxs")
+        ? jsxRuntime.jsxs
+        : jsxRuntime.jsx
+    if (jsxRuntime && /^import_jsx_runtime\d*$/u.test(token))
+      context[token] = jsxRuntime
+  }
+  return context
+}
+const nativeFeedbackMutation = (calls, failure) => {
+  let callbacks
+  const begin = (body, options) => {
+    calls.mutations.push(body)
+    callbacks = options
+    if (failure) options.onError(failure)
+  }
+  return {
+    // TanStack's ordinary mutate returns void; mutateAsync propagates failure.
+    // Both execute the exact native callback supplied by the shipped handler.
+    mutate: (body, options) => {
+      begin(body, options)
+    },
+    mutateAsync: async (body, options) => {
+      begin(body, options)
+      if (failure) throw failure
+    },
+    succeed: (response) => {
+      assert.ok(callbacks)
+      callbacks.onSuccess(response)
+    },
+  }
+}
+const nativeRoleFeedbackHarness = (entry, data, changes = {}) => {
+  const expression = nativeFeedbackArrow(entry, "EditRoleForm")
+  const calls = {
+    mutations: [],
+    errors: [],
+    successes: [],
+    navigations: 0,
+    translations: [],
+  }
+  const mutation = nativeFeedbackMutation(calls, changes.failure)
+  const translation = () => ({
+    t: (key, values) => {
+      calls.translations.push([key, values])
+      return key
+    },
+  })
+  let formOptions
+  const form = { control: {}, handleSubmit: (submit) => () => submit(data) }
+  const useForm = (options) => {
+    formOptions = options
+    return form
+  }
+  const ui = {
+    Button: "feedback-button",
+    Input: "feedback-input",
+    Textarea: "feedback-textarea",
+    toast: {
+      error: (message) => calls.errors.push(message),
+      success: (message) => calls.successes.push(message),
+    },
+  }
+  const context = nativeFeedbackContext(
+    expression,
+    {
+      useTranslation: translation,
+      useForm,
+      zodResolver: () => "native-resolver",
+      EditRoleSchema: "native-schema",
+      useRouteModal: () => ({ handleSuccess: () => calls.navigations++ }),
+      useUpdateRbacRole: (id) => {
+        assert.equal(id, "role_owned")
+        return { ...mutation, isPending: changes.pending ?? false }
+      },
+      RouteDrawer: {
+        Form: "feedback-form",
+        Body: "feedback-body",
+        Footer: "feedback-footer",
+        Close: "feedback-close",
+      },
+      KeyboundForm: "feedback-keybound",
+      Form: {
+        Field: "feedback-field",
+        Item: "feedback-item",
+        Label: "feedback-label",
+        Control: "feedback-control",
+        ErrorMessage: "feedback-error",
+      },
+    },
+    ui
+  )
+  const render = vm.runInNewContext("(" + expression + ")", context)
+  const tree = render({
+    role: { id: "role_owned", name: "Original role", description: null },
+  })
+  const keybound = menuNodes(tree, "feedback-keybound")
+  assert.equal(keybound.length, 1)
+  return {
+    calls,
+    tree,
+    formOptions,
+    submit: keybound[0].props.onSubmit,
+    save: menuNodes(tree, "feedback-button").find(
+      (node) => node.props.type === "submit"
+    ),
+    succeed: mutation.succeed,
+  }
+}
+const nativeUserFeedbackHarness = (entry, changes = {}) => {
+  const expression = nativeFeedbackArrow(entry, "UserGeneralSection")
+  const calls = {
+    mutations: [],
+    errors: [],
+    successes: [],
+    navigations: [],
+    prompts: [],
+    translations: [],
+  }
+  const mutation = nativeFeedbackMutation(calls, changes.failure)
+  const translation = () => ({
+    t: (key, values) => {
+      calls.translations.push([key, values])
+      return key
+    },
+  })
+  const prompt = async (options) => {
+    calls.prompts.push(options)
+    return changes.confirmed ?? true
+  }
+  const ui = {
+    Heading: "feedback-heading",
+    Container: "feedback-container",
+    Text: "feedback-text",
+    usePrompt: () => prompt,
+    toast: {
+      error: (message) => calls.errors.push(message),
+      success: (message) => calls.successes.push(message),
+    },
+  }
+  const context = nativeFeedbackContext(
+    expression,
+    {
+      useTranslation: translation,
+      useNavigate: () => (to) => calls.navigations.push(to),
+      useDeleteUser: (id) => {
+        assert.equal(id, "user_self")
+        return mutation
+      },
+      ActionMenu: "feedback-actions",
+      PencilSquare: "feedback-pencil",
+      Trash: "feedback-trash",
+    },
+    ui
+  )
+  const render = vm.runInNewContext("(" + expression + ")", context)
+  const tree = render({
+    user: {
+      id: "user_self",
+      first_name: "Native",
+      last_name: "Fixture",
+      email: "native-fixture@example.invalid",
+    },
+  })
+  const menus = menuNodes(tree, "feedback-actions")
+  assert.equal(menus.length, 1)
+  const actions = menus[0].props.groups.flatMap((group) => group.actions)
+  const deletion = actions.filter((action) => action.label === "actions.delete")
+  assert.equal(deletion.length, 1)
+  return {
+    calls,
+    tree,
+    actions,
+    remove: deletion[0].onClick,
+    succeed: mutation.succeed,
+  }
+}
+const nativeRoleTitleFeedbackHarness = (entry) => {
+  const expression = nativeFeedbackArrow(entry, "RoleEdit")
+  const react = dashboardRequire("react")
+  const ui = dashboardRequire("@medusajs/ui")
+  const jsxRuntime = dashboardRequire("react/jsx-runtime")
+  const dialog = dashboardRequire("radix-ui").Dialog
+  const queries = []
+  const Form = () => null
+  let current = { role: { id: "role_owned" }, isPending: false, isError: false }
+  const context = nativeFeedbackContext(
+    expression,
+    {
+      useTranslation: () => ({ t: (key) => key }),
+      useParams: () => ({ id: "role_owned" }),
+      useRbacRole: (id, query) => {
+        queries.push([id, { ...query }])
+        return current
+      },
+      RouteDrawer: ui.Drawer,
+      EditRoleForm: Form,
+    },
+    ui,
+    jsxRuntime
+  )
+  const native = vm.runInNewContext("(" + expression + ")", context)
+  return {
+    ui,
+    Form,
+    queries,
+    render: (changes = {}) => {
+      current = {
+        role: { id: "role_owned" },
+        isPending: false,
+        isError: false,
+        ...changes,
+      }
+      return native()
+    },
+    renderHeader: (header) =>
+      dashboardRequire("react-dom/server").renderToStaticMarkup(
+        react.createElement(
+          ui.Drawer,
+          { open: true },
+          react.createElement(
+            dialog.Content,
+            { forceMount: true, "aria-describedby": undefined },
+            header
+          )
+        )
+      ),
+  }
+}
+for (const entry of ["role-edit-6I7HWKNE.mjs", "app.js"]) {
+  test(
+    entry +
+      ": native mutation feedback role failure keeps toast and resolves UI event promise",
+    async () => {
+      const failure = Object.assign(new Error("Native role update failed"), {
+        status: 400,
+      })
+      const h = nativeRoleFeedbackHarness(
+        entry,
+        { name: "  Owned role  ", description: "  Native description  " },
+        { failure }
+      )
+      await assert.doesNotReject(() => h.submit())
+      assert.equal(h.calls.mutations.length, 1)
+      assert.deepEqual(JSON.parse(JSON.stringify(h.calls.mutations[0])), {
+        name: "Owned role",
+        description: "Native description",
+      })
+      assert.deepEqual(h.calls.errors, [failure.message])
+      assert.deepEqual(h.calls.successes, [])
+      assert.equal(h.calls.navigations, 0)
+    }
+  )
+  test(
+    entry +
+      ": native mutation feedback role navigates only from success callback",
+    async () => {
+      const h = nativeRoleFeedbackHarness(entry, {
+        name: " Updated role ",
+        description: " Native description ",
+      })
+      await h.submit()
+      assert.equal(h.calls.mutations.length, 1)
+      assert.deepEqual(h.calls.errors, [])
+      assert.deepEqual(h.calls.successes, [])
+      assert.equal(h.calls.navigations, 0)
+      h.succeed({ role: { name: "Saved native role" } })
+      assert.deepEqual(h.calls.successes, ["roles.edit.successToast"])
+      assert.equal(h.calls.navigations, 1)
+      const toastTranslation = h.calls.translations.find(
+        ([key]) => key === "roles.edit.successToast"
+      )
+      assert.equal(toastTranslation[1].name, "Saved native role")
+    }
+  )
+  test(
+    entry +
+      ": native mutation feedback role retains blank-description and pending contracts",
+    async () => {
+      const h = nativeRoleFeedbackHarness(
+        entry,
+        { name: " Owned role ", description: "  " },
+        { pending: true }
+      )
+      assert.equal(h.save.type, "feedback-button")
+      assert.equal(h.save.props.type, "submit")
+      assert.equal(h.save.props.isLoading, true)
+      assert.deepEqual(
+        JSON.parse(JSON.stringify(h.formOptions.defaultValues)),
+        { name: "Original role", description: "" }
+      )
+      assert.equal(h.formOptions.resolver, "native-resolver")
+      await h.submit()
+      assert.deepEqual(JSON.parse(JSON.stringify(h.calls.mutations[0])), {
+        name: "Owned role",
+        description: null,
+      })
+      assert.deepEqual(h.calls.errors, [])
+      assert.equal(h.calls.navigations, 0)
+    }
+  )
+  test(
+    entry +
+      ": native mutation feedback role edit retains genuine Radix title ID",
+    () => {
+      const h = nativeRoleTitleFeedbackHarness(entry)
+      const tree = h.render()
+      assert.equal(tree.type, h.ui.Drawer)
+      const headers = menuNodes(tree, h.ui.Drawer.Header)
+      assert.equal(headers.length, 1)
+      const title = headers[0].props.children
+      assert.equal(title.type, h.ui.Drawer.Title)
+      assert.equal(title.props.asChild, true)
+      assert.equal(title.props.children.type, h.ui.Heading)
+      assert.equal(title.props.children.props.children, "roles.edit.header")
+      const html = h.renderHeader(headers[0])
+      const heading = [
+        ...html.matchAll(/<h[1-6]\b([^>]*)>roles\.edit\.header<\/h[1-6]>/gu),
+      ]
+      assert.equal(heading.length, 1)
+      const headingId = heading[0][1].match(/\bid="([^"]+)"/u)?.[1]
+      assert.ok(headingId)
+      const content = html.match(/<[^>]+\brole="dialog"[^>]*>/u)?.[0]
+      assert.ok(content)
+      assert.equal(
+        content.match(/\baria-labelledby="([^"]+)"/u)?.[1],
+        headingId
+      )
+      assert.deepEqual(JSON.parse(JSON.stringify(h.queries)), [
+        ["role_owned", { fields: "id,name,description" }],
+      ])
+    }
+  )
+  test(
+    entry +
+      ": native mutation feedback role title preserves pending and read errors",
+    () => {
+      const h = nativeRoleTitleFeedbackHarness(entry)
+      assert.equal(menuNodes(h.render({ isPending: true }), h.Form).length, 0)
+      assert.equal(menuNodes(h.render({ role: null }), h.Form).length, 0)
+      assert.equal(menuNodes(h.render(), h.Form).length, 1)
+      const failure = new Error("Native role read failed")
+      assert.throws(
+        () => h.render({ isError: true, error: failure }),
+        (error) => error === failure
+      )
+    }
+  )
+}
+for (const entry of ["user-detail-2NP6KKH3.mjs", "app.js"]) {
+  test(
+    entry +
+      ": native mutation feedback self-delete400 keeps toast and resolves UI event promise",
+    async () => {
+      const failure = Object.assign(
+        new Error("Cannot delete the current native user"),
+        { status: 400 }
+      )
+      const h = nativeUserFeedbackHarness(entry, { failure })
+      await assert.doesNotReject(() => h.remove())
+      assert.equal(h.calls.prompts.length, 1)
+      assert.equal(h.calls.mutations.length, 1)
+      assert.equal(h.calls.mutations[0], undefined)
+      assert.deepEqual(h.calls.errors, [failure.message])
+      assert.deepEqual(h.calls.successes, [])
+      assert.deepEqual(h.calls.navigations, [])
+    }
+  )
+  test(
+    entry +
+      ": native mutation feedback cancelled user confirmation never mutates",
+    async () => {
+      const h = nativeUserFeedbackHarness(entry, { confirmed: false })
+      await assert.doesNotReject(() => h.remove())
+      assert.equal(h.calls.prompts.length, 1)
+      assert.deepEqual(h.calls.mutations, [])
+      assert.deepEqual(h.calls.errors, [])
+      assert.deepEqual(h.calls.successes, [])
+      assert.deepEqual(h.calls.navigations, [])
+      assert.equal(
+        h.actions.find((action) => action.label === "actions.edit").to,
+        "edit"
+      )
+    }
+  )
+  test(
+    entry +
+      ": native mutation feedback user prompt and success-only navigation remain native",
+    async () => {
+      const h = nativeUserFeedbackHarness(entry)
+      await h.remove()
+      assert.equal(h.calls.mutations.length, 1)
+      assert.equal(h.calls.mutations[0], undefined)
+      assert.equal(h.calls.prompts.length, 1)
+      assert.deepEqual(JSON.parse(JSON.stringify(h.calls.prompts[0])), {
+        title: "general.areYouSure",
+        description: "users.deleteUserWarning",
+        verificationText: "Native Fixture",
+        verificationInstruction: "general.typeToConfirm",
+        confirmText: "actions.delete",
+        cancelText: "actions.cancel",
+      })
+      assert.deepEqual(h.calls.successes, [])
+      assert.deepEqual(h.calls.navigations, [])
+      h.succeed()
+      assert.deepEqual(h.calls.successes, ["users.deleteUserSuccess"])
+      assert.deepEqual(h.calls.navigations, [".."])
+      assert.deepEqual(h.calls.errors, [])
+      const toastTranslation = h.calls.translations.find(
+        ([key]) => key === "users.deleteUserSuccess"
+      )
+      assert.equal(toastTranslation[1].name, "native-fixture@example.invalid")
+    }
+  )
+}
+
+// Exercise the actual native resolver, protected mount and filter/sort controls.
+// Native API authorization and the initialized browser matrix remain separate.
+const nativeLoadingAuditArrow = (entry, name) => nativeArrow(entry, name)
+const nativeLoadingAuditContext = (expression, extra, ui = {}, jsxRuntime) => {
+  const context = nativeSettingsContext(expression, extra)
+  Object.assign(context, extra, ui)
+  for (const token of new Set(expression.match(/[A-Za-z_]\w*/gu))) {
+    if (/^import_ui\d*$/u.test(token)) context[token] = ui
+    if (/^(?:Text|IconButton|DropdownMenu)\d*$/u.test(token))
+      context[token] = ui[token.replace(/\d+$/u, "")]
+    if (/^import_icons\d*$/u.test(token)) context[token] = extra.icons
+    if (/^(?:XMarkMini|DescendingSorting)\d*$/u.test(token))
+      context[token] = extra.icons?.[token.replace(/\d+$/u, "")]
+    if (/^import_react\d*$/u.test(token))
+      context[token] = {
+        useMemo: (callback) => callback(),
+        useState: extra.useState,
+      }
+    if (/^useMemo\d*$/u.test(token)) context[token] = (callback) => callback()
+    if (/^useTranslation\d*$/u.test(token))
+      context[token] = extra.useTranslation
+    if (/^import_react_i18next\d*$/u.test(token))
+      context[token] = { useTranslation: extra.useTranslation }
+    if (/^import_react_router_dom\d*$/u.test(token))
+      context[token] = extra.router
+    if (/^Outlet\d*$/u.test(token)) context[token] = extra.router?.Outlet
+    if (/^Navigate\d*$/u.test(token)) context[token] = extra.router?.Navigate
+    if (/^import_radix_ui\d*$/u.test(token)) context[token] = extra.radix
+    if (/^RadixPopover\d*$/u.test(token)) context[token] = extra.radix?.Popover
+    if (jsxRuntime && /^jsx\d*$|^jsxs\d*$/u.test(token))
+      context[token] = token.startsWith("jsxs")
+        ? jsxRuntime.jsxs
+        : jsxRuntime.jsx
+    if (jsxRuntime && /^import_jsx_runtime\d*$/u.test(token))
+      context[token] = jsxRuntime
+  }
+  return context
+}
+const nativeLoadingGuardHarness = (entry) => {
+  const expression = nativeLoadingAuditArrow(entry, "RoutePermissionGuard")
+  const resolver = vm.runInNewContext(
+    "(" + nativeLoadingAuditArrow(entry, "readRequirementFromHandle") + ")",
+    {}
+  )
+  const calls = { registered: [], access: [] }
+  let matches = [],
+    loading = false,
+    grants = new Set()
+  const router = {
+    Outlet: "native-outlet",
+    Navigate: "native-navigate",
+    useMatches: () => matches,
+  }
+  const check = (kind, permissions) => {
+    calls.access.push([kind, Array.from(permissions)])
+    return kind === "all"
+      ? permissions.every((key) => grants.has(key))
+      : permissions.some((key) => grants.has(key))
+  }
+  const context = nativeLoadingAuditContext(expression, {
+    router,
+    useMatches: router.useMatches,
+    usePermissions: () => ({
+      isLoading: loading,
+      hasAllPermissions: (permissions) => check("all", permissions),
+      hasAnyPermission: (permissions) => check("any", permissions),
+    }),
+    useRegisterPermissions: (permissions, options) =>
+      calls.registered.push([
+        permissions && Array.from(permissions),
+        { ...options },
+      ]),
+    readRequirementFromHandle: resolver,
+    AccessDenied: "native-access-denied",
+  })
+  const native = vm.runInNewContext("(" + expression + ")", context)
+  return {
+    calls,
+    resolver,
+    render: (handles, changes = {}) => {
+      matches = handles.map((handle) => ({ handle }))
+      loading = changes.loading ?? false
+      grants = new Set(changes.grants ?? [])
+      return native()
+    },
+  }
+}
+for (const entry of ["chunk-QIJSUXW3.mjs", "app.js"]) {
+  test(
+    entry +
+      ": native loading controls declared requirement never mounts protected Outlet while pending",
+    () => {
+      const h = nativeLoadingGuardHarness(entry)
+      assert.equal(
+        h.render([{ permissions: "rbac_role:create" }, {}], {
+          loading: true,
+          grants: ["rbac_role:create"],
+        }),
+        null
+      )
+      assert.deepEqual(h.calls.registered, [
+        [["rbac_role:create"], { requireAll: true, source: "route" }],
+      ])
+      assert.deepEqual(h.calls.access, [])
+    }
+  )
+  test(
+    entry +
+      ": native loading controls explicit opt-out still renders Outlet while pending",
+    () => {
+      const h = nativeLoadingGuardHarness(entry)
+      assert.equal(
+        h.render([{}, undefined], { loading: true }).type,
+        "native-outlet"
+      )
+      assert.deepEqual(h.calls.registered, [
+        [null, { requireAll: false, source: "route" }],
+      ])
+      assert.deepEqual(h.calls.access, [])
+    }
+  )
+  test(
+    entry +
+      ": native loading controls deepest declared requirement and registration remain native",
+    () => {
+      const h = nativeLoadingGuardHarness(entry)
+      const tree = h.render(
+        [
+          { permissions: "parent:read" },
+          { permissions: ["child:read", "child:update"] },
+          {},
+        ],
+        { grants: ["child:read", "child:update"] }
+      )
+      assert.equal(tree.type, "native-outlet")
+      assert.deepEqual(h.calls.access, [
+        ["all", ["child:read", "child:update"]],
+      ])
+      assert.deepEqual(h.calls.registered, [
+        [["child:read", "child:update"], { requireAll: true, source: "route" }],
+      ])
+    }
+  )
+  test(
+    entry +
+      ": native loading controls ALL and ANY retain actual access decisions",
+    () => {
+      const h = nativeLoadingGuardHarness(entry)
+      const permissions = ["rbac_role:create", "rbac_role:read"]
+      const denied = h.render([{ permissions }], { grants: ["rbac_role:read"] })
+      assert.equal(denied.type, "native-access-denied")
+      assert.equal(denied.props.requirement.requireAll, true)
+      assert.equal(
+        h.render([{ permissions, requireAll: false }], {
+          grants: ["rbac_role:read"],
+        }).type,
+        "native-outlet"
+      )
+      assert.equal(
+        h.render([{ permissions, requireAll: false }]).type,
+        "native-access-denied"
+      )
+      assert.deepEqual(
+        h.calls.access.map(([kind]) => kind),
+        ["all", "any", "any"]
+      )
+    }
+  )
+  test(
+    entry +
+      ": native loading controls denied redirect replaces without mounting Outlet",
+    () => {
+      const h = nativeLoadingGuardHarness(entry)
+      const tree = h.render([
+        { permissions: "rbac_role:create", redirectTo: "/app/settings/roles" },
+      ])
+      assert.equal(tree.type, "native-navigate")
+      assert.equal(tree.props.to, "/app/settings/roles")
+      assert.equal(tree.props.replace, true)
+      assert.deepEqual(h.calls.access, [["all", ["rbac_role:create"]]])
+    }
+  )
+  test(
+    entry +
+      ": native loading controls requirement resolver preserves scalar array and empty contracts",
+    () => {
+      const h = nativeLoadingGuardHarness(entry)
+      const plain = (value) => JSON.parse(JSON.stringify(value))
+      assert.deepEqual(plain(h.resolver({ permissions: "user:read" })), {
+        permissions: ["user:read"],
+        requireAll: true,
+      })
+      assert.deepEqual(
+        plain(
+          h.resolver({
+            permissions: ["user:read", "user:update"],
+            requireAll: false,
+            redirectTo: "/app",
+          })
+        ),
+        {
+          permissions: ["user:read", "user:update"],
+          requireAll: false,
+          redirectTo: "/app",
+        }
+      )
+      assert.equal(h.resolver({ permissions: [] }), undefined)
+      assert.equal(h.resolver({}), undefined)
+      assert.equal(h.resolver(null), undefined)
+    }
+  )
+}
+const nativeFilterChipAuditHarness = (entry) => {
+  const expression = nativeLoadingAuditArrow(entry, "FilterChip")
+  const react = dashboardRequire("react")
+  const jsxRuntime = dashboardRequire("react/jsx-runtime")
+  const ui = dashboardRequire("@medusajs/ui")
+  const radix = dashboardRequire("radix-ui")
+  const icons = dashboardRequire("@medusajs/icons")
+  const translated = []
+  const useTranslation = () => ({
+    t: (key) => {
+      translated.push(key)
+      return { "actions.remove": "Remove", "general.is": "is" }[key] ?? key
+    },
+  })
+  const context = nativeLoadingAuditContext(
+    expression,
+    { radix, icons, useTranslation },
+    ui,
+    jsxRuntime
+  )
+  const native = vm.runInNewContext("(" + expression + ")", context)
+  return {
+    ui,
+    radix,
+    translated,
+    tree: (props) => native(props),
+    html: (props) =>
+      dashboardRequire("react-dom/server").renderToStaticMarkup(
+        react.createElement(
+          radix.Popover.Root,
+          null,
+          react.createElement(native, props)
+        )
+      ),
+  }
+}
+for (const entry of ["chunk-XRM7PIRS.mjs", "app.js"]) {
+  test(
+    entry +
+      ": native loading controls filter value is a genuine named button through native Text Slot",
+    () => {
+      const h = nativeFilterChipAuditHarness(entry)
+      const props = {
+        label: "Created at",
+        value: "Last 30 days",
+        hasOperator: true,
+        onRemove: () => {},
+      }
+      const tree = h.tree(props)
+      const triggers = menuNodes(tree, h.radix.Popover.Trigger)
+      assert.equal(triggers.length, 1)
+      const text = triggers[0].props.children
+      assert.equal(text.type, h.ui.Text)
+      assert.equal(text.props.asChild, true)
+      const button = text.props.children
+      assert.equal(button.type, "button")
+      assert.equal(button.props.type, "button")
+      assert.equal(button.props["aria-label"], "Created at: Last 30 days")
+      const html = h.html(props)
+      const buttons = [
+        ...html.matchAll(/<button\b([^>]*)>([\s\S]*?)<\/button>/gu),
+      ]
+      const value = buttons.filter((match) =>
+        match[1].includes('aria-label="Created at: Last 30 days"')
+      )
+      assert.equal(value.length, 1)
+      assert.match(value[0][1], /\btype="button"/u)
+      assert.match(value[0][1], /\baria-haspopup="dialog"/u)
+      assert.match(value[0][1], /\baria-expanded="false"/u)
+      assert.equal(value[0][2], "Last 30 days")
+      assert.doesNotMatch(value[0][1], /\bdisabled(?:=|\s)/u)
+    }
+  )
+  test(
+    entry +
+      ": native loading controls filter removal is translated typed and calls existing callback once",
+    () => {
+      const h = nativeFilterChipAuditHarness(entry)
+      let removed = 0,
+        stopped = 0
+      const tree = h.tree({
+        label: "Created at",
+        value: "Last 30 days",
+        onRemove: () => removed++,
+      })
+      const remove = menuNodes(tree, "button").filter(
+        (node) => node.props.onClick
+      )
+      assert.equal(remove.length, 1)
+      assert.equal(remove[0].props.type, "button")
+      assert.equal(remove[0].props["aria-label"], "Remove Created at")
+      remove[0].props.onClick({ stopPropagation: () => stopped++ })
+      assert.equal(stopped, 1)
+      assert.equal(removed, 1)
+      assert.ok(h.translated.includes("actions.remove"))
+    }
+  )
+  test(
+    entry +
+      ": native loading controls readonly filter disables value and never renders removal",
+    () => {
+      const h = nativeFilterChipAuditHarness(entry)
+      const props = {
+        label: "Created at",
+        hadPreviousValue: true,
+        readonly: true,
+        onRemove: () => assert.fail("Readonly removal must remain absent"),
+      }
+      const tree = h.tree(props)
+      const buttons = menuNodes(tree, "button")
+      assert.equal(buttons.length, 1)
+      assert.equal(buttons[0].props.type, "button")
+      assert.equal(buttons[0].props.disabled, true)
+      assert.equal(buttons[0].props["aria-label"], "Created at")
+      assert.equal(menuNodes(tree, h.radix.Popover.Anchor).length, 0)
+      const html = h.html(props)
+      const rendered = [
+        ...html.matchAll(/<button\b([^>]*)>([\s\S]*?)<\/button>/gu),
+      ]
+      assert.equal(rendered.length, 1)
+      assert.match(rendered[0][1], /\bdisabled=""/u)
+      assert.match(rendered[0][1], /\btype="button"/u)
+      assert.match(rendered[0][1], /\baria-label="Created at"/u)
+      assert.doesNotMatch(html, /Remove Created at/u)
+    }
+  )
+}
+const nativeOrderByAuditHarness = (entry, initialQuery, prefix) => {
+  const expression = nativeLoadingAuditArrow(entry, "DataTableOrderBy")
+  const initial = vm.runInNewContext(
+    "(" + nativeLoadingAuditArrow(entry, "initState") + ")",
+    {}
+  )
+  let searchParams = new URLSearchParams(initialQuery),
+    state
+  const calls = []
+  const menu = Object.assign(() => {}, {
+    Trigger: "sort-trigger",
+    Content: "sort-content",
+    RadioGroup: "sort-radio",
+    RadioItem: "sort-item",
+    Separator: "sort-separator",
+    Label: "sort-label",
+  })
+  const ui = { DropdownMenu: menu, IconButton: "sort-button" }
+  const useState = (value) => {
+    state ??= value
+    return [
+      state,
+      (update) => {
+        state = typeof update === "function" ? update(state) : update
+      },
+    ]
+  }
+  const useSearchParams = () => [
+    searchParams,
+    (update) => {
+      searchParams =
+        typeof update === "function" ? update(searchParams) : update
+      calls.push(searchParams.toString())
+    },
+  ]
+  const context = nativeLoadingAuditContext(
+    expression,
+    {
+      useState,
+      useSearchParams,
+      router: { useSearchParams },
+      initState: initial,
+      useTranslation: () => ({ t: (key) => key }),
+      useDocumentDirection: () => "rtl",
+      icons: { DescendingSorting: "native-sort-icon" },
+    },
+    ui
+  )
+  const native = vm.runInNewContext("(" + expression + ")", context)
+  const keys = [
+    { key: "created_at", label: "Created at" },
+    { key: "updated_at", label: "Updated at" },
+  ]
+  return {
+    menu,
+    calls,
+    params: () => searchParams,
+    render: () => native({ keys, prefix }),
+  }
+}
+for (const entry of ["chunk-HQKGZADC.mjs", "app.js"]) {
+  test(
+    entry +
+      ": native loading controls local sort root is nonmodal with unchanged radio directions and selection",
+    () => {
+      const h = nativeOrderByAuditHarness(
+        entry,
+        "p_order=-created_at&q=owned",
+        "p"
+      )
+      const tree = h.render()
+      assert.equal(tree.type, h.menu)
+      assert.equal(tree.props.modal, false)
+      assert.equal(tree.props.dir, "rtl")
+      const trigger = menuNodes(tree, "sort-trigger")
+      assert.equal(trigger.length, 1)
+      assert.equal(trigger[0].props.asChild, true)
+      assert.equal(
+        menuNodes(tree, "sort-button")[0].props["aria-label"],
+        "Sort results"
+      )
+      const groups = menuNodes(tree, "sort-radio")
+      assert.equal(groups.length, 2)
+      assert.equal(groups[0].props.value, "created_at")
+      assert.equal(groups[1].props.value, "desc")
+      const items = menuNodes(tree, "sort-item")
+      assert.deepEqual(
+        items.map((node) => node.props.value),
+        ["created_at", "updated_at", "asc", "desc"]
+      )
+      let prevented = 0
+      for (const item of items)
+        item.props.onSelect({ preventDefault: () => prevented++ })
+      assert.equal(prevented, 4)
+      assert.deepEqual(h.calls, [])
+      assert.equal(menuNodes(tree, "sort-content")[0].props.align, "end")
+    }
+  )
+  test(
+    entry +
+      ": native loading controls sort preserves native prefix query updates and clear semantics",
+    () => {
+      const h = nativeOrderByAuditHarness(
+        entry,
+        "p_order=-created_at&order=external&q=owned",
+        "p"
+      )
+      menuNodes(h.render(), "sort-radio")[0].props.onValueChange("updated_at")
+      assert.equal(h.params().get("p_order"), "-updated_at")
+      assert.equal(h.params().get("order"), "external")
+      assert.equal(h.params().get("q"), "owned")
+      menuNodes(h.render(), "sort-radio")[1].props.onValueChange("asc")
+      assert.equal(h.params().get("p_order"), "updated_at")
+      menuNodes(h.render(), "sort-radio")[0].props.onValueChange("")
+      assert.equal(h.params().has("p_order"), false)
+      assert.equal(h.params().get("order"), "external")
+      const bare = nativeOrderByAuditHarness(
+        entry,
+        "order=-created_at&p_order=protected&q=owned"
+      )
+      menuNodes(bare.render(), "sort-radio")[1].props.onValueChange("asc")
+      assert.equal(bare.params().get("order"), "created_at")
+      assert.equal(bare.params().get("p_order"), "protected")
+      const empty = nativeOrderByAuditHarness(
+        entry,
+        "p_order=protected&q=owned"
+      )
+      menuNodes(empty.render(), "sort-radio")[1].props.onValueChange("desc")
+      assert.equal(empty.params().has("order"), false)
+      assert.equal(empty.params().get("p_order"), "protected")
+      assert.equal(empty.params().get("q"), "owned")
+    }
+  )
+}
+
+// Native CSS and emitted controls are exercised directly. Browser Axe and
+// initialized mutation acceptance remain separate gates.
+const nativeContrastCssPath = join(dashboardRoot, "dist/app.css")
+const nativeContrastFormPath = (entry) => join(dashboardRoot, "dist", entry)
+// Only the actual native theme selectors :root and repeated .dark classes.
+const nativeContrastRules = (
+  css = readFileSync(nativeContrastCssPath, "utf8")
+) =>
+  [
+    ...css.replace(/\/\*[\s\S]*?\*\//gu, "").matchAll(/([^{}]+)\{([^{}]*)\}/gu),
+  ].map(([, selectors, body]) => ({
+    selectors: selectors
+      .trim()
+      .split(",")
+      .map((value) => value.trim()),
+    declarations: body.split(";").flatMap((declaration) => {
+      const colon = declaration.indexOf(":")
+      if (colon < 0) return []
+      return [
+        [
+          declaration.slice(0, colon).trim(),
+          declaration.slice(colon + 1).trim(),
+        ],
+      ]
+    }),
+  }))
+const nativeContrastVariables = (dark, css) => {
+  const variables = new Map()
+  const winners = new Map()
+  for (const [order, rule] of nativeContrastRules(css).entries()) {
+    const matching = rule.selectors.filter(
+      (selector) =>
+        selector === ":root" || (dark && /^(?:\.dark)+$/u.test(selector))
+    )
+    if (!matching.length) continue
+    const specificity = Math.max(
+      ...matching.map((selector) =>
+        selector === ":root"
+          ? 10
+          : (selector.match(/\.dark/gu)?.length ?? 0) * 10
+      )
+    )
+    for (const [property, value] of rule.declarations) {
+      if (!property.startsWith("--")) continue
+      const previous = winners.get(property)
+      if (
+        !previous ||
+        specificity > previous.specificity ||
+        (specificity === previous.specificity && order > previous.order)
+      ) {
+        winners.set(property, { specificity, order })
+        variables.set(property, value)
+      }
+    }
+  }
+  return variables
+}
+const nativeContrastRgba = (value, variables, visited = new Set()) => {
+  const reference = value.match(/^var\((--[\w-]+)\)$/u)?.[1]
+  if (reference) {
+    assert.ok(!visited.has(reference), "Native color aliases must not cycle")
+    assert.ok(variables.has(reference), "Native color aliases must resolve")
+    return nativeContrastRgba(
+      variables.get(reference),
+      variables,
+      new Set([...visited, reference])
+    )
+  }
+  const rgba = value
+    .match(/^rgba\(([^)]+)\)$/u)?.[1]
+    ?.split(",")
+    .map(Number)
+  assert.equal(rgba?.length, 4)
+  assert.ok(rgba.every(Number.isFinite))
+  assert.ok(rgba.slice(0, 3).every((channel) => channel >= 0 && channel <= 255))
+  assert.ok(rgba[3] >= 0 && rgba[3] <= 1)
+  return rgba
+}
+const nativeContrastColors = (classes, dark, state = "normal") => {
+  const variables = nativeContrastVariables(dark)
+  const active = new Set(
+    classes.split(/\s+/u).flatMap((name) => {
+      const [prefix] = name.split(":")
+      if (!name.includes(":")) return [`.${name}`]
+      if (prefix === "hover" && ["hover", "pressed"].includes(state))
+        return [`.${name.replaceAll(":", "\\:")}:hover`]
+      if (prefix === "active" && state === "pressed")
+        return [`.${name.replaceAll(":", "\\:")}:active`]
+      if (prefix === "disabled" && state === "disabled")
+        return [`.${name.replaceAll(":", "\\:")}:disabled`]
+      return []
+    })
+  )
+  const declarations = new Map()
+  for (const rule of nativeContrastRules())
+    if (rule.selectors.some((selector) => active.has(selector)))
+      for (const [property, value] of rule.declarations)
+        if (["color", "background-color"].includes(property))
+          declarations.set(property, value)
+  return Object.fromEntries(
+    [...declarations].map(([property, value]) => [
+      property,
+      nativeContrastRgba(value, variables),
+    ])
+  )
+}
+const nativeContrastRatio = (foreground, background) => {
+  assert.equal(background[3], 1)
+  const color = foreground
+    .slice(0, 3)
+    .map(
+      (channel, index) =>
+        channel * foreground[3] + background[index] * (1 - foreground[3])
+    )
+  const luminance = (channels) =>
+    channels
+      .slice(0, 3)
+      .map((channel) => channel / 255)
+      .map((channel) =>
+        channel <= 0.04045
+          ? channel / 12.92
+          : ((channel + 0.055) / 1.055) ** 2.4
+      )
+      .reduce(
+        (total, channel, index) =>
+          total + channel * [0.2126, 0.7152, 0.0722][index],
+        0
+      )
+  const values = [luminance(color), luminance(background)].sort((a, b) => b - a)
+  return (values[0] + 0.05) / (values[1] + 0.05)
+}
+const nativeContrastFormLabel = (entry) => {
+  const ts = backendRequire("typescript")
+  const source = readFileSync(nativeContrastFormPath(entry), "utf8")
+  const parsed = ts.createSourceFile(
+    entry,
+    source,
+    ts.ScriptTarget.Latest,
+    true
+  )
+  const matches = []
+  const visit = (node) => {
+    const initializer = ts.isVariableDeclaration(node)
+      ? node.initializer
+      : ts.isBinaryExpression(node) &&
+          node.operatorToken.kind === ts.SyntaxKind.EqualsToken
+        ? node.right
+        : undefined
+    if (
+      initializer &&
+      ts.isCallExpression(initializer) &&
+      initializer.expression.getText(parsed).includes("forwardRef") &&
+      ts.isArrowFunction(initializer.arguments[0]) &&
+      initializer.arguments[0].getText(parsed).includes('"fields.optional"')
+    )
+      matches.push(initializer.arguments[0].getText(parsed))
+    ts.forEachChild(node, visit)
+  }
+  visit(parsed)
+  assert.equal(matches.length, 1)
+  const expression = matches[0]
+  const react = dashboardRequire("react")
+  const ui = dashboardRequire("@medusajs/ui")
+  const icons = dashboardRequire("@medusajs/icons")
+  const jsxRuntime = dashboardRequire("react/jsx-runtime")
+  const translation = () => ({
+    t: (key) => (key === "fields.optional" ? "Optional" : key),
+  })
+  const context = {
+    ...react,
+    ...ui,
+    ...icons,
+    ...jsxRuntime,
+    Text: ui.Text,
+    clx: ui.clx,
+    LabelComponent: ui.Label,
+    useTranslation: translation,
+    useFormField: () => ({
+      formLabelId: "native-description-label",
+      formItemId: "native-description",
+    }),
+  }
+  for (const token of new Set(expression.match(/[A-Za-z_]\w*/gu))) {
+    if (/^import_react\d*$/u.test(token)) context[token] = react
+    if (/^import_ui\d*$/u.test(token)) context[token] = ui
+    if (/^import_icons\d*$/u.test(token)) context[token] = icons
+    if (/^import_jsx_runtime\d*$/u.test(token)) context[token] = jsxRuntime
+    if (/^import_react_i18next\d*$/u.test(token))
+      context[token] = { useTranslation: translation }
+  }
+  const Label = react.forwardRef(vm.runInNewContext(`(${expression})`, context))
+  return (optional) =>
+    dashboardRequire("react-dom/server").renderToStaticMarkup(
+      react.createElement(Label, { optional, children: "Description" })
+    )
+}
+for (const entry of ["chunk-OBQI23QM.mjs", "app.js"]) {
+  test(`${entry}: native optional FormLabel text meets light and dark contrast without changing label semantics`, () => {
+    const render = nativeContrastFormLabel(entry)
+    const required = render(false)
+    assert.doesNotMatch(required, /Optional/u)
+    const html = render(true)
+    const labels = [...html.matchAll(/<label\b([^>]*)>Description<\/label>/gu)]
+    assert.equal(labels.length, 1)
+    assert.match(labels[0][1], /\bid="native-description-label"/u)
+    assert.match(labels[0][1], /\bfor="native-description"/u)
+    const marker = [...html.matchAll(/<p\b([^>]*)>([\s\S]*?)<\/p>/gu)].filter(
+      (match) => match[2] === "(Optional)"
+    )
+    assert.equal(marker.length, 1)
+    assert.doesNotMatch(marker[0][1], /aria-hidden|role="(?:alert|status)"/u)
+    const classes = marker[0][1].match(/class="([^"]+)"/u)?.[1]
+    assert.ok(classes)
+    for (const dark of [false, true]) {
+      const colors = nativeContrastColors(classes, dark)
+      const background = nativeContrastRgba(
+        "var(--bg-base)",
+        nativeContrastVariables(dark)
+      )
+      assert.ok(
+        nativeContrastRatio(colors.color, background) >= 4.5,
+        `Native ${dark ? "dark" : "light"} optional text must meet 4.5:1`
+      )
+    }
+  })
+}
+const nativeContrastButton = (distribution) => {
+  const ts = backendRequire("typescript")
+  const entry = `${distribution}/components/button/button.js`
+  const source = readFileSync(join(uiRoot, "dist", entry), "utf8")
+  const parsed = ts.createSourceFile(
+    entry,
+    source,
+    ts.ScriptTarget.Latest,
+    true
+  )
+  const matches = []
+  let variants
+  const visit = (node) => {
+    if (
+      ts.isVariableDeclaration(node) &&
+      node.name.getText(parsed) === "buttonVariants"
+    )
+      variants = node.initializer.getText(parsed)
+    if (
+      ts.isVariableDeclaration(node) &&
+      node.name.getText(parsed) === "Button" &&
+      node.initializer &&
+      ts.isCallExpression(node.initializer) &&
+      ts.isArrowFunction(node.initializer.arguments[0])
+    )
+      matches.push(node.initializer.arguments[0].getText(parsed))
+    ts.forEachChild(node, visit)
+  }
+  visit(parsed)
+  assert.equal(matches.length, 1)
+  assert.ok(variants)
+  const uiRequire = createRequire(join(uiRoot, "package.json"))
+  const react = uiRequire("react")
+  const ui = dashboardRequire("@medusajs/ui")
+  const cva = uiRequire("cva")
+  const radix = uiRequire("radix-ui")
+  const icons = uiRequire("@medusajs/icons")
+  const context = {
+    React: react,
+    cva: cva.cva,
+    cva_1: cva,
+    clx: ui.clx,
+    clx_1: { clx: ui.clx },
+    Slot: radix.Slot,
+    radix_ui_1: radix,
+    Spinner: icons.Spinner,
+    icons_1: icons,
+  }
+  context.buttonVariants = vm.runInNewContext(`(${variants})`, context)
+  const render = vm.runInNewContext(`(${matches[0]})`, context)
+  return {
+    react,
+    render,
+    markup: (element) =>
+      uiRequire("react-dom/server").renderToStaticMarkup(element),
+  }
+}
+for (const distribution of ["esm", "cjs"]) {
+  for (const state of ["normal", "hover", "pressed"]) {
+    test(`${distribution}: native primary Button ${state} meets enabled light and dark contrast`, () => {
+      const h = nativeContrastButton(distribution)
+      const click = () => "native-click"
+      const ref = h.react.createRef()
+      const element = h.render(
+        {
+          type: "submit",
+          children: "Save",
+          onClick: click,
+          "aria-label": "Save role",
+        },
+        ref
+      )
+      assert.equal(element.type, "button")
+      assert.equal(element.props.type, "submit")
+      assert.equal(element.props.disabled, false)
+      assert.equal(element.props.onClick, click)
+      assert.equal(element.ref, ref)
+      assert.equal(element.props["aria-label"], "Save role")
+      assert.equal(element.props.children, "Save")
+      for (const dark of [false, true]) {
+        const colors = nativeContrastColors(
+          element.props.className,
+          dark,
+          state
+        )
+        if (!dark)
+          assert.deepEqual(
+            colors["background-color"],
+            {
+              normal: [39, 39, 42, 1],
+              hover: [63, 63, 70, 1],
+              pressed: [82, 82, 91, 1],
+            }[state]
+          )
+        if (dark && state === "normal")
+          assert.deepEqual(colors["background-color"], [82, 82, 91, 1])
+        assert.deepEqual(colors.color, [255, 255, 255, 0.88])
+        assert.ok(
+          nativeContrastRatio(colors.color, colors["background-color"]) >= 4.5,
+          `Native ${dark ? "dark" : "light"} enabled ${state} must meet 4.5:1`
+        )
+      }
+    })
+  }
+  test(`${distribution}: native Button preserves loading disable and original disabled theme colors`, () => {
+    const h = nativeContrastButton(distribution)
+    for (const props of [{ disabled: true }, { isLoading: true }]) {
+      const element = h.render(
+        { type: "submit", children: "Save", ...props },
+        h.react.createRef()
+      )
+      assert.equal(element.props.disabled, true)
+      assert.equal(element.props.type, "submit")
+      assert.match(h.markup(element), /<button\b[^>]*disabled=""/u)
+      for (const [dark, foreground, background] of [
+        [false, [161, 161, 170, 1], [244, 244, 245, 1]],
+        [true, [82, 82, 91, 1], [39, 39, 42, 1]],
+      ]) {
+        const colors = nativeContrastColors(
+          element.props.className,
+          dark,
+          "disabled"
+        )
+        assert.deepEqual(colors.color, foreground)
+        assert.deepEqual(colors["background-color"], background)
+      }
+    }
+    assert.equal(h.render({ children: "Save" }, null).props.disabled, false)
+  })
+}
+
+// Exercise exported native Form identity after the real draft-order initializer,
+// plus generated native theme order and real date/denial component contracts.
+// Browser and current compiled-asset verification remain separate gates.
+const nativeFormIntegrationRoot = dashboardRoot
+const nativeFormIntegrationSource = (entry) =>
+  readFileSync(join(nativeFormIntegrationRoot, "dist", entry), "utf8")
+const nativeFormDefinition = (
+  source,
+  main = false,
+  plugin = false,
+  cjs = false
+) => {
+  const marker = plugin
+    ? cjs
+      ? "const Provider = reactHookForm.FormProvider;"
+      : "const Provider = FormProvider;"
+    : main
+      ? "Provider2 = "
+      : "var Provider = "
+  const start = source.indexOf(marker)
+  const symbol = plugin ? "Form$2" : "Form"
+  const formStart = source.indexOf(
+    `${symbol} = Object.assign(${main ? "Provider2" : "Provider"}`,
+    start
+  )
+  const endMarker = main ? "\n    });" : "\n});"
+  const end = source.indexOf(endMarker, formStart) + endMarker.length
+  assert.ok(start >= 0 && formStart > start && end > formStart)
+  return { definition: source.slice(start, end), symbol }
+}
+const nativeFormDefinitionContext = (definition) => {
+  const react = dashboardRequire("react")
+  const hookForm = dashboardRequire("react-hook-form")
+  const ui = dashboardRequire("@medusajs/ui")
+  const icons = dashboardRequire("@medusajs/icons")
+  const jsxRuntime = dashboardRequire("react/jsx-runtime")
+  const radix = dashboardRequire("radix-ui")
+  const translation = () => ({
+    t: (key) => (key === "fields.optional" ? "Optional" : key),
+  })
+  const context = {
+    ...react,
+    ...hookForm,
+    ...ui,
+    ...icons,
+    ...jsxRuntime,
+    React: react,
+    react,
+    reactHookForm: hookForm,
+    ui,
+    icons,
+    jsxRuntime,
+    radixUi: radix,
+    Text: ui.Text,
+    clx: ui.clx,
+    LabelComponent: ui.Label,
+    HintComponent: ui.Hint,
+    Label$1: ui.Label,
+    Hint$1: ui.Hint,
+    Slot: radix.Slot,
+    useTranslation: translation,
+  }
+  for (const token of new Set(definition.match(/[A-Za-z_$][\w$]*/gu))) {
+    if (/^import_react\d*$/u.test(token)) context[token] = react
+    if (/^import_react_hook_form\d*$/u.test(token)) context[token] = hookForm
+    if (/^import_ui\d*$/u.test(token)) context[token] = ui
+    if (/^import_icons\d*$/u.test(token)) context[token] = icons
+    if (/^import_jsx_runtime\d*$/u.test(token)) context[token] = jsxRuntime
+    if (/^import_radix_ui\d*$/u.test(token)) context[token] = radix
+    if (/^import_react_i18next\d*$/u.test(token))
+      context[token] = { useTranslation: translation }
+  }
+  return { context, react, hookForm }
+}
+for (const [entry, pluginEntry] of [
+  ["chunk-OBQI23QM.mjs", "index.mjs"],
+  ["app.js", "index.js"],
+]) {
+  test(`${entry}: native exported Form survives the later genuine shared provider initializer`, () => {
+    const native = nativeFormDefinition(
+      nativeFormIntegrationSource(entry),
+      entry === "app.js"
+    )
+    const plugin = nativeFormDefinition(
+      readFileSync(
+        join(draftOrderRoot, ".medusa/server/src/admin", pluginEntry),
+        "utf8"
+      ),
+      false,
+      true,
+      pluginEntry.endsWith(".js")
+    )
+    const h = nativeFormDefinitionContext(native.definition + plugin.definition)
+    const provider = h.hookForm.FormProvider
+    const descriptors = Object.getOwnPropertyDescriptors(provider)
+    try {
+      const Form = vm.runInNewContext(
+        `${native.definition}; ${native.symbol};`,
+        h.context
+      )
+      const own = Object.fromEntries(
+        ["Item", "Label", "Control", "Hint", "ErrorMessage", "Field"].map(
+          (key) => [key, Form[key]]
+        )
+      )
+      const pluginForm = vm.runInNewContext(
+        `${plugin.definition}; ${plugin.symbol};`,
+        nativeFormDefinitionContext(plugin.definition).context
+      )
+      assert.equal(pluginForm, provider)
+      assert.notEqual(pluginForm.Label, own.Label)
+      for (const [key, value] of Object.entries(own))
+        assert.equal(
+          Form[key],
+          value,
+          `Native ${key} must survive the later plugin initializer`
+        )
+      assert.notEqual(Form, provider)
+      const methods = {
+        control: {},
+        formState: {},
+        getValues: () => ({ description: "native value" }),
+      }
+      const child = h.react.createElement("input", { name: "description" })
+      const forwarded = Form({ ...methods, children: child })
+      assert.equal(forwarded.type, provider)
+      for (const [key, value] of Object.entries(methods))
+        assert.equal(forwarded.props[key], value)
+      assert.equal(forwarded.props.children, child)
+      assert.equal(own.Label.displayName, "Form.Label")
+      assert.equal(own.Control.displayName, "Form.Control")
+    } finally {
+      for (const key of Reflect.ownKeys(provider))
+        if (!Object.hasOwn(descriptors, key)) delete provider[key]
+      Object.defineProperties(provider, descriptors)
+    }
+  })
+}
+
+// Run the actual bundled Medusa palette generator in class-dark mode. Its base
+// rules are emitted after the Dashboard import by native writeCSSFile.
+const nativeGeneratedPaletteCss = () => {
+  const ts = backendRequire("typescript")
+  const medusaRequire = createRequire(
+    backendRequire.resolve("@medusajs/medusa")
+  )
+  const entry = medusaRequire.resolve("@medusajs/admin-bundler")
+  const source = readFileSync(entry, "utf8")
+  const parsed = ts.createSourceFile(
+    entry,
+    source,
+    ts.ScriptTarget.Latest,
+    true
+  )
+  const initializers = new Map()
+  const generators = []
+  const visit = (node) => {
+    if (
+      ts.isVariableDeclaration(node) &&
+      ["colors", "effects", "typography", "components"].includes(
+        node.name.getText(parsed)
+      )
+    ) {
+      assert.ok(!initializers.has(node.name.getText(parsed)))
+      initializers.set(
+        node.name.getText(parsed),
+        node.initializer.getText(parsed)
+      )
+    }
+    if (
+      ts.isFunctionExpression(node) &&
+      node.name?.getText(parsed) === "medusaUi"
+    )
+      generators.push(node.getText(parsed))
+    ts.forEachChild(node, visit)
+  }
+  visit(parsed)
+  assert.equal(initializers.size, 4)
+  assert.equal(generators.length, 1)
+  const context = Object.fromEntries(
+    [...initializers].map(([key, expression]) => [
+      key,
+      vm.runInNewContext(`(${expression})`),
+    ])
+  )
+  const rules = []
+  vm.runInNewContext(
+    `(${generators[0]})`,
+    context
+  )({
+    addBase: (base) => rules.push(base),
+    addComponents: () => {},
+    config: (key, fallback) =>
+      key === "darkMode" ? ["class", ".dark"] : fallback,
+  })
+  const themes = rules.flatMap((rule) =>
+    Object.entries(rule).filter(([selector]) =>
+      [":root", ".dark"].includes(selector)
+    )
+  )
+  assert.equal(themes.length, 2)
+  return themes
+    .map(
+      ([selector, declarations]) =>
+        `${selector}{${Object.entries(declarations)
+          .map(([key, value]) => `${key}:${value}`)
+          .join(";")}}`
+    )
+    .join("\n")
+}
+for (const distribution of ["esm", "cjs"]) {
+  for (const state of ["hover", "pressed"]) {
+    test(`${distribution}: native primary Button ${state} survives later generated palette rules`, () => {
+      const originalCss = nativeFormIntegrationSource("app.css")
+      const generated = nativeGeneratedPaletteCss()
+      const combined = `${originalCss}\n${generated}`
+      const h = nativeContrastButton(distribution)
+      const button = h.render({ type: "submit", children: "Save" }, null)
+      assert.equal(button.type, "button")
+      assert.equal(button.props.disabled, false)
+      const variables = nativeContrastVariables(true, combined)
+      const token =
+        state === "hover"
+          ? "--button-inverted-hover"
+          : "--button-inverted-pressed"
+      const foreground = nativeContrastRgba(
+        "var(--contrast-fg-primary)",
+        variables
+      )
+      const background = nativeContrastRgba(`var(${token})`, variables)
+      assert.ok(
+        nativeContrastRatio(foreground, background) >= 4.5,
+        `Generated dark ${state} must retain readable native contrast`
+      )
+      const palette = nativeContrastVariables(true, generated)
+      assert.deepEqual(
+        nativeContrastRgba("var(--button-inverted)", variables),
+        nativeContrastRgba("var(--button-inverted)", palette)
+      )
+      const light = nativeContrastVariables(false, combined)
+      const nativeLight = nativeContrastVariables(false, generated)
+      for (const key of [
+        "--button-inverted",
+        "--button-inverted-hover",
+        "--button-inverted-pressed",
+        "--bg-disabled",
+        "--fg-disabled",
+      ])
+        assert.deepEqual(
+          nativeContrastRgba(`var(${key})`, light),
+          nativeContrastRgba(`var(${key})`, nativeLight)
+        )
+      for (const key of ["--bg-disabled", "--fg-disabled"])
+        assert.deepEqual(
+          nativeContrastRgba(`var(${key})`, variables),
+          nativeContrastRgba(`var(${key})`, palette)
+        )
+      assert.match(
+        button.props.className,
+        new RegExp(
+          `${state === "hover" ? "hover" : "active"}:bg-ui-button-inverted-${state}`
+        )
+      )
+    })
+  }
+}
+
+for (const entry of ["chunk-QIJSUXW3.mjs", "app.js"]) {
+  test(`${entry}: native denial preserves exact required permissions with readable text`, () => {
+    const expression = nativeArrow(
+      entry,
+      "AccessDenied",
+      nativeFormIntegrationRoot
+    )
+    const react = dashboardRequire("react")
+    const ui = dashboardRequire("@medusajs/ui")
+    const icons = dashboardRequire("@medusajs/icons")
+    const jsxRuntime = dashboardRequire("react/jsx-runtime")
+    const permissions = ["admin:roles:write", "admin:users:read"]
+    const t = (key, values) =>
+      key === "permissions.accessDenied.requiredPermission"
+        ? `Required permission: ${values.permission}`
+        : key
+    const context = nativeLoadingAuditContext(
+      expression,
+      { ...icons, icons, useTranslation: () => ({ t }) },
+      ui,
+      jsxRuntime
+    )
+    const render = vm.runInNewContext(`(${expression})`, context)
+    const tree = render({ requirement: { permissions } })
+    const html = dashboardRequire("react-dom/server").renderToStaticMarkup(tree)
+    const required = [...html.matchAll(/<p\b([^>]*)>([\s\S]*?)<\/p>/gu)].find(
+      (match) =>
+        match[2] === "Required permission: admin:roles:write, admin:users:read"
+    )
+    assert.ok(required)
+    assert.match(html, /<h2\b/u)
+    assert.match(html, /bg-ui-bg-base/u)
+    assert.doesNotMatch(required[1], /aria-hidden|role="(?:alert|status)"/u)
+    const classes = required[1].match(/class="([^"]+)"/u)?.[1]
+    assert.ok(classes)
+    for (const dark of [false, true]) {
+      const colors = nativeContrastColors(classes, dark)
+      const background = nativeContrastRgba(
+        "var(--bg-base)",
+        nativeContrastVariables(dark)
+      )
+      assert.ok(nativeContrastRatio(colors.color, background) >= 4.5)
+    }
+    assert.deepEqual(permissions, ["admin:roles:write", "admin:users:read"])
+    assert.equal(react.isValidElement(tree), true)
+  })
+}
+for (const entry of ["chunk-XRM7PIRS.mjs", "app.js"]) {
+  test(`${entry}: native date popover names its current filter and retains preset behavior`, () => {
+    const expression = nativeArrow(
+      entry,
+      "DateFilter",
+      nativeFormIntegrationRoot
+    )
+    const react = dashboardRequire("react")
+    const ui = dashboardRequire("@medusajs/ui")
+    const icons = dashboardRequire("@medusajs/icons")
+    const radix = dashboardRequire("radix-ui")
+    const jsxRuntime = dashboardRequire("react/jsx-runtime")
+    const preset = {
+      label: "Today",
+      value: { $gte: "2026-10-09T00:00:00.000Z" },
+    }
+    const calls = { add: [], delete: [], remove: [], state: [] }
+    let stateIndex = 0
+    const state = (initial) => {
+      const index = stateIndex++
+      return [initial, (value) => calls.state.push([index, value])]
+    }
+    const chip = () => null
+    const extra = {
+      radix,
+      icons,
+      ...icons,
+      useState: state,
+      useTranslation: () => ({ t: (key) => key }),
+      t: (key) => key,
+      useDate: () => ({ getFullDate: ({ date }) => date.toISOString() }),
+      useDataTableFilterContext: () => ({
+        removeFilter: (key) => calls.remove.push(key),
+      }),
+      useSelectedParams: ({ param, prefix }) => {
+        assert.equal(param, "created_at")
+        assert.equal(prefix, "users")
+        return {
+          get: () => [JSON.stringify(preset.value)],
+          add: (value) => calls.add.push(value),
+          delete: () => calls.delete.push(true),
+        }
+      },
+      usePresets: () => [preset],
+      parseDateComparison: () => preset.value,
+      getDateFromComparison: (value, key) =>
+        value[key] ? new Date(value[key]) : undefined,
+      isEqual: dashboardRequire("lodash.isequal"),
+      filter_chip_default: chip,
+      HTMLElement: class HTMLElement {},
+      clearTimeout,
+      setTimeout,
+    }
+    const context = nativeLoadingAuditContext(expression, extra, ui, jsxRuntime)
+    for (const token of new Set(expression.match(/[A-Za-z_]\w*/gu))) {
+      if (/^import_lodash\d*$/u.test(token))
+        context[token] = { default: extra.isEqual }
+      if (/^clx\d*$/u.test(token)) context[token] = ui.clx
+      if (/^import_i18next\d*$/u.test(token)) context[token] = { t: extra.t }
+    }
+    const render = vm.runInNewContext(`(${expression})`, context)
+    const nodes = (node, type) => {
+      if (!node || typeof node !== "object") return []
+      return [
+        ...(node.type === type ? [node] : []),
+        ...react.Children.toArray(node.props?.children).flatMap((child) =>
+          nodes(child, type)
+        ),
+      ]
+    }
+    for (const label of ["Created", "Created on date"]) {
+      stateIndex = 0
+      const tree = render({
+        filter: { key: "created_at", label },
+        prefix: "users",
+        readonly: false,
+        openOnMount: true,
+      })
+      assert.equal(tree.type, radix.Popover.Root)
+      assert.equal(tree.props.modal, true)
+      assert.equal(tree.props.open, true)
+      const content = nodes(tree, radix.Popover.Content)
+      assert.equal(content.length, 1)
+      assert.equal(content[0].props["aria-label"], label)
+      assert.equal(content[0].props["data-name"], "date_filter_content")
+      assert.equal(content[0].props.align, "start")
+      assert.equal(content[0].props.sideOffset, 8)
+      assert.equal(content[0].props.collisionPadding, 24)
+      const presets = nodes(content[0], "button").filter((node) =>
+        react.Children.toArray(node.props.children).includes("Today")
+      )
+      assert.equal(presets.length, 1)
+      assert.equal(presets[0].props.type, "button")
+      presets[0].props.onClick()
+      assert.equal(calls.add.at(-1), JSON.stringify(preset.value))
+      assert.deepEqual(calls.state.at(-1), [1, false])
+      const chips = nodes(tree, chip)
+      assert.equal(chips.length, 1)
+      assert.equal(chips[0].props.label, label)
+      assert.equal(chips[0].props.value, "Today")
+      chips[0].props.onRemove()
+      assert.equal(calls.remove.at(-1), "created_at")
+      assert.equal(calls.delete.at(-1), true)
+      tree.props.onOpenChange(false)
+      assert.deepEqual(calls.state.at(-2), [0, false])
+      assert.deepEqual(calls.state.at(-1), [2, "Today"])
+    }
+    stateIndex = 0
+    const readOnly = render({
+      filter: { key: "created_at", label: "Created" },
+      prefix: "users",
+      readonly: true,
+      openOnMount: true,
+    })
+    assert.equal(nodes(readOnly, radix.Popover.Content).length, 0)
+    assert.equal(nodes(readOnly, chip)[0].props.readonly, true)
+  })
+}
+
+// Actual native emitted ClearAllFilters and unchanged theme/removal contracts.
+const nativeClearAllAuditHarness = (entry, query, prefix) => {
+  const expression = nativeArrow(entry, "ClearAllFilters")
+  const ui = dashboardRequire("@medusajs/ui")
+  const jsx = dashboardRequire("react/jsx-runtime")
+  const initial = new URLSearchParams(query)
+  let current = initial
+  const calls = []
+  const useSearchParams = () => [
+    current,
+    (update) => {
+      assert.equal(typeof update, "function")
+      const next = update(current)
+      assert.ok(next instanceof URLSearchParams)
+      assert.notEqual(next, current)
+      calls.push("query")
+      current = next
+    },
+  ]
+  const context = nativeSettingsContext(expression, {
+    URLSearchParams,
+    useDataTableFilterContext: () => ({
+      removeAllFilters: () => calls.push("context"),
+    }),
+    useSearchParams2: useSearchParams,
+    clx6: ui.clx,
+    jsx6: jsx.jsx,
+  })
+  // Restore genuine JSX/UI bindings after the generic native context factory.
+  for (const token of new Set(expression.match(/[A-Za-z_]\w*/gu))) {
+    if (/^jsx\d*$|^jsxs\d*$/u.test(token))
+      context[token] = token.startsWith("jsxs") ? jsx.jsxs : jsx.jsx
+    if (/^import_jsx_runtime\d*$/u.test(token)) context[token] = jsx
+    if (/^import_ui\d*$/u.test(token)) context[token] = ui
+    if (/^import_react_router_dom\d*$/u.test(token))
+      context[token] = { useSearchParams }
+  }
+  const native = vm.runInNewContext(`(${expression})`, context)
+  return {
+    initial,
+    calls,
+    params: () => current,
+    render: () =>
+      native({ filters: [{ key: "created_at" }, { key: "status" }], prefix }),
+  }
+}
+
+for (const entry of ["chunk-XRM7PIRS.mjs", "app.js"]) {
+  test(
+    entry + ": native clear all removes only declared prefixed filters",
+    () => {
+      const h = nativeClearAllAuditHarness(
+        entry,
+        "owned_created_at=today&owned_status=active&created_at=external&status=external&owned_offset=20&q=owned&unlisted=retained",
+        "owned"
+      )
+      const control = h.render()
+      assert.equal(control.type, "button")
+      assert.equal(control.props.type, "button")
+      assert.equal(control.props.children, "Clear all")
+      assert.equal(control.props.disabled, undefined)
+      assert.ok(
+        control.props.className
+          .split(/\s+/u)
+          .includes("hover:text-ui-fg-subtle")
+      )
+      assert.ok(
+        control.props.className
+          .split(/\s+/u)
+          .includes("focus-visible:shadow-borders-focus")
+      )
+      control.props.onClick()
+      assert.deepEqual(h.calls, ["query", "context"])
+      assert.equal(h.params().has("owned_created_at"), false)
+      assert.equal(h.params().has("owned_status"), false)
+      assert.equal(h.params().get("created_at"), "external")
+      assert.equal(h.params().get("status"), "external")
+      assert.equal(h.params().get("owned_offset"), "20")
+      assert.equal(h.params().get("q"), "owned")
+      assert.equal(h.params().get("unlisted"), "retained")
+      assert.equal(h.initial.get("owned_created_at"), "today")
+      assert.equal(h.initial.get("owned_status"), "active")
+    }
+  )
+  test(
+    entry + ": native clear all preserves unrelated unprefixed query state",
+    () => {
+      const h = nativeClearAllAuditHarness(
+        entry,
+        "created_at=today&status=active&owned_created_at=external&owned_status=external&offset=20&q=owned&unlisted=retained"
+      )
+      h.render().props.onClick()
+      assert.deepEqual(h.calls, ["query", "context"])
+      assert.equal(h.params().has("created_at"), false)
+      assert.equal(h.params().has("status"), false)
+      assert.equal(h.params().get("owned_created_at"), "external")
+      assert.equal(h.params().get("owned_status"), "external")
+      assert.equal(h.params().get("offset"), "20")
+      assert.equal(h.params().get("q"), "owned")
+      assert.equal(h.params().get("unlisted"), "retained")
+      assert.equal(h.initial.get("created_at"), "today")
+      assert.equal(h.initial.get("status"), "active")
+    }
+  )
+  test(
+    entry +
+      ": native clear all base text is readable in actual dark and light themes",
+    () => {
+      const h = nativeClearAllAuditHarness(entry, "created_at=today")
+      const control = h.render()
+      const classes = control.props.className.split(/\s+/u)
+      assert.ok(classes.includes("text-ui-fg-subtle"))
+      assert.equal(classes.includes("text-ui-fg-muted"), false)
+      for (const dark of [false, true]) {
+        const variables = nativeContrastVariables(dark)
+        const background = nativeContrastRgba(
+          variables.get("--bg-base"),
+          variables
+        )
+        const base = nativeContrastColors(control.props.className, dark).color
+        const hover = nativeContrastColors(
+          control.props.className,
+          dark,
+          "hover"
+        ).color
+        assert.deepEqual(
+          base,
+          nativeContrastRgba(variables.get("--fg-subtle"), variables)
+        )
+        assert.deepEqual(hover, base)
+        assert.ok(nativeContrastRatio(base, background) >= 4.5)
+        // The correction intentionally uses the darker native light foreground.
+        if (!dark) assert.deepEqual(base, [82, 82, 91, 1])
+      }
+      assert.deepEqual(h.calls, [])
+    }
+  )
+}
+
+// Exercise the emitted UI DataTable.Filter used by native Users. These are
+// package contracts; the original browser checks remain separately required.
+const nativeFilterDialogFixture = (distribution, label, onRemove) => {
+  const actualUiRoot = join(
+    dirname(backendRequire.resolve("@medusajs/ui")),
+    "../.."
+  )
+  const { isDateComparisonOperator } = backendRequire(
+    join(
+      actualUiRoot,
+      "dist/cjs/blocks/data-table/utils/is-date-comparison-operator.js"
+    )
+  )
+  const isDateFilterProps = vm.runInNewContext(
+    `(${nativeArrow(
+      `${distribution}/blocks/data-table/components/data-table-filter.js`,
+      "isDateFilterProps",
+      uiRoot
+    )})`
+  )
+  const value = { $gte: "2026-10-09T04:00:00.000Z" }
+  const options = [{ label: "Today", value }]
+  const metadata = { type: "date", label, options, format: "date" }
+  const removed = []
+  const updated = []
+  const lookups = []
+  const onUpdate = (next) => updated.push(next)
+  const filter = nativeMenuHarness(
+    distribution,
+    "filter",
+    {
+      getFilterMeta: (id) => {
+        lookups.push(id)
+        return metadata
+      },
+      removeFilter: (id) => removed.push(id),
+    },
+    {
+      isDateComparisonOperator,
+      is_date_comparison_operator_1: { isDateComparisonOperator },
+      isDateFilterProps,
+      DataTableFilterDateContent: "date-content",
+    }
+  )
+  const render = (properties = {}) =>
+    filter({
+      id: "created_at",
+      filter: value,
+      onUpdate,
+      onRemove,
+      ...properties,
+    })
+  return { render, value, options, removed, updated, lookups, onUpdate }
+}
+
+for (const distribution of ["esm", "cjs"]) {
+  test(`${distribution}: native filter dialog names preserve translated metadata and fallback identity`, () => {
+    const labels = [
+      { label: "Created", expected: "Created" },
+      { label: "Erstellt am", expected: "Erstellt am" },
+      { label: "  Créé le  ", expected: "  Créé le  " },
+      { label: undefined, expected: "created_at" },
+      { label: null, expected: "created_at" },
+      { label: "", expected: "created_at" },
+      { label: "   ", expected: "created_at" },
+      { label: { type: "label-node" }, expected: "created_at" },
+    ]
+    for (const { label, expected } of labels) {
+      const fixture = nativeFilterDialogFixture(distribution, label)
+      const tree = fixture.render({ isNew: true })
+      const content = menuNodes(tree, "popover-content")
+      assert.equal(content.length, 1)
+      assert.equal(content[0].props["aria-label"], expected)
+      assert.equal(tree.props.modal, true)
+      assert.equal(tree.props.open, true)
+      assert.deepEqual(fixture.lookups, ["created_at"])
+      const dateContent = menuNodes(tree, "date-content")
+      assert.equal(dateContent.length, 1)
+      assert.equal(dateContent[0].props.id, "created_at")
+      assert.equal(dateContent[0].props.filter, fixture.value)
+      assert.equal(dateContent[0].props.options, fixture.options)
+      assert.equal(dateContent[0].props.onUpdate, fixture.onUpdate)
+      assert.deepEqual(fixture.updated, [])
+      assert.deepEqual(fixture.removed, [])
+    }
+  })
+
+  test(`${distribution}: native filter dialog preserves native update and removal callbacks`, () => {
+    const callbackRemovals = []
+    const fixture = nativeFilterDialogFixture(distribution, "Created", () => {
+      callbackRemovals.push("owned-removal")
+    })
+    const tree = fixture.render()
+    const dateContent = menuNodes(tree, "date-content")[0]
+    const next = { $gte: "2026-10-08T04:00:00.000Z" }
+    assert.equal(dateContent.props.filter, fixture.value)
+    assert.equal(dateContent.props.options, fixture.options)
+    assert.equal(dateContent.props.onUpdate, fixture.onUpdate)
+    assert.deepEqual(fixture.updated, [])
+    dateContent.props.onUpdate(next)
+    assert.equal(fixture.updated[0], next)
+    assert.equal(fixture.updated.length, 1)
+    const remove = menuNodes(tree, "button").find(
+      (node) => node.props["aria-label"] === "Remove: Created"
+    )
+    assert.ok(remove)
+    assert.equal(remove.props.type, "button")
+    remove.props.onClick()
+    assert.deepEqual(callbackRemovals, ["owned-removal"])
+    assert.deepEqual(fixture.removed, [])
+    const ordinary = nativeFilterDialogFixture(distribution, "Created")
+    const ordinaryTree = ordinary.render()
+    menuNodes(ordinaryTree, "button")
+      .find((node) => node.props["aria-label"] === "Remove: Created")
+      .props.onClick()
+    assert.deepEqual(ordinary.removed, ["created_at"])
+    assert.deepEqual(ordinary.updated, [])
+  })
+
+  test(`${distribution}: native filter dialog preserves native focus open and close behavior`, () => {
+    const fixture = nativeFilterDialogFixture(distribution, "Created")
+    const tree = fixture.render({ isNew: true })
+    const content = menuNodes(tree, "popover-content")[0]
+    assert.equal(tree.props.modal, true)
+    assert.equal(tree.props.open, true)
+    assert.equal(content.props.align, "start")
+    assert.equal(content.props.sideOffset, 8)
+    assert.equal(content.props.collisionPadding, 16)
+    assert.equal(content.props.hideWhenDetached, true)
+    assert.equal(content.props.className, "bg-ui-bg-component p-0 outline-none")
+    let focused = 0
+    content.props.onOpenAutoFocus({
+      currentTarget: {
+        querySelector: (selector) => {
+          assert.equal(
+            selector,
+            'input:not([type="hidden"]), [role="list"][tabindex="0"]'
+          )
+          return { focus: () => focused++ }
+        },
+      },
+    })
+    assert.equal(focused, 1)
+    let prevented = 0
+    content.props.onCloseAutoFocus({ preventDefault: () => prevented++ })
+    assert.equal(prevented, 0)
+    content.props.onInteractOutside({
+      target: { closest: () => null },
+      preventDefault: () => prevented++,
+    })
+    assert.equal(prevented, 0)
+    content.props.onInteractOutside({
+      target: {
+        closest: (selector) => {
+          assert.equal(selector, '[role="menuitem"]')
+          return {}
+        },
+      },
+      preventDefault: () => prevented++,
+    })
+    assert.equal(prevented, 1)
+    tree.props.onOpenChange(false)
+    assert.deepEqual(fixture.removed, [])
+    const retained = fixture.render({ isNew: false })
+    menuNodes(retained, "popover-content")[0].props.onOpenAutoFocus({
+      currentTarget: {
+        querySelector: () => {
+          focused++
+        },
+      },
+    })
+    assert.equal(focused, 1)
+    const empty = fixture.render({ filter: undefined, isNew: true })
+    let emptyPrevented = 0
+    menuNodes(empty, "popover-content")[0].props.onCloseAutoFocus({
+      preventDefault: () => emptyPrevented++,
+    })
+    assert.equal(emptyPrevented, 1)
+    empty.props.onOpenChange(false)
+    assert.deepEqual(fixture.removed, ["created_at"])
+  })
+}
+
+const nativeProductTagLoaderHarness = (entry, cachedResult) => {
+  const queryCalls = []
+  const apiCalls = []
+  const result = { product_tags: [], count: 0, limit: 20, offset: 0 }
+  const context = {
+    URL,
+    parseFilterParam: vm.runInNewContext(
+      `(${nativeArrow(entry === "app.js" ? "app.js" : "chunk-3UMI3ISU.mjs", "parseFilterParam")})`
+    ),
+    productTagsQueryKeys: { list: (query) => ["product_tags", "list", query] },
+    sdk: {
+      admin: {
+        productTag: {
+          list: async (query) => {
+            apiCalls.push(query)
+            return result
+          },
+        },
+      },
+    },
+    queryClient: {
+      getQueryData: (key) => {
+        queryCalls.push(key)
+        return cachedResult
+      },
+      fetchQuery: (query) => query.queryFn(),
+    },
+  }
+  context.productTagListQuery = vm.runInNewContext(
+    `(${nativeArrow(entry, "productTagListQuery")})`,
+    context
+  )
+  const load = vm.runInNewContext(
+    `(${nativeArrow(entry, "productTagListLoader")})`,
+    context
+  )
+  const schema = backendRequire(
+    "@medusajs/medusa/api/admin/product-tags/validators"
+  ).AdminGetProductTagsParams.strict()
+  return { load, context, queryCalls, apiCalls, result, schema }
+}
+
+for (const entry of ["app.js", "product-tag-list-MGHXTRBC.mjs"]) {
+  test(`Product Tags native loader ${entry} preserves empty editable filter without invalid API keys`, async () => {
+    for (const placeholder of ['""', "null", "[]"]) {
+      const h = nativeProductTagLoaderHarness(entry)
+      const params = new URLSearchParams({
+        ptag_value: placeholder,
+        ptag_offset: "20",
+        ptag_order: "-value",
+      })
+      const request = {
+        url: `https://owned.invalid/app/settings/product-tags?${params}`,
+      }
+      const originalUrl = request.url
+      assert.equal(await h.load({ request }), h.result)
+      assert.equal(request.url, originalUrl)
+      assert.equal(h.apiCalls.length, 1)
+      const query = JSON.parse(JSON.stringify(h.apiCalls[0]))
+      assert.deepEqual(query, { offset: 20, order: "-value" })
+      assert.equal(h.schema.safeParse(query).success, true)
+      assert.equal(
+        new URL(request.url).searchParams.get("ptag_value"),
+        placeholder
+      )
+    }
+  })
+
+  test(`Product Tags native loader ${entry} preserves value arrays date operators search and pagination`, async () => {
+    const h = nativeProductTagLoaderHarness(entry)
+    const params = new URLSearchParams({
+      ptag_value: JSON.stringify(["tour", "limited"]),
+      ptag_created_at: JSON.stringify({
+        $gte: "2026-01-01T00:00:00.000Z",
+        $lt: "2027-01-01T00:00:00.000Z",
+      }),
+      ptag_q: "owned tag",
+      ptag_offset: "40",
+      ptag_limit: "20",
+      ptag_order: "-created_at",
+      fields: "id,value",
+    })
+    await h.load({
+      request: {
+        url: `https://owned.invalid/app/settings/product-tags?${params}`,
+      },
+    })
+    const query = JSON.parse(JSON.stringify(h.apiCalls[0]))
+    assert.deepEqual(query, {
+      value: ["tour", "limited"],
+      created_at: {
+        $gte: "2026-01-01T00:00:00.000Z",
+        $lt: "2027-01-01T00:00:00.000Z",
+      },
+      q: "owned tag",
+      offset: 40,
+      limit: 20,
+      order: "-created_at",
+      fields: "id,value",
+    })
+    assert.equal(h.schema.safeParse(query).success, true)
+  })
+
+  test(`Product Tags native loader ${entry} retains native cache hit without issuing list request`, async () => {
+    const cached = {
+      product_tags: [{ id: "ptag_owned", value: "owned" }],
+      count: 1,
+    }
+    const h = nativeProductTagLoaderHarness(entry, cached)
+    assert.equal(
+      await h.load({
+        request: {
+          url: "https://owned.invalid/app/settings/product-tags?value=%22owned%22",
+        },
+      }),
+      cached
+    )
+    assert.equal(h.apiCalls.length, 0)
+    assert.deepEqual(JSON.parse(JSON.stringify(h.queryCalls)), [
+      ["product_tags", "list", { value: "owned" }],
+    ])
+  })
+
+  test(`Product Tags native loader ${entry} retains malformed native shape and propagates API rejection`, async () => {
+    const h = nativeProductTagLoaderHarness(entry)
+    const nativeError = new Error("Native Product Tags validation rejection")
+    h.context.sdk.admin.productTag.list = async (query) => {
+      h.apiCalls.push(query)
+      throw nativeError
+    }
+    const params = new URLSearchParams({
+      value: JSON.stringify({ $gte: 3 }),
+      ptag_unsupported_key: "retained",
+      ptag___proto__: JSON.stringify({ value: "untrusted" }),
+    })
+    await assert.rejects(
+      h.load({
+        request: {
+          url: `https://owned.invalid/app/settings/product-tags?${params}`,
+        },
+      }),
+      (error) => error === nativeError
+    )
+    const query = JSON.parse(JSON.stringify(h.apiCalls[0]))
+    assert.deepEqual(query, {
+      value: { $gte: 3 },
+      ptag_unsupported_key: "retained",
+      ptag___proto__: { value: "untrusted" },
+    })
+    assert.equal(h.schema.safeParse(query).success, false)
+  })
+}
+
+for (const entry of ["app.js", "product-tag-list-MGHXTRBC.mjs"]) {
+  test(`Product Tags native loader ${entry} retains unknown empty keys and native strict rejection`, async () => {
+    for (const key of [
+      "unsupported_key",
+      "ptag_unsupported_key",
+      "ptag___proto__",
+    ]) {
+      for (const [encoded, expected] of [
+        ["", ""],
+        ['""', ""],
+        ["null", null],
+        ["[]", []],
+      ]) {
+        const h = nativeProductTagLoaderHarness(entry)
+        const nativeError = new Error("Native unknown Product Tags query key")
+        h.context.sdk.admin.productTag.list = async (query) => {
+          h.apiCalls.push(query)
+          throw nativeError
+        }
+        const params = new URLSearchParams({ [key]: encoded })
+        const request = {
+          url: `https://owned.invalid/app/settings/product-tags?${params}`,
+        }
+        const originalUrl = request.url
+        await assert.rejects(
+          h.load({ request }),
+          (error) => error === nativeError
+        )
+        assert.equal(request.url, originalUrl)
+        assert.equal(h.apiCalls.length, 1)
+        const query = JSON.parse(JSON.stringify(h.apiCalls[0]))
+        assert.equal(Object.hasOwn(query, key), true)
+        assert.deepEqual(query, { [key]: expected })
+        assert.equal(h.schema.safeParse(query).success, false)
+      }
+    }
   })
 }
