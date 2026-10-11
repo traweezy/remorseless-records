@@ -3,6 +3,7 @@ import type {
   CatalogBundleInventoryLinkState,
   CatalogBundleProfileState,
 } from "@/modules/catalog/bundle-authoring"
+import { serializeCatalogMediaAsset } from "@/modules/catalog/serializers"
 
 import {
   assertExactCatalogBundleSnapshot,
@@ -127,6 +128,38 @@ describe("catalog media persistence contracts", () => {
       })
     )
   })
+
+  it.each([
+    ["2026-08-30T02:00:00+02:00", "2026-08-31T03:00:00+03:00"],
+    [new Date("2026-08-30T00:00:00Z"), new Date("2026-08-31T00:00:00Z")],
+  ])(
+    "retains persisted media dates through API serialization %#",
+    (created, updated) => {
+      const asset = readCatalogMediaAsset(
+        catalogMediaAssetFixture({ created_at: created, updated_at: updated })
+      )
+      expect(serializeCatalogMediaAsset(asset)).toEqual(
+        expect.objectContaining({
+          createdAt: "2026-08-30T00:00:00.000Z",
+          updatedAt: "2026-08-31T00:00:00.000Z",
+        })
+      )
+    }
+  )
+
+  it.each([
+    { created_at: "invalid" },
+    { updated_at: "invalid" },
+    { created_at: new Date(Number.NaN) },
+    { updated_at: new Date(Number.NaN) },
+  ])(
+    "rejects invalid persisted media dates before serialization %#",
+    (override) => {
+      expect(() =>
+        readCatalogMediaAsset(catalogMediaAssetFixture(override))
+      ).toThrow("transaction persistence boundary")
+    }
+  )
 
   it.each([
     { source_url: "javascript:alert(1)" },

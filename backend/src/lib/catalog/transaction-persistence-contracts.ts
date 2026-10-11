@@ -296,13 +296,12 @@ const mediaAssetRecord = (
   ) {
     return invalidTransactionPersistence()
   }
-  optionalTimestamp(source.created_at)
-  optionalTimestamp(source.updated_at)
   return {
     alt_text: nullableText(source.alt_text, 2_000),
     byte_size: nullableInteger(source.byte_size, 0, 100_000_000),
     caption: nullableText(source.caption, 10_000),
     content_sha256: nullableSha256(source.content_sha256),
+    created_at: optionalTimestamp(source.created_at),
     crop_intent: nullableText(source.crop_intent, 255),
     derivative_status: enumValue(
       source.derivative_status,
@@ -322,6 +321,7 @@ const mediaAssetRecord = (
     quarantined_by: quarantinedBy,
     source_file_key: nullableText(source.source_file_key, 1_024),
     source_url: httpUrl(source.source_url),
+    updated_at: optionalTimestamp(source.updated_at),
     version: integer(source.version, 1, Number.MAX_SAFE_INTEGER),
     width: nullableInteger(source.width, 1, 100_000),
   }

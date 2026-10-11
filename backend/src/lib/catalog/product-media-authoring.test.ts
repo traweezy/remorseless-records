@@ -517,3 +517,244 @@ describe("catalog product media authoring", () => {
     )
   })
 })
+
+describe("catalog media pending-audit conflict recovery", () => {
+  it.each(["40001", "40P01"])(
+    "rolls back an early %s audit conflict before a fresh complete attempt",
+    async (code) => {
+      const service = serviceFixture()
+      const conflict = Object.assign(new Error("Owned SQL conflict"), { code })
+      const contexts: Array<{ transactionManager: { flush: jest.Mock } }> = []
+      const events: string[] = []
+      let rows: ReturnType<typeof catalogOperationFixture>[] = []
+      service.createCatalogAuthoringOperations.mockImplementation(
+        async ([payload]: Array<Record<string, unknown>>) => {
+          const row = catalogOperationFixture({
+            ...payload,
+            id: `catop_attempt_${contexts.length}`,
+          })
+          rows.push(row)
+          return [row]
+        }
+      )
+      service.runCatalogTransaction.mockImplementation(
+        async (
+          task: (context: Record<string, unknown>) => Promise<unknown>
+        ) => {
+          const attempt = contexts.length + 1
+          const previousRows = [...rows]
+          const context = {
+            transactionManager: {
+              flush: jest.fn(async () => {
+                if (attempt === 1) throw conflict
+              }),
+            },
+          }
+          contexts.push(context)
+          events.push(`begin:${attempt}`)
+          try {
+            const result = await task(context)
+            events.push(`commit:${attempt}`)
+            return result
+          } catch (error) {
+            rows = previousRows
+            events.push(`rollback:${attempt}`)
+            throw error
+          }
+        }
+      )
+
+      const result = await mutateCatalogProductMedia(
+        service as never,
+        commandFixture()
+      )
+      expect(events).toEqual(["begin:1", "rollback:1", "begin:2", "commit:2"])
+      expect(contexts).toHaveLength(2)
+      expect(contexts[0]).not.toBe(contexts[1])
+      expect(contexts[0]!.transactionManager).not.toBe(
+        contexts[1]!.transactionManager
+      )
+      expect(contexts[0]!.transactionManager.flush).toHaveBeenCalledTimes(1)
+      expect(contexts[1]!.transactionManager.flush).toHaveBeenCalledTimes(1)
+      expect(
+        service.createCatalogAuthoringOperations.mock.calls[0]![0]
+      ).toEqual(service.createCatalogAuthoringOperations.mock.calls[1]![0])
+      expect(rows.map(({ id }) => id)).toEqual(["catop_attempt_2"])
+      expect(result).toMatchObject({
+        operationId: "catop_attempt_2",
+        version: 1,
+        replayed: false,
+      })
+      expect(service.updateCatalogMediaAssets).not.toHaveBeenCalled()
+      expect(service.createCatalogProductMediaItems).not.toHaveBeenCalled()
+    }
+  )
+
+  it("stops after three rolled-back preflight conflicts and preserves the error", async () => {
+    const service = serviceFixture()
+    const conflict = Object.assign(new Error("Owned SQL conflict"), {
+      code: "40001",
+    })
+    const contexts: Record<string, unknown>[] = []
+    service.runCatalogTransaction.mockImplementation(
+      async (task: (context: Record<string, unknown>) => Promise<unknown>) => {
+        const context = {
+          transactionManager: {
+            flush: jest.fn(async () => {
+              throw conflict
+            }),
+          },
+        }
+        contexts.push(context)
+        return task(context)
+      }
+    )
+    await expect(
+      mutateCatalogProductMedia(service as never, commandFixture())
+    ).rejects.toBe(conflict)
+    expect(contexts).toHaveLength(3)
+    expect(new Set(contexts).size).toBe(3)
+    expect(service.createCatalogAuthoringOperations).toHaveBeenCalledTimes(3)
+    expect(service.updateCatalogMediaAssets).not.toHaveBeenCalled()
+    expect(service.createCatalogProductMediaItems).not.toHaveBeenCalled()
+  })
+
+  it("rechecks authoritative version after an early conflict without changing the command", async () => {
+    const service = serviceFixture()
+    const conflict = Object.assign(new Error("Owned SQL conflict"), {
+      code: "40001",
+    })
+    let attempt = 0
+    service.runCatalogTransaction.mockImplementation(
+      async (task: (context: Record<string, unknown>) => Promise<unknown>) => {
+        attempt += 1
+        return task({
+          transactionManager: {
+            flush: jest.fn(async () => {
+              if (attempt === 1) throw conflict
+            }),
+          },
+        })
+      }
+    )
+    service.listCatalogAuthoringOperations.mockImplementation(
+      async (filters: Record<string, unknown>) =>
+        attempt === 2 && filters.status === "succeeded"
+          ? [
+              catalogOperationFixture({
+                expected_version: 0,
+                result: { productId: "prod_1", version: 1 },
+                status: "succeeded",
+              }),
+            ]
+          : []
+    )
+    const input = commandFixture()
+    await expect(
+      mutateCatalogProductMedia(service as never, input)
+    ).rejects.toThrow("changed after it was loaded")
+    expect(attempt).toBe(2)
+    expect(input.expectedVersion).toBe(0)
+    expect(service.createCatalogAuthoringOperations).toHaveBeenCalledTimes(1)
+    expect(service.createCatalogProductMediaItems).not.toHaveBeenCalled()
+  })
+
+  it("never retries an asset write failure after the pending audit flush", async () => {
+    const service = serviceFixture()
+    const asset = assetFixture()
+    service.retrieveCatalogMediaAsset.mockResolvedValue(asset)
+    const conflict = Object.assign(new Error("Owned late SQL conflict"), {
+      code: "40001",
+    })
+    service.updateCatalogMediaAssets.mockRejectedValue(conflict)
+    await expect(
+      mutateCatalogProductMedia(
+        service as never,
+        commandFixture([
+          { mediaAssetId: asset.id, altText: "Later owned edit" },
+        ])
+      )
+    ).rejects.toBe(conflict)
+    expect(service.runCatalogTransaction).toHaveBeenCalledTimes(1)
+    expect(service.updateCatalogMediaAssets).toHaveBeenCalledTimes(1)
+    expect(service.createCatalogAuthoringOperations).toHaveBeenCalledTimes(1)
+    expect(service.createCatalogProductMediaItems).not.toHaveBeenCalled()
+  })
+
+  it("never retries a commit-stage conflict after the transaction task returned", async () => {
+    const service = serviceFixture()
+    const conflict = Object.assign(new Error("Owned commit conflict"), {
+      code: "40001",
+    })
+    service.runCatalogTransaction.mockImplementation(
+      async (task: (context: Record<string, unknown>) => Promise<unknown>) => {
+        await task({ transactionManager: { flush: jest.fn() } })
+        throw conflict
+      }
+    )
+    await expect(
+      mutateCatalogProductMedia(service as never, commandFixture())
+    ).rejects.toBe(conflict)
+    expect(service.runCatalogTransaction).toHaveBeenCalledTimes(1)
+    expect(service.createCatalogAuthoringOperations).toHaveBeenCalledTimes(1)
+  })
+
+  it("never retries a replay commit error after the read-only task returned", async () => {
+    const service = serviceFixture()
+    const input = commandFixture()
+    service.listCatalogAuthoringOperations.mockResolvedValue([
+      catalogOperationFixture({
+        actor_id: input.actorId,
+        aggregate_id: input.aggregateId,
+        command: input.command,
+        expected_version: input.expectedVersion,
+        id: "catop_replayed",
+        request_sha256: input.requestSha256,
+        result: { productId: "prod_1", version: 1 },
+        status: "succeeded",
+      }),
+    ])
+    const conflict = Object.assign(new Error("Owned replay commit conflict"), {
+      code: "40001",
+    })
+    service.runCatalogTransaction.mockImplementation(
+      async (task: (context: Record<string, unknown>) => Promise<unknown>) => {
+        await task({ transactionManager: { flush: jest.fn() } })
+        throw conflict
+      }
+    )
+    await expect(
+      mutateCatalogProductMedia(service as never, input)
+    ).rejects.toBe(conflict)
+    expect(service.runCatalogTransaction).toHaveBeenCalledTimes(1)
+    expect(service.createCatalogAuthoringOperations).not.toHaveBeenCalled()
+  })
+
+  it.each(["23505", "08006", undefined])(
+    "does not retry an early failure with SQLSTATE %s",
+    async (code) => {
+      const service = serviceFixture()
+      const failure = Object.assign(
+        new Error(
+          "could not serialize; DeadlockException name is insufficient"
+        ),
+        { code, name: "DeadlockException" }
+      )
+      service.runCatalogTransaction.mockImplementation(
+        async (task: (context: Record<string, unknown>) => Promise<unknown>) =>
+          task({
+            transactionManager: {
+              flush: jest.fn(async () => {
+                throw failure
+              }),
+            },
+          })
+      )
+      await expect(
+        mutateCatalogProductMedia(service as never, commandFixture())
+      ).rejects.toBe(failure)
+      expect(service.runCatalogTransaction).toHaveBeenCalledTimes(1)
+      expect(service.createCatalogAuthoringOperations).toHaveBeenCalledTimes(1)
+    }
+  )
+})

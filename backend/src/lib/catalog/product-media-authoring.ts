@@ -302,10 +302,52 @@ export const assertCatalogProductMediaPrimaryShape = (
   return primaryByIndex
 }
 
+const isRetryableMediaAuditTransactionError = (error: unknown): boolean => {
+  let current = error
+  for (let depth = 0; depth < 5; depth += 1) {
+    if (!current || typeof current !== "object") return false
+    const candidate = current as { code?: unknown; cause?: unknown }
+    if (candidate.code === "40001" || candidate.code === "40P01") return true
+    current = candidate.cause
+  }
+  return false
+}
+
 export const mutateCatalogProductMedia = async (
   catalogService: CatalogService,
   input: CatalogProductMediaMutationInput,
   protection?: { lockKeys: readonly string[] }
+): Promise<CatalogProductMediaMutationResult> => {
+  for (let attempt = 1; ; attempt += 1) {
+    let beforeMediaWrites = true
+    try {
+      return await mutateCatalogProductMediaAttempt(
+        catalogService,
+        input,
+        protection,
+        () => {
+          beforeMediaWrites = false
+        }
+      )
+    } catch (error) {
+      // A fresh transaction reruns version/replay/lock checks. Never retry
+      // media writes, native projection, compensation, or ambiguous failures.
+      if (
+        !beforeMediaWrites ||
+        attempt >= 3 ||
+        !isRetryableMediaAuditTransactionError(error)
+      ) {
+        throw error
+      }
+    }
+  }
+}
+
+const mutateCatalogProductMediaAttempt = async (
+  catalogService: CatalogService,
+  input: CatalogProductMediaMutationInput,
+  protection: { lockKeys: readonly string[] } | undefined,
+  markMediaWriteBoundary: () => void
 ): Promise<CatalogProductMediaMutationResult> =>
   catalogService.runCatalogTransaction(async (sharedContext) => {
     const operationExpectation: CatalogTransactionOperationExpectation = {
@@ -322,7 +364,10 @@ export const mutateCatalogProductMedia = async (
       input,
       sharedContext
     )
-    if (replay) return replay
+    if (replay) {
+      markMediaWriteBoundary()
+      return replay
+    }
 
     const currentVersion = await resolveCatalogProductMediaVersion(
       catalogService,
@@ -364,6 +409,11 @@ export const mutateCatalogProductMedia = async (
       ),
       operationExpectation
     )
+    // Persist the pending audit INSERT before changing shared assets or links.
+    // PostgreSQL rejects this transaction atomically on 40001/40P01; the native
+    // transaction wrapper awaits rollback before the next fresh attempt.
+    await sharedContext.transactionManager!.flush()
+    markMediaWriteBoundary()
 
     const primaryByIndex = assertCatalogProductMediaPrimaryShape(input.media)
     const createdAssetIds = new Set<string>()
