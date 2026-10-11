@@ -1,17 +1,16 @@
 import type { MedusaRequest } from "@medusajs/framework"
 import { MedusaError } from "@medusajs/framework/utils"
 
-import {
-  assertExactNewsEntry,
-  readAdminNewsMutation,
-} from "@/lib/content/persistence-contracts"
+import { assertExactNewsEntry } from "@/lib/content/persistence-contracts"
 import { serializeNewsEntry } from "@/modules/news/serializers"
 import {
+  assertNewsUpdateActor,
   completeNewsOperation,
   createNewsOperation,
   type NewsCommandInput,
   type NewsService,
   replayNewsCommand,
+  readFlushedNewsMutation,
   requestNewsActorId,
   resolveNewsEntry,
   runNewsTransaction,
@@ -70,7 +69,8 @@ export const createNewsEntry = async (
       input.idempotencyKey,
       sharedContext
     )
-    const createdAcknowledgement = readAdminNewsMutation(
+    const createdAcknowledgement = await readFlushedNewsMutation(
+      service,
       await service.createNewsEntries(
         [
           {
@@ -83,7 +83,8 @@ export const createNewsEntry = async (
         ],
         sharedContext
       ),
-      { version: 1 }
+      { version: 1 },
+      sharedContext
     )
     const created = assertExactNewsEntry(createdAcknowledgement, {
       ...createdAcknowledgement,
@@ -115,8 +116,10 @@ export const updateNewsEntry = async (
   id: string,
   input: NewsUpdateInput
 ) => {
-  const actorId = requestNewsActorId(req)
-  const { expectedVersion, idempotencyKey, ...requestedChanges } = input
+  const actorId = assertNewsUpdateActor(req, input.expectedActorId)
+  const { expectedActorId: _expectedActorId, ...commandPayload } = input
+  const { expectedVersion, idempotencyKey, ...requestedChanges } =
+    commandPayload
   if (!Object.keys(requestedChanges).length) {
     throw new MedusaError(
       MedusaError.Types.INVALID_DATA,
@@ -128,7 +131,7 @@ export const updateNewsEntry = async (
     command: "news.entry.update",
     expectedVersion,
     idempotencyKey,
-    payload: input,
+    payload: commandPayload,
   }
   return runNewsTransaction(service, async (sharedContext) => {
     const replayed = await replayNewsCommand(
@@ -159,14 +162,20 @@ export const updateNewsEntry = async (
       commandInput,
       sharedContext
     )
-    const patch = buildNewsEntryPatch({ existing, input, now: new Date() })
+    const patch = buildNewsEntryPatch({
+      existing,
+      input: commandPayload,
+      now: new Date(),
+    })
     const version = existing.version + 1
-    const updatedAcknowledgement = readAdminNewsMutation(
+    const updatedAcknowledgement = await readFlushedNewsMutation(
+      service,
       await service.updateNewsEntries(
         [{ id, ...patch, version }],
         sharedContext
       ),
-      { id, version }
+      { id, version },
+      sharedContext
     )
     const updated = assertExactNewsEntry(updatedAcknowledgement, {
       ...existing,
@@ -240,7 +249,8 @@ export const setNewsEntryArchived = async (
     const archivedAt = archived ? new Date() : null
     const nextStatus =
       existing.status === "archived" ? "draft" : existing.status
-    const updatedAcknowledgement = readAdminNewsMutation(
+    const updatedAcknowledgement = await readFlushedNewsMutation(
+      service,
       await service.updateNewsEntries(
         [
           {
@@ -252,7 +262,8 @@ export const setNewsEntryArchived = async (
         ],
         sharedContext
       ),
-      { id, version }
+      { id, version },
+      sharedContext
     )
     const updated = assertExactNewsEntry(updatedAcknowledgement, {
       ...existing,

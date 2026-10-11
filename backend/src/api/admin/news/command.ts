@@ -7,6 +7,7 @@ import { hashCatalogCommand } from "@/modules/catalog/catalog-command"
 import {
   assertExactNewsEntry,
   readAdminNewsEntry,
+  readAdminNewsMutation,
   readContentOperationList,
   readContentOperationMutation,
   readExactNewsOperationResult,
@@ -19,6 +20,8 @@ import {
   type NewsEntryRecord,
   serializeNewsEntry,
 } from "@/modules/news/serializers"
+import { newsUpdateActorIdSchema } from "./contracts"
+import { asUnknownRecord } from "@/lib/provider-boundary/records"
 
 export type NewsService = InstanceType<typeof NewsModuleService>
 export type NewsTransactionContext = Context<EntityManager>
@@ -37,6 +40,47 @@ export const requestNewsActorId = (req: MedusaRequest): string | null =>
       auth_context?: { actor_id?: string | null }
     }
   ).auth_context?.actor_id ?? null
+
+export const assertNewsUpdateActor = (
+  req: MedusaRequest,
+  expectedActorId: unknown
+): string | null => {
+  if (expectedActorId === undefined) {
+    return requestNewsActorId(req)
+  }
+  const expected = newsUpdateActorIdSchema.safeParse(expectedActorId)
+  if (!expected.success) {
+    throw new MedusaError(
+      MedusaError.Types.INVALID_DATA,
+      "Invalid news actor precondition."
+    )
+  }
+  const context = (
+    req as MedusaRequest & {
+      auth_context?: { actor_id?: unknown; actor_type?: unknown }
+    }
+  ).auth_context
+  const actual = newsUpdateActorIdSchema.safeParse(context?.actor_id)
+  if (
+    !context ||
+    typeof context !== "object" ||
+    Array.isArray(context) ||
+    context?.actor_type !== "user" ||
+    !actual.success
+  ) {
+    throw new MedusaError(
+      MedusaError.Types.UNAUTHORIZED,
+      "A signed-in administrator is required to save this news request."
+    )
+  }
+  if (actual.data !== expected.data) {
+    throw new MedusaError(
+      MedusaError.Types.CONFLICT,
+      "The signed-in administrator changed. Reopen the news editor before saving."
+    )
+  }
+  return actual.data
+}
 
 const hasTransactionConflict = (error: unknown): boolean => {
   let current = error
@@ -95,6 +139,43 @@ export const resolveNewsEntry = async (
     throw new MedusaError(MedusaError.Types.NOT_FOUND, "News post not found")
   }
   return entry
+}
+
+export const readFlushedNewsMutation = async (
+  service: NewsService,
+  acknowledgement: unknown,
+  expected: { id?: string; version: number },
+  sharedContext: NewsTransactionContext
+): Promise<NewsEntryRecord> => {
+  const candidate = Array.isArray(acknowledgement)
+    ? acknowledgement.length === 1
+      ? acknowledgement[0]
+      : null
+    : acknowledgement
+  const record = asUnknownRecord(candidate)
+  const manager = sharedContext.transactionManager
+  if (
+    !record ||
+    typeof record.id !== "string" ||
+    !/^news_[A-Za-z0-9][A-Za-z0-9_-]{0,249}$/u.test(record.id) ||
+    record.version !== expected.version ||
+    (expected.id !== undefined && record.id !== expected.id) ||
+    !manager ||
+    typeof manager.flush !== "function"
+  ) {
+    throw new MedusaError(
+      MedusaError.Types.UNEXPECTED_STATE,
+      "The Admin content persistence boundary returned invalid structured data."
+    )
+  }
+  // Native create returns a DTO before its onCreate timestamp defaults run.
+  // Flush and reread within the same serializable transaction so both the
+  // response and immutable operation receipt describe actual persisted fields.
+  await manager.flush()
+  return readAdminNewsMutation(
+    await service.retrieveNewsEntry(record.id, {}, sharedContext),
+    { id: record.id, version: expected.version }
+  )
 }
 
 export const replayNewsCommand = async (

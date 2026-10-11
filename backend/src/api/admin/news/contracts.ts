@@ -51,7 +51,13 @@ export const newsCreateSchema = newsFieldsSchema.extend({
   title: z.string().trim().min(1).max(300),
 })
 
+export const newsUpdateActorIdSchema = z
+  .string()
+  .max(255)
+  .regex(/^user_[A-Za-z0-9]+$/u)
+
 export const newsUpdateSchema = newsFieldsSchema.extend({
+  expectedActorId: newsUpdateActorIdSchema.optional(),
   expectedVersion: z.number().int().min(1),
   idempotencyKey: z.string().uuid(),
 })

@@ -9,6 +9,7 @@ import {
   useState,
   type ChangeEvent,
   type RefObject,
+  type ReactNode,
 } from "react"
 import { useForm, useStore, type AnyFieldApi } from "@tanstack/react-form"
 import {
@@ -513,6 +514,9 @@ type NewsEditorProps = {
     intent: NewsPublicationIntent
   ) => Promise<void>
   restoreFocusRef: RefObject<HTMLButtonElement | null>
+  locked?: boolean
+  recovery?: ReactNode
+  recoveryBusy?: boolean
 }
 
 const statusColor = {
@@ -560,6 +564,9 @@ export const NewsEditor = memo<NewsEditorProps>(
     onClose,
     onSubmit,
     restoreFocusRef,
+    locked = false,
+    recovery,
+    recoveryBusy = false,
   }) => {
     const draftKey = `admin:news:${entry?.id ?? "new"}`
     const idempotencyKeyRef = useRef(crypto.randomUUID())
@@ -573,6 +580,7 @@ export const NewsEditor = memo<NewsEditorProps>(
     const form = useForm({
       defaultValues: entry ? valuesFromNewsEntry(entry) : emptyNewsEditorValues,
       onSubmit: async ({ value }) => {
+        if (locked) return
         const intent = intentRef.current
         const publicationError = validatePublicationIntent(value, intent)
         if (publicationError) {
@@ -596,7 +604,7 @@ export const NewsEditor = memo<NewsEditorProps>(
             intent
           )
           const storage = newsDraftStorage()
-          if (storage) {
+          if (storage && mode === "create") {
             clearAdminFormDraft({ key: draftKey, storage })
           }
         } catch {
@@ -611,9 +619,10 @@ export const NewsEditor = memo<NewsEditorProps>(
       submissionAttempts: formState.submissionAttempts,
       values: formState.values,
     }))
-    const busy = state.isSubmitting || uploadingCover
+    const busy = state.isSubmitting || uploadingCover || recoveryBusy
 
     useEffect(() => {
+      if (locked) return
       const storage = newsDraftStorage()
       if (!storage) {
         draftLoadedRef.current = true
@@ -631,10 +640,10 @@ export const NewsEditor = memo<NewsEditorProps>(
         )
       }
       draftLoadedRef.current = true
-    }, [draftKey, form])
+    }, [draftKey, form, locked])
 
     useEffect(() => {
-      if (!draftLoadedRef.current || state.isPristine) {
+      if (locked || !draftLoadedRef.current || state.isPristine) {
         return undefined
       }
       const storage = newsDraftStorage()
@@ -656,19 +665,19 @@ export const NewsEditor = memo<NewsEditorProps>(
         }
       }, 500)
       return () => clearTimeout(timer)
-    }, [draftKey, state.isPristine, state.values])
+    }, [draftKey, locked, state.isPristine, state.values])
 
-    useAdminUnsavedChanges(!state.isPristine && !busy)
+    useAdminUnsavedChanges(!state.isPristine && !busy && !locked)
     const requestClose = useCallback(() => {
       if (busy) {
         return
       }
-      if (state.isPristine) {
+      if (state.isPristine || locked) {
         onClose()
       } else {
         setDiscardOpen(true)
       }
-    }, [busy, onClose, state.isPristine])
+    }, [busy, locked, onClose, state.isPristine])
     const handleOpenChange = useCallback(
       (open: boolean) => {
         if (!open) {
@@ -700,7 +709,8 @@ export const NewsEditor = memo<NewsEditorProps>(
           (intent !== "draft" &&
             intent !== "schedule" &&
             intent !== "publish") ||
-          busy
+          busy ||
+          locked
         ) {
           return
         }
@@ -708,7 +718,7 @@ export const NewsEditor = memo<NewsEditorProps>(
         setActionError(null)
         void form.handleSubmit().finally(focusFirstInvalid)
       },
-      [busy, form]
+      [busy, form, locked]
     )
     const handleUploadingChange = useCallback(
       (uploading: boolean) => setUploadingCover(uploading),
@@ -792,159 +802,174 @@ export const NewsEditor = memo<NewsEditorProps>(
       <>
         <FocusModal onOpenChange={handleOpenChange} open>
           <FocusModal.Content
-            className="sm:inset-x-1/2 sm:inset-y-4 sm:w-[calc(100%-2rem)] sm:max-w-6xl sm:-translate-x-1/2"
+            aria-modal="true"
+            className="sm:inset-x-4 sm:inset-y-4 sm:mx-auto sm:max-w-6xl"
             onCloseAutoFocus={handleCloseAutoFocus}
           >
             <AdminFocusModalHeader
               description="Write once, then save privately, schedule for later, or publish now."
-              title={
-                mode === "create"
-                  ? "Create news post"
-                  : `Edit ${entry?.title ?? "post"}`
-              }
+              title={mode === "create" ? "Create news post" : "Edit news post"}
             />
             <FocusModal.Body
               aria-busy={busy}
               className="overflow-y-auto px-4 py-5 sm:px-6"
             >
-              <div className="mb-5 space-y-4">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <Text className="text-ui-fg-subtle" size="small">
-                    Move through the story, media, organization, and publishing
-                    tasks.
-                  </Text>
-                  <AdminFormSaveState state={saveState} />
-                </div>
-                <AdminTaskNavigation items={newsEditorTasks} />
-                <AdminFormErrorSummary issues={formIssues} />
-                {draftNotice ? (
-                  <Alert role="status" variant="info">
-                    <Text size="small">{draftNotice}</Text>
-                  </Alert>
-                ) : null}
-              </div>
-              <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
-                <div className="min-w-0 space-y-8">
-                  <section
-                    aria-labelledby="news-story-heading"
-                    className="scroll-mt-24 outline-none"
-                    id="news-story"
-                    tabIndex={-1}
-                  >
-                    <Heading id="news-story-heading" level="h2">
-                      Story
-                    </Heading>
-                    <Text className="mt-1 text-ui-fg-subtle" size="small">
-                      Lead with the update readers need, then add the useful
-                      context.
-                    </Text>
-                    <div className="mt-4 space-y-5">
-                      <form.Field children={TitleField} name="title" />
-                      <form.Field children={ExcerptField} name="excerpt" />
-                      <form.Field children={ContentField} name="content" />
-                    </div>
-                  </section>
-
-                  <section
-                    aria-labelledby="news-cover-heading"
-                    className="scroll-mt-24 outline-none"
-                    id="news-cover"
-                    tabIndex={-1}
-                  >
-                    <Heading id="news-cover-heading" level="h2">
-                      Cover
-                    </Heading>
-                    <Text className="mt-1 text-ui-fg-subtle" size="small">
-                      Optional, but useful for the News feed and homepage
-                      carousel.
-                    </Text>
-                    <div className="mt-4">
-                      <form.Field children={coverFields} name="coverUrl" />
-                    </div>
-                  </section>
-
-                  <section
-                    aria-labelledby="news-tags-heading"
-                    className="scroll-mt-24 outline-none"
-                    id="news-organization"
-                    tabIndex={-1}
-                  >
-                    <Heading id="news-tags-heading" level="h2">
-                      Organization
-                    </Heading>
-                    <div className="mt-4">
-                      <form.Field children={TagsField} name="tagsText" />
-                    </div>
-                  </section>
-                </div>
-
-                <aside className="space-y-6 lg:sticky lg:top-0 lg:self-start">
-                  <section
-                    aria-labelledby="news-publish-heading"
-                    className="scroll-mt-24 rounded-lg border border-ui-border-base p-4 outline-none"
-                    id="news-publishing"
-                    tabIndex={-1}
-                  >
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <Heading id="news-publish-heading" level="h2">
-                        Publishing
-                      </Heading>
-                      <StatusBadge color={statusColor[currentStatus]}>
-                        {statusLabel[currentStatus]}
-                      </StatusBadge>
-                    </div>
-                    {entry?.author ? (
-                      <Text className="mt-3 text-ui-fg-subtle" size="small">
-                        Written by {entry.author}
+              {locked ? (
+                (recovery ?? (
+                  <Text role="status">Checking the saved News request…</Text>
+                ))
+              ) : (
+                <>
+                  <div className="mb-5 space-y-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <Text className="text-ui-fg-subtle" size="small">
+                        Move through the story, media, organization, and
+                        publishing tasks.
                       </Text>
-                    ) : (
-                      <Text className="mt-3 text-ui-fg-subtle" size="small">
-                        The signed-in administrator is recorded as the author.
-                      </Text>
-                    )}
-                    <div className="mt-4">
-                      <form.Field children={ScheduleField} name="scheduleAt" />
+                      <AdminFormSaveState state={saveState} />
                     </div>
-                    <Text className="mt-4 text-ui-fg-subtle" size="xsmall">
-                      Publishing makes the post visible immediately. Saving a
-                      draft removes it from the storefront.
-                    </Text>
-                  </section>
+                    <AdminTaskNavigation items={newsEditorTasks} />
+                    <AdminFormErrorSummary issues={formIssues} />
+                    {draftNotice ? (
+                      <Alert role="status" variant="info">
+                        <Text size="small">{draftNotice}</Text>
+                      </Alert>
+                    ) : null}
+                  </div>
+                  <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
+                    <div className="min-w-0 space-y-8">
+                      <section
+                        aria-labelledby="news-story-heading"
+                        className="scroll-mt-24 outline-none"
+                        id="news-story"
+                        tabIndex={-1}
+                      >
+                        <Heading id="news-story-heading" level="h2">
+                          Story
+                        </Heading>
+                        <Text className="mt-1 text-ui-fg-subtle" size="small">
+                          Lead with the update readers need, then add the useful
+                          context.
+                        </Text>
+                        <div className="mt-4 space-y-5">
+                          <form.Field children={TitleField} name="title" />
+                          <form.Field children={ExcerptField} name="excerpt" />
+                          <form.Field children={ContentField} name="content" />
+                        </div>
+                      </section>
 
-                  <section
-                    aria-labelledby="news-preview-heading"
-                    className="scroll-mt-24 rounded-lg border border-ui-border-base p-4 outline-none"
-                    id="news-preview"
-                    tabIndex={-1}
-                  >
-                    <Heading id="news-preview-heading" level="h2">
-                      Search preview
-                    </Heading>
-                    <Text
-                      className="mt-3 break-words text-ui-fg-interactive"
-                      size="xsmall"
-                    >
-                      {routePreview}
-                    </Text>
-                    <Text className="mt-2 break-words" weight="plus">
-                      {titlePreview}
-                    </Text>
-                    <Text
-                      className="mt-1 break-words text-ui-fg-subtle"
-                      size="small"
-                    >
-                      {descriptionPreview}
-                    </Text>
-                    <Text className="mt-3 text-ui-fg-subtle" size="xsmall">
-                      The public URL is generated when the post is first created
-                      and remains stable after headline edits.
-                    </Text>
-                  </section>
-                </aside>
-              </div>
+                      <section
+                        aria-labelledby="news-cover-heading"
+                        className="scroll-mt-24 outline-none"
+                        id="news-cover"
+                        tabIndex={-1}
+                      >
+                        <Heading id="news-cover-heading" level="h2">
+                          Cover
+                        </Heading>
+                        <Text className="mt-1 text-ui-fg-subtle" size="small">
+                          Optional, but useful for the News feed and homepage
+                          carousel.
+                        </Text>
+                        <div className="mt-4">
+                          <form.Field children={coverFields} name="coverUrl" />
+                        </div>
+                      </section>
+
+                      <section
+                        aria-labelledby="news-tags-heading"
+                        className="scroll-mt-24 outline-none"
+                        id="news-organization"
+                        tabIndex={-1}
+                      >
+                        <Heading id="news-tags-heading" level="h2">
+                          Organization
+                        </Heading>
+                        <div className="mt-4">
+                          <form.Field children={TagsField} name="tagsText" />
+                        </div>
+                      </section>
+                    </div>
+
+                    <aside className="space-y-6 lg:sticky lg:top-0 lg:self-start">
+                      <section
+                        aria-labelledby="news-publish-heading"
+                        className="scroll-mt-24 rounded-lg border border-ui-border-base p-4 outline-none"
+                        id="news-publishing"
+                        tabIndex={-1}
+                      >
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <Heading id="news-publish-heading" level="h2">
+                            Publishing
+                          </Heading>
+                          <StatusBadge color={statusColor[currentStatus]}>
+                            {statusLabel[currentStatus]}
+                          </StatusBadge>
+                        </div>
+                        {entry?.author ? (
+                          <Text className="mt-3 text-ui-fg-subtle" size="small">
+                            Written by {entry.author}
+                          </Text>
+                        ) : (
+                          <Text className="mt-3 text-ui-fg-subtle" size="small">
+                            The signed-in administrator is recorded as the
+                            author.
+                          </Text>
+                        )}
+                        <div className="mt-4">
+                          <form.Field
+                            children={ScheduleField}
+                            name="scheduleAt"
+                          />
+                        </div>
+                        <Text className="mt-4 text-ui-fg-subtle" size="xsmall">
+                          Publishing makes the post visible immediately. Saving
+                          a draft removes it from the storefront.
+                        </Text>
+                      </section>
+
+                      <section
+                        aria-labelledby="news-preview-heading"
+                        className="scroll-mt-24 rounded-lg border border-ui-border-base p-4 outline-none"
+                        id="news-preview"
+                        tabIndex={-1}
+                      >
+                        <Heading id="news-preview-heading" level="h2">
+                          Search preview
+                        </Heading>
+                        <Text
+                          className="mt-3 break-words text-ui-fg-interactive"
+                          size="xsmall"
+                        >
+                          {routePreview}
+                        </Text>
+                        <Text className="mt-2 break-words" weight="plus">
+                          {titlePreview}
+                        </Text>
+                        <Text
+                          className="mt-1 break-words text-ui-fg-subtle"
+                          size="small"
+                        >
+                          {descriptionPreview}
+                        </Text>
+                        <Text className="mt-3 text-ui-fg-subtle" size="xsmall">
+                          The public URL is generated when the post is first
+                          created and remains stable after headline edits.
+                        </Text>
+                      </section>
+                    </aside>
+                  </div>
+                </>
+              )}
             </FocusModal.Body>
             <FocusModal.Footer className="flex-wrap gap-2">
-              <AdminFormSaveState className="mr-auto" state={saveState} />
+              {locked ? (
+                <Text className="mr-auto" size="small">
+                  Saved request recovery
+                </Text>
+              ) : (
+                <AdminFormSaveState className="mr-auto" state={saveState} />
+              )}
               <Button
                 disabled={busy}
                 onClick={requestClose}
@@ -953,33 +978,37 @@ export const NewsEditor = memo<NewsEditorProps>(
               >
                 Cancel
               </Button>
-              <Button
-                data-intent="draft"
-                disabled={busy || draftUnchanged}
-                onClick={handleIntent}
-                type="button"
-                variant="secondary"
-              >
-                {draftLabel}
-              </Button>
-              <Button
-                data-intent="schedule"
-                disabled={busy || scheduleUnchanged}
-                onClick={handleIntent}
-                type="button"
-                variant="secondary"
-              >
-                Schedule
-              </Button>
-              <Button
-                data-intent="publish"
-                disabled={busy || publishUnchanged}
-                isLoading={busy}
-                onClick={handleIntent}
-                type="button"
-              >
-                {primaryLabel}
-              </Button>
+              {!locked ? (
+                <>
+                  <Button
+                    data-intent="draft"
+                    disabled={busy || draftUnchanged}
+                    onClick={handleIntent}
+                    type="button"
+                    variant="secondary"
+                  >
+                    {draftLabel}
+                  </Button>
+                  <Button
+                    data-intent="schedule"
+                    disabled={busy || scheduleUnchanged}
+                    onClick={handleIntent}
+                    type="button"
+                    variant="secondary"
+                  >
+                    Schedule
+                  </Button>
+                  <Button
+                    data-intent="publish"
+                    disabled={busy || publishUnchanged}
+                    isLoading={busy}
+                    onClick={handleIntent}
+                    type="button"
+                  >
+                    {primaryLabel}
+                  </Button>
+                </>
+              ) : null}
               <div aria-live="polite" className="sr-only">
                 {busy ? "Saving news post" : ""}
               </div>

@@ -8,6 +8,42 @@ const baseCreate = {
 }
 
 describe("News Admin contracts", () => {
+  it("accepts an optional exact native user precondition only for updates", () => {
+    const legacy = {
+      expectedVersion: 1,
+      idempotencyKey: baseCreate.idempotencyKey,
+      title: "Updated title",
+    }
+    expect(newsUpdateSchema.parse(legacy)).toEqual(legacy)
+    expect(
+      newsUpdateSchema.parse({ ...legacy, expectedActorId: "user_admin" })
+    ).toEqual({ ...legacy, expectedActorId: "user_admin" })
+    expect(
+      newsCreateSchema.parse({ ...baseCreate, expectedActorId: "user_admin" })
+    ).toEqual(baseCreate)
+  })
+
+  it.each([
+    "",
+    " user_admin",
+    "user_admin ",
+    "user_",
+    "customer_admin",
+    null,
+    1,
+    {},
+    [],
+  ])("rejects malformed update actor precondition %p", (expectedActorId) => {
+    expect(
+      newsUpdateSchema.safeParse({
+        expectedActorId,
+        expectedVersion: 1,
+        idempotencyKey: baseCreate.idempotencyKey,
+        title: "Updated title",
+      }).success
+    ).toBe(false)
+  })
+
   it("accepts web cover URLs", () => {
     expect(
       newsCreateSchema.safeParse({

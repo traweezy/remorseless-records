@@ -2,7 +2,9 @@ import { randomUUID } from "node:crypto"
 
 import type { MedusaRequest } from "@medusajs/framework"
 
+import { hashCatalogCommand } from "@/modules/catalog/catalog-command"
 import type { NewsEntryRecord } from "@/modules/news/serializers"
+import type { NewsUpdateInput } from "./contracts"
 import type { NewsService } from "./helpers"
 import {
   createNewsEntry,
@@ -47,9 +49,9 @@ const newsRecord = (
   ...overrides,
 })
 
-const requestFixture = (): MedusaRequest =>
+const requestFixture = (actorId = "user_admin"): MedusaRequest =>
   ({
-    auth_context: { actor_id: "user_admin" },
+    auth_context: { actor_id: actorId, actor_type: "user" },
     scope: {
       resolve: jest.fn(() => async () => [
         {
@@ -66,6 +68,8 @@ const serviceFixture = (initialEntries: NewsEntryRecord[] = []) => {
   const operations = new Map<string, OperationRecord>()
   let entrySequence = initialEntries.length
   let operationSequence = 0
+  const flush = jest.fn(async () => {})
+  const context = { transactionManager: { flush } }
 
   const service = {
     createNewsEntries: jest.fn(
@@ -108,8 +112,8 @@ const serviceFixture = (initialEntries: NewsEntryRecord[] = []) => {
     ),
     retrieveNewsEntry: jest.fn(async (id: string) => entries.get(id) ?? null),
     runNewsTransaction: jest.fn(
-      async <T>(task: (context: Record<string, never>) => Promise<T>) =>
-        task({})
+      async <T>(task: (sharedContext: typeof context) => Promise<T>) =>
+        task(context)
     ),
     updateNewsEntries: jest.fn(
       async (payloads: Array<Record<string, unknown>>) =>
@@ -144,10 +148,313 @@ const serviceFixture = (initialEntries: NewsEntryRecord[] = []) => {
     ),
   } as unknown as NewsService
 
-  return { entries, operations, service }
+  return { entries, operations, service, flush, context }
 }
 
 describe("news lifecycle commands", () => {
+  it("flushes native timestamp defaults before recording the create receipt", async () => {
+    const { entries, operations, service, flush, context } = serviceFixture()
+    const nativeCreate = jest
+      .mocked(service.createNewsEntries)
+      .getMockImplementation()!
+    let rawAcknowledgement: NewsEntryRecord[] = []
+    jest
+      .mocked(service.createNewsEntries)
+      .mockImplementation(async (...args) => {
+        const created = await nativeCreate(...args)
+        rawAcknowledgement = (Array.isArray(created) ? created : [created]).map(
+          (entry) => {
+            const {
+              created_at: _created,
+              updated_at: _updated,
+              ...untimed
+            } = entry
+            return untimed
+          }
+        )
+        for (const entry of rawAcknowledgement)
+          entries.set(entry.id, { ...entry })
+        return rawAcknowledgement as unknown as typeof created
+      })
+    flush.mockImplementation(async () => {
+      for (const [id, entry] of entries)
+        entries.set(id, {
+          ...entry,
+          created_at: new Date("2026-10-09T03:00:00.000Z"),
+          updated_at: new Date("2026-10-09T03:00:00.000Z"),
+        })
+    })
+    const input = {
+      content: "<p>Native timestamps</p>",
+      title: "Native timestamps",
+      expectedVersion: 0 as const,
+      idempotencyKey: randomUUID(),
+    }
+    const committed = await createNewsEntry(requestFixture(), service, input)
+    expect(rawAcknowledgement[0]?.created_at).toBeUndefined()
+    expect(committed.entry.createdAt).toBe("2026-10-09T03:00:00.000Z")
+    expect(committed.entry.updatedAt).toBe("2026-10-09T03:00:00.000Z")
+    expect(service.retrieveNewsEntry).toHaveBeenCalledWith(
+      committed.entry.id,
+      {},
+      context
+    )
+    expect(flush.mock.invocationCallOrder[0]).toBeLessThan(
+      jest.mocked(service.retrieveNewsEntry).mock.invocationCallOrder[0]!
+    )
+    expect(operations.get(input.idempotencyKey)?.result).toMatchObject({
+      entry: committed.entry,
+    })
+    expect(await createNewsEntry(requestFixture(), service, input)).toEqual({
+      entry: committed.entry,
+      replayed: true,
+    })
+    expect(flush).toHaveBeenCalledTimes(1)
+    expect(service.createNewsEntries).toHaveBeenCalledTimes(1)
+  })
+
+  it.each(["update", "archive", "restore"] as const)(
+    "records native post-flush updated_at for %s",
+    async (command) => {
+      const original = newsRecord(
+        command === "restore"
+          ? { archived_at: new Date("2026-08-01T01:00:00.000Z") }
+          : {}
+      )
+      const { entries, operations, service, flush } = serviceFixture([original])
+      const nativeUpdate = jest
+        .mocked(service.updateNewsEntries)
+        .getMockImplementation()!
+      let rawUpdatedAt: NewsEntryRecord["updated_at"]
+      jest
+        .mocked(service.updateNewsEntries)
+        .mockImplementation(async (...args) => {
+          const response = await nativeUpdate(...args)
+          const rows = (Array.isArray(response) ? response : [response]).map(
+            (entry) => ({ ...entry, updated_at: original.updated_at })
+          ) as NewsEntryRecord[]
+          rawUpdatedAt = rows[0]?.updated_at
+          for (const entry of rows) entries.set(entry.id, { ...entry })
+          return rows as typeof response
+        })
+      flush.mockImplementation(async () => {
+        const entry = entries.get(original.id)!
+        entries.set(original.id, {
+          ...entry,
+          updated_at: new Date("2026-10-09T03:01:00.000Z"),
+        })
+      })
+      const input = { expectedVersion: 1, idempotencyKey: randomUUID() }
+      const committed =
+        command === "update"
+          ? await updateNewsEntry(requestFixture(), service, original.id, {
+              ...input,
+              title: "Native update timestamp",
+            })
+          : await setNewsEntryArchived(
+              requestFixture(),
+              service,
+              original.id,
+              input,
+              command === "archive"
+            )
+      expect(rawUpdatedAt).toEqual(original.updated_at)
+      expect(committed.entry.updatedAt).toBe("2026-10-09T03:01:00.000Z")
+      expect(operations.get(input.idempotencyKey)?.result).toMatchObject({
+        entry: committed.entry,
+      })
+      expect(flush).toHaveBeenCalledTimes(1)
+    }
+  )
+
+  it("rejects a failed native flush before command completion", async () => {
+    const { operations, service, flush } = serviceFixture()
+    const error = new Error("Owned native flush failed")
+    flush.mockRejectedValueOnce(error)
+    await expect(
+      createNewsEntry(requestFixture(), service, {
+        content: "<p>Must roll back</p>",
+        title: "Must roll back",
+        expectedVersion: 0,
+        idempotencyKey: randomUUID(),
+      })
+    ).rejects.toBe(error)
+    expect(service.updateNewsOperations).not.toHaveBeenCalled()
+    expect(
+      [...operations.values()].every(
+        (operation) => operation.status === "pending"
+      )
+    ).toBe(true)
+  })
+
+  it.each([
+    undefined,
+    null,
+    {},
+    { actor_id: "user_admin" },
+    { actor_id: "user_admin", actor_type: "customer" },
+    { actor_id: null, actor_type: "user" },
+    { actor_id: 1, actor_type: "user" },
+    { actor_id: "user_", actor_type: "user" },
+    { actor_id: "user_other", actor_type: "user" },
+  ])(
+    "rejects native actor %p before direct-helper transaction or lookup",
+    async (context) => {
+      const original = newsRecord()
+      const { entries, operations, service } = serviceFixture([original])
+      const req = {
+        ...requestFixture(),
+        auth_context: context,
+      } as unknown as MedusaRequest
+      await expect(
+        updateNewsEntry(req, service, original.id, {
+          expectedActorId: "user_admin",
+          expectedVersion: 1,
+          idempotencyKey: randomUUID(),
+          title: "Updated title",
+        })
+      ).rejects.toThrow()
+      expect(req.scope.resolve).not.toHaveBeenCalled()
+      for (const method of Object.values(service)) {
+        expect(method).not.toHaveBeenCalled()
+      }
+      expect(entries.get(original.id)).toEqual(original)
+      expect(operations.size).toBe(0)
+    }
+  )
+
+  it.each([null, "", " user_admin", 1, {}])(
+    "rejects malformed direct-helper actor precondition %p without writes",
+    async (expectedActorId) => {
+      const { operations, service } = serviceFixture([newsRecord()])
+      await expect(
+        updateNewsEntry(requestFixture(), service, "news_existing", {
+          expectedActorId,
+          expectedVersion: 1,
+          idempotencyKey: randomUUID(),
+          title: "Updated title",
+        } as unknown as NewsUpdateInput)
+      ).rejects.toThrow("Invalid news actor precondition.")
+      for (const method of Object.values(service)) {
+        expect(method).not.toHaveBeenCalled()
+      }
+      expect(operations.size).toBe(0)
+    }
+  )
+
+  it.each([false, true])(
+    "keeps legacy update hashes and replay compatible when guarded first is %p",
+    async (guardedFirst) => {
+      const { operations, service } = serviceFixture([newsRecord()])
+      const legacyInput = {
+        content: '<p>Updated body</p><script>alert("x")</script>',
+        expectedVersion: 1,
+        idempotencyKey: randomUUID(),
+        publishedAt: null,
+        status: "published" as const,
+        tags: ["News", "news"],
+        title: "Updated title",
+      }
+      const guardedInput = { ...legacyInput, expectedActorId: "user_admin" }
+      const committed = await updateNewsEntry(
+        requestFixture(),
+        service,
+        "news_existing",
+        guardedFirst ? guardedInput : legacyInput
+      )
+      const expectedHash = hashCatalogCommand({
+        aggregateId: "news_existing",
+        command: "news.entry.update",
+        expectedVersion: 1,
+        payload: legacyInput,
+      })
+      expect(operations.get(legacyInput.idempotencyKey)).toMatchObject({
+        actor_id: "user_admin",
+        request_sha256: expectedHash,
+        status: "succeeded",
+      })
+      expect(committed.entry).toMatchObject({
+        author: "Original Author",
+        content: "<p>Updated body</p>",
+        id: "news_existing",
+        status: "published",
+        tags: ["News"],
+        version: 2,
+      })
+      expect(committed.entry.publishedAt).not.toBeNull()
+      await expect(
+        updateNewsEntry(
+          requestFixture(),
+          service,
+          "news_existing",
+          guardedFirst ? legacyInput : guardedInput
+        )
+      ).resolves.toEqual({ ...committed, replayed: true })
+      expect(operations.size).toBe(1)
+      expect(service.createNewsOperations).toHaveBeenCalledTimes(1)
+      expect(service.updateNewsEntries).toHaveBeenCalledTimes(1)
+    }
+  )
+
+  it.each(["user_admin", "user_other"])(
+    "rejects another actor's existing command with precondition %s",
+    async (expectedActorId) => {
+      const { entries, operations, service } = serviceFixture([newsRecord()])
+      const input = {
+        expectedActorId: "user_admin",
+        expectedVersion: 1,
+        idempotencyKey: randomUUID(),
+        title: "Updated title",
+      }
+      await updateNewsEntry(requestFixture(), service, "news_existing", input)
+      const savedEntries = structuredClone([...entries])
+      const savedOperations = structuredClone([...operations])
+      const lookupCount = (service.listNewsOperations as jest.Mock).mock.calls
+        .length
+      const transactionCount = (service.runNewsTransaction as jest.Mock).mock
+        .calls.length
+      await expect(
+        updateNewsEntry(
+          requestFixture("user_other"),
+          service,
+          "news_existing",
+          {
+            ...input,
+            expectedActorId,
+          }
+        )
+      ).rejects.toThrow(
+        expectedActorId === "user_admin"
+          ? "The signed-in administrator changed."
+          : "The news idempotency key cannot be replayed"
+      )
+      expect(service.listNewsOperations).toHaveBeenCalledTimes(
+        lookupCount + Number(expectedActorId === "user_other")
+      )
+      expect(service.runNewsTransaction).toHaveBeenCalledTimes(
+        transactionCount + Number(expectedActorId === "user_other")
+      )
+      expect([...entries]).toEqual(savedEntries)
+      expect([...operations]).toEqual(savedOperations)
+      expect(service.updateNewsEntries).toHaveBeenCalledTimes(1)
+      expect(service.createNewsOperations).toHaveBeenCalledTimes(1)
+    }
+  )
+
+  it("does not count the actor precondition as a content change", async () => {
+    const { service } = serviceFixture([newsRecord()])
+    await expect(
+      updateNewsEntry(requestFixture(), service, "news_existing", {
+        expectedActorId: "user_admin",
+        expectedVersion: 1,
+        idempotencyKey: randomUUID(),
+      })
+    ).rejects.toThrow("No news changes were provided.")
+    for (const method of Object.values(service)) {
+      expect(method).not.toHaveBeenCalled()
+    }
+  })
+
   it("creates a sanitized post and replays the exact stored response", async () => {
     const { entries, operations, service } = serviceFixture()
     const idempotencyKey = randomUUID()
@@ -383,6 +690,108 @@ describe("news lifecycle commands", () => {
     ).rejects.toThrow("cannot be replayed")
   })
 
+  it("replays a lost Publish acknowledgement after another writer archives the current projection", async () => {
+    const { entries, operations, service } = serviceFixture([newsRecord()])
+    const actor = requestFixture()
+    const input = {
+      content: '<p>Published body</p><script>alert("removed")</script>',
+      expectedVersion: 1,
+      idempotencyKey: randomUUID(),
+      publishedAt: null,
+      status: "published" as const,
+      tags: ["News", "news"],
+      title: "Published acknowledgement",
+    }
+    const committed = await updateNewsEntry(
+      actor,
+      service,
+      "news_existing",
+      input
+    )
+    expect(committed.entry).toMatchObject({
+      content: "<p>Published body</p>",
+      status: "published",
+      tags: ["News"],
+      version: 2,
+    })
+    expect(committed.entry.publishedAt).not.toBeNull()
+    const operationBeforeLaterWrite = structuredClone(
+      operations.get(input.idempotencyKey)
+    )
+    const archived = await setNewsEntryArchived(
+      requestFixture("user_other_writer"),
+      service,
+      "news_existing",
+      { expectedVersion: 2, idempotencyKey: randomUUID() },
+      true
+    )
+    expect(archived.entry).toMatchObject({ status: "archived", version: 3 })
+    const writes = jest.mocked(service.updateNewsEntries).mock.calls.length
+
+    const replayed = await updateNewsEntry(
+      actor,
+      service,
+      "news_existing",
+      input
+    )
+    expect(replayed).toEqual({ ...committed, replayed: true })
+    expect(entries.get("news_existing")).toMatchObject({
+      status: "published",
+      version: 3,
+      archived_at: expect.any(Date),
+    })
+    expect(jest.mocked(service.updateNewsEntries)).toHaveBeenCalledTimes(writes)
+    expect(operations.get(input.idempotencyKey)).toEqual(
+      operationBeforeLaterWrite
+    )
+
+    for (const [request, changedInput] of [
+      [requestFixture("user_other_writer"), input],
+      [actor, { ...input, expectedVersion: 2 }],
+      [actor, { ...input, title: "A different command" }],
+    ] as const) {
+      await expect(
+        updateNewsEntry(request, service, "news_existing", changedInput)
+      ).rejects.toThrow("cannot be replayed")
+    }
+    expect(jest.mocked(service.updateNewsEntries)).toHaveBeenCalledTimes(writes)
+  })
+
+  it("replays an exact scheduled command after its date passes without permitting a new past schedule", async () => {
+    jest.useFakeTimers({ now: new Date("2030-01-01T00:00:00.000Z") })
+    try {
+      const { operations, service } = serviceFixture([newsRecord()])
+      const input = {
+        expectedVersion: 1,
+        idempotencyKey: randomUUID(),
+        publishedAt: "2030-01-02T12:00:00.000Z",
+        status: "scheduled" as const,
+      }
+      const committed = await updateNewsEntry(
+        requestFixture(),
+        service,
+        "news_existing",
+        input
+      )
+      const receipt = structuredClone(operations.get(input.idempotencyKey))
+      jest.setSystemTime(new Date("2030-01-03T00:00:00.000Z"))
+      await expect(
+        updateNewsEntry(requestFixture(), service, "news_existing", input)
+      ).resolves.toEqual({ ...committed, replayed: true })
+      await expect(
+        updateNewsEntry(requestFixture(), service, "news_existing", {
+          ...input,
+          expectedVersion: 2,
+          idempotencyKey: randomUUID(),
+        })
+      ).rejects.toThrow("future publication date")
+      expect(operations.get(input.idempotencyKey)).toEqual(receipt)
+      expect(service.updateNewsEntries).toHaveBeenCalledTimes(1)
+    } finally {
+      jest.useRealTimers()
+    }
+  })
+
   it("rejects a malformed entry creation acknowledgement", async () => {
     const { service } = serviceFixture()
     ;(service.createNewsEntries as jest.Mock).mockResolvedValue([
@@ -418,11 +827,21 @@ describe("news lifecycle commands", () => {
     )
   })
 
-  it("rejects a valid-shaped entry acknowledgement with unintended fields", async () => {
-    const { service } = serviceFixture()
-    ;(service.createNewsEntries as jest.Mock).mockResolvedValue([
-      newsRecord({ id: "news_1", title: "Unexpected title" }),
-    ])
+  it("rejects unintended persisted fields after a valid native identity acknowledgement", async () => {
+    const { entries, service } = serviceFixture()
+    const nativeCreate = jest
+      .mocked(service.createNewsEntries)
+      .getMockImplementation()!
+    jest
+      .mocked(service.createNewsEntries)
+      .mockImplementation(async (...args) => {
+        const created = await nativeCreate(...args)
+        const rows = (Array.isArray(created) ? created : [created]).map(
+          (entry) => ({ ...entry, title: "Unexpected title" })
+        )
+        for (const row of rows) entries.set(row.id, row)
+        return rows as typeof created
+      })
 
     await expect(
       createNewsEntry(requestFixture(), service, {
@@ -434,17 +853,21 @@ describe("news lifecycle commands", () => {
     ).rejects.toThrow(
       "The Admin content persistence boundary returned invalid structured data."
     )
+    expect(service.retrieveNewsEntry).toHaveBeenCalledTimes(1)
+    expect([...entries.values()][0]?.title).toBe("Unexpected title")
     expect(service.updateNewsOperations).not.toHaveBeenCalled()
   })
 
   it("rejects a changed entry during the final durable readback", async () => {
     const { entries, service } = serviceFixture()
+    let reads = 0
     ;(service.retrieveNewsEntry as jest.Mock).mockImplementation(
       async (id: string) => {
         const persisted = entries.get(id)
-        return persisted
+        reads += 1
+        return persisted && reads > 1
           ? { ...persisted, title: "Changed during commit" }
-          : null
+          : (persisted ?? null)
       }
     )
 
@@ -458,6 +881,8 @@ describe("news lifecycle commands", () => {
     ).rejects.toThrow(
       "The Admin content persistence boundary returned invalid structured data."
     )
+    expect(service.retrieveNewsEntry).toHaveBeenCalledTimes(2)
+    expect(service.updateNewsOperations).toHaveBeenCalledTimes(1)
   })
 
   it("rejects duplicate durable idempotency rows", async () => {

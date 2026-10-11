@@ -19,11 +19,15 @@ import {
   Select,
   Tabs,
   Text,
-  toast,
   useDataTable,
   type DataTablePaginationState,
 } from "@medusajs/ui"
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type QueryClient,
+} from "@tanstack/react-query"
 
 import {
   contentAdminActions,
@@ -40,27 +44,90 @@ import { ContentWorkspaceNavigation } from "../../features/content/content-navig
 import { hasDiscographyReadAccess } from "../../features/content/content-permissions"
 import { replaceLegacyContentLocation } from "../../features/content/content-routes"
 import { NewsEditor } from "../../features/news/news-editor"
+import type { NewsPublicationIntent } from "../../features/news/news-form-state"
 import {
-  newsEntryMatchesWriteInput,
-  type NewsPublicationIntent,
-} from "../../features/news/news-form-state"
+  beginNewsCommand,
+  finishNewsCommand,
+  newsCommandStorageKey,
+  restoreNewsCommand,
+  retryNewsCommand,
+  scheduleNewsRestore,
+  type SavedNewsCommand,
+} from "../../features/news/news-command-state"
+import { NewsCommandReview } from "../../features/news/news-command-review"
 import {
   createNewsEntry,
-  getNewsEntry,
   listNewsEntries,
-  updateNewsEntry,
   updateNewsLifecycle,
   type NewsEntry,
   type NewsWriteInput,
   type NewsWriteStatus,
 } from "../../features/news/news-query"
 import { NewsCollection, useNewsColumns } from "../../features/news/news-table"
-import { getAdminRequestErrorMessage } from "../../lib/admin-request"
-import { runRecoverableAdminMutation } from "../../components/admin-form-contract"
+import {
+  AdminRequestError,
+  getAdminRequestErrorMessage,
+} from "../../lib/admin-request"
 import { useAdminPermissions } from "../../lib/admin-permissions"
 
 const PAGE_SIZE = 25
 const QUERY_KEY = ["news"] as const
+
+export const NewsSuccessFeedback = memo<{
+  message: string
+  onDismiss: () => void
+}>(({ message, onDismiss }) => (
+  <Alert
+    aria-label="News confirmation"
+    aria-atomic="true"
+    aria-live="polite"
+    className="mt-5"
+    role="status"
+    variant="success"
+  >
+    <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
+      <Text className="min-w-0 break-words">{message}</Text>
+      <Button
+        aria-label="Dismiss News confirmation"
+        className="min-h-6 min-w-6 shrink-0"
+        onClick={onDismiss}
+        size="small"
+        type="button"
+        variant="transparent"
+      >
+        Dismiss
+      </Button>
+    </div>
+    <Text size="small">
+      The saved action is confirmed. The current list may reflect later edits.
+    </Text>
+  </Alert>
+))
+NewsSuccessFeedback.displayName = "NewsSuccessFeedback"
+
+export const refreshNewsCollection = async (
+  client: QueryClient
+): Promise<void> => {
+  await client.invalidateQueries(
+    { queryKey: QUERY_KEY },
+    { throwOnError: true }
+  )
+  const active = client
+    .getQueryCache()
+    .findAll({ queryKey: QUERY_KEY, type: "active" })
+  if (
+    !active.length ||
+    active.some(
+      (query) =>
+        query.state.status !== "success" ||
+        query.state.fetchStatus !== "idle" ||
+        query.state.isInvalidated
+    )
+  )
+    throw new Error(
+      "The current News list could not be refreshed. Keep the confirmed request and try finishing again."
+    )
+}
 
 const sortOptions = [
   {
@@ -121,9 +188,19 @@ const isStatusFilter = (value: string): value is StatusFilter =>
 const isSortValue = (value: string): value is SortValue =>
   sortOptions.some((option) => option.value === value)
 
-const restoreFocus = (target: HTMLButtonElement | null): void => {
+const restoreFocus = (target: HTMLElement | null): void => {
   globalThis.requestAnimationFrame?.(() => {
     target?.focus()
+  })
+}
+
+export const restoreNewsFeedbackFocus = (
+  target: HTMLElement | null,
+  fallback: HTMLElement | null
+): void => {
+  globalThis.requestAnimationFrame?.(() => {
+    const next = target?.isConnected ? target : fallback
+    if (next?.isConnected) next.focus()
   })
 }
 
@@ -171,8 +248,21 @@ const NewsAdminPageContent = memo(() => {
   const [createOpen, setCreateOpen] = useState(false)
   const [editingEntry, setEditingEntry] = useState<NewsEntry | null>(null)
   const [lifecycleEntry, setLifecycleEntry] = useState<NewsEntry | null>(null)
+  const [successFeedback, setSuccessFeedback] = useState<string | null>(null)
+  const [savedCommand, setSavedCommand] = useState<SavedNewsCommand | null>(
+    null
+  )
+  const [recoveryReady, setRecoveryReady] = useState(false)
+  const [recoveryBusy, setRecoveryBusy] = useState(false)
+  const [recoveryError, setRecoveryError] = useState<string | null>(null)
+  const recoveryEpoch = useRef(0)
+  const mounted = useRef(true)
+  const backendOrigin =
+    typeof window === "undefined" ? "" : window.location.origin
   const lifecycleIdempotencyKeyRef = useRef(crypto.randomUUID())
   const createTriggerRef = useRef<HTMLButtonElement>(null)
+  const successDismissTargetRef = useRef<HTMLInputElement>(null)
+  const newsWorkspaceTitleRef = useRef<HTMLSpanElement>(null)
   const formTriggerRef = useRef<HTMLButtonElement | null>(null)
   const lifecycleTriggerRef = useRef<HTMLButtonElement | null>(null)
   const queryClient = useQueryClient()
@@ -206,8 +296,62 @@ const NewsAdminPageContent = memo(() => {
   }
 
   const invalidateNews = useCallback(async () => {
-    await queryClient.invalidateQueries({ queryKey: QUERY_KEY })
+    await refreshNewsCollection(queryClient)
   }, [queryClient])
+  const commandBoundary = useCallback(
+    (epoch: number) => ({
+      storage: window.localStorage,
+      locks: navigator.locks,
+      isCurrent: () => mounted.current && recoveryEpoch.current === epoch,
+    }),
+    []
+  )
+  const loadSavedCommand = useCallback(async () => {
+    const epoch = ++recoveryEpoch.current
+    setRecoveryReady(false)
+    setRecoveryBusy(true)
+    setRecoveryError(null)
+    try {
+      const saved = await restoreNewsCommand(
+        backendOrigin,
+        commandBoundary(epoch)
+      )
+      if (mounted.current && recoveryEpoch.current === epoch) {
+        setSavedCommand(saved)
+        setRecoveryReady(true)
+      }
+    } catch (error) {
+      if (mounted.current && recoveryEpoch.current === epoch) {
+        setSavedCommand(null)
+        setRecoveryError(
+          getAdminRequestErrorMessage(
+            error,
+            "The saved News request could not be verified. Keep it for recovery."
+          )
+        )
+      }
+    } finally {
+      if (mounted.current && recoveryEpoch.current === epoch)
+        setRecoveryBusy(false)
+    }
+  }, [backendOrigin, commandBoundary])
+  useEffect(() => {
+    mounted.current = true
+    const epoch = ++recoveryEpoch.current
+    void scheduleNewsRestore(
+      () => mounted.current && recoveryEpoch.current === epoch,
+      loadSavedCommand
+    )
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === newsCommandStorageKey) void loadSavedCommand()
+    }
+    window.addEventListener("storage", onStorage)
+    return () => {
+      mounted.current = false
+      ++recoveryEpoch.current
+      window.removeEventListener("storage", onStorage)
+    }
+  }, [loadSavedCommand])
   const createMutation = useMutation({
     mutationFn: ({
       idempotencyKey,
@@ -222,23 +366,66 @@ const NewsAdminPageContent = memo(() => {
     },
   })
   const updateMutation = useMutation({
-    mutationFn: ({
-      entry,
-      idempotencyKey,
-      values,
-    }: {
-      entry: NewsEntry
-      idempotencyKey: string
-      values: NewsWriteInput
-    }) =>
-      runRecoverableAdminMutation({
-        mutate: () => updateNewsEntry(entry, values, idempotencyKey),
-        readAfterFailure: () => getNewsEntry(entry.id),
-        wasApplied: (snapshot) => newsEntryMatchesWriteInput(snapshot, values),
-      }),
-    onSuccess: async () => {
+    mutationFn: async (
+      variables:
+        | {
+            kind: "new"
+            entry: NewsEntry
+            idempotencyKey: string
+            values: NewsWriteInput
+            intent: NewsPublicationIntent
+          }
+        | { kind: "retry"; record: SavedNewsCommand }
+    ) => {
+      const epoch = recoveryEpoch.current
+      const boundary = commandBoundary(epoch)
+      const attempt =
+        variables.kind === "retry"
+          ? await retryNewsCommand(variables.record, backendOrigin, boundary)
+          : await beginNewsCommand(
+              { backendOrigin, entryId: variables.entry.id },
+              variables.entry,
+              variables.values,
+              variables.intent,
+              variables.idempotencyKey,
+              boundary
+            )
+      if (mounted.current && recoveryEpoch.current === epoch) {
+        setSavedCommand(attempt.record)
+        setRecoveryError(
+          attempt.error
+            ? getAdminRequestErrorMessage(
+                attempt.error,
+                "The News save is unconfirmed. Keep its saved request."
+              )
+            : null
+        )
+      }
+      if (attempt.record.status !== "confirmed")
+        throw (
+          attempt.error ??
+          new Error("The News save is unconfirmed. Retry the saved request.")
+        )
+      return { record: attempt.record, epoch }
+    },
+    onSuccess: async ({ record, epoch }) => {
+      if (!mounted.current || recoveryEpoch.current !== epoch)
+        throw new AdminRequestError(
+          "The News editor changed. Keep its confirmed request.",
+          "cancelled"
+        )
+      // Refresh can fail independently of the durable command. Keep its
+      // confirmed envelope until every asynchronous completion step succeeds.
+      await finishNewsCommand(
+        record,
+        backendOrigin,
+        commandBoundary(epoch),
+        invalidateNews
+      )
+      if (!mounted.current || recoveryEpoch.current !== epoch) return
+      setSavedCommand(null)
+      setRecoveryError(null)
       setEditingEntry(null)
-      await invalidateNews()
     },
   })
   const lifecycleMutation = useMutation({
@@ -258,7 +445,7 @@ const NewsAdminPageContent = memo(() => {
       const restored = Boolean(variables.entry.archivedAt)
       const focusTarget = lifecycleTriggerRef.current
       setLifecycleEntry(null)
-      toast.success(restored ? "News post restored" : "News post archived")
+      setSuccessFeedback(restored ? "News post restored" : "News post archived")
       if (page.entries.length === 1 && pageIndex > 0) {
         setPageIndex((current) => current - 1)
       }
@@ -321,6 +508,7 @@ const NewsAdminPageContent = memo(() => {
     resetPage()
   }, [resetPage])
   const handleCreateOpen = useCallback(() => {
+    setSuccessFeedback(null)
     createMutation.reset()
     setCreateOpen(true)
   }, [createMutation])
@@ -333,11 +521,12 @@ const NewsAdminPageContent = memo(() => {
   }, [createMutation])
   const handleEdit = useCallback(
     (entry: NewsEntry, trigger: HTMLButtonElement) => {
+      setSuccessFeedback(null)
       formTriggerRef.current = trigger
       updateMutation.reset()
-      setEditingEntry(entry)
+      setEditingEntry(savedCommand?.loadedEntry ?? entry)
     },
-    [updateMutation]
+    [savedCommand, updateMutation]
   )
   const handleEditClose = useCallback(() => {
     if (!updateMutation.isPending) {
@@ -348,6 +537,7 @@ const NewsAdminPageContent = memo(() => {
   }, [updateMutation])
   const handleLifecycle = useCallback(
     (entry: NewsEntry, trigger: HTMLButtonElement) => {
+      setSuccessFeedback(null)
       lifecycleTriggerRef.current = trigger
       lifecycleIdempotencyKeyRef.current = crypto.randomUUID()
       lifecycleMutation.reset()
@@ -383,7 +573,7 @@ const NewsAdminPageContent = memo(() => {
       intent: NewsPublicationIntent
     ) => {
       await createMutation.mutateAsync({ idempotencyKey, values })
-      toast.success(successMessage("create", intent))
+      setSuccessFeedback(successMessage("create", intent))
     },
     [createMutation]
   )
@@ -394,17 +584,100 @@ const NewsAdminPageContent = memo(() => {
       intent: NewsPublicationIntent
     ) => {
       if (!editingEntry) {
-        return
+        throw new AdminRequestError(
+          "The News editor changed. Keep its saved request.",
+          "cancelled"
+        )
       }
       await updateMutation.mutateAsync({
+        kind: "new",
         entry: editingEntry,
         idempotencyKey,
         values,
+        intent,
       })
-      toast.success(successMessage("edit", intent, editingEntry.status))
+      setSuccessFeedback(successMessage("edit", intent, editingEntry.status))
     },
     [editingEntry, updateMutation]
   )
+  const handleCommandRetry = useCallback(async () => {
+    if (!savedCommand || !canUpdate || updateMutation.isPending || recoveryBusy)
+      return
+    const epoch = recoveryEpoch.current
+    try {
+      await updateMutation.mutateAsync({ kind: "retry", record: savedCommand })
+      setSuccessFeedback(
+        successMessage(
+          "edit",
+          savedCommand.intent,
+          savedCommand.loadedEntry.status
+        )
+      )
+    } catch (error) {
+      if (mounted.current && recoveryEpoch.current === epoch)
+        setRecoveryError(
+          getAdminRequestErrorMessage(
+            error,
+            "The News save remains unconfirmed. Keep its saved request."
+          )
+        )
+    }
+  }, [canUpdate, recoveryBusy, savedCommand, updateMutation])
+  const handleCommandResolve = useCallback(async () => {
+    if (
+      !savedCommand ||
+      savedCommand.status === "uncertain" ||
+      recoveryBusy ||
+      updateMutation.isPending
+    )
+      return
+    const epoch = recoveryEpoch.current
+    setRecoveryBusy(true)
+    try {
+      await finishNewsCommand(
+        savedCommand,
+        backendOrigin,
+        commandBoundary(epoch),
+        invalidateNews
+      )
+      if (!mounted.current || recoveryEpoch.current !== epoch) return
+      setSavedCommand(null)
+      setRecoveryError(null)
+      setEditingEntry(null)
+      if (savedCommand.status === "confirmed")
+        setSuccessFeedback(
+          successMessage(
+            "edit",
+            savedCommand.intent,
+            savedCommand.loadedEntry.status
+          )
+        )
+    } catch (error) {
+      if (mounted.current && recoveryEpoch.current === epoch)
+        setRecoveryError(
+          getAdminRequestErrorMessage(
+            error,
+            "Keep the saved News request for recovery."
+          )
+        )
+    } finally {
+      if (mounted.current && recoveryEpoch.current === epoch)
+        setRecoveryBusy(false)
+    }
+  }, [
+    backendOrigin,
+    commandBoundary,
+    invalidateNews,
+    recoveryBusy,
+    savedCommand,
+    updateMutation,
+  ])
+  const openCommandRecovery = useCallback(() => {
+    if (savedCommand) {
+      setSuccessFeedback(null)
+      setEditingEntry(savedCommand.loadedEntry)
+    }
+  }, [savedCommand])
   const handleRetry = useCallback(() => {
     void pageQuery.refetch()
   }, [pageQuery])
@@ -414,7 +687,7 @@ const NewsAdminPageContent = memo(() => {
     : null
   const columns = useNewsColumns({
     busyEntryId,
-    canUpdate,
+    canUpdate: canUpdate && recoveryReady && !savedCommand && !recoveryBusy,
     onEdit: handleEdit,
     onLifecycle: handleLifecycle,
   })
@@ -482,13 +755,33 @@ const NewsAdminPageContent = memo(() => {
               {pageQuery.isPending ? "Loading…" : countLabel}
             </Text>
           }
-          title="News"
+          title={
+            <span
+              id="news-workspace-title"
+              ref={newsWorkspaceTitleRef}
+              tabIndex={-1}
+            >
+              News
+            </span>
+          }
         />
         <ContentWorkspaceNavigation
           active="news"
           className="mt-5"
           showDiscography={canReadDiscography}
         />
+        {successFeedback ? (
+          <NewsSuccessFeedback
+            message={successFeedback}
+            onDismiss={() => {
+              setSuccessFeedback(null)
+              restoreNewsFeedbackFocus(
+                successDismissTargetRef.current,
+                newsWorkspaceTitleRef.current
+              )
+            }}
+          />
+        ) : null}
         <Alert className="mt-5" variant="info">
           <Text weight="plus">Visibility is deliberate</Text>
           <Text size="small">
@@ -496,6 +789,37 @@ const NewsAdminPageContent = memo(() => {
             chosen time. Archiving hides a post without deleting its history.
           </Text>
         </Alert>
+        {!recoveryReady && recoveryError ? (
+          <Alert className="mt-5" role="alert" variant="warning">
+            <Text size="small">{recoveryError}</Text>
+            <Button
+              disabled={recoveryBusy || updateMutation.isPending}
+              onClick={() => {
+                void loadSavedCommand()
+              }}
+              type="button"
+              variant="secondary"
+            >
+              Check saved News request
+            </Button>
+          </Alert>
+        ) : null}
+        {savedCommand ? (
+          <Alert className="mt-5" role="status" variant="warning">
+            <Text size="small">
+              A saved News command needs recovery before another post can be
+              edited. Its original request is retained.
+            </Text>
+            <Button
+              disabled={recoveryBusy || updateMutation.isPending}
+              onClick={openCommandRecovery}
+              type="button"
+              variant="secondary"
+            >
+              Recover saved News request
+            </Button>
+          </Alert>
+        ) : null}
       </Container>
 
       {pageError ? (
@@ -532,6 +856,7 @@ const NewsAdminPageContent = memo(() => {
                     onChange={handleSearchChange}
                     onKeyDown={handleSearchKeyDown}
                     placeholder="Headline or URL slug"
+                    ref={successDismissTargetRef}
                     role="searchbox"
                     type="text"
                     value={searchInput}
@@ -609,7 +934,9 @@ const NewsAdminPageContent = memo(() => {
 
           <NewsCollection
             busyEntryId={busyEntryId}
-            canUpdate={canUpdate}
+            canUpdate={
+              canUpdate && recoveryReady && !savedCommand && !recoveryBusy
+            }
             dataTable={dataTable}
             entries={page.entries}
             filtered={filtered}
@@ -637,6 +964,24 @@ const NewsAdminPageContent = memo(() => {
           entry={editingEntry}
           error={updateError}
           mode="edit"
+          locked={!recoveryReady || savedCommand !== null}
+          recoveryBusy={recoveryBusy || updateMutation.isPending}
+          recovery={
+            savedCommand ? (
+              <NewsCommandReview
+                record={savedCommand}
+                error={recoveryError}
+                busy={recoveryBusy || updateMutation.isPending}
+                canRetry={canUpdate}
+                onRetry={() => {
+                  void handleCommandRetry()
+                }}
+                onResolve={() => {
+                  void handleCommandResolve()
+                }}
+              />
+            ) : undefined
+          }
           onClose={handleEditClose}
           onSubmit={handleUpdateSubmit}
           restoreFocusRef={formTriggerRef}

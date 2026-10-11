@@ -4,6 +4,7 @@ import { MedusaError } from "@medusajs/framework/utils"
 import type NewsModuleService from "@/modules/news/service"
 import { readAdminNewsEntry } from "@/lib/content/persistence-contracts"
 import { serializeNewsEntry } from "@/modules/news/serializers"
+import { assertNewsUpdateActor } from "../command"
 import { newsUpdateSchema, updateNewsEntry } from "../helpers"
 
 type NewsService = InstanceType<typeof NewsModuleService>
@@ -43,6 +44,7 @@ export const PUT = async (
       "Invalid news payload."
     )
   }
+  assertNewsUpdateActor(req, parsed.data.expectedActorId)
   const newsService = req.scope.resolve<NewsService>("news")
   const result = await updateNewsEntry(
     req,
