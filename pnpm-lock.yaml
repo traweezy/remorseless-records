@@ -88,7 +88,7 @@ packageExtensionsChecksum: sha256-6xyIs8sk1JSvrBSrUusMnzSdCp5M9BXBe+M69PrNdwU=
 patchedDependencies:
   '@hookform/resolvers@3.4.2': fe2f6c7f74ca4458985303c25c0573bae32a4d0de8b50bdfd078d60d47a30be2
   '@medusajs/core-flows@2.18.0': dc6a211ee3b2eb35e480a415af4a3ad9953a05ab3b5d1291920dc87aad505def
-  '@medusajs/dashboard@2.18.0': 0ade3abc8d9b0c2840b0621450804f67745b190f090793fc30da01c4ff0fe386
+  '@medusajs/dashboard@2.18.0': a3095268cd18ae81d48462d0be29c5e1e14a2d89f72662f9b6227cdbcb54f558
   '@medusajs/draft-order@2.18.0': e73e46b07c64ff0f966fb4a6a2550c5fe021c90a150a57985fa31b39aab4fe43
   '@medusajs/file-s3@2.18.0': 0e576ccc0725c31c3cd90592ab35f72145e1e5fd57a2193184357f95c8e73886
   '@medusajs/framework@2.18.0': 1fdd62d3f03deb266a0b3f8f7b099bcc28be30d619f57a30625c6e115e11e3a6
@@ -187,10 +187,10 @@ importers:
         version: 2.18.0(patch_hash=dc6a211ee3b2eb35e480a415af4a3ad9953a05ab3b5d1291920dc87aad505def)(@medusajs/framework@2.18.0(patch_hash=1fdd62d3f03deb266a0b3f8f7b099bcc28be30d619f57a30625c6e115e11e3a6)(@medusajs/cli@2.18.0(@types/node@26.1.2)(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1))(@types/node@26.1.2)(debug@4.4.3(supports-color@8.1.1))(ioredis@5.11.1(supports-color@8.1.1))(supports-color@8.1.1)(vite@6.4.3(@types/node@26.1.2)(jiti@1.21.7)(lightningcss@1.32.0)(tsx@4.23.13)(yaml@2.9.0))(zod@4.4.3))
       '@medusajs/dashboard':
         specifier: ^2.18.0
-        version: 2.18.0(patch_hash=0ade3abc8d9b0c2840b0621450804f67745b190f090793fc30da01c4ff0fe386)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(typescript@5.9.3)
+        version: 2.18.0(patch_hash=a3095268cd18ae81d48462d0be29c5e1e14a2d89f72662f9b6227cdbcb54f558)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(typescript@5.9.3)
       '@medusajs/draft-order':
         specifier: ^2.18.0
-        version: 2.18.0(patch_hash=e73e46b07c64ff0f966fb4a6a2550c5fe021c90a150a57985fa31b39aab4fe43)(77899c92e8a196be26f347230c8a3be3)
+        version: 2.18.0(patch_hash=e73e46b07c64ff0f966fb4a6a2550c5fe021c90a150a57985fa31b39aab4fe43)(f851e84c55bf4d03f0348d0feb7f2083)
       '@medusajs/event-bus-redis':
         specifier: ^2.18.0
         version: 2.18.0(@medusajs/framework@2.18.0(patch_hash=1fdd62d3f03deb266a0b3f8f7b099bcc28be30d619f57a30625c6e115e11e3a6)(@medusajs/cli@2.18.0(@types/node@26.1.2)(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1))(@types/node@26.1.2)(debug@4.4.3(supports-color@8.1.1))(ioredis@5.11.1(supports-color@8.1.1))(supports-color@8.1.1)(vite@6.4.3(@types/node@26.1.2)(jiti@1.21.7)(lightningcss@1.32.0)(tsx@4.23.13)(yaml@2.9.0))(zod@4.4.3))(supports-color@8.1.1)
@@ -220,7 +220,7 @@ importers:
         version: 2.18.0
       '@medusajs/medusa':
         specifier: ^2.18.0
-        version: 2.18.0(patch_hash=7d3d96e7210456a7757b91b0d979a8ed1925be7288d38f4d22765b2aaa520657)(075ff050b7ce62e0a7f566f1d79fdfd5)
+        version: 2.18.0(patch_hash=7d3d96e7210456a7757b91b0d979a8ed1925be7288d38f4d22765b2aaa520657)(9f4001077c670eb03ae4caf9a073d844)
       '@medusajs/notification':
         specifier: ^2.18.0
         version: 2.18.0(@medusajs/framework@2.18.0(patch_hash=1fdd62d3f03deb266a0b3f8f7b099bcc28be30d619f57a30625c6e115e11e3a6)(@medusajs/cli@2.18.0(@types/node@26.1.2)(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1))(@types/node@26.1.2)(debug@4.4.3(supports-color@8.1.1))(ioredis@5.11.1(supports-color@8.1.1))(supports-color@8.1.1)(vite@6.4.3(@types/node@26.1.2)(jiti@1.21.7)(lightningcss@1.32.0)(tsx@4.23.13)(yaml@2.9.0))(zod@4.4.3))
@@ -11290,7 +11290,7 @@ snapshots:
     dependencies:
       '@medusajs/admin-shared': 2.18.0
       '@medusajs/admin-vite-plugin': 2.18.0(picomatch@4.0.5)(supports-color@8.1.1)(vite@6.4.3(@types/node@26.1.2)(jiti@1.21.7)(lightningcss@1.32.0)(tsx@4.23.13)(yaml@2.9.0))
-      '@medusajs/dashboard': 2.18.0(patch_hash=0ade3abc8d9b0c2840b0621450804f67745b190f090793fc30da01c4ff0fe386)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(typescript@5.9.3)
+      '@medusajs/dashboard': 2.18.0(patch_hash=a3095268cd18ae81d48462d0be29c5e1e14a2d89f72662f9b6227cdbcb54f558)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(typescript@5.9.3)
       '@vitejs/plugin-react': 4.7.0(supports-color@8.1.1)(vite@6.4.3(@types/node@26.1.2)(jiti@1.21.7)(lightningcss@1.32.0)(tsx@4.23.13)(yaml@2.9.0))
       autoprefixer: 10.5.4(postcss@8.5.26)
       compression: 1.8.2(supports-color@8.1.1)
@@ -11475,7 +11475,7 @@ snapshots:
     dependencies:
       '@medusajs/framework': 2.18.0(patch_hash=1fdd62d3f03deb266a0b3f8f7b099bcc28be30d619f57a30625c6e115e11e3a6)(@medusajs/cli@2.18.0(@types/node@26.1.2)(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1))(@types/node@26.1.2)(debug@4.4.3(supports-color@8.1.1))(ioredis@5.11.1(supports-color@8.1.1))(supports-color@8.1.1)(vite@6.4.3(@types/node@26.1.2)(jiti@1.21.7)(lightningcss@1.32.0)(tsx@4.23.13)(yaml@2.9.0))(zod@4.4.3)
 
-  '@medusajs/dashboard@2.18.0(patch_hash=0ade3abc8d9b0c2840b0621450804f67745b190f090793fc30da01c4ff0fe386)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(typescript@5.9.3)':
+  '@medusajs/dashboard@2.18.0(patch_hash=a3095268cd18ae81d48462d0be29c5e1e14a2d89f72662f9b6227cdbcb54f558)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(typescript@5.9.3)':
     dependencies:
       '@ariakit/react': 0.4.34(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@babel/runtime': 7.29.7
@@ -11551,7 +11551,7 @@ snapshots:
       - supports-color
       - tedious
 
-  '@medusajs/draft-order@2.18.0(patch_hash=e73e46b07c64ff0f966fb4a6a2550c5fe021c90a150a57985fa31b39aab4fe43)(77899c92e8a196be26f347230c8a3be3)':
+  '@medusajs/draft-order@2.18.0(patch_hash=e73e46b07c64ff0f966fb4a6a2550c5fe021c90a150a57985fa31b39aab4fe43)(f851e84c55bf4d03f0348d0feb7f2083)':
     dependencies:
       '@ariakit/react': 0.4.34(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@babel/runtime': 7.29.7
@@ -11569,7 +11569,7 @@ snapshots:
     optionalDependencies:
       '@medusajs/admin-sdk': 2.18.0
       '@medusajs/cli': 2.18.0(@types/node@26.1.2)(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)
-      '@medusajs/dashboard': 2.18.0(patch_hash=0ade3abc8d9b0c2840b0621450804f67745b190f090793fc30da01c4ff0fe386)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(typescript@5.9.3)
+      '@medusajs/dashboard': 2.18.0(patch_hash=a3095268cd18ae81d48462d0be29c5e1e14a2d89f72662f9b6227cdbcb54f558)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(typescript@5.9.3)
       '@medusajs/icons': 2.18.0(@types/react@18.3.31)(react@18.3.1)
       '@medusajs/test-utils': 2.18.0(4a7d958b6a9f4fba0b2ba9c90d90d895)
       '@medusajs/ui': 4.2.0(patch_hash=1e92686922dfc1fb7e19a15d6615c0ac4b1655e0d180fa11942d05d68480daf8)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.9.3)
@@ -11708,7 +11708,7 @@ snapshots:
     dependencies:
       '@medusajs/framework': 2.18.0(patch_hash=1fdd62d3f03deb266a0b3f8f7b099bcc28be30d619f57a30625c6e115e11e3a6)(@medusajs/cli@2.18.0(@types/node@26.1.2)(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1))(@types/node@26.1.2)(debug@4.4.3(supports-color@8.1.1))(ioredis@5.11.1(supports-color@8.1.1))(supports-color@8.1.1)(vite@6.4.3(@types/node@26.1.2)(jiti@1.21.7)(lightningcss@1.32.0)(tsx@4.23.13)(yaml@2.9.0))(zod@4.4.3)
 
-  '@medusajs/medusa@2.18.0(patch_hash=7d3d96e7210456a7757b91b0d979a8ed1925be7288d38f4d22765b2aaa520657)(075ff050b7ce62e0a7f566f1d79fdfd5)':
+  '@medusajs/medusa@2.18.0(patch_hash=7d3d96e7210456a7757b91b0d979a8ed1925be7288d38f4d22765b2aaa520657)(9f4001077c670eb03ae4caf9a073d844)':
     dependencies:
       '@inquirer/checkbox': 2.5.0
       '@inquirer/confirm': 2.0.17
@@ -11730,7 +11730,7 @@ snapshots:
       '@medusajs/core-flows': 2.18.0(patch_hash=dc6a211ee3b2eb35e480a415af4a3ad9953a05ab3b5d1291920dc87aad505def)(@medusajs/framework@2.18.0(patch_hash=1fdd62d3f03deb266a0b3f8f7b099bcc28be30d619f57a30625c6e115e11e3a6)(@medusajs/cli@2.18.0(@types/node@26.1.2)(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1))(@types/node@26.1.2)(debug@4.4.3(supports-color@8.1.1))(ioredis@5.11.1(supports-color@8.1.1))(supports-color@8.1.1)(vite@6.4.3(@types/node@26.1.2)(jiti@1.21.7)(lightningcss@1.32.0)(tsx@4.23.13)(yaml@2.9.0))(zod@4.4.3))
       '@medusajs/currency': 2.18.0(@medusajs/framework@2.18.0(patch_hash=1fdd62d3f03deb266a0b3f8f7b099bcc28be30d619f57a30625c6e115e11e3a6)(@medusajs/cli@2.18.0(@types/node@26.1.2)(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1))(@types/node@26.1.2)(debug@4.4.3(supports-color@8.1.1))(ioredis@5.11.1(supports-color@8.1.1))(supports-color@8.1.1)(vite@6.4.3(@types/node@26.1.2)(jiti@1.21.7)(lightningcss@1.32.0)(tsx@4.23.13)(yaml@2.9.0))(zod@4.4.3))
       '@medusajs/customer': 2.18.0(@medusajs/framework@2.18.0(patch_hash=1fdd62d3f03deb266a0b3f8f7b099bcc28be30d619f57a30625c6e115e11e3a6)(@medusajs/cli@2.18.0(@types/node@26.1.2)(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1))(@types/node@26.1.2)(debug@4.4.3(supports-color@8.1.1))(ioredis@5.11.1(supports-color@8.1.1))(supports-color@8.1.1)(vite@6.4.3(@types/node@26.1.2)(jiti@1.21.7)(lightningcss@1.32.0)(tsx@4.23.13)(yaml@2.9.0))(zod@4.4.3))
-      '@medusajs/draft-order': 2.18.0(patch_hash=e73e46b07c64ff0f966fb4a6a2550c5fe021c90a150a57985fa31b39aab4fe43)(77899c92e8a196be26f347230c8a3be3)
+      '@medusajs/draft-order': 2.18.0(patch_hash=e73e46b07c64ff0f966fb4a6a2550c5fe021c90a150a57985fa31b39aab4fe43)(f851e84c55bf4d03f0348d0feb7f2083)
       '@medusajs/event-bus-local': 2.18.0(@medusajs/framework@2.18.0(patch_hash=1fdd62d3f03deb266a0b3f8f7b099bcc28be30d619f57a30625c6e115e11e3a6)(@medusajs/cli@2.18.0(@types/node@26.1.2)(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1))(@types/node@26.1.2)(debug@4.4.3(supports-color@8.1.1))(ioredis@5.11.1(supports-color@8.1.1))(supports-color@8.1.1)(vite@6.4.3(@types/node@26.1.2)(jiti@1.21.7)(lightningcss@1.32.0)(tsx@4.23.13)(yaml@2.9.0))(zod@4.4.3))
       '@medusajs/event-bus-redis': 2.18.0(@medusajs/framework@2.18.0(patch_hash=1fdd62d3f03deb266a0b3f8f7b099bcc28be30d619f57a30625c6e115e11e3a6)(@medusajs/cli@2.18.0(@types/node@26.1.2)(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1))(@types/node@26.1.2)(debug@4.4.3(supports-color@8.1.1))(ioredis@5.11.1(supports-color@8.1.1))(supports-color@8.1.1)(vite@6.4.3(@types/node@26.1.2)(jiti@1.21.7)(lightningcss@1.32.0)(tsx@4.23.13)(yaml@2.9.0))(zod@4.4.3))(supports-color@8.1.1)
       '@medusajs/file': 2.18.0(@medusajs/framework@2.18.0(patch_hash=1fdd62d3f03deb266a0b3f8f7b099bcc28be30d619f57a30625c6e115e11e3a6)(@medusajs/cli@2.18.0(@types/node@26.1.2)(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1))(@types/node@26.1.2)(debug@4.4.3(supports-color@8.1.1))(ioredis@5.11.1(supports-color@8.1.1))(supports-color@8.1.1)(vite@6.4.3(@types/node@26.1.2)(jiti@1.21.7)(lightningcss@1.32.0)(tsx@4.23.13)(yaml@2.9.0))(zod@4.4.3))
@@ -11966,7 +11966,7 @@ snapshots:
       ulid: 2.4.0
     optionalDependencies:
       '@medusajs/core-flows': 2.18.0(patch_hash=dc6a211ee3b2eb35e480a415af4a3ad9953a05ab3b5d1291920dc87aad505def)(@medusajs/framework@2.18.0(patch_hash=1fdd62d3f03deb266a0b3f8f7b099bcc28be30d619f57a30625c6e115e11e3a6)(@medusajs/cli@2.18.0(@types/node@26.1.2)(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1))(@types/node@26.1.2)(debug@4.4.3(supports-color@8.1.1))(ioredis@5.11.1(supports-color@8.1.1))(supports-color@8.1.1)(vite@6.4.3(@types/node@26.1.2)(jiti@1.21.7)(lightningcss@1.32.0)(tsx@4.23.13)(yaml@2.9.0))(zod@4.4.3))
-      '@medusajs/medusa': 2.18.0(patch_hash=7d3d96e7210456a7757b91b0d979a8ed1925be7288d38f4d22765b2aaa520657)(075ff050b7ce62e0a7f566f1d79fdfd5)
+      '@medusajs/medusa': 2.18.0(patch_hash=7d3d96e7210456a7757b91b0d979a8ed1925be7288d38f4d22765b2aaa520657)(9f4001077c670eb03ae4caf9a073d844)
     transitivePeerDependencies:
       - debug
       - supports-color
@@ -14246,7 +14246,7 @@ snapshots:
     dependencies:
       '@medusajs/admin-sdk': 2.18.0
       '@medusajs/framework': 2.18.0(patch_hash=1fdd62d3f03deb266a0b3f8f7b099bcc28be30d619f57a30625c6e115e11e3a6)(@medusajs/cli@2.18.0(@types/node@26.1.2)(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1))(@types/node@26.1.2)(debug@4.4.3(supports-color@8.1.1))(ioredis@5.11.1(supports-color@8.1.1))(supports-color@8.1.1)(vite@6.4.3(@types/node@26.1.2)(jiti@1.21.7)(lightningcss@1.32.0)(tsx@4.23.13)(yaml@2.9.0))(zod@4.4.3)
-      '@medusajs/medusa': 2.18.0(patch_hash=7d3d96e7210456a7757b91b0d979a8ed1925be7288d38f4d22765b2aaa520657)(075ff050b7ce62e0a7f566f1d79fdfd5)
+      '@medusajs/medusa': 2.18.0(patch_hash=7d3d96e7210456a7757b91b0d979a8ed1925be7288d38f4d22765b2aaa520657)(9f4001077c670eb03ae4caf9a073d844)
       '@medusajs/ui': 4.2.0(patch_hash=1e92686922dfc1fb7e19a15d6615c0ac4b1655e0d180fa11942d05d68480daf8)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.9.3)
       '@tanstack/react-query': 5.64.2(react@18.3.1)
       awilix: 8.0.1

@@ -1,5 +1,83 @@
 # Dependency Migration Audit — 2026-07-23
 
+## Native dialog titles and metadata ownership — October 11, 2026
+
+The signed-in staging User Edit form emits Radix's missing DialogTitle error.
+Wrap the existing Heading in RouteDrawer.Title with asChild in 25 shipped
+forms. Preserve the visible heading content and styles. The unshipped Policy
+editor stays excluded. Each changed source origin matches both the CJS main
+and its ESM lazy distribution; this inventory is not live interaction coverage.
+
+The first initialized browser run passes the Store open-dialog check, then all
+four Settings modes reject four title warnings before the User check. It ends
+with SIGTERM/143 at 21:18 UTC; the signal's origin is not established. Four News
+results and the chained service cases are not credited. Independent cleanup
+verifies 2,047 unchanged inputs, 532 closed relays, 707 known identities absent
+and owned resources/listeners absent. One exact orphaned isolated News browser
+root is closed through a PID/start-tick/argv-bound pidfd SIGTERM; no unrelated
+process is signaled. Preserve both failed cleanup attempts and the final proof.
+
+Native staging inspection reproduces an unnamed currency dialog and two nested
+Store metadata drawers, then cancels both without saving. Give eight affected
+full-screen route roots localized screen-reader titles that exist during data
+loading and wizard steps. Remove redundant outer roots from eight shipped
+metadata routes: MetadataForm already owns its named drawer. A ninth source
+metadata wrapper is unshipped and remains excluded. Keep Role Permissions'
+existing named header outside its loading condition and safely project its
+optional role name. Forms, validators, native authentication/RBAC and writes
+remain authoritative. No provider account or registry version changes.
+
+The Settings gate gains four open-dialog checkpoints: Store, currencies,
+metadata and User. Verify the intended accessible name, one dialog root, Axe
+and real layout before saving. Any observed DialogTitle warning still fails;
+bounded hashes and the preceding checkpoint locate it without exporting
+credentials. All original cases and 900/240-second limits remain intact.
+The diagnostic checkpoint bound is 61, accounting for the four added cases.
+The [Medusa Drawer contract](https://docs.medusajs.com/ui/components/drawer),
+[Focus Modal contract](https://docs.medusajs.com/ui/components/focus-modal) and
+[Radix Dialog accessibility contract](https://www.radix-ui.com/primitives/docs/components/dialog)
+support these title and ownership corrections.
+
+The next browser run catches missing multi-child JSX imports in the modified
+lazy distributions, despite successful builds. Stop its exact owned runner
+and close one independently proven orphaned root; verify interrupted-run
+cleanup before editing. Two failed modes and six absent mode results remain
+unaccepted. Correct the eight missing imports and add an AST regression across
+all shipped ESM bundles; it rejects the bad installed candidate before repair.
+The existing currency search selector and all deadlines remain unchanged.
+
+The repaired imports render correctly, exposing 50 unnamed currency switches
+at the new open-dialog Axe checkpoint. All four Settings modes fail that
+Critical finding; all four News modes pass. The failed aggregate ends naturally
+with 158/162 native cases passing. Independent cleanup verifies all inputs,
+relays, known process identities and owned resources without sending signals.
+Add a localized per-currency switch name in source and both distributions;
+native handlers, disabled state and styles stay unchanged. Keep the full Axe
+gate and additionally verify actual switch names in each initialized mode.
+
+Read-only native metadata inspection also reproduces an unnamed 20-pixel row
+menu that remains hidden when the Key input receives keyboard focus. Give it
+an existing localized contextual name, focus-within visibility and a 24-pixel
+target in source/main/lazy and source/distribution CSS. Preserve all native
+handlers and disabled-state behavior. Extend the existing metadata checkpoint
+with actual keyboard/menu, label, cursor and geometry checks before saving.
+
+The MIT Dashboard 2.18.0 patch SHA-256 is
+`a3095268cd18ae81d48462d0be29c5e1e14a2d89f72662f9b6227cdbcb54f558`.
+A complete byte comparison admits only that patch hash and two dependent peer
+identities. Reject patch-generation's incidental third-party-web 0.30.0 and
+retain reviewed 0.29.2 with its integrity. All other lock bytes equal accepted
+HEAD. Frozen installation and corrected normal/fixture builds pass. Four
+Settings modes and four separately scheduled News modes verify 292 native
+checkpoints on identical application/compiled/browser inputs. The original
+full service command passes with only its existing News browser opt-in; all
+ordinary Settings HTTP tests remain enabled and no limits or tests change.
+Retain the combined 900-second timeout as failed and the separate observer's
+unexplained 143 exit as a finite-observation limitation. Exact staging CI and
+deployed acceptance remain pending; see the audit and handoff.
+Evidence: `artifacts/end-to-end-audit-2026-10-11/native-settings-news-drawer-titles-full/`
+and the native dialog transform, lock-comparison and installation receipts.
+
 ## Disposable PostgreSQL compiler security correction — October 8, 2026
 
 Exact staging CI at `e5cecff` rejects thirteen UNKNOWN-severity Go standard

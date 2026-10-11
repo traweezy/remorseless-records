@@ -1,5 +1,5 @@
 import assert from "node:assert/strict"
-import { readFileSync } from "node:fs"
+import { readFileSync, readdirSync } from "node:fs"
 import { createRequire } from "node:module"
 import { dirname, join } from "node:path"
 import test from "node:test"
@@ -27,6 +27,66 @@ const draftOrderRoot = dirname(
   backendRequire.resolve("@medusajs/draft-order/package.json")
 )
 const uiRoot = join(dirname(backendRequire.resolve("@medusajs/ui")), "../..")
+
+const unboundNativeJsxCalls = (entry, source) => {
+  const ts = backendRequire("typescript")
+  const parsed = ts.createSourceFile(
+    entry,
+    source,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.JS
+  )
+  const imported = new Set()
+  for (const node of parsed.statements) {
+    if (!ts.isImportDeclaration(node)) continue
+    if (node.importClause?.name) imported.add(node.importClause.name.text)
+    const bindings = node.importClause?.namedBindings
+    if (bindings && ts.isNamedImports(bindings)) {
+      for (const binding of bindings.elements) imported.add(binding.name.text)
+    }
+  }
+  const missing = new Set()
+  const visit = (node) => {
+    if (
+      ts.isCallExpression(node) &&
+      ts.isIdentifier(node.expression) &&
+      /^(?:jsx|jsxs)\d*$/u.test(node.expression.text) &&
+      !imported.has(node.expression.text)
+    ) {
+      missing.add(node.expression.text)
+    }
+    ts.forEachChild(node, visit)
+  }
+  visit(parsed)
+  return [...missing].sort()
+}
+
+test("native JSX binding check rejects a missing multi-child helper", () => {
+  const missing =
+    'import { jsx as jsx2 } from "react/jsx-runtime"; jsxs2(Dialog, {});'
+  assert.deepEqual(unboundNativeJsxCalls("missing.mjs", missing), ["jsxs2"])
+  const bound =
+    'import { jsxs as jsxs2 } from "react/jsx-runtime"; jsxs2(Dialog, {});'
+  assert.deepEqual(unboundNativeJsxCalls("bound.mjs", bound), [])
+})
+
+test("every shipped native Admin ESM bundle imports its JSX helpers", () => {
+  const entries = readdirSync(join(dashboardRoot, "dist")).filter((entry) =>
+    entry.endsWith(".mjs")
+  )
+  assert(entries.length > 0)
+  for (const entry of entries) {
+    assert.deepEqual(
+      unboundNativeJsxCalls(
+        entry,
+        readFileSync(join(dashboardRoot, "dist", entry), "utf8")
+      ),
+      [],
+      `${entry} has an unbound JSX runtime helper`
+    )
+  }
+})
 
 const nativeArrow = (entry, name, root = dashboardRoot) => {
   const ts = backendRequire("typescript")

@@ -1,8 +1,21 @@
+diff --git a/dist/adjust-inventory-F54V53EK.mjs b/dist/adjust-inventory-F54V53EK.mjs
+index 67b22fd1606ebb4b2ab325b3805419c27377b44a..a6eef9df04080e659fdd4c521c6b724773874a27 100644
+--- a/dist/adjust-inventory-F54V53EK.mjs
++++ b/dist/adjust-inventory-F54V53EK.mjs
+@@ -200,7 +200,7 @@ var AdjustInventoryDrawer = () => {
+     throw error;
+   }
+   return /* @__PURE__ */ jsxs2(RouteDrawer, { children: [
+-    /* @__PURE__ */ jsx2(RouteDrawer.Header, { children: /* @__PURE__ */ jsx2(Heading, { children: t("inventory.manageLocationQuantity") }) }),
++    /* @__PURE__ */ jsx2(RouteDrawer.Header, { children: /* @__PURE__ */ jsx2(RouteDrawer.Title, { asChild: true, children: jsx2(Heading, { children: t("inventory.manageLocationQuantity") }) }) }),
+     ready && /* @__PURE__ */ jsx2(
+       AdjustInventoryForm,
+       {
 diff --git a/dist/app.css b/dist/app.css
-index 914b674205accf11063d4145e7b21dd53c783ba4..3bb291c85d05b6825eee7832f2e4d712ee98eeac 100644
+index 914b674205accf11063d4145e7b21dd53c783ba4..1159a5a0014e02bcdc4e38b10e65f090e3b4d495 100644
 --- a/dist/app.css
 +++ b/dist/app.css
-@@ -5459,3 +5459,34 @@ video {
+@@ -5459,3 +5459,38 @@ video {
  .\[\&_tr\]\:hover\:bg-ui-bg-subtle:hover tr {
    background-color: var(--bg-subtle);
  }
@@ -37,8 +50,12 @@ index 914b674205accf11063d4145e7b21dd53c783ba4..3bb291c85d05b6825eee7832f2e4d712
 +  --button-inverted-hover: var(--contrast-bg-base-hover);
 +  --button-inverted-pressed: var(--contrast-bg-base);
 +}
++
++.rr-native-metadata-row:focus-within .rr-native-metadata-actions { visibility: visible; }
++.rr-native-metadata-actions { min-width: 24px; min-height: 24px; }
++.rr-native-metadata-actions:not(:disabled) { cursor: pointer; }
 diff --git a/dist/app.js b/dist/app.js
-index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..c1ebccee2546614ecbc05157456ec5a99e1d2630 100644
+index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd4efecf79 100644
 --- a/dist/app.js
 +++ b/dist/app.js
 @@ -1,3 +1,66 @@
@@ -1167,6 +1184,41 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..c1ebccee2546614ecbc05157456ec5a9
              headerAlign: "center",
              maxSize: 72,
              cell: ({ row }) => {
+@@ -136463,7 +136517,7 @@ var init_product_variant_edit = __esm({
+         throw productError;
+       }
+       return /* @__PURE__ */ (0, import_jsx_runtime150.jsxs)(RouteDrawer, { children: [
+-        /* @__PURE__ */ (0, import_jsx_runtime150.jsx)(RouteDrawer.Header, { children: /* @__PURE__ */ (0, import_jsx_runtime150.jsx)(import_ui111.Heading, { children: t5("products.variant.edit.header") }) }),
++        /* @__PURE__ */ (0, import_jsx_runtime150.jsx)(RouteDrawer.Header, { children: /* @__PURE__ */ (0, import_jsx_runtime150.jsx)(RouteDrawer.Title, { asChild: true, children: (0, import_jsx_runtime150.jsx)(import_ui111.Heading, { children: t5("products.variant.edit.header") }) }) }),
+         ready && /* @__PURE__ */ (0, import_jsx_runtime150.jsx)(ProductEditVariantForm, { variant, product })
+       ] });
+     };
+@@ -140356,7 +140410,7 @@ var init_metadata_form = __esm({
+                     {
+                       showTooltip: isDisabled,
+                       content: t5("metadata.edit.complexRow.tooltip"),
+-                      children: /* @__PURE__ */ (0, import_jsx_runtime178.jsxs)("div", { className: "group/table relative", children: [
++                      children: /* @__PURE__ */ (0, import_jsx_runtime178.jsxs)("div", { className: "group/table relative rr-native-metadata-row", children: [
+                         /* @__PURE__ */ (0, import_jsx_runtime178.jsxs)(
+                           "div",
+                           {
+@@ -140409,14 +140463,14 @@ var init_metadata_form = __esm({
+                             import_ui130.DropdownMenu.Trigger,
+                             {
+                               className: (0, import_ui130.clx)(
+-                                "invisible absolute inset-y-0 -end-2.5 my-auto group-hover/table:visible data-[state='open']:visible",
++                                "invisible absolute inset-y-0 -end-2.5 my-auto group-hover/table:visible data-[state='open']:visible rr-native-metadata-actions",
+                                 {
+                                   hidden: isDisabled
+                                 }
+                               ),
+                               disabled: isDisabled,
+                               asChild: true,
+-                              children: /* @__PURE__ */ (0, import_jsx_runtime178.jsx)(import_ui130.IconButton, { size: "2xsmall", children: /* @__PURE__ */ (0, import_jsx_runtime178.jsx)(import_icons57.EllipsisVertical, {}) })
++                              children: /* @__PURE__ */ (0, import_jsx_runtime178.jsx)(import_ui130.IconButton, { "aria-label": `${t5("fields.metadata")} ${index + 1}: ${t5("fields.actions")}`, size: "2xsmall", children: /* @__PURE__ */ (0, import_jsx_runtime178.jsx)(import_icons57.EllipsisVertical, {}) })
+                             }
+                           ),
+                           /* @__PURE__ */ (0, import_jsx_runtime178.jsxs)(import_ui130.DropdownMenu.Content, { children: [
 @@ -141169,29 +141223,8 @@ var init_loader5 = __esm({
  // src/routes/product-variants/product-variant-detail/components/variant-general-section/variant-general-section.tsx
  function VariantGeneralSection({ variant }) {
@@ -1229,6 +1281,42 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..c1ebccee2546614ecbc05157456ec5a9
            },
            "aria-label": country.display_name
          }
+@@ -145462,7 +145487,7 @@ var init_product_option_metadata = __esm({
+       if (isError) {
+         throw error;
+       }
+-      return /* @__PURE__ */ (0, import_jsx_runtime250.jsx)(RouteDrawer, { children: /* @__PURE__ */ (0, import_jsx_runtime250.jsx)(
++      return /* @__PURE__ */ (0, import_jsx_runtime250.jsx)(
+         MetadataForm,
+         {
+           isPending,
+@@ -145470,7 +145495,7 @@ var init_product_option_metadata = __esm({
+           hook: mutateAsync,
+           metadata: product_option?.metadata
+         }
+-      ) });
++      );
+     };
+   }
+ });
+@@ -148766,7 +148791,7 @@ var init_categories_metadata = __esm({
+       if (isError) {
+         throw error;
+       }
+-      return /* @__PURE__ */ (0, import_jsx_runtime278.jsx)(RouteDrawer, { children: /* @__PURE__ */ (0, import_jsx_runtime278.jsx)(
++      return /* @__PURE__ */ (0, import_jsx_runtime278.jsx)(
+         MetadataForm,
+         {
+           isPending,
+@@ -148774,7 +148799,7 @@ var init_categories_metadata = __esm({
+           hook: mutateAsync,
+           metadata: product_category?.metadata
+         }
+-      ) });
++      );
+     };
+   }
+ });
 @@ -149209,6 +149234,7 @@ var init_constants10 = __esm({
        "*payment_collections",
        "*payment_collections.payment_sessions",
@@ -2756,6 +2844,186 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..c1ebccee2546614ecbc05157456ec5a9
          order && !loyaltyPlugin && /* @__PURE__ */ (0, import_jsx_runtime350.jsx)(CreateRefundForm, { order }),
          order && loyaltyPlugin && /* @__PURE__ */ (0, import_jsx_runtime350.jsx)(OrderBalanceSettlementForm, { order })
        ] });
+@@ -164394,7 +164471,7 @@ var init_order_request_transfer = __esm({
+         throw new Error("Order not found");
+       }
+       return /* @__PURE__ */ (0, import_jsx_runtime353.jsxs)(RouteDrawer, { children: [
+-        /* @__PURE__ */ (0, import_jsx_runtime353.jsx)(RouteDrawer.Header, { children: /* @__PURE__ */ (0, import_jsx_runtime353.jsx)(import_ui239.Heading, { children: t5("orders.transfer.title") }) }),
++        /* @__PURE__ */ (0, import_jsx_runtime353.jsx)(RouteDrawer.Header, { children: /* @__PURE__ */ (0, import_jsx_runtime353.jsx)(RouteDrawer.Title, { asChild: true, children: (0, import_jsx_runtime353.jsx)(import_ui239.Heading, { children: t5("orders.transfer.title") }) }) }),
+         order && /* @__PURE__ */ (0, import_jsx_runtime353.jsx)(CreateOrderTransferForm, { order })
+       ] });
+     };
+@@ -164525,7 +164602,7 @@ var init_order_edit_email = __esm({
+         throw error;
+       }
+       return /* @__PURE__ */ (0, import_jsx_runtime355.jsxs)(RouteDrawer, { children: [
+-        /* @__PURE__ */ (0, import_jsx_runtime355.jsx)(RouteDrawer.Header, { children: /* @__PURE__ */ (0, import_jsx_runtime355.jsx)(import_ui241.Heading, { children: t5("orders.edit.email.title") }) }),
++        /* @__PURE__ */ (0, import_jsx_runtime355.jsx)(RouteDrawer.Header, { children: /* @__PURE__ */ (0, import_jsx_runtime355.jsx)(RouteDrawer.Title, { asChild: true, children: (0, import_jsx_runtime355.jsx)(import_ui241.Heading, { children: t5("orders.edit.email.title") }) }) }),
+         order && /* @__PURE__ */ (0, import_jsx_runtime355.jsx)(EditOrderEmailForm, { order })
+       ] });
+     };
+@@ -164801,7 +164878,7 @@ var init_order_edit_shipping_address = __esm({
+         throw new Error("Order not found");
+       }
+       return /* @__PURE__ */ (0, import_jsx_runtime357.jsxs)(RouteDrawer, { children: [
+-        /* @__PURE__ */ (0, import_jsx_runtime357.jsx)(RouteDrawer.Header, { children: /* @__PURE__ */ (0, import_jsx_runtime357.jsx)(import_ui243.Heading, { children: t5("orders.edit.shippingAddress.title") }) }),
++        /* @__PURE__ */ (0, import_jsx_runtime357.jsx)(RouteDrawer.Header, { children: /* @__PURE__ */ (0, import_jsx_runtime357.jsx)(RouteDrawer.Title, { asChild: true, children: (0, import_jsx_runtime357.jsx)(import_ui243.Heading, { children: t5("orders.edit.shippingAddress.title") }) }) }),
+         order && /* @__PURE__ */ (0, import_jsx_runtime357.jsx)(EditOrderShippingAddressForm, { order })
+       ] });
+     };
+@@ -165080,7 +165157,7 @@ var init_order_edit_billing_address = __esm({
+         throw error;
+       }
+       return /* @__PURE__ */ (0, import_jsx_runtime359.jsxs)(RouteDrawer, { children: [
+-        /* @__PURE__ */ (0, import_jsx_runtime359.jsx)(RouteDrawer.Header, { children: /* @__PURE__ */ (0, import_jsx_runtime359.jsx)(import_ui245.Heading, { children: t5("orders.edit.billingAddress.title") }) }),
++        /* @__PURE__ */ (0, import_jsx_runtime359.jsx)(RouteDrawer.Header, { children: /* @__PURE__ */ (0, import_jsx_runtime359.jsx)(RouteDrawer.Title, { asChild: true, children: (0, import_jsx_runtime359.jsx)(import_ui245.Heading, { children: t5("orders.edit.billingAddress.title") }) }) }),
+         order && /* @__PURE__ */ (0, import_jsx_runtime359.jsx)(EditOrderBillingAddressForm, { order })
+       ] });
+     };
+@@ -169377,7 +169454,7 @@ var init_promotion_edit_details = __esm({
+         throw error;
+       }
+       return /* @__PURE__ */ (0, import_jsx_runtime388.jsxs)(RouteDrawer, { children: [
+-        /* @__PURE__ */ (0, import_jsx_runtime388.jsx)(RouteDrawer.Header, { children: /* @__PURE__ */ (0, import_jsx_runtime388.jsx)(import_ui263.Heading, { children: t5("promotions.edit.title") }) }),
++        /* @__PURE__ */ (0, import_jsx_runtime388.jsx)(RouteDrawer.Header, { children: /* @__PURE__ */ (0, import_jsx_runtime388.jsx)(RouteDrawer.Title, { asChild: true, children: (0, import_jsx_runtime388.jsx)(import_ui263.Heading, { children: t5("promotions.edit.title") }) }) }),
+         !isLoading && promotion && /* @__PURE__ */ (0, import_jsx_runtime388.jsx)(EditPromotionDetailsForm, { promotion })
+       ] });
+     };
+@@ -169416,7 +169493,7 @@ var init_promotion_add_campaign = __esm({
+         throw error;
+       }
+       return /* @__PURE__ */ (0, import_jsx_runtime389.jsxs)(RouteDrawer, { children: [
+-        /* @__PURE__ */ (0, import_jsx_runtime389.jsx)(RouteDrawer.Header, { children: /* @__PURE__ */ (0, import_jsx_runtime389.jsx)(import_ui264.Heading, { children: t5("promotions.campaign.edit.header") }) }),
++        /* @__PURE__ */ (0, import_jsx_runtime389.jsx)(RouteDrawer.Header, { children: /* @__PURE__ */ (0, import_jsx_runtime389.jsx)(RouteDrawer.Title, { asChild: true, children: (0, import_jsx_runtime389.jsx)(import_ui264.Heading, { children: t5("promotions.campaign.edit.header") }) }) }),
+         !isPending && promotion && /* @__PURE__ */ (0, import_jsx_runtime389.jsx)(AddCampaignPromotionForm, { promotion })
+       ] });
+     };
+@@ -169690,7 +169767,7 @@ var init_edit_rules = __esm({
+         throw error;
+       }
+       return /* @__PURE__ */ (0, import_jsx_runtime392.jsxs)(RouteDrawer, { children: [
+-        /* @__PURE__ */ (0, import_jsx_runtime392.jsx)(RouteDrawer.Header, { children: /* @__PURE__ */ (0, import_jsx_runtime392.jsx)(import_ui266.Heading, { children: t5(`promotions.edit.${ruleType}.title`) }) }),
++        /* @__PURE__ */ (0, import_jsx_runtime392.jsx)(RouteDrawer.Header, { children: /* @__PURE__ */ (0, import_jsx_runtime392.jsx)(RouteDrawer.Title, { asChild: true, children: (0, import_jsx_runtime392.jsx)(import_ui266.Heading, { children: t5(`promotions.edit.${ruleType}.title`) }) }) }),
+         !isLoading && promotion && /* @__PURE__ */ (0, import_jsx_runtime392.jsx)(
+           EditRulesWrapper,
+           {
+@@ -172856,7 +172933,7 @@ var init_collection_edit = __esm({
+         throw error;
+       }
+       return /* @__PURE__ */ (0, import_jsx_runtime430.jsxs)(RouteDrawer, { children: [
+-        /* @__PURE__ */ (0, import_jsx_runtime430.jsx)(RouteDrawer.Header, { children: /* @__PURE__ */ (0, import_jsx_runtime430.jsx)(import_ui290.Heading, { children: t5("collections.editCollection") }) }),
++        /* @__PURE__ */ (0, import_jsx_runtime430.jsx)(RouteDrawer.Header, { children: /* @__PURE__ */ (0, import_jsx_runtime430.jsx)(RouteDrawer.Title, { asChild: true, children: (0, import_jsx_runtime430.jsx)(import_ui290.Heading, { children: t5("collections.editCollection") }) }) }),
+         !isLoading && collection && /* @__PURE__ */ (0, import_jsx_runtime430.jsx)(EditCollectionForm, { collection })
+       ] });
+     };
+@@ -177119,7 +177196,7 @@ var init_price_list_edit = __esm({
+         throw error;
+       }
+       return /* @__PURE__ */ (0, import_jsx_runtime467.jsxs)(RouteDrawer, { children: [
+-        /* @__PURE__ */ (0, import_jsx_runtime467.jsx)(RouteDrawer.Header, { children: /* @__PURE__ */ (0, import_jsx_runtime467.jsx)(import_ui310.Heading, { children: t5("priceLists.edit.header") }) }),
++        /* @__PURE__ */ (0, import_jsx_runtime467.jsx)(RouteDrawer.Header, { children: /* @__PURE__ */ (0, import_jsx_runtime467.jsx)(RouteDrawer.Title, { asChild: true, children: (0, import_jsx_runtime467.jsx)(import_ui310.Heading, { children: t5("priceLists.edit.header") }) }) }),
+         ready && /* @__PURE__ */ (0, import_jsx_runtime467.jsx)(PriceListEditForm, { priceList: price_list })
+       ] });
+     };
+@@ -179907,7 +179984,7 @@ var init_customer_edit = __esm({
+         throw error;
+       }
+       return /* @__PURE__ */ (0, import_jsx_runtime494.jsxs)(RouteDrawer, { children: [
+-        /* @__PURE__ */ (0, import_jsx_runtime494.jsx)(RouteDrawer.Header, { children: /* @__PURE__ */ (0, import_jsx_runtime494.jsx)(import_ui325.Heading, { children: t5("customers.edit.header") }) }),
++        /* @__PURE__ */ (0, import_jsx_runtime494.jsx)(RouteDrawer.Header, { children: /* @__PURE__ */ (0, import_jsx_runtime494.jsx)(RouteDrawer.Title, { asChild: true, children: (0, import_jsx_runtime494.jsx)(import_ui325.Heading, { children: t5("customers.edit.header") }) }) }),
+         !isLoading && customer && /* @__PURE__ */ (0, import_jsx_runtime494.jsx)(EditCustomerForm, { customer })
+       ] });
+     };
+@@ -181657,7 +181734,7 @@ var init_customer_group_edit = __esm({
+         throw error;
+       }
+       return /* @__PURE__ */ (0, import_jsx_runtime513.jsxs)(RouteDrawer, { children: [
+-        /* @__PURE__ */ (0, import_jsx_runtime513.jsx)(RouteDrawer.Header, { children: /* @__PURE__ */ (0, import_jsx_runtime513.jsx)(import_ui335.Heading, { children: t5("customerGroups.edit.header") }) }),
++        /* @__PURE__ */ (0, import_jsx_runtime513.jsx)(RouteDrawer.Header, { children: /* @__PURE__ */ (0, import_jsx_runtime513.jsx)(RouteDrawer.Title, { asChild: true, children: (0, import_jsx_runtime513.jsx)(import_ui335.Heading, { children: t5("customerGroups.edit.header") }) }) }),
+         !isLoading && customer_group && /* @__PURE__ */ (0, import_jsx_runtime513.jsx)(EditCustomerGroupForm, { group: customer_group })
+       ] });
+     };
+@@ -183202,7 +183279,7 @@ var init_edit_reservation_modal = __esm({
+         throw error;
+       }
+       return /* @__PURE__ */ (0, import_jsx_runtime530.jsxs)(RouteDrawer, { children: [
+-        /* @__PURE__ */ (0, import_jsx_runtime530.jsx)(RouteDrawer.Header, { children: /* @__PURE__ */ (0, import_jsx_runtime530.jsx)(import_ui343.Heading, { children: t5("inventory.reservation.editItemDetails") }) }),
++        /* @__PURE__ */ (0, import_jsx_runtime530.jsx)(RouteDrawer.Header, { children: /* @__PURE__ */ (0, import_jsx_runtime530.jsx)(RouteDrawer.Title, { asChild: true, children: (0, import_jsx_runtime530.jsx)(import_ui343.Heading, { children: t5("inventory.reservation.editItemDetails") }) }) }),
+         ready && /* @__PURE__ */ (0, import_jsx_runtime530.jsx)(
+           EditReservationForm,
+           {
+@@ -183249,7 +183326,7 @@ var init_reservation_metadata = __esm({
+       if (isError) {
+         throw error;
+       }
+-      return /* @__PURE__ */ (0, import_jsx_runtime531.jsx)(RouteDrawer, { children: /* @__PURE__ */ (0, import_jsx_runtime531.jsx)(
++      return /* @__PURE__ */ (0, import_jsx_runtime531.jsx)(
+         MetadataForm,
+         {
+           isPending,
+@@ -183257,7 +183334,7 @@ var init_reservation_metadata = __esm({
+           hook: mutateAsync,
+           metadata: reservation?.metadata
+         }
+-      ) });
++      );
+     };
+   }
+ });
+@@ -185604,7 +185681,7 @@ var init_edit_item_drawer = __esm({
+         throw error;
+       }
+       return /* @__PURE__ */ (0, import_jsx_runtime557.jsxs)(RouteDrawer, { children: [
+-        /* @__PURE__ */ (0, import_jsx_runtime557.jsx)(RouteDrawer.Header, { children: /* @__PURE__ */ (0, import_jsx_runtime557.jsx)(import_ui357.Heading, { children: t5("inventory.editItemDetails") }) }),
++        /* @__PURE__ */ (0, import_jsx_runtime557.jsx)(RouteDrawer.Header, { children: /* @__PURE__ */ (0, import_jsx_runtime557.jsx)(RouteDrawer.Title, { asChild: true, children: (0, import_jsx_runtime557.jsx)(import_ui357.Heading, { children: t5("inventory.editItemDetails") }) }) }),
+         ready && /* @__PURE__ */ (0, import_jsx_runtime557.jsx)(EditInventoryItemForm, { item: inventoryItem })
+       ] });
+     };
+@@ -185907,7 +185984,7 @@ var init_edit_item_attributes_drawer = __esm({
+         throw error;
+       }
+       return /* @__PURE__ */ (0, import_jsx_runtime559.jsxs)(RouteDrawer, { children: [
+-        /* @__PURE__ */ (0, import_jsx_runtime559.jsx)(RouteDrawer.Header, { children: /* @__PURE__ */ (0, import_jsx_runtime559.jsx)(import_ui359.Heading, { children: t5("products.editAttributes") }) }),
++        /* @__PURE__ */ (0, import_jsx_runtime559.jsx)(RouteDrawer.Header, { children: /* @__PURE__ */ (0, import_jsx_runtime559.jsx)(RouteDrawer.Title, { asChild: true, children: (0, import_jsx_runtime559.jsx)(import_ui359.Heading, { children: t5("products.editAttributes") }) }) }),
+         ready && /* @__PURE__ */ (0, import_jsx_runtime559.jsx)(EditInventoryItemAttributesForm, { item: inventoryItem })
+       ] });
+     };
+@@ -185947,7 +186024,7 @@ var init_inventory_metadata = __esm({
+       if (isError) {
+         throw error;
+       }
+-      return /* @__PURE__ */ (0, import_jsx_runtime560.jsx)(RouteDrawer, { children: /* @__PURE__ */ (0, import_jsx_runtime560.jsx)(
++      return /* @__PURE__ */ (0, import_jsx_runtime560.jsx)(
+         MetadataForm,
+         {
+           isPending,
+@@ -185955,7 +186032,7 @@ var init_inventory_metadata = __esm({
+           hook: mutateAsync,
+           metadata: inventory_item?.metadata
+         }
+-      ) });
++      );
+     };
+   }
+ });
+@@ -186219,7 +186296,7 @@ var init_manage_locations_drawer = __esm({
+         throw error;
+       }
+       return /* @__PURE__ */ (0, import_jsx_runtime564.jsxs)(RouteDrawer, { children: [
+-        /* @__PURE__ */ (0, import_jsx_runtime564.jsx)(RouteDrawer.Header, { children: /* @__PURE__ */ (0, import_jsx_runtime564.jsx)(import_ui363.Heading, { children: t5("inventory.manageLocations") }) }),
++        /* @__PURE__ */ (0, import_jsx_runtime564.jsx)(RouteDrawer.Header, { children: /* @__PURE__ */ (0, import_jsx_runtime564.jsx)(RouteDrawer.Title, { asChild: true, children: (0, import_jsx_runtime564.jsx)(import_ui363.Heading, { children: t5("inventory.manageLocations") }) }) }),
+         ready && /* @__PURE__ */ (0, import_jsx_runtime564.jsx)(ManageLocationsForm, { item: inventoryItem, locations: stock_locations })
+       ] });
+     };
+@@ -186429,7 +186506,7 @@ var init_adjust_inventory_drawer = __esm({
+         throw error;
+       }
+       return /* @__PURE__ */ (0, import_jsx_runtime566.jsxs)(RouteDrawer, { children: [
+-        /* @__PURE__ */ (0, import_jsx_runtime566.jsx)(RouteDrawer.Header, { children: /* @__PURE__ */ (0, import_jsx_runtime566.jsx)(import_ui365.Heading, { children: t5("inventory.manageLocationQuantity") }) }),
++        /* @__PURE__ */ (0, import_jsx_runtime566.jsx)(RouteDrawer.Header, { children: /* @__PURE__ */ (0, import_jsx_runtime566.jsx)(RouteDrawer.Title, { asChild: true, children: (0, import_jsx_runtime566.jsx)(import_ui365.Heading, { children: t5("inventory.manageLocationQuantity") }) }) }),
+         ready && /* @__PURE__ */ (0, import_jsx_runtime566.jsx)(
+           AdjustInventoryForm,
+           {
 @@ -187323,18 +187400,20 @@ var init_region_list_table = __esm({
      };
      columnHelper63 = (0, import_react_table51.createColumnHelper)();
@@ -2843,7 +3111,22 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..c1ebccee2546614ecbc05157456ec5a9
        );
      };
      CountryTag = ({
-@@ -188347,6 +188431,7 @@ var init_region_country_section = __esm({
+@@ -188077,12 +188161,13 @@ var init_region_create = __esm({
+     init_create_region_form2();
+     import_jsx_runtime584 = require("react/jsx-runtime");
+     RegionCreate = () => {
++  const { t } = require("react-i18next").useTranslation();
+       const { store, isPending: isLoading, isError, error } = useStore();
+       const storeCurrencies = (store?.supported_currencies ?? []).map((c) => currencies[c.currency_code.toUpperCase()]).filter(Boolean);
+       if (isError) {
+         throw error;
+       }
+-      return /* @__PURE__ */ (0, import_jsx_runtime584.jsx)(RouteFocusModal, { children: !isLoading && store && /* @__PURE__ */ (0, import_jsx_runtime584.jsx)(CreateRegionForm, { currencies: storeCurrencies }) });
++      return /* @__PURE__ */ (0, import_jsx_runtime584.jsxs)(RouteFocusModal, { children: [(0, import_jsx_runtime584.jsx)(RouteFocusModal.Title, { className: "sr-only", children: t("regions.createRegion") }), !isLoading && store && /* @__PURE__ */ (0, import_jsx_runtime584.jsx)(CreateRegionForm, { currencies: storeCurrencies })] });
+     };
+   }
+ });
+@@ -188347,6 +188432,7 @@ var init_region_country_section = __esm({
      columnHelper66 = (0, import_react_table54.createColumnHelper)();
      useColumns33 = () => {
        const base = useCountryTableColumns();
@@ -2851,7 +3134,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..c1ebccee2546614ecbc05157456ec5a9
        return (0, import_react318.useMemo)(
          () => [
            columnHelper66.display({
-@@ -188355,7 +188440,9 @@ var init_region_country_section = __esm({
+@@ -188355,7 +188441,9 @@ var init_region_country_section = __esm({
                return /* @__PURE__ */ (0, import_jsx_runtime586.jsx)(
                  import_ui376.Checkbox,
                  {
@@ -2862,7 +3145,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..c1ebccee2546614ecbc05157456ec5a9
                    onCheckedChange: (value) => table.toggleAllPageRowsSelected(!!value)
                  }
                );
-@@ -188364,7 +188451,9 @@ var init_region_country_section = __esm({
+@@ -188364,7 +188452,9 @@ var init_region_country_section = __esm({
                return /* @__PURE__ */ (0, import_jsx_runtime586.jsx)(
                  import_ui376.Checkbox,
                  {
@@ -2873,7 +3156,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..c1ebccee2546614ecbc05157456ec5a9
                    onCheckedChange: (value) => row.toggleSelected(!!value),
                    onClick: (e) => {
                      e.stopPropagation();
-@@ -188376,13 +188465,14 @@ var init_region_country_section = __esm({
+@@ -188376,13 +188466,14 @@ var init_region_country_section = __esm({
            ...base,
            columnHelper66.display({
              id: "actions",
@@ -2889,7 +3172,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..c1ebccee2546614ecbc05157456ec5a9
        );
      };
    }
-@@ -188453,7 +188543,7 @@ var init_region_general_section = __esm({
+@@ -188453,7 +188544,7 @@ var init_region_general_section = __esm({
            SectionRow,
            {
              title: t5("fields.paymentProviders"),
@@ -2898,7 +3181,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..c1ebccee2546614ecbc05157456ec5a9
                ListSummary,
                {
                  list: region.payment_providers.map((p) => formatProvider(p.id))
-@@ -188727,18 +188817,18 @@ var init_edit_region_form = __esm({
+@@ -188727,18 +188818,18 @@ var init_edit_region_form = __esm({
                      render: ({ field: { onChange, ref, ...field } }) => {
                        return /* @__PURE__ */ (0, import_jsx_runtime589.jsxs)(Form.Item, { children: [
                          /* @__PURE__ */ (0, import_jsx_runtime589.jsx)(Form.Label, { children: t5("fields.currency") }),
@@ -2920,7 +3203,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..c1ebccee2546614ecbc05157456ec5a9
                          /* @__PURE__ */ (0, import_jsx_runtime589.jsx)(Form.ErrorMessage, {})
                        ] });
                      }
-@@ -188903,7 +188993,7 @@ var init_region_edit = __esm({
+@@ -188903,7 +188994,7 @@ var init_region_edit = __esm({
          throw preferenceError;
        }
        return /* @__PURE__ */ (0, import_jsx_runtime590.jsxs)(RouteDrawer, { children: [
@@ -2929,7 +3212,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..c1ebccee2546614ecbc05157456ec5a9
          !isLoading && region && /* @__PURE__ */ (0, import_jsx_runtime590.jsx)(
            EditRegionForm,
            {
-@@ -189065,6 +189155,7 @@ var init_add_countries_form = __esm({
+@@ -189065,6 +189156,7 @@ var init_add_countries_form = __esm({
      columnHelper67 = (0, import_react_table55.createColumnHelper)();
      useColumns34 = () => {
        const base = useCountryTableColumns();
@@ -2937,7 +3220,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..c1ebccee2546614ecbc05157456ec5a9
        return (0, import_react319.useMemo)(
          () => [
            columnHelper67.display({
-@@ -189073,7 +189164,9 @@ var init_add_countries_form = __esm({
+@@ -189073,7 +189165,9 @@ var init_add_countries_form = __esm({
                return /* @__PURE__ */ (0, import_jsx_runtime591.jsx)(
                  import_ui380.Checkbox,
                  {
@@ -2948,7 +3231,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..c1ebccee2546614ecbc05157456ec5a9
                    onCheckedChange: (value) => table.toggleAllPageRowsSelected(!!value)
                  }
                );
-@@ -189083,7 +189176,9 @@ var init_add_countries_form = __esm({
+@@ -189083,7 +189177,9 @@ var init_add_countries_form = __esm({
                return /* @__PURE__ */ (0, import_jsx_runtime591.jsx)(
                  import_ui380.Checkbox,
                  {
@@ -2959,7 +3242,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..c1ebccee2546614ecbc05157456ec5a9
                    disabled: isPreselected,
                    onCheckedChange: (value) => row.toggleSelected(!!value),
                    onClick: (e) => {
-@@ -189095,7 +189190,7 @@ var init_add_countries_form = __esm({
+@@ -189095,7 +189191,7 @@ var init_add_countries_form = __esm({
            }),
            ...base
          ],
@@ -2968,7 +3251,42 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..c1ebccee2546614ecbc05157456ec5a9
        );
      };
    }
-@@ -190076,7 +190171,9 @@ var init_store_currency_section = __esm({
+@@ -189120,6 +189216,7 @@ var init_region_add_countries = __esm({
+     init_add_countries_form2();
+     import_jsx_runtime592 = require("react/jsx-runtime");
+     RegionAddCountries = () => {
++  const { t } = require("react-i18next").useTranslation();
+       const { id: id2 } = (0, import_react_router_dom190.useParams)();
+       const {
+         region,
+@@ -189132,7 +189229,7 @@ var init_region_add_countries = __esm({
+       if (isError) {
+         throw error;
+       }
+-      return /* @__PURE__ */ (0, import_jsx_runtime592.jsx)(RouteFocusModal, { children: !isLoading && region && /* @__PURE__ */ (0, import_jsx_runtime592.jsx)(AddCountriesForm, { region }) });
++      return /* @__PURE__ */ (0, import_jsx_runtime592.jsxs)(RouteFocusModal, { children: [(0, import_jsx_runtime592.jsx)(RouteFocusModal.Title, { className: "sr-only", children: t("regions.addCountries") }), !isLoading && region && /* @__PURE__ */ (0, import_jsx_runtime592.jsx)(AddCountriesForm, { region })] });
+     };
+   }
+ });
+@@ -189166,7 +189263,7 @@ var init_region_metadata = __esm({
+       if (isError) {
+         throw error;
+       }
+-      return /* @__PURE__ */ (0, import_jsx_runtime593.jsx)(RouteDrawer, { children: /* @__PURE__ */ (0, import_jsx_runtime593.jsx)(
++      return /* @__PURE__ */ (0, import_jsx_runtime593.jsx)(
+         MetadataForm,
+         {
+           isPending,
+@@ -189174,7 +189271,7 @@ var init_region_metadata = __esm({
+           hook: mutateAsync,
+           metadata: region?.metadata
+         }
+-      ) });
++      );
+     };
+   }
+ });
+@@ -190076,7 +190173,9 @@ var init_store_currency_section = __esm({
                return /* @__PURE__ */ (0, import_jsx_runtime600.jsx)(
                  import_ui384.Checkbox,
                  {
@@ -2979,7 +3297,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..c1ebccee2546614ecbc05157456ec5a9
                    onCheckedChange: (value) => table.toggleAllPageRowsSelected(!!value)
                  }
                );
-@@ -190085,7 +190182,9 @@ var init_store_currency_section = __esm({
+@@ -190085,7 +190184,9 @@ var init_store_currency_section = __esm({
                return /* @__PURE__ */ (0, import_jsx_runtime600.jsx)(
                  import_ui384.Checkbox,
                  {
@@ -2990,7 +3308,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..c1ebccee2546614ecbc05157456ec5a9
                    onCheckedChange: (value) => row.toggleSelected(!!value),
                    onClick: (e) => {
                      e.stopPropagation();
-@@ -190104,6 +190203,7 @@ var init_store_currency_section = __esm({
+@@ -190104,6 +190205,7 @@ var init_store_currency_section = __esm({
            }),
            columnHelper70.display({
              id: "actions",
@@ -2998,7 +3316,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..c1ebccee2546614ecbc05157456ec5a9
              cell: ({ row, table }) => {
                const {
                  supportedCurrencies,
-@@ -190612,14 +190712,14 @@ var init_edit_store_form = __esm({
+@@ -190612,14 +190714,14 @@ var init_edit_store_form = __esm({
                    render: ({ field: { onChange, ...field } }) => {
                      return /* @__PURE__ */ (0, import_jsx_runtime604.jsxs)(Form.Item, { children: [
                        /* @__PURE__ */ (0, import_jsx_runtime604.jsx)(Form.Label, { children: t5("store.defaultCurrency") }),
@@ -3015,7 +3333,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..c1ebccee2546614ecbc05157456ec5a9
                              /* @__PURE__ */ (0, import_jsx_runtime604.jsx)(import_ui386.Select.Content, { children: store.supported_currencies?.map((currency) => /* @__PURE__ */ (0, import_jsx_runtime604.jsx)(
                                import_ui386.Select.Item,
                                {
-@@ -190630,7 +190730,7 @@ var init_edit_store_form = __esm({
+@@ -190630,7 +190732,7 @@ var init_edit_store_form = __esm({
                              )) })
                            ]
                          }
@@ -3024,7 +3342,16 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..c1ebccee2546614ecbc05157456ec5a9
                      ] });
                    }
                  }
-@@ -190943,7 +191043,9 @@ var init_add_currencies_form = __esm({
+@@ -190732,7 +190834,7 @@ var init_store_edit = __esm({
+       }
+       const ready = !!store && !isLoading;
+       return /* @__PURE__ */ (0, import_jsx_runtime605.jsxs)(RouteDrawer, { children: [
+-        /* @__PURE__ */ (0, import_jsx_runtime605.jsx)(RouteDrawer.Header, { children: /* @__PURE__ */ (0, import_jsx_runtime605.jsx)(import_ui387.Heading, { children: t5("store.edit.header") }) }),
++        /* @__PURE__ */ (0, import_jsx_runtime605.jsx)(RouteDrawer.Header, { children: /* @__PURE__ */ (0, import_jsx_runtime605.jsx)(RouteDrawer.Title, { asChild: true, children: (0, import_jsx_runtime605.jsx)(import_ui387.Heading, { children: t5("store.edit.header") }) }) }),
+         ready && /* @__PURE__ */ (0, import_jsx_runtime605.jsx)(EditStoreForm, { store })
+       ] });
+     };
+@@ -190943,7 +191045,9 @@ var init_add_currencies_form = __esm({
                return /* @__PURE__ */ (0, import_jsx_runtime606.jsx)(
                  import_ui388.Checkbox,
                  {
@@ -3035,7 +3362,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..c1ebccee2546614ecbc05157456ec5a9
                    onCheckedChange: (value) => table.toggleAllPageRowsSelected(!!value)
                  }
                );
-@@ -190954,7 +191056,9 @@ var init_add_currencies_form = __esm({
+@@ -190954,7 +191058,9 @@ var init_add_currencies_form = __esm({
                const Component5 = /* @__PURE__ */ (0, import_jsx_runtime606.jsx)(
                  import_ui388.Checkbox,
                  {
@@ -3046,7 +3373,50 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..c1ebccee2546614ecbc05157456ec5a9
                    disabled: isPreSelected,
                    onCheckedChange: (value) => row.toggleSelected(!!value),
                    onClick: (e) => {
-@@ -191365,12 +191469,22 @@ var init_user_list_table = __esm({
+@@ -190981,6 +191087,7 @@ var init_add_currencies_form = __esm({
+                   dir: "ltr",
+                   className: "rtl:rotate-180",
+                   disabled: isPreSelected,
++                  "aria-label": `${t5("fields.taxInclusivePricing")}: ${row.original.code.toUpperCase()}`,
+                   checked: isTaxInclusive ?? false,
+                   onCheckedChange: (val) => {
+                     setPricePreferences({
+@@ -191013,6 +191120,7 @@ var init_store_add_currencies = __esm({
+     init_add_currencies_form();
+     import_jsx_runtime607 = require("react/jsx-runtime");
+     StoreAddCurrencies = () => {
++  const { t } = require("react-i18next").useTranslation();
+       const { store, isPending, isError, error } = useStore();
+       const {
+         price_preferences: pricePreferences,
+@@ -191035,7 +191143,7 @@ var init_store_add_currencies = __esm({
+       if (isPricePreferencesError) {
+         throw pricePreferencesError;
+       }
+-      return /* @__PURE__ */ (0, import_jsx_runtime607.jsx)(RouteFocusModal, { children: ready && /* @__PURE__ */ (0, import_jsx_runtime607.jsx)(AddCurrenciesForm, { store, pricePreferences }) });
++      return /* @__PURE__ */ (0, import_jsx_runtime607.jsxs)(RouteFocusModal, { children: [(0, import_jsx_runtime607.jsx)(RouteFocusModal.Title, { className: "sr-only", children: t("store.addCurrencies") }), ready && /* @__PURE__ */ (0, import_jsx_runtime607.jsx)(AddCurrenciesForm, { store, pricePreferences })] });
+     };
+   }
+ });
+@@ -191287,7 +191395,7 @@ var init_store_metadata = __esm({
+       if (isError) {
+         throw error;
+       }
+-      return /* @__PURE__ */ (0, import_jsx_runtime610.jsx)(RouteDrawer, { children: /* @__PURE__ */ (0, import_jsx_runtime610.jsx)(
++      return /* @__PURE__ */ (0, import_jsx_runtime610.jsx)(
+         MetadataForm,
+         {
+           isPending,
+@@ -191295,7 +191403,7 @@ var init_store_metadata = __esm({
+           hook: mutateAsync,
+           metadata: store?.metadata
+         }
+-      ) });
++      );
+     };
+   }
+ });
+@@ -191365,12 +191473,22 @@ var init_user_list_table = __esm({
      import_jsx_runtime612 = require("react/jsx-runtime");
      PAGE_SIZE52 = 20;
      UserListTable = () => {
@@ -3071,7 +3441,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..c1ebccee2546614ecbc05157456ec5a9
            limit: PAGE_SIZE52
          },
          {
-@@ -191448,6 +191562,7 @@ var init_user_list_table = __esm({
+@@ -191448,6 +191566,7 @@ var init_user_list_table = __esm({
            ...dateColumns,
            columnHelper75.display({
              id: "action",
@@ -3079,7 +3449,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..c1ebccee2546614ecbc05157456ec5a9
              cell: ({ row }) => /* @__PURE__ */ (0, import_jsx_runtime612.jsx)(UserListTableActions, { user: row.original })
            })
          ],
-@@ -192100,7 +192215,7 @@ var init_user_general_section = __esm({
+@@ -192100,7 +192219,7 @@ var init_user_general_section = __esm({
        const { t: t5 } = (0, import_react_i18next445.useTranslation)();
        const navigate = (0, import_react_router_dom198.useNavigate)();
        const prompt = (0, import_ui392.usePrompt)();
@@ -3088,7 +3458,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..c1ebccee2546614ecbc05157456ec5a9
        const name = [user.first_name, user.last_name].filter(Boolean).join(" ");
        const handleDeleteUser = async () => {
          const res = await prompt({
-@@ -192116,7 +192231,7 @@ var init_user_general_section = __esm({
+@@ -192116,7 +192235,7 @@ var init_user_general_section = __esm({
          if (!res) {
            return;
          }
@@ -3097,7 +3467,48 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..c1ebccee2546614ecbc05157456ec5a9
            onSuccess: () => {
              import_ui392.toast.success(t5("users.deleteUserSuccess", { name: user.email }));
              navigate("..");
-@@ -193186,21 +193301,21 @@ var init_role_general_section = __esm({
+@@ -192348,7 +192467,7 @@ var init_user_edit = __esm({
+         throw error;
+       }
+       return /* @__PURE__ */ (0, import_jsx_runtime622.jsxs)(RouteDrawer, { children: [
+-        /* @__PURE__ */ (0, import_jsx_runtime622.jsx)(RouteDrawer.Header, { children: /* @__PURE__ */ (0, import_jsx_runtime622.jsx)(import_ui394.Heading, { children: t5("users.editUser") }) }),
++        /* @__PURE__ */ (0, import_jsx_runtime622.jsx)(RouteDrawer.Header, { children: /* @__PURE__ */ (0, import_jsx_runtime622.jsx)(RouteDrawer.Title, { asChild: true, children: (0, import_jsx_runtime622.jsx)(import_ui394.Heading, { children: t5("users.editUser") }) }) }),
+         !isLoading && user && /* @__PURE__ */ (0, import_jsx_runtime622.jsx)(EditUserForm, { user })
+       ] });
+     };
+@@ -192384,7 +192503,7 @@ var init_user_metadata = __esm({
+       if (isError) {
+         throw error;
+       }
+-      return /* @__PURE__ */ (0, import_jsx_runtime623.jsx)(RouteDrawer, { children: /* @__PURE__ */ (0, import_jsx_runtime623.jsx)(
++      return /* @__PURE__ */ (0, import_jsx_runtime623.jsx)(
+         MetadataForm,
+         {
+           isPending,
+@@ -192392,7 +192511,7 @@ var init_user_metadata = __esm({
+           hook: mutateAsync,
+           metadata: user?.metadata
+         }
+-      ) });
++      );
+     };
+   }
+ });
+@@ -193009,11 +193128,12 @@ var init_role_create = __esm({
+     init_create_role_form2();
+     import_jsx_runtime627 = require("react/jsx-runtime");
+     RoleCreate = () => {
++  const { t } = require("react-i18next").useTranslation();
+       const isRbacEnabled = useRequireRbacFeature();
+       if (!isRbacEnabled) {
+         return null;
+       }
+-      return /* @__PURE__ */ (0, import_jsx_runtime627.jsx)(RouteFocusModal, { children: /* @__PURE__ */ (0, import_jsx_runtime627.jsx)(CreateRoleForm, {}) });
++      return /* @__PURE__ */ (0, import_jsx_runtime627.jsxs)(RouteFocusModal, { children: [(0, import_jsx_runtime627.jsx)(RouteFocusModal.Title, { className: "sr-only", children: t("roles.create.header") }), (0, import_jsx_runtime627.jsx)(CreateRoleForm, {})] });
+     };
+   }
+ });
+@@ -193186,21 +193306,21 @@ var init_role_general_section = __esm({
        return /* @__PURE__ */ (0, import_jsx_runtime629.jsxs)(import_ui397.Container, { className: "divide-y p-0", children: [
          /* @__PURE__ */ (0, import_jsx_runtime629.jsxs)("div", { className: "flex items-center justify-between px-6 py-4", children: [
            /* @__PURE__ */ (0, import_jsx_runtime629.jsx)(import_ui397.Heading, { children: role.name }),
@@ -3122,7 +3533,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..c1ebccee2546614ecbc05157456ec5a9
            }
          )
        ] });
-@@ -193406,7 +193521,9 @@ var init_role_users_section = __esm({
+@@ -193406,7 +193526,9 @@ var init_role_users_section = __esm({
                return /* @__PURE__ */ (0, import_jsx_runtime630.jsx)(
                  import_ui398.Checkbox,
                  {
@@ -3133,7 +3544,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..c1ebccee2546614ecbc05157456ec5a9
                    disabled: !isRoleAssignable,
                    onCheckedChange: (value) => table.toggleAllPageRowsSelected(!!value)
                  }
-@@ -193416,7 +193533,9 @@ var init_role_users_section = __esm({
+@@ -193416,7 +193538,9 @@ var init_role_users_section = __esm({
                return /* @__PURE__ */ (0, import_jsx_runtime630.jsx)(
                  import_ui398.Checkbox,
                  {
@@ -3144,7 +3555,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..c1ebccee2546614ecbc05157456ec5a9
                    disabled: !row.getCanSelect(),
                    onCheckedChange: (value) => row.toggleSelected(!!value),
                    onClick: (e) => {
-@@ -193444,6 +193563,7 @@ var init_role_users_section = __esm({
+@@ -193444,6 +193568,7 @@ var init_role_users_section = __esm({
            }),
            columnHelper79.display({
              id: "actions",
@@ -3152,7 +3563,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..c1ebccee2546614ecbc05157456ec5a9
              cell: ({ row, table }) => {
                const { roleId, isRoleAssignable: rowisRoleAssignable } = table.options.meta;
                return /* @__PURE__ */ (0, import_jsx_runtime630.jsx)(
-@@ -193577,9 +193697,9 @@ var init_edit_role_form = __esm({
+@@ -193577,9 +193702,9 @@ var init_edit_role_form = __esm({
          },
          resolver: (0, import_zod115.zodResolver)(EditRoleSchema)
        });
@@ -3164,7 +3575,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..c1ebccee2546614ecbc05157456ec5a9
            {
              name: data.name.trim(),
              description: data.description?.trim() || null
-@@ -193676,7 +193796,7 @@ var init_role_edit = __esm({
+@@ -193676,7 +193801,7 @@ var init_role_edit = __esm({
          throw error;
        }
        return /* @__PURE__ */ (0, import_jsx_runtime633.jsxs)(RouteDrawer, { children: [
@@ -3173,7 +3584,18 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..c1ebccee2546614ecbc05157456ec5a9
          !isPending && role && /* @__PURE__ */ (0, import_jsx_runtime633.jsx)(EditRoleForm, { role })
        ] });
      };
-@@ -194034,11 +194154,14 @@ var init_edit_role_permissions_form = __esm({
+@@ -193947,8 +194072,9 @@ var init_role_add_users = __esm({
+     init_add_users_form2();
+     import_jsx_runtime635 = require("react/jsx-runtime");
+     RoleAddUsers = () => {
++  const { t } = require("react-i18next").useTranslation();
+       const { id: id2 } = (0, import_react_router_dom208.useParams)();
+-      return /* @__PURE__ */ (0, import_jsx_runtime635.jsx)(RouteFocusModal, { children: /* @__PURE__ */ (0, import_jsx_runtime635.jsx)(AddUsersForm, { roleId: id2 }) });
++      return /* @__PURE__ */ (0, import_jsx_runtime635.jsxs)(RouteFocusModal, { children: [(0, import_jsx_runtime635.jsx)(RouteFocusModal.Title, { className: "sr-only", children: t("users.domain") }), (0, import_jsx_runtime635.jsx)(AddUsersForm, { roleId: id2 })] });
+     };
+   }
+ });
+@@ -194034,11 +194160,14 @@ var init_edit_role_permissions_form = __esm({
        );
        const visiblePolicies = pageData?.policies ?? [];
        const count = pageData?.count ?? 0;
@@ -3193,7 +3615,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..c1ebccee2546614ecbc05157456ec5a9
        const columns = usePolicyColumns2();
        const { mutateAsync: addPolicies, isPending: isAdding } = useAddRbacRolePolicies(role.id);
        const { mutateAsync: removePolicies, isPending: isRemoving } = (0, import_react_query97.useMutation)({
-@@ -194124,7 +194247,7 @@ var init_edit_role_permissions_form = __esm({
+@@ -194124,7 +194253,7 @@ var init_edit_role_permissions_form = __esm({
                    size: "small",
                    type: "submit",
                    isLoading: isAdding || isRemoving,
@@ -3202,7 +3624,90 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..c1ebccee2546614ecbc05157456ec5a9
                    children: t5("actions.save")
                  }
                )
-@@ -203027,6 +203150,7 @@ var init_loader28 = __esm({
+@@ -194201,13 +194330,10 @@ var init_role_permissions = __esm({
+       if (isError) {
+         throw error;
+       }
+-      return /* @__PURE__ */ (0, import_jsx_runtime637.jsx)(RouteDrawer, { children: !isPending && role && /* @__PURE__ */ (0, import_jsx_runtime637.jsxs)(import_jsx_runtime637.Fragment, { children: [
+-        /* @__PURE__ */ (0, import_jsx_runtime637.jsxs)(RouteDrawer.Header, { children: [
+-          /* @__PURE__ */ (0, import_jsx_runtime637.jsx)(RouteDrawer.Title, { asChild: true, children: /* @__PURE__ */ (0, import_jsx_runtime637.jsx)(import_ui403.Heading, { children: t5("roles.permissions.header", { name: role.name }) }) }),
++      return /* @__PURE__ */ (0, import_jsx_runtime637.jsxs)(RouteDrawer, { children: [(0, import_jsx_runtime637.jsxs)(RouteDrawer.Header, { children: [
++          /* @__PURE__ */ (0, import_jsx_runtime637.jsx)(RouteDrawer.Title, { asChild: true, children: /* @__PURE__ */ (0, import_jsx_runtime637.jsx)(import_ui403.Heading, { children: t5("roles.permissions.header", { name: role?.name }) }) }),
+           /* @__PURE__ */ (0, import_jsx_runtime637.jsx)(RouteDrawer.Description, { className: "sr-only", children: t5("roles.permissions.hint") })
+-        ] }),
+-        /* @__PURE__ */ (0, import_jsx_runtime637.jsx)(EditRolePermissionsForm, { role })
+-      ] }) });
++        ] }), !isPending && role && (0, import_jsx_runtime637.jsx)(EditRolePermissionsForm, { role })] });
+     };
+   }
+ });
+@@ -195753,7 +195879,7 @@ var init_sales_channel_edit = __esm({
+         throw error;
+       }
+       return /* @__PURE__ */ (0, import_jsx_runtime656.jsxs)(RouteDrawer, { children: [
+-        /* @__PURE__ */ (0, import_jsx_runtime656.jsx)(RouteDrawer.Header, { children: /* @__PURE__ */ (0, import_jsx_runtime656.jsx)(import_ui413.Heading, { className: "capitalize", children: t5("salesChannels.editSalesChannel") }) }),
++        /* @__PURE__ */ (0, import_jsx_runtime656.jsx)(RouteDrawer.Header, { children: /* @__PURE__ */ (0, import_jsx_runtime656.jsx)(RouteDrawer.Title, { asChild: true, children: (0, import_jsx_runtime656.jsx)(import_ui413.Heading, { className: "capitalize", children: t5("salesChannels.editSalesChannel") }) }) }),
+         !isLoading && !!sales_channel && /* @__PURE__ */ (0, import_jsx_runtime656.jsx)(EditSalesChannelForm, { salesChannel: sales_channel })
+       ] });
+     };
+@@ -196030,7 +196156,7 @@ var init_sales_channel_metadata = __esm({
+       if (isError) {
+         throw error;
+       }
+-      return /* @__PURE__ */ (0, import_jsx_runtime659.jsx)(RouteDrawer, { children: /* @__PURE__ */ (0, import_jsx_runtime659.jsx)(
++      return /* @__PURE__ */ (0, import_jsx_runtime659.jsx)(
+         MetadataForm,
+         {
+           isPending,
+@@ -196038,7 +196164,7 @@ var init_sales_channel_metadata = __esm({
+           hook: mutateAsync,
+           metadata: salesChannel?.metadata
+         }
+-      ) });
++      );
+     };
+   }
+ });
+@@ -198470,7 +198596,7 @@ var init_shipping_option_type_edit = __esm({
+         throw error;
+       }
+       return /* @__PURE__ */ (0, import_jsx_runtime693.jsxs)(RouteDrawer, { children: [
+-        /* @__PURE__ */ (0, import_jsx_runtime693.jsx)(RouteDrawer.Header, { children: /* @__PURE__ */ (0, import_jsx_runtime693.jsx)(import_ui430.Heading, { children: t5("shippingOptionTypes.edit.header") }) }),
++        /* @__PURE__ */ (0, import_jsx_runtime693.jsx)(RouteDrawer.Header, { children: /* @__PURE__ */ (0, import_jsx_runtime693.jsx)(RouteDrawer.Title, { asChild: true, children: (0, import_jsx_runtime693.jsx)(import_ui430.Heading, { children: t5("shippingOptionTypes.edit.header") }) }) }),
+         ready && /* @__PURE__ */ (0, import_jsx_runtime693.jsx)(EditShippingOptionTypeForm, { shippingOptionType: shipping_option_type })
+       ] });
+     };
+@@ -199549,7 +199675,7 @@ var init_location_edit = __esm({
+         throw error;
+       }
+       return /* @__PURE__ */ (0, import_jsx_runtime700.jsxs)(RouteDrawer, { children: [
+-        /* @__PURE__ */ (0, import_jsx_runtime700.jsx)(RouteDrawer.Header, { children: /* @__PURE__ */ (0, import_jsx_runtime700.jsx)(import_ui435.Heading, { className: "capitalize", children: t5("locations.editLocation") }) }),
++        /* @__PURE__ */ (0, import_jsx_runtime700.jsx)(RouteDrawer.Header, { children: /* @__PURE__ */ (0, import_jsx_runtime700.jsx)(RouteDrawer.Title, { asChild: true, children: (0, import_jsx_runtime700.jsx)(import_ui435.Heading, { className: "capitalize", children: t5("locations.editLocation") }) }) }),
+         ready && /* @__PURE__ */ (0, import_jsx_runtime700.jsx)(EditLocationForm, { location: stock_location })
+       ] });
+     };
+@@ -200588,7 +200714,7 @@ var init_location_service_zone_edit = __esm({
+         throw error;
+       }
+       return /* @__PURE__ */ (0, import_jsx_runtime711.jsxs)(RouteDrawer, { prev: `/settings/locations/${location_id}`, children: [
+-        /* @__PURE__ */ (0, import_jsx_runtime711.jsx)(RouteDrawer.Header, { children: /* @__PURE__ */ (0, import_jsx_runtime711.jsx)(import_ui441.Heading, { children: t5("stockLocations.serviceZones.edit.header") }) }),
++        /* @__PURE__ */ (0, import_jsx_runtime711.jsx)(RouteDrawer.Header, { children: /* @__PURE__ */ (0, import_jsx_runtime711.jsx)(RouteDrawer.Title, { asChild: true, children: (0, import_jsx_runtime711.jsx)(import_ui441.Heading, { children: t5("stockLocations.serviceZones.edit.header") }) }) }),
+         serviceZone && /* @__PURE__ */ (0, import_jsx_runtime711.jsx)(
+           EditServiceZoneForm,
+           {
+@@ -202640,9 +202766,9 @@ var init_location_service_zone_shipping_option_edit = __esm({
+       }
+       const isPickup = shippingOption?.service_zone.fulfillment_set.type === "pickup" /* Pickup */;
+       return /* @__PURE__ */ (0, import_jsx_runtime723.jsxs)(RouteDrawer, { children: [
+-        /* @__PURE__ */ (0, import_jsx_runtime723.jsx)(RouteDrawer.Header, { children: /* @__PURE__ */ (0, import_jsx_runtime723.jsx)(import_ui447.Heading, { children: t5(
++        /* @__PURE__ */ (0, import_jsx_runtime723.jsx)(RouteDrawer.Header, { children: /* @__PURE__ */ (0, import_jsx_runtime723.jsx)(RouteDrawer.Title, { asChild: true, children: (0, import_jsx_runtime723.jsx)(import_ui447.Heading, { children: t5(
+           `stockLocations.${isPickup ? "pickupOptions" : "shippingOptions"}.edit.header`
+-        ) }) }),
++        ) }) }) }),
+         shippingOption && /* @__PURE__ */ (0, import_jsx_runtime723.jsx)(
+           EditShippingOptionForm,
+           {
+@@ -203027,6 +203153,7 @@ var init_loader28 = __esm({
    "src/routes/product-tags/product-tag-list/loader.ts"() {
      "use strict";
      init_api();
@@ -3210,7 +3715,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..c1ebccee2546614ecbc05157456ec5a9
      init_client2();
      init_query_client();
      productTagListQuery = (query) => ({
-@@ -203036,11 +203160,34 @@ var init_loader28 = __esm({
+@@ -203036,11 +203163,34 @@ var init_loader28 = __esm({
      productTagListLoader = async ({ request }) => {
        const searchParams = new URL(request.url).searchParams;
        const queryObject = {};
@@ -3249,7 +3754,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..c1ebccee2546614ecbc05157456ec5a9
          }
        });
        const query = productTagListQuery(
-@@ -205582,8 +205729,8 @@ var init_create_product_type_form = __esm({
+@@ -205582,8 +205732,8 @@ var init_create_product_type_form = __esm({
        return /* @__PURE__ */ (0, import_jsx_runtime755.jsx)(RouteFocusModal.Form, { form, children: /* @__PURE__ */ (0, import_jsx_runtime755.jsxs)(KeyboundForm, { onSubmit: handleSubmit, className: "flex h-full flex-col", children: [
          /* @__PURE__ */ (0, import_jsx_runtime755.jsx)(RouteFocusModal.Body, { className: "flex flex-col items-center overflow-auto p-16", children: /* @__PURE__ */ (0, import_jsx_runtime755.jsxs)("div", { className: "flex w-full max-w-[720px] flex-col gap-y-8", children: [
            /* @__PURE__ */ (0, import_jsx_runtime755.jsxs)("div", { children: [
@@ -3260,7 +3765,16 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..c1ebccee2546614ecbc05157456ec5a9
            ] }),
            /* @__PURE__ */ (0, import_jsx_runtime755.jsx)("div", { className: "grid grid-cols-1 gap-4 md:grid-cols-2", children: /* @__PURE__ */ (0, import_jsx_runtime755.jsx)(
              Form.Field,
-@@ -209317,8 +209464,8 @@ var init_tax_region_card = __esm({
+@@ -206086,7 +206236,7 @@ var init_product_type_edit = __esm({
+         throw error;
+       }
+       return /* @__PURE__ */ (0, import_jsx_runtime763.jsxs)(RouteDrawer, { children: [
+-        /* @__PURE__ */ (0, import_jsx_runtime763.jsx)(RouteDrawer.Header, { children: /* @__PURE__ */ (0, import_jsx_runtime763.jsx)(import_ui467.Heading, { children: t5("productTypes.edit.header") }) }),
++        /* @__PURE__ */ (0, import_jsx_runtime763.jsx)(RouteDrawer.Header, { children: /* @__PURE__ */ (0, import_jsx_runtime763.jsx)(RouteDrawer.Title, { asChild: true, children: (0, import_jsx_runtime763.jsx)(import_ui467.Heading, { children: t5("productTypes.edit.header") }) }) }),
+         ready && /* @__PURE__ */ (0, import_jsx_runtime763.jsx)(EditProductTypeForm, { productType: product_type })
+       ] });
+     };
+@@ -209317,8 +209467,8 @@ var init_tax_region_card = __esm({
                        import_react_country_flag3.default,
                        {
                          countryCode: country_code,
@@ -3271,7 +3785,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..c1ebccee2546614ecbc05157456ec5a9
                          "aria-label": country?.display_name
                        }
                      )
-@@ -209418,11 +209565,12 @@ var init_tax_region_card2 = __esm({
+@@ -209418,11 +209568,12 @@ var init_tax_region_card2 = __esm({
  });
  
  // src/routes/tax-regions/common/components/tax-region-table/tax-region-table.tsx
@@ -3285,7 +3799,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..c1ebccee2546614ecbc05157456ec5a9
      import_react_router_dom263 = require("react-router-dom");
      init_empty_table_content2();
      init_skeleton2();
-@@ -209440,6 +209588,7 @@ var init_tax_region_table = __esm({
+@@ -209440,6 +209591,7 @@ var init_tax_region_table = __esm({
        prefix,
        children
      }) => {
@@ -3293,7 +3807,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..c1ebccee2546614ecbc05157456ec5a9
        if (isPending) {
          return /* @__PURE__ */ (0, import_jsx_runtime785.jsxs)("div", { className: "flex flex-col divide-y", children: [
            Array.from({ length: 3 }).map((_, index) => {
-@@ -209465,7 +209614,7 @@ var init_tax_region_table = __esm({
+@@ -209465,7 +209617,7 @@ var init_tax_region_table = __esm({
              !noRecords && /* @__PURE__ */ (0, import_jsx_runtime785.jsx)("div", { className: "flex w-full items-center gap-x-2 md:w-fit", children: /* @__PURE__ */ (0, import_jsx_runtime785.jsx)(
                DataTableOrderBy,
                {
@@ -3302,7 +3816,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..c1ebccee2546614ecbc05157456ec5a9
                  prefix
                }
              ) }),
-@@ -209616,7 +209765,7 @@ var init_tax_region_list_view = __esm({
+@@ -209616,7 +209768,7 @@ var init_tax_region_list_view = __esm({
        const { tax_regions, count, isPending, isError, error } = useTaxRegions(
          {
            ...searchParams,
@@ -3311,7 +3825,17 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..c1ebccee2546614ecbc05157456ec5a9
            parent_id: "null"
          },
          {
-@@ -210135,6 +210284,7 @@ var init_tax_region_province_section = __esm({
+@@ -209950,7 +210102,8 @@ var init_tax_region_create = __esm({
+     init_tax_region_create_form2();
+     import_jsx_runtime789 = require("react/jsx-runtime");
+     TaxRegionCreate = () => {
+-      return /* @__PURE__ */ (0, import_jsx_runtime789.jsx)(RouteFocusModal, { children: /* @__PURE__ */ (0, import_jsx_runtime789.jsx)(TaxRegionCreateForm, {}) });
++  const { t } = require("react-i18next").useTranslation();
++      return /* @__PURE__ */ (0, import_jsx_runtime789.jsxs)(RouteFocusModal, { children: [(0, import_jsx_runtime789.jsx)(RouteFocusModal.Title, { className: "sr-only", children: t("taxRegions.create.header") }), (0, import_jsx_runtime789.jsx)(TaxRegionCreateForm, {})] });
+     };
+   }
+ });
+@@ -210135,6 +210288,7 @@ var init_tax_region_province_section = __esm({
          TaxRegionTable,
          {
            variant: "province",
@@ -3319,7 +3843,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..c1ebccee2546614ecbc05157456ec5a9
            action: { to: `provinces/create`, label: t5("actions.create") },
            table,
            isPending,
-@@ -212188,6 +212338,11 @@ var init_province_select = __esm({
+@@ -212188,6 +212342,11 @@ var init_province_select = __esm({
          country_code,
          valueAs = "iso_2",
          onChange,
@@ -3331,7 +3855,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..c1ebccee2546614ecbc05157456ec5a9
          ...field
        }, ref) => {
          const { t: t5 } = (0, import_react_i18next573.useTranslation)();
-@@ -212219,7 +212374,7 @@ var init_province_select = __esm({
+@@ -212219,7 +212378,7 @@ var init_province_select = __esm({
              onValueChange: onChange,
              disabled,
              children: [
@@ -3340,7 +3864,47 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..c1ebccee2546614ecbc05157456ec5a9
                /* @__PURE__ */ (0, import_jsx_runtime806.jsx)(import_ui498.Select.Content, { children: options })
              ]
            }
-@@ -218597,14 +218752,6 @@ function getRouteMap({
+@@ -212476,13 +212635,14 @@ var init_tax_region_province_create = __esm({
+     init_tax_region_province_create_form2();
+     import_jsx_runtime808 = require("react/jsx-runtime");
+     TaxProvinceCreate = () => {
++  const { t } = require("react-i18next").useTranslation();
+       const { id: id2 } = (0, import_react_router_dom270.useParams)();
+       const { tax_region, isPending, isError, error } = useTaxRegion(id2);
+       const ready = !isPending && !!tax_region;
+       if (isError) {
+         throw error;
+       }
+-      return /* @__PURE__ */ (0, import_jsx_runtime808.jsx)(RouteFocusModal, { children: ready && /* @__PURE__ */ (0, import_jsx_runtime808.jsx)(TaxRegionProvinceCreateForm, { parent: tax_region }) });
++      return /* @__PURE__ */ (0, import_jsx_runtime808.jsxs)(RouteFocusModal, { children: [(0, import_jsx_runtime808.jsx)(RouteFocusModal.Title, { className: "sr-only", children: t(`taxRegions.${getCountryProvinceObjectByIso2(tax_region?.country_code || "")?.type || "sublevel"}.create.header`) }), ready && /* @__PURE__ */ (0, import_jsx_runtime808.jsx)(TaxRegionProvinceCreateForm, { parent: tax_region })] });
+     };
+   }
+ });
+@@ -213449,6 +213609,7 @@ var init_tax_region_tax_rate_create = __esm({
+     init_tax_region_tax_rate_create_form2();
+     import_jsx_runtime813 = require("react/jsx-runtime");
+     TaxRegionTaxRateCreate = () => {
++  const { t } = require("react-i18next").useTranslation();
+       const { id: id2, province_id } = (0, import_react_router_dom273.useParams)();
+       const { tax_region, isPending, isError, error } = useTaxRegion(
+         province_id || id2
+@@ -213457,13 +213618,13 @@ var init_tax_region_tax_rate_create = __esm({
+       if (isError) {
+         throw error;
+       }
+-      return /* @__PURE__ */ (0, import_jsx_runtime813.jsx)(RouteFocusModal, { children: ready && /* @__PURE__ */ (0, import_jsx_runtime813.jsx)(
++      return /* @__PURE__ */ (0, import_jsx_runtime813.jsxs)(RouteFocusModal, { children: [(0, import_jsx_runtime813.jsx)(RouteFocusModal.Title, { className: "sr-only", children: t("taxRegions.taxRates.create.header") }), ready && /* @__PURE__ */ (0, import_jsx_runtime813.jsx)(
+         TaxRegionTaxRateCreateForm,
+         {
+           taxRegion: tax_region,
+           isSublevel: !!province_id
+         }
+-      ) });
++      )] });
+     };
+   }
+ });
+@@ -218597,14 +218758,6 @@ function getRouteMap({
                    path: "",
                    lazy: () => Promise.resolve().then(() => (init_product_list2(), product_list_exports)),
                    children: [
@@ -3355,7 +3919,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..c1ebccee2546614ecbc05157456ec5a9
                      {
                        path: "export",
                        lazy: () => Promise.resolve().then(() => (init_product_export2(), product_export_exports))
-@@ -220782,9 +220929,9 @@ var init_settings_sidebar_layout_component = __esm({
+@@ -220782,9 +220935,9 @@ var init_settings_sidebar_layout_component = __esm({
        children
      }) => {
        return /* @__PURE__ */ (0, import_jsx_runtime865.jsxs)(import_radix_ui20.Collapsible.Root, { defaultOpen: true, className: "py-3", children: [
@@ -3367,7 +3931,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..c1ebccee2546614ecbc05157456ec5a9
          ] }) }),
          /* @__PURE__ */ (0, import_jsx_runtime865.jsx)(import_radix_ui20.Collapsible.Content, { children: /* @__PURE__ */ (0, import_jsx_runtime865.jsx)("div", { className: "flex flex-col gap-y-0.5 px-3 pt-0.5", children }) })
        ] });
-@@ -221160,9 +221307,10 @@ var init_dashboard_app = __esm({
+@@ -221160,9 +221313,10 @@ var init_dashboard_app = __esm({
        }
        /**
         * Returns widgets for a given base zone grouped by layout section.
@@ -3381,7 +3945,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..c1ebccee2546614ecbc05157456ec5a9
         */
        getWidgetsForSections(route, sections) {
          const result = {};
-@@ -221170,7 +221318,9 @@ var init_dashboard_app = __esm({
+@@ -221170,7 +221324,9 @@ var init_dashboard_app = __esm({
            if (!zone.startsWith(route)) {
              continue;
            }
@@ -3392,7 +3956,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..c1ebccee2546614ecbc05157456ec5a9
            const mainSection = sections.includes("main") ? "main" : sections[0];
            const section = suffix || mainSection;
            if (!result[section]) {
-@@ -221180,6 +221330,7 @@ var init_dashboard_app = __esm({
+@@ -221180,6 +221336,7 @@ var init_dashboard_app = __esm({
              const sourceId = ext.widgetId ?? `${zone}:${i}`;
              result[section].push({
                Component: ext.Component,
@@ -3400,6 +3964,28 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..c1ebccee2546614ecbc05157456ec5a9
                // The id intentionally omits the section so a widget keeps its
                // identity (and saved preference) when its zone moves to a different
                // section of the same route.
+diff --git a/dist/categories-metadata-LDYZJA6S.mjs b/dist/categories-metadata-LDYZJA6S.mjs
+index 7831d74635469dea1f3b10d7b5e96d200e69d7d5..cab8500d2457c1a95c31f01ab6fa3b2c2e6cf7d0 100644
+--- a/dist/categories-metadata-LDYZJA6S.mjs
++++ b/dist/categories-metadata-LDYZJA6S.mjs
+@@ -64,7 +64,7 @@ var CategoriesMetadata = () => {
+   if (isError) {
+     throw error;
+   }
+-  return /* @__PURE__ */ jsx(RouteDrawer, { children: /* @__PURE__ */ jsx(
++  return /* @__PURE__ */ jsx(
+     MetadataForm,
+     {
+       isPending,
+@@ -72,7 +72,7 @@ var CategoriesMetadata = () => {
+       hook: mutateAsync,
+       metadata: product_category?.metadata
+     }
+-  ) });
++  );
+ };
+ export {
+   CategoriesMetadata as Component
 diff --git a/dist/chunk-2ONQ56DK.mjs b/dist/chunk-2ONQ56DK.mjs
 index fe281b66f4283bb2318483651a4655dc16e559d4..6797eba9a13bcf38a0da4715b953c582a399aa28 100644
 --- a/dist/chunk-2ONQ56DK.mjs
@@ -4310,6 +4896,36 @@ index 1f0ae3f83bfd827fe091e934bbcb62337dc0f998..d6c8d28ea3a9ab1bdbe89d107b4ad6ab
            // The id intentionally omits the section so a widget keeps its
            // identity (and saved preference) when its zone moves to a different
            // section of the same route.
+diff --git a/dist/chunk-UEZBIZRM.mjs b/dist/chunk-UEZBIZRM.mjs
+index 0fca93812a81e5274ab745e4830d1dd4b73fbe78..883bcea2fff1e4fcc2f3bd926564801b09c55542 100644
+--- a/dist/chunk-UEZBIZRM.mjs
++++ b/dist/chunk-UEZBIZRM.mjs
+@@ -142,7 +142,7 @@ var InnerForm = ({
+                 {
+                   showTooltip: isDisabled,
+                   content: t("metadata.edit.complexRow.tooltip"),
+-                  children: /* @__PURE__ */ jsxs("div", { className: "group/table relative", children: [
++                  children: /* @__PURE__ */ jsxs("div", { className: "group/table relative rr-native-metadata-row", children: [
+                     /* @__PURE__ */ jsxs(
+                       "div",
+                       {
+@@ -195,14 +195,14 @@ var InnerForm = ({
+                         DropdownMenu.Trigger,
+                         {
+                           className: clx(
+-                            "invisible absolute inset-y-0 -end-2.5 my-auto group-hover/table:visible data-[state='open']:visible",
++                            "invisible absolute inset-y-0 -end-2.5 my-auto group-hover/table:visible data-[state='open']:visible rr-native-metadata-actions",
+                             {
+                               hidden: isDisabled
+                             }
+                           ),
+                           disabled: isDisabled,
+                           asChild: true,
+-                          children: /* @__PURE__ */ jsx(IconButton, { size: "2xsmall", children: /* @__PURE__ */ jsx(EllipsisVertical, {}) })
++                          children: /* @__PURE__ */ jsx(IconButton, { "aria-label": `${t("fields.metadata")} ${index + 1}: ${t("fields.actions")}`, size: "2xsmall", children: /* @__PURE__ */ jsx(EllipsisVertical, {}) })
+                         }
+                       ),
+                       /* @__PURE__ */ jsxs(DropdownMenu.Content, { children: [
 diff --git a/dist/chunk-XRM7PIRS.mjs b/dist/chunk-XRM7PIRS.mjs
 index 5c8bd821cc8b5d6f618852a9919e09282250a05a..3f63a40ded00bdcc277347a3d74cd3d4f84b8309 100644
 --- a/dist/chunk-XRM7PIRS.mjs
@@ -4454,6 +5070,19 @@ index 1525bf1dd08a35e716eb99902fd19eec7bab7db1..de359ab59768db84230d1be6c95db244
        className: clx({
          "!bg-ui-bg-disabled !inset-y-5 !right-5": stackedModalOpen
        }),
+diff --git a/dist/collection-edit-EMAHJ5Q4.mjs b/dist/collection-edit-EMAHJ5Q4.mjs
+index 8a45a5640e7b46dba80c0f2ae1d17971ed9230d5..ba822d3f2426935baa42c2e6df2e7b59040e1791 100644
+--- a/dist/collection-edit-EMAHJ5Q4.mjs
++++ b/dist/collection-edit-EMAHJ5Q4.mjs
+@@ -115,7 +115,7 @@ var CollectionEdit = () => {
+     throw error;
+   }
+   return /* @__PURE__ */ jsxs2(RouteDrawer, { children: [
+-    /* @__PURE__ */ jsx2(RouteDrawer.Header, { children: /* @__PURE__ */ jsx2(Heading, { children: t("collections.editCollection") }) }),
++    /* @__PURE__ */ jsx2(RouteDrawer.Header, { children: /* @__PURE__ */ jsx2(RouteDrawer.Title, { asChild: true, children: jsx2(Heading, { children: t("collections.editCollection") }) }) }),
+     !isLoading && collection && /* @__PURE__ */ jsx2(EditCollectionForm, { collection })
+   ] });
+ };
 diff --git a/dist/components.js b/dist/components.js
 index c5e00d8ee8258b0a64c95975948c21402ec98ce5..7dbc051cf3ed0129a85ae53bac8935a7da2de4a9 100644
 --- a/dist/components.js
@@ -4556,6 +5185,106 @@ index c5e00d8ee8258b0a64c95975948c21402ec98ce5..7dbc051cf3ed0129a85ae53bac8935a7
            cell: ({ row }) => {
              const content = adapter?.renderRowActions?.(row.original);
              if (!content) {
+diff --git a/dist/customer-edit-TDYTX66N.mjs b/dist/customer-edit-TDYTX66N.mjs
+index b2d295f1b5528df89cc4fde11af079a11c666b10..3c3df4d49330ed05b76b729e0906bd9fad0fcaee 100644
+--- a/dist/customer-edit-TDYTX66N.mjs
++++ b/dist/customer-edit-TDYTX66N.mjs
+@@ -184,7 +184,7 @@ var CustomerEdit = () => {
+     throw error;
+   }
+   return /* @__PURE__ */ jsxs2(RouteDrawer, { children: [
+-    /* @__PURE__ */ jsx2(RouteDrawer.Header, { children: /* @__PURE__ */ jsx2(Heading, { children: t("customers.edit.header") }) }),
++    /* @__PURE__ */ jsx2(RouteDrawer.Header, { children: /* @__PURE__ */ jsx2(RouteDrawer.Title, { asChild: true, children: jsx2(Heading, { children: t("customers.edit.header") }) }) }),
+     !isLoading && customer && /* @__PURE__ */ jsx2(EditCustomerForm, { customer })
+   ] });
+ };
+diff --git a/dist/customer-group-edit-4P2L2RJU.mjs b/dist/customer-group-edit-4P2L2RJU.mjs
+index d581f6d1023a69072adee590f246754a8a8729b1..e401ece2b226b9bde42246c3899fc974c8667bd9 100644
+--- a/dist/customer-group-edit-4P2L2RJU.mjs
++++ b/dist/customer-group-edit-4P2L2RJU.mjs
+@@ -100,7 +100,7 @@ var CustomerGroupEdit = () => {
+     throw error;
+   }
+   return /* @__PURE__ */ jsxs2(RouteDrawer, { children: [
+-    /* @__PURE__ */ jsx2(RouteDrawer.Header, { children: /* @__PURE__ */ jsx2(Heading, { children: t("customerGroups.edit.header") }) }),
++    /* @__PURE__ */ jsx2(RouteDrawer.Header, { children: /* @__PURE__ */ jsx2(RouteDrawer.Title, { asChild: true, children: jsx2(Heading, { children: t("customerGroups.edit.header") }) }) }),
+     !isLoading && customer_group && /* @__PURE__ */ jsx2(EditCustomerGroupForm, { group: customer_group })
+   ] });
+ };
+diff --git a/dist/edit-inventory-item-ESAO5XEO.mjs b/dist/edit-inventory-item-ESAO5XEO.mjs
+index f346db5e85ce9f43a60c8f4f2ff3e32523757409..75642276de91a7feaafeb2fbdd3114152d7468c6 100644
+--- a/dist/edit-inventory-item-ESAO5XEO.mjs
++++ b/dist/edit-inventory-item-ESAO5XEO.mjs
+@@ -120,7 +120,7 @@ var InventoryItemEdit = () => {
+     throw error;
+   }
+   return /* @__PURE__ */ jsxs2(RouteDrawer, { children: [
+-    /* @__PURE__ */ jsx2(RouteDrawer.Header, { children: /* @__PURE__ */ jsx2(Heading, { children: t("inventory.editItemDetails") }) }),
++    /* @__PURE__ */ jsx2(RouteDrawer.Header, { children: /* @__PURE__ */ jsx2(RouteDrawer.Title, { asChild: true, children: jsx2(Heading, { children: t("inventory.editItemDetails") }) }) }),
+     ready && /* @__PURE__ */ jsx2(EditInventoryItemForm, { item: inventoryItem })
+   ] });
+ };
+diff --git a/dist/edit-inventory-item-attributes-6NCMQM6S.mjs b/dist/edit-inventory-item-attributes-6NCMQM6S.mjs
+index 167e5d38a30be4c20b5621d97aa8d58fa5a1fc06..7fd28d18a441d604b4753d6d10139414746e8350 100644
+--- a/dist/edit-inventory-item-attributes-6NCMQM6S.mjs
++++ b/dist/edit-inventory-item-attributes-6NCMQM6S.mjs
+@@ -294,7 +294,7 @@ var InventoryItemAttributesEdit = () => {
+     throw error;
+   }
+   return /* @__PURE__ */ jsxs2(RouteDrawer, { children: [
+-    /* @__PURE__ */ jsx2(RouteDrawer.Header, { children: /* @__PURE__ */ jsx2(Heading, { children: t("products.editAttributes") }) }),
++    /* @__PURE__ */ jsx2(RouteDrawer.Header, { children: /* @__PURE__ */ jsx2(RouteDrawer.Title, { asChild: true, children: jsx2(Heading, { children: t("products.editAttributes") }) }) }),
+     ready && /* @__PURE__ */ jsx2(EditInventoryItemAttributesForm, { item: inventoryItem })
+   ] });
+ };
+diff --git a/dist/edit-reservation-FOLSMIL2.mjs b/dist/edit-reservation-FOLSMIL2.mjs
+index 6f083e152c41218c54880282ff4e9106ab01ca19..d24a120f6fa5769ab326da32990fc8431bda5365 100644
+--- a/dist/edit-reservation-FOLSMIL2.mjs
++++ b/dist/edit-reservation-FOLSMIL2.mjs
+@@ -231,7 +231,7 @@ var ReservationEdit = () => {
+     throw error;
+   }
+   return /* @__PURE__ */ jsxs2(RouteDrawer, { children: [
+-    /* @__PURE__ */ jsx2(RouteDrawer.Header, { children: /* @__PURE__ */ jsx2(Heading, { children: t("inventory.reservation.editItemDetails") }) }),
++    /* @__PURE__ */ jsx2(RouteDrawer.Header, { children: /* @__PURE__ */ jsx2(RouteDrawer.Title, { asChild: true, children: jsx2(Heading, { children: t("inventory.reservation.editItemDetails") }) }) }),
+     ready && /* @__PURE__ */ jsx2(
+       EditReservationForm,
+       {
+diff --git a/dist/edit-rules-QQ42RERH.mjs b/dist/edit-rules-QQ42RERH.mjs
+index 83d60e1bf268d520ae772a8cfc1da8188e6cb07e..7dfe9094ec93b57179e0d8c1dd79e0421efda2e3 100644
+--- a/dist/edit-rules-QQ42RERH.mjs
++++ b/dist/edit-rules-QQ42RERH.mjs
+@@ -260,7 +260,7 @@ var EditRules2 = () => {
+     throw error;
+   }
+   return /* @__PURE__ */ jsxs2(RouteDrawer, { children: [
+-    /* @__PURE__ */ jsx3(RouteDrawer.Header, { children: /* @__PURE__ */ jsx3(Heading, { children: t(`promotions.edit.${ruleType}.title`) }) }),
++    /* @__PURE__ */ jsx3(RouteDrawer.Header, { children: /* @__PURE__ */ jsx3(RouteDrawer.Title, { asChild: true, children: jsx3(Heading, { children: t(`promotions.edit.${ruleType}.title`) }) }) }),
+     !isLoading && promotion && /* @__PURE__ */ jsx3(
+       EditRulesWrapper,
+       {
+diff --git a/dist/inventory-metadata-LP4RD4WK.mjs b/dist/inventory-metadata-LP4RD4WK.mjs
+index 8e5a8f587f2977a0f245c0bc154739783232db3f..67ef632d5c1ba88bd40c2ce13029a988bb2975a1 100644
+--- a/dist/inventory-metadata-LP4RD4WK.mjs
++++ b/dist/inventory-metadata-LP4RD4WK.mjs
+@@ -64,7 +64,7 @@ var InventoryItemMetadata = () => {
+   if (isError) {
+     throw error;
+   }
+-  return /* @__PURE__ */ jsx(RouteDrawer, { children: /* @__PURE__ */ jsx(
++  return /* @__PURE__ */ jsx(
+     MetadataForm,
+     {
+       isPending,
+@@ -72,7 +72,7 @@ var InventoryItemMetadata = () => {
+       hook: mutateAsync,
+       metadata: inventory_item?.metadata
+     }
+-  ) });
++  );
+ };
+ export {
+   InventoryItemMetadata as Component
 diff --git a/dist/lib.js b/dist/lib.js
 index c960e353859487a2d411bf4743075992b6bc9477..14c27e57e7ec2cafd83071e6a5704fc069f196f3 100644
 --- a/dist/lib.js
@@ -4574,6 +5303,48 @@ index c960e353859487a2d411bf4743075992b6bc9477..14c27e57e7ec2cafd83071e6a5704fc0
        },
        "aria-label": displayName
      }
+diff --git a/dist/location-edit-LU52JFN4.mjs b/dist/location-edit-LU52JFN4.mjs
+index fd1dd124f2cbd0053121587b8c4328c0ec688754..eb6f7688520fa093a36184f34eb89481633e1193 100644
+--- a/dist/location-edit-LU52JFN4.mjs
++++ b/dist/location-edit-LU52JFN4.mjs
+@@ -247,7 +247,7 @@ var LocationEdit = () => {
+     throw error;
+   }
+   return /* @__PURE__ */ jsxs2(RouteDrawer, { children: [
+-    /* @__PURE__ */ jsx2(RouteDrawer.Header, { children: /* @__PURE__ */ jsx2(Heading, { className: "capitalize", children: t("locations.editLocation") }) }),
++    /* @__PURE__ */ jsx2(RouteDrawer.Header, { children: /* @__PURE__ */ jsx2(RouteDrawer.Title, { asChild: true, children: jsx2(Heading, { className: "capitalize", children: t("locations.editLocation") }) }) }),
+     ready && /* @__PURE__ */ jsx2(EditLocationForm, { location: stock_location })
+   ] });
+ };
+diff --git a/dist/location-service-zone-edit-ZB6IOLPQ.mjs b/dist/location-service-zone-edit-ZB6IOLPQ.mjs
+index 4d394995b7060eb7f702b7fa42beff3f31a79771..f7b7303f463ec0f1db19cd9143db07946661480d 100644
+--- a/dist/location-service-zone-edit-ZB6IOLPQ.mjs
++++ b/dist/location-service-zone-edit-ZB6IOLPQ.mjs
+@@ -120,7 +120,7 @@ var LocationServiceZoneEdit = () => {
+     throw error;
+   }
+   return /* @__PURE__ */ jsxs2(RouteDrawer, { prev: `/settings/locations/${location_id}`, children: [
+-    /* @__PURE__ */ jsx2(RouteDrawer.Header, { children: /* @__PURE__ */ jsx2(Heading, { children: t("stockLocations.serviceZones.edit.header") }) }),
++    /* @__PURE__ */ jsx2(RouteDrawer.Header, { children: /* @__PURE__ */ jsx2(RouteDrawer.Title, { asChild: true, children: jsx2(Heading, { children: t("stockLocations.serviceZones.edit.header") }) }) }),
+     serviceZone && /* @__PURE__ */ jsx2(
+       EditServiceZoneForm,
+       {
+diff --git a/dist/location-service-zone-shipping-option-edit-PA3HHWAB.mjs b/dist/location-service-zone-shipping-option-edit-PA3HHWAB.mjs
+index 0abff2764db98990a0281af5685aae43c8a1066c..8eee6f4da0cd9a83b079379f6715403957e3272c 100644
+--- a/dist/location-service-zone-shipping-option-edit-PA3HHWAB.mjs
++++ b/dist/location-service-zone-shipping-option-edit-PA3HHWAB.mjs
+@@ -349,9 +349,9 @@ var LocationServiceZoneShippingOptionEdit = () => {
+   }
+   const isPickup = shippingOption?.service_zone.fulfillment_set.type === "pickup" /* Pickup */;
+   return /* @__PURE__ */ jsxs2(RouteDrawer, { children: [
+-    /* @__PURE__ */ jsx2(RouteDrawer.Header, { children: /* @__PURE__ */ jsx2(Heading, { children: t(
++    /* @__PURE__ */ jsx2(RouteDrawer.Header, { children: /* @__PURE__ */ jsx2(RouteDrawer.Title, { asChild: true, children: jsx2(Heading, { children: t(
+       `stockLocations.${isPickup ? "pickupOptions" : "shippingOptions"}.edit.header`
+-    ) }) }),
++    ) }) }) }),
+     shippingOption && /* @__PURE__ */ jsx2(
+       EditShippingOptionForm,
+       {
 diff --git a/dist/login-REAKYYFI.mjs b/dist/login-REAKYYFI.mjs
 index 527aa630ea46f0237cbf6ce458c413c619bfa27a..91d6c39235bafd88697a5c59e2ac6937713b496d 100644
 --- a/dist/login-REAKYYFI.mjs
@@ -4641,6 +5412,19 @@ index 527aa630ea46f0237cbf6ce458c413c619bfa27a..91d6c39235bafd88697a5c59e2ac6937
              },
              "reset-password-link"
            )
+diff --git a/dist/manage-locations-MOQCUFZU.mjs b/dist/manage-locations-MOQCUFZU.mjs
+index 95f1a5447763d9ee4afbe0388f99a8616067e1a8..c6de786568744d874c6b0a532f4a18fb1c8dd23b 100644
+--- a/dist/manage-locations-MOQCUFZU.mjs
++++ b/dist/manage-locations-MOQCUFZU.mjs
+@@ -240,7 +240,7 @@ var ManageLocationsDrawer = () => {
+     throw error;
+   }
+   return /* @__PURE__ */ jsxs3(RouteDrawer, { children: [
+-    /* @__PURE__ */ jsx4(RouteDrawer.Header, { children: /* @__PURE__ */ jsx4(Heading, { children: t("inventory.manageLocations") }) }),
++    /* @__PURE__ */ jsx4(RouteDrawer.Header, { children: /* @__PURE__ */ jsx4(RouteDrawer.Title, { asChild: true, children: jsx4(Heading, { children: t("inventory.manageLocations") }) }) }),
+     ready && /* @__PURE__ */ jsx4(ManageLocationsForm, { item: inventoryItem, locations: stock_locations })
+   ] });
+ };
 diff --git a/dist/order-allocate-items-LRSTJNOD.mjs b/dist/order-allocate-items-LRSTJNOD.mjs
 index 7b683f6d27f9ff90edb8d80664313ea4d7cf16fd..9c36466b92c0e66edba8585e0daade8cadbf09d7 100644
 --- a/dist/order-allocate-items-LRSTJNOD.mjs
@@ -6222,6 +7006,45 @@ index 10a323ae2c1345c42f39dc4c5a9a050925fbd0a8..ff8c2313a08fade92c6774d3742e9aed
      label,
      " ",
      tooltip
+diff --git a/dist/order-edit-billing-address-Y3TPCNWQ.mjs b/dist/order-edit-billing-address-Y3TPCNWQ.mjs
+index 127faacb5eda4a7d6ae9f0c383900b8e9877db47..cd21712c8060f4794a43605db7850f59b071c324 100644
+--- a/dist/order-edit-billing-address-Y3TPCNWQ.mjs
++++ b/dist/order-edit-billing-address-Y3TPCNWQ.mjs
+@@ -293,7 +293,7 @@ var OrderEditBillingAddress = () => {
+     throw error;
+   }
+   return /* @__PURE__ */ jsxs2(RouteDrawer, { children: [
+-    /* @__PURE__ */ jsx2(RouteDrawer.Header, { children: /* @__PURE__ */ jsx2(Heading, { children: t("orders.edit.billingAddress.title") }) }),
++    /* @__PURE__ */ jsx2(RouteDrawer.Header, { children: /* @__PURE__ */ jsx2(RouteDrawer.Title, { asChild: true, children: jsx2(Heading, { children: t("orders.edit.billingAddress.title") }) }) }),
+     order && /* @__PURE__ */ jsx2(EditOrderBillingAddressForm, { order })
+   ] });
+ };
+diff --git a/dist/order-edit-email-625EJ6QE.mjs b/dist/order-edit-email-625EJ6QE.mjs
+index 9a213534e322b7715449e20ec0d6afd54c054c6e..c10731e59e10dd9a862d0e0cc3e64c43b850d78b 100644
+--- a/dist/order-edit-email-625EJ6QE.mjs
++++ b/dist/order-edit-email-625EJ6QE.mjs
+@@ -140,7 +140,7 @@ var OrderEditEmail = () => {
+     throw error;
+   }
+   return /* @__PURE__ */ jsxs2(RouteDrawer, { children: [
+-    /* @__PURE__ */ jsx2(RouteDrawer.Header, { children: /* @__PURE__ */ jsx2(Heading, { children: t("orders.edit.email.title") }) }),
++    /* @__PURE__ */ jsx2(RouteDrawer.Header, { children: /* @__PURE__ */ jsx2(RouteDrawer.Title, { asChild: true, children: jsx2(Heading, { children: t("orders.edit.email.title") }) }) }),
+     order && /* @__PURE__ */ jsx2(EditOrderEmailForm, { order })
+   ] });
+ };
+diff --git a/dist/order-edit-shipping-address-NT536NLI.mjs b/dist/order-edit-shipping-address-NT536NLI.mjs
+index da1e26d1ca488accdf685c91a2a70d58b21fc976..c4d62de644623dd999918a08e4c1094e432147dc 100644
+--- a/dist/order-edit-shipping-address-NT536NLI.mjs
++++ b/dist/order-edit-shipping-address-NT536NLI.mjs
+@@ -290,7 +290,7 @@ var OrderEditShippingAddress = () => {
+     throw new Error("Order not found");
+   }
+   return /* @__PURE__ */ jsxs2(RouteDrawer, { children: [
+-    /* @__PURE__ */ jsx2(RouteDrawer.Header, { children: /* @__PURE__ */ jsx2(Heading, { children: t("orders.edit.shippingAddress.title") }) }),
++    /* @__PURE__ */ jsx2(RouteDrawer.Header, { children: /* @__PURE__ */ jsx2(RouteDrawer.Title, { asChild: true, children: jsx2(Heading, { children: t("orders.edit.shippingAddress.title") }) }) }),
+     order && /* @__PURE__ */ jsx2(EditOrderShippingAddressForm, { order })
+   ] });
+ };
 diff --git a/dist/order-receive-return-HEIGUW3S.mjs b/dist/order-receive-return-HEIGUW3S.mjs
 index 586579c875807331e08c192758c906930535f297..3cb21349a86b75fc2a6355fc7c0f4c629294c667 100644
 --- a/dist/order-receive-return-HEIGUW3S.mjs
@@ -6315,6 +7138,32 @@ index 586579c875807331e08c192758c906930535f297..3cb21349a86b75fc2a6355fc7c0f4c62
      ready && /* @__PURE__ */ jsx3(
        OrderReceiveReturnForm,
        {
+diff --git a/dist/order-request-transfer-CKOI5RUR.mjs b/dist/order-request-transfer-CKOI5RUR.mjs
+index 8ac4d1afb72814c7b2117530a79626b73ac4de1c..fd7faeb6a5ecbb71f6ebfe3ced2fd73e7b61c2c6 100644
+--- a/dist/order-request-transfer-CKOI5RUR.mjs
++++ b/dist/order-request-transfer-CKOI5RUR.mjs
+@@ -665,7 +665,7 @@ var OrderRequestTransfer = () => {
+     throw new Error("Order not found");
+   }
+   return /* @__PURE__ */ jsxs3(RouteDrawer, { children: [
+-    /* @__PURE__ */ jsx3(RouteDrawer.Header, { children: /* @__PURE__ */ jsx3(Heading, { children: t("orders.transfer.title") }) }),
++    /* @__PURE__ */ jsx3(RouteDrawer.Header, { children: /* @__PURE__ */ jsx3(RouteDrawer.Title, { asChild: true, children: jsx3(Heading, { children: t("orders.transfer.title") }) }) }),
+     order && /* @__PURE__ */ jsx3(CreateOrderTransferForm, { order })
+   ] });
+ };
+diff --git a/dist/price-list-edit-XUI4PPHY.mjs b/dist/price-list-edit-XUI4PPHY.mjs
+index 9abfc6e173205feadf291447fc3dcf78e843e122..a8b4819198cb59f7e04296f9264bef4bc1d7ddb1 100644
+--- a/dist/price-list-edit-XUI4PPHY.mjs
++++ b/dist/price-list-edit-XUI4PPHY.mjs
+@@ -217,7 +217,7 @@ var PriceListEdit = () => {
+     throw error;
+   }
+   return /* @__PURE__ */ jsxs2(RouteDrawer, { children: [
+-    /* @__PURE__ */ jsx2(RouteDrawer.Header, { children: /* @__PURE__ */ jsx2(Heading, { children: t("priceLists.edit.header") }) }),
++    /* @__PURE__ */ jsx2(RouteDrawer.Header, { children: /* @__PURE__ */ jsx2(RouteDrawer.Title, { asChild: true, children: jsx2(Heading, { children: t("priceLists.edit.header") }) }) }),
+     ready && /* @__PURE__ */ jsx2(PriceListEditForm, { priceList: price_list })
+   ] });
+ };
 diff --git a/dist/product-detail-7UDXNUGN.mjs b/dist/product-detail-7UDXNUGN.mjs
 index a22703f8d12bb735ac61a3d63cf54bd3dc2eaa7a..c1f4e19f891fed85ffe0759dfc4ff1b3075d667f 100644
 --- a/dist/product-detail-7UDXNUGN.mjs
@@ -6592,6 +7441,28 @@ index 28522b73fefac055a0ab3031851587f77e65e7d8..2cd31c7e8cf3c4acc751721c82d4155f
            { label: t("actions.create"), to: "create" }
          ]
        }
+diff --git a/dist/product-option-metadata-GATG4FFH.mjs b/dist/product-option-metadata-GATG4FFH.mjs
+index 9927230ff76913d01f76b40ecb6a665d8483a39c..ddd6a87b109140697139adaa9ab83db55b69fdfc 100644
+--- a/dist/product-option-metadata-GATG4FFH.mjs
++++ b/dist/product-option-metadata-GATG4FFH.mjs
+@@ -60,7 +60,7 @@ var ProductOptionMetadata = () => {
+   if (isError) {
+     throw error;
+   }
+-  return /* @__PURE__ */ jsx(RouteDrawer, { children: /* @__PURE__ */ jsx(
++  return /* @__PURE__ */ jsx(
+     MetadataForm,
+     {
+       isPending,
+@@ -68,7 +68,7 @@ var ProductOptionMetadata = () => {
+       hook: mutateAsync,
+       metadata: product_option?.metadata
+     }
+-  ) });
++  );
+ };
+ export {
+   ProductOptionMetadata as Component
 diff --git a/dist/product-tag-list-MGHXTRBC.mjs b/dist/product-tag-list-MGHXTRBC.mjs
 index 931b7290943cf5bb96da950e07794f2c11e9db88..59aac2eadebef5726610e778c7f676f0396d1c78 100644
 --- a/dist/product-tag-list-MGHXTRBC.mjs
@@ -6657,6 +7528,19 @@ index 7fbae5c69d4086bd4fba5caa8ec2aa06c4c5867e..85b2bbdc2cfb0595eadf3ef74dda45a9
        ] }),
        /* @__PURE__ */ jsx("div", { className: "grid grid-cols-1 gap-4 md:grid-cols-2", children: /* @__PURE__ */ jsx(
          Form.Field,
+diff --git a/dist/product-type-edit-GLDOSTGO.mjs b/dist/product-type-edit-GLDOSTGO.mjs
+index f045666e265325aa440d4e1f377e952656eafcb3..aaa6826d49ff00d85ef32e8963789274ee5d921e 100644
+--- a/dist/product-type-edit-GLDOSTGO.mjs
++++ b/dist/product-type-edit-GLDOSTGO.mjs
+@@ -107,7 +107,7 @@ var ProductTypeEdit = () => {
+     throw error;
+   }
+   return /* @__PURE__ */ jsxs2(RouteDrawer, { children: [
+-    /* @__PURE__ */ jsx2(RouteDrawer.Header, { children: /* @__PURE__ */ jsx2(Heading, { children: t("productTypes.edit.header") }) }),
++    /* @__PURE__ */ jsx2(RouteDrawer.Header, { children: /* @__PURE__ */ jsx2(RouteDrawer.Title, { asChild: true, children: jsx2(Heading, { children: t("productTypes.edit.header") }) }) }),
+     ready && /* @__PURE__ */ jsx2(EditProductTypeForm, { productType: product_type })
+   ] });
+ };
 diff --git a/dist/product-variant-detail-UNS5EC7C.mjs b/dist/product-variant-detail-UNS5EC7C.mjs
 index 736e26e394ddf9ae9c9e04637cba9f12bde0a01d..e8c799ff5cd5c25a2feabceff2c2c4ea00e3e497 100644
 --- a/dist/product-variant-detail-UNS5EC7C.mjs
@@ -6726,11 +7610,55 @@ index 736e26e394ddf9ae9c9e04637cba9f12bde0a01d..e8c799ff5cd5c25a2feabceff2c2c4ea
            ]
          }
        ) })
+diff --git a/dist/product-variant-edit-DC5TGB4M.mjs b/dist/product-variant-edit-DC5TGB4M.mjs
+index fc5bf88763c094d8a8aae888edc735d1d0871d2f..2b923cb02384943b457821b3ae98dbf5837b656d 100644
+--- a/dist/product-variant-edit-DC5TGB4M.mjs
++++ b/dist/product-variant-edit-DC5TGB4M.mjs
+@@ -510,7 +510,7 @@ var ProductVariantEdit = () => {
+     throw productError;
+   }
+   return /* @__PURE__ */ jsxs2(RouteDrawer, { children: [
+-    /* @__PURE__ */ jsx2(RouteDrawer.Header, { children: /* @__PURE__ */ jsx2(Heading2, { children: t("products.variant.edit.header") }) }),
++    /* @__PURE__ */ jsx2(RouteDrawer.Header, { children: /* @__PURE__ */ jsx2(RouteDrawer.Title, { asChild: true, children: jsx2(Heading2, { children: t("products.variant.edit.header") }) }) }),
+     ready && /* @__PURE__ */ jsx2(ProductEditVariantForm, { variant, product })
+   ] });
+ };
+diff --git a/dist/promotion-add-campaign-NQXID7GG.mjs b/dist/promotion-add-campaign-NQXID7GG.mjs
+index fea89bfecef3ab0d8db850a2ecb0c40e585a38da..79788e74b6457bee7a3480f78af9fb7f4cf55248 100644
+--- a/dist/promotion-add-campaign-NQXID7GG.mjs
++++ b/dist/promotion-add-campaign-NQXID7GG.mjs
+@@ -35,7 +35,7 @@ var PromotionAddCampaign = () => {
+     throw error;
+   }
+   return /* @__PURE__ */ jsxs(RouteDrawer, { children: [
+-    /* @__PURE__ */ jsx(RouteDrawer.Header, { children: /* @__PURE__ */ jsx(Heading, { children: t("promotions.campaign.edit.header") }) }),
++    /* @__PURE__ */ jsx(RouteDrawer.Header, { children: /* @__PURE__ */ jsx(RouteDrawer.Title, { asChild: true, children: jsx(Heading, { children: t("promotions.campaign.edit.header") }) }) }),
+     !isPending && promotion && /* @__PURE__ */ jsx(AddCampaignPromotionForm, { promotion })
+   ] });
+ };
+diff --git a/dist/promotion-edit-details-YSF7TW3S.mjs b/dist/promotion-edit-details-YSF7TW3S.mjs
+index 40bba2b3f47198ca31de6723fe977311061db267..cfccbcb46100055642c42ec340e61fcf7e8f0523 100644
+--- a/dist/promotion-edit-details-YSF7TW3S.mjs
++++ b/dist/promotion-edit-details-YSF7TW3S.mjs
+@@ -488,7 +488,7 @@ var PromotionEditDetails = () => {
+     throw error;
+   }
+   return /* @__PURE__ */ jsxs2(RouteDrawer, { children: [
+-    /* @__PURE__ */ jsx2(RouteDrawer.Header, { children: /* @__PURE__ */ jsx2(Heading, { children: t("promotions.edit.title") }) }),
++    /* @__PURE__ */ jsx2(RouteDrawer.Header, { children: /* @__PURE__ */ jsx2(RouteDrawer.Title, { asChild: true, children: jsx2(Heading, { children: t("promotions.edit.title") }) }) }),
+     !isLoading && promotion && /* @__PURE__ */ jsx2(EditPromotionDetailsForm, { promotion })
+   ] });
+ };
 diff --git a/dist/region-add-countries-GYOE3HWN.mjs b/dist/region-add-countries-GYOE3HWN.mjs
-index 57c6bfa53c0efa4570bda2ce3c6b4cb0f2863dc1..c7e39ab335d171aa277360963c8008b6d3f989aa 100644
+index 57c6bfa53c0efa4570bda2ce3c6b4cb0f2863dc1..7ce74b878984ad46ab2e577c171f3f474e6c9546 100644
 --- a/dist/region-add-countries-GYOE3HWN.mjs
 +++ b/dist/region-add-countries-GYOE3HWN.mjs
-@@ -166,6 +166,7 @@ var AddCountriesForm = ({ region }) => {
+@@ -1,3 +1,4 @@
++import { jsxs as jsxs2 } from "react/jsx-runtime";
+ import {
+   useCountries,
+   useCountryTableColumns,
+@@ -166,6 +167,7 @@ var AddCountriesForm = ({ region }) => {
  var columnHelper = createColumnHelper();
  var useColumns = () => {
    const base = useCountryTableColumns();
@@ -6738,7 +7666,7 @@ index 57c6bfa53c0efa4570bda2ce3c6b4cb0f2863dc1..c7e39ab335d171aa277360963c8008b6
    return useMemo(
      () => [
        columnHelper.display({
-@@ -174,6 +175,8 @@ var useColumns = () => {
+@@ -174,6 +176,8 @@ var useColumns = () => {
            return /* @__PURE__ */ jsx(
              Checkbox,
              {
@@ -6747,7 +7675,7 @@ index 57c6bfa53c0efa4570bda2ce3c6b4cb0f2863dc1..c7e39ab335d171aa277360963c8008b6
                checked: table.getIsSomePageRowsSelected() ? "indeterminate" : table.getIsAllPageRowsSelected(),
                onCheckedChange: (value) => table.toggleAllPageRowsSelected(!!value)
              }
-@@ -184,6 +187,8 @@ var useColumns = () => {
+@@ -184,6 +188,8 @@ var useColumns = () => {
            return /* @__PURE__ */ jsx(
              Checkbox,
              {
@@ -6756,7 +7684,7 @@ index 57c6bfa53c0efa4570bda2ce3c6b4cb0f2863dc1..c7e39ab335d171aa277360963c8008b6
                checked: row.getIsSelected() || isPreselected,
                disabled: isPreselected,
                onCheckedChange: (value) => row.toggleSelected(!!value),
-@@ -196,7 +201,7 @@ var useColumns = () => {
+@@ -196,13 +202,14 @@ var useColumns = () => {
        }),
        ...base
      ],
@@ -6765,11 +7693,32 @@ index 57c6bfa53c0efa4570bda2ce3c6b4cb0f2863dc1..c7e39ab335d171aa277360963c8008b6
    );
  };
  
+ // src/routes/regions/region-add-countries/region-add-countries.tsx
+ import { jsx as jsx2 } from "react/jsx-runtime";
+ var RegionAddCountries = () => {
++  const { t } = useTranslation();
+   const { id } = useParams();
+   const {
+     region,
+@@ -215,7 +222,7 @@ var RegionAddCountries = () => {
+   if (isError) {
+     throw error;
+   }
+-  return /* @__PURE__ */ jsx2(RouteFocusModal, { children: !isLoading && region && /* @__PURE__ */ jsx2(AddCountriesForm, { region }) });
++  return /* @__PURE__ */ jsxs2(RouteFocusModal, { children: [jsx2(RouteFocusModal.Title, { className: "sr-only", children: t("regions.addCountries") }), !isLoading && region && /* @__PURE__ */ jsx2(AddCountriesForm, { region })] });
+ };
+ export {
+   RegionAddCountries as Component
 diff --git a/dist/region-create-UOKF5UOS.mjs b/dist/region-create-UOKF5UOS.mjs
-index d3ba7f6e4c2ffbe782d92250fd4eadda306cc8c1..1865dee321f420c4c345548b7e943a85f8891030 100644
+index d3ba7f6e4c2ffbe782d92250fd4eadda306cc8c1..73fd5a6b63c3247650841f0d27cb2a13fc1e17f3 100644
 --- a/dist/region-create-UOKF5UOS.mjs
 +++ b/dist/region-create-UOKF5UOS.mjs
-@@ -245,14 +245,14 @@ var CreateRegionForm = ({ currencies: currencies2 }) => {
+@@ -1,3 +1,4 @@
++import { jsxs as jsxs2 } from "react/jsx-runtime";
+ import {
+   useCountries,
+   useCountryTableColumns,
+@@ -245,14 +246,14 @@ var CreateRegionForm = ({ currencies: currencies2 }) => {
                      render: ({ field: { onChange, ref, ...field } }) => {
                        return /* @__PURE__ */ jsxs(Form.Item, { children: [
                          /* @__PURE__ */ jsx(Form.Label, { children: t("fields.currency") }),
@@ -6786,7 +7735,7 @@ index d3ba7f6e4c2ffbe782d92250fd4eadda306cc8c1..1865dee321f420c4c345548b7e943a85
                                /* @__PURE__ */ jsx(Select.Content, { children: currencies2.map((currency) => /* @__PURE__ */ jsx(
                                  Select.Item,
                                  {
-@@ -263,7 +263,7 @@ var CreateRegionForm = ({ currencies: currencies2 }) => {
+@@ -263,7 +264,7 @@ var CreateRegionForm = ({ currencies: currencies2 }) => {
                                )) })
                              ]
                            }
@@ -6795,7 +7744,7 @@ index d3ba7f6e4c2ffbe782d92250fd4eadda306cc8c1..1865dee321f420c4c345548b7e943a85
                          /* @__PURE__ */ jsx(Form.ErrorMessage, {})
                        ] });
                      }
-@@ -428,6 +428,7 @@ var CreateRegionForm = ({ currencies: currencies2 }) => {
+@@ -428,6 +429,7 @@ var CreateRegionForm = ({ currencies: currencies2 }) => {
  var columnHelper = createColumnHelper();
  var useColumns = () => {
    const base = useCountryTableColumns();
@@ -6803,7 +7752,7 @@ index d3ba7f6e4c2ffbe782d92250fd4eadda306cc8c1..1865dee321f420c4c345548b7e943a85
    return useMemo(
      () => [
        columnHelper.display({
-@@ -436,6 +437,8 @@ var useColumns = () => {
+@@ -436,6 +438,8 @@ var useColumns = () => {
            return /* @__PURE__ */ jsx(
              Checkbox,
              {
@@ -6812,7 +7761,7 @@ index d3ba7f6e4c2ffbe782d92250fd4eadda306cc8c1..1865dee321f420c4c345548b7e943a85
                checked: table.getIsSomePageRowsSelected() ? "indeterminate" : table.getIsAllPageRowsSelected(),
                onCheckedChange: (value) => table.toggleAllPageRowsSelected(!!value)
              }
-@@ -446,6 +449,8 @@ var useColumns = () => {
+@@ -446,6 +450,8 @@ var useColumns = () => {
            return /* @__PURE__ */ jsx(
              Checkbox,
              {
@@ -6821,7 +7770,7 @@ index d3ba7f6e4c2ffbe782d92250fd4eadda306cc8c1..1865dee321f420c4c345548b7e943a85
                checked: row.getIsSelected() || isPreselected,
                disabled: isPreselected,
                onCheckedChange: (value) => row.toggleSelected(!!value),
-@@ -458,7 +463,7 @@ var useColumns = () => {
+@@ -458,7 +464,7 @@ var useColumns = () => {
        }),
        ...base
      ],
@@ -6830,6 +7779,21 @@ index d3ba7f6e4c2ffbe782d92250fd4eadda306cc8c1..1865dee321f420c4c345548b7e943a85
    );
  };
  var CountryTag = ({
+@@ -482,12 +488,13 @@ var CountryTag = ({
+ // src/routes/regions/region-create/region-create.tsx
+ import { jsx as jsx2 } from "react/jsx-runtime";
+ var RegionCreate = () => {
++  const { t } = useTranslation();
+   const { store, isPending: isLoading, isError, error } = useStore();
+   const storeCurrencies = (store?.supported_currencies ?? []).map((c) => currencies[c.currency_code.toUpperCase()]).filter(Boolean);
+   if (isError) {
+     throw error;
+   }
+-  return /* @__PURE__ */ jsx2(RouteFocusModal, { children: !isLoading && store && /* @__PURE__ */ jsx2(CreateRegionForm, { currencies: storeCurrencies }) });
++  return /* @__PURE__ */ jsxs2(RouteFocusModal, { children: [jsx2(RouteFocusModal.Title, { className: "sr-only", children: t("regions.createRegion") }), !isLoading && store && /* @__PURE__ */ jsx2(CreateRegionForm, { currencies: storeCurrencies })] });
+ };
+ export {
+   RegionCreate as Component
 diff --git a/dist/region-detail-ZIUJ5MDA.mjs b/dist/region-detail-ZIUJ5MDA.mjs
 index 8783f4b021d4973d33c2d176145380a0e7975a1b..c1cb76ab2e37b994a2d929f3f0b20a776c014263 100644
 --- a/dist/region-detail-ZIUJ5MDA.mjs
@@ -6946,6 +7910,93 @@ index a2faf82c2e9995cda582323c3425800e44492136..97af3dbd424719f1599a87a7d202c060
    );
  };
  
+diff --git a/dist/region-metadata-N27KKPD6.mjs b/dist/region-metadata-N27KKPD6.mjs
+index 49b3681571e0fdc3d615e4c288c9626f4d21da2f..857769e416f7e2e5c311765c9d77b5adfd1cd5a2 100644
+--- a/dist/region-metadata-N27KKPD6.mjs
++++ b/dist/region-metadata-N27KKPD6.mjs
+@@ -60,7 +60,7 @@ var RegionMetadata = () => {
+   if (isError) {
+     throw error;
+   }
+-  return /* @__PURE__ */ jsx(RouteDrawer, { children: /* @__PURE__ */ jsx(
++  return /* @__PURE__ */ jsx(
+     MetadataForm,
+     {
+       isPending,
+@@ -68,7 +68,7 @@ var RegionMetadata = () => {
+       hook: mutateAsync,
+       metadata: region?.metadata
+     }
+-  ) });
++  );
+ };
+ export {
+   RegionMetadata as Component
+diff --git a/dist/reservation-metadata-XOGXSVVI.mjs b/dist/reservation-metadata-XOGXSVVI.mjs
+index da078ba237a50258b2a22e52bcace6a8a7189035..30c78e8105c65863ab89a6e7415ddf098d0f5252 100644
+--- a/dist/reservation-metadata-XOGXSVVI.mjs
++++ b/dist/reservation-metadata-XOGXSVVI.mjs
+@@ -64,7 +64,7 @@ var ReservationMetadata = () => {
+   if (isError) {
+     throw error;
+   }
+-  return /* @__PURE__ */ jsx(RouteDrawer, { children: /* @__PURE__ */ jsx(
++  return /* @__PURE__ */ jsx(
+     MetadataForm,
+     {
+       isPending,
+@@ -72,7 +72,7 @@ var ReservationMetadata = () => {
+       hook: mutateAsync,
+       metadata: reservation?.metadata
+     }
+-  ) });
++  );
+ };
+ export {
+   ReservationMetadata as Component
+diff --git a/dist/role-add-users-IMG4FCPU.mjs b/dist/role-add-users-IMG4FCPU.mjs
+index 0983a65a2b62d3f240e6eda44c98a4db676c0e29..53be52d7b749f1dca8619298e41ddd78bc5e1165 100644
+--- a/dist/role-add-users-IMG4FCPU.mjs
++++ b/dist/role-add-users-IMG4FCPU.mjs
+@@ -1,3 +1,4 @@
++import { jsxs as jsxs2 } from "react/jsx-runtime";
+ import "./chunk-LQTHYS2Z.mjs";
+ import {
+   _DataTable,
+@@ -265,8 +266,9 @@ var useColumns = ({ roleId }) => {
+ // src/routes/roles/role-add-users/role-add-users.tsx
+ import { jsx as jsx2 } from "react/jsx-runtime";
+ var RoleAddUsers = () => {
++  const { t } = useTranslation();
+   const { id } = useParams();
+-  return /* @__PURE__ */ jsx2(RouteFocusModal, { children: /* @__PURE__ */ jsx2(AddUsersForm, { roleId: id }) });
++  return /* @__PURE__ */ jsxs2(RouteFocusModal, { children: [jsx2(RouteFocusModal.Title, { className: "sr-only", children: t("users.domain") }), jsx2(AddUsersForm, { roleId: id })] });
+ };
+ export {
+   RoleAddUsers as Component
+diff --git a/dist/role-create-WKFQUIWX.mjs b/dist/role-create-WKFQUIWX.mjs
+index 9664b7cdc082632ac7602b414b5162d64bea4854..b4b7e4b59d91245f923ad9597b35c1452285f2e1 100644
+--- a/dist/role-create-WKFQUIWX.mjs
++++ b/dist/role-create-WKFQUIWX.mjs
+@@ -1,3 +1,4 @@
++import { jsxs as jsxs2 } from "react/jsx-runtime";
+ import {
+   useRequireRbacFeature
+ } from "./chunk-Q7IJ6TPC.mjs";
+@@ -353,11 +354,12 @@ var PrimaryButton = ({ tab, next, isLoading }) => {
+ // src/routes/roles/role-create/role-create.tsx
+ import { jsx as jsx2 } from "react/jsx-runtime";
+ var RoleCreate = () => {
++  const { t } = useTranslation();
+   const isRbacEnabled = useRequireRbacFeature();
+   if (!isRbacEnabled) {
+     return null;
+   }
+-  return /* @__PURE__ */ jsx2(RouteFocusModal, { children: /* @__PURE__ */ jsx2(CreateRoleForm, {}) });
++  return /* @__PURE__ */ jsxs2(RouteFocusModal, { children: [jsx2(RouteFocusModal.Title, { className: "sr-only", children: t("roles.create.header") }), jsx2(CreateRoleForm, {})] });
+ };
+ export {
+   RoleCreate as Component
 diff --git a/dist/role-detail-EQA63OFK.mjs b/dist/role-detail-EQA63OFK.mjs
 index 9d85db706ad3fdcd1b13297f9658ee5fe1598185..eaf8d218cfdd17811fe2120b3b098c9987748554 100644
 --- a/dist/role-detail-EQA63OFK.mjs
@@ -7027,7 +8078,7 @@ index 59790681c3661f6a1be9cb4f5d03326c76314e35..d997fcc08440fe2117656888bab6377c
    ] });
  };
 diff --git a/dist/role-permissions-NPOK4K7X.mjs b/dist/role-permissions-NPOK4K7X.mjs
-index 2ffd11e72498cbc3b45c2084eb9d0680b45a9486..21915262aaaf87911ac2271808a0176bde9f9e04 100644
+index 2ffd11e72498cbc3b45c2084eb9d0680b45a9486..0e244b97ac29052020d85da1fb38ec075b855d27 100644
 --- a/dist/role-permissions-NPOK4K7X.mjs
 +++ b/dist/role-permissions-NPOK4K7X.mjs
 @@ -49,7 +49,7 @@ import {
@@ -7068,11 +8119,81 @@ index 2ffd11e72498cbc3b45c2084eb9d0680b45a9486..21915262aaaf87911ac2271808a0176b
                children: t("actions.save")
              }
            )
+@@ -249,13 +252,10 @@ var RolePermissions = () => {
+   if (isError) {
+     throw error;
+   }
+-  return /* @__PURE__ */ jsx2(RouteDrawer, { children: !isPending && role && /* @__PURE__ */ jsxs2(Fragment, { children: [
+-    /* @__PURE__ */ jsxs2(RouteDrawer.Header, { children: [
+-      /* @__PURE__ */ jsx2(RouteDrawer.Title, { asChild: true, children: /* @__PURE__ */ jsx2(Heading, { children: t("roles.permissions.header", { name: role.name }) }) }),
++  return /* @__PURE__ */ jsxs2(RouteDrawer, { children: [jsxs2(RouteDrawer.Header, { children: [
++      /* @__PURE__ */ jsx2(RouteDrawer.Title, { asChild: true, children: /* @__PURE__ */ jsx2(Heading, { children: t("roles.permissions.header", { name: role?.name }) }) }),
+       /* @__PURE__ */ jsx2(RouteDrawer.Description, { className: "sr-only", children: t("roles.permissions.hint") })
+-    ] }),
+-    /* @__PURE__ */ jsx2(EditRolePermissionsForm, { role })
+-  ] }) });
++    ] }), !isPending && role && jsx2(EditRolePermissionsForm, { role })] });
+ };
+ export {
+   RolePermissions as Component
+diff --git a/dist/sales-channel-edit-6FZFOHFV.mjs b/dist/sales-channel-edit-6FZFOHFV.mjs
+index 45ecece5e78110b6b32461d45b28177a7dd35082..f3ff6c7af46f2187e5a7917261b18624b569c8b5 100644
+--- a/dist/sales-channel-edit-6FZFOHFV.mjs
++++ b/dist/sales-channel-edit-6FZFOHFV.mjs
+@@ -156,7 +156,7 @@ var SalesChannelEdit = () => {
+     throw error;
+   }
+   return /* @__PURE__ */ jsxs2(RouteDrawer, { children: [
+-    /* @__PURE__ */ jsx2(RouteDrawer.Header, { children: /* @__PURE__ */ jsx2(Heading, { className: "capitalize", children: t("salesChannels.editSalesChannel") }) }),
++    /* @__PURE__ */ jsx2(RouteDrawer.Header, { children: /* @__PURE__ */ jsx2(RouteDrawer.Title, { asChild: true, children: jsx2(Heading, { className: "capitalize", children: t("salesChannels.editSalesChannel") }) }) }),
+     !isLoading && !!sales_channel && /* @__PURE__ */ jsx2(EditSalesChannelForm, { salesChannel: sales_channel })
+   ] });
+ };
+diff --git a/dist/sales-channel-metadata-PQQX4UBE.mjs b/dist/sales-channel-metadata-PQQX4UBE.mjs
+index 2890015918f719cb497159999bb9ed38d575e060..481e409ad9f5932b9fe9e4c161594afc4db73e14 100644
+--- a/dist/sales-channel-metadata-PQQX4UBE.mjs
++++ b/dist/sales-channel-metadata-PQQX4UBE.mjs
+@@ -65,7 +65,7 @@ var SalesChannelMetadata = () => {
+   if (isError) {
+     throw error;
+   }
+-  return /* @__PURE__ */ jsx(RouteDrawer, { children: /* @__PURE__ */ jsx(
++  return /* @__PURE__ */ jsx(
+     MetadataForm,
+     {
+       isPending,
+@@ -73,7 +73,7 @@ var SalesChannelMetadata = () => {
+       hook: mutateAsync,
+       metadata: salesChannel?.metadata
+     }
+-  ) });
++  );
+ };
+ export {
+   SalesChannelMetadata as Component
+diff --git a/dist/shipping-option-type-edit-WU2WI7BQ.mjs b/dist/shipping-option-type-edit-WU2WI7BQ.mjs
+index cf6857d23ac002be3d020b996b38f6c18f6446f2..04fcd3a3827dd9f2c487a75940b7d4c12d5a4999 100644
+--- a/dist/shipping-option-type-edit-WU2WI7BQ.mjs
++++ b/dist/shipping-option-type-edit-WU2WI7BQ.mjs
+@@ -189,7 +189,7 @@ var ShippingOptionTypeEdit = () => {
+     throw error;
+   }
+   return /* @__PURE__ */ jsxs2(RouteDrawer, { children: [
+-    /* @__PURE__ */ jsx2(RouteDrawer.Header, { children: /* @__PURE__ */ jsx2(Heading, { children: t("shippingOptionTypes.edit.header") }) }),
++    /* @__PURE__ */ jsx2(RouteDrawer.Header, { children: /* @__PURE__ */ jsx2(RouteDrawer.Title, { asChild: true, children: jsx2(Heading, { children: t("shippingOptionTypes.edit.header") }) }) }),
+     ready && /* @__PURE__ */ jsx2(EditShippingOptionTypeForm, { shippingOptionType: shipping_option_type })
+   ] });
+ };
 diff --git a/dist/store-add-currencies-A5YJXATX.mjs b/dist/store-add-currencies-A5YJXATX.mjs
-index 6b8f20125fce03b34e4e8269ca1d47fa4f4b4149..6db25bd6cf80334d4d5550c879f45886aa464cff 100644
+index 6b8f20125fce03b34e4e8269ca1d47fa4f4b4149..f7a1ac21d472d1576c08770c2aff1066da7c8f10 100644
 --- a/dist/store-add-currencies-A5YJXATX.mjs
 +++ b/dist/store-add-currencies-A5YJXATX.mjs
-@@ -225,6 +225,8 @@ var useColumns = (pricePreferences, setPricePreferences, selectRow) => {
+@@ -1,3 +1,4 @@
++import { jsxs as jsxs2 } from "react/jsx-runtime";
+ import {
+   useCurrenciesTableColumns,
+   useCurrenciesTableQuery
+@@ -225,6 +226,8 @@ var useColumns = (pricePreferences, setPricePreferences, selectRow) => {
            return /* @__PURE__ */ jsx(
              Checkbox,
              {
@@ -7081,7 +8202,7 @@ index 6b8f20125fce03b34e4e8269ca1d47fa4f4b4149..6db25bd6cf80334d4d5550c879f45886
                checked: table.getIsSomePageRowsSelected() ? "indeterminate" : table.getIsAllPageRowsSelected(),
                onCheckedChange: (value) => table.toggleAllPageRowsSelected(!!value)
              }
-@@ -236,6 +238,8 @@ var useColumns = (pricePreferences, setPricePreferences, selectRow) => {
+@@ -236,6 +239,8 @@ var useColumns = (pricePreferences, setPricePreferences, selectRow) => {
            const Component = /* @__PURE__ */ jsx(
              Checkbox,
              {
@@ -7090,6 +8211,31 @@ index 6b8f20125fce03b34e4e8269ca1d47fa4f4b4149..6db25bd6cf80334d4d5550c879f45886
                checked: isSelected,
                disabled: isPreSelected,
                onCheckedChange: (value) => row.toggleSelected(!!value),
+@@ -263,6 +268,7 @@ var useColumns = (pricePreferences, setPricePreferences, selectRow) => {
+               dir: "ltr",
+               className: "rtl:rotate-180",
+               disabled: isPreSelected,
++              "aria-label": `${t("fields.taxInclusivePricing")}: ${row.original.code.toUpperCase()}`,
+               checked: isTaxInclusive ?? false,
+               onCheckedChange: (val) => {
+                 setPricePreferences({
+@@ -285,6 +291,7 @@ var useColumns = (pricePreferences, setPricePreferences, selectRow) => {
+ // src/routes/store/store-add-currencies/store-add-currencies.tsx
+ import { jsx as jsx2 } from "react/jsx-runtime";
+ var StoreAddCurrencies = () => {
++  const { t } = useTranslation();
+   const { store, isPending, isError, error } = useStore();
+   const {
+     price_preferences: pricePreferences,
+@@ -307,7 +314,7 @@ var StoreAddCurrencies = () => {
+   if (isPricePreferencesError) {
+     throw pricePreferencesError;
+   }
+-  return /* @__PURE__ */ jsx2(RouteFocusModal, { children: ready && /* @__PURE__ */ jsx2(AddCurrenciesForm, { store, pricePreferences }) });
++  return /* @__PURE__ */ jsxs2(RouteFocusModal, { children: [jsx2(RouteFocusModal.Title, { className: "sr-only", children: t("store.addCurrencies") }), ready && /* @__PURE__ */ jsx2(AddCurrenciesForm, { store, pricePreferences })] });
+ };
+ export {
+   StoreAddCurrencies as Component
 diff --git a/dist/store-detail-O2LT2IJI.mjs b/dist/store-detail-O2LT2IJI.mjs
 index dd919177075479975999ecfc5b41e5283be9fd40..3511f9a34a8a88c0cb8d9c96a83271d45c61cd01 100644
 --- a/dist/store-detail-O2LT2IJI.mjs
@@ -7121,7 +8267,7 @@ index dd919177075479975999ecfc5b41e5283be9fd40..3511f9a34a8a88c0cb8d9c96a83271d4
            const {
              supportedCurrencies,
 diff --git a/dist/store-edit-W24ZGNNJ.mjs b/dist/store-edit-W24ZGNNJ.mjs
-index 30a68f904467a6b90d58da23f87d335885661584..1f3119fe6c3a7a4d2a64575ef9c7c884009ce115 100644
+index 30a68f904467a6b90d58da23f87d335885661584..4a5b319156a3bcab6bef93d9234090d88c75b88e 100644
 --- a/dist/store-edit-W24ZGNNJ.mjs
 +++ b/dist/store-edit-W24ZGNNJ.mjs
 @@ -128,14 +128,14 @@ var EditStoreForm = ({ store }) => {
@@ -7150,6 +8296,56 @@ index 30a68f904467a6b90d58da23f87d335885661584..1f3119fe6c3a7a4d2a64575ef9c7c884
                  ] });
                }
              }
+@@ -237,7 +237,7 @@ var StoreEdit = () => {
+   }
+   const ready = !!store && !isLoading;
+   return /* @__PURE__ */ jsxs2(RouteDrawer, { children: [
+-    /* @__PURE__ */ jsx2(RouteDrawer.Header, { children: /* @__PURE__ */ jsx2(Heading, { children: t("store.edit.header") }) }),
++    /* @__PURE__ */ jsx2(RouteDrawer.Header, { children: /* @__PURE__ */ jsx2(RouteDrawer.Title, { asChild: true, children: jsx2(Heading, { children: t("store.edit.header") }) }) }),
+     ready && /* @__PURE__ */ jsx2(EditStoreForm, { store })
+   ] });
+ };
+diff --git a/dist/store-metadata-OMN6BWK2.mjs b/dist/store-metadata-OMN6BWK2.mjs
+index d940f4d5ac4790108da1cc107071e8be1e3b93e5..7729bf9139621a13868dd6adb5a461f447593317 100644
+--- a/dist/store-metadata-OMN6BWK2.mjs
++++ b/dist/store-metadata-OMN6BWK2.mjs
+@@ -58,7 +58,7 @@ var StoreMetadata = () => {
+   if (isError) {
+     throw error;
+   }
+-  return /* @__PURE__ */ jsx(RouteDrawer, { children: /* @__PURE__ */ jsx(
++  return /* @__PURE__ */ jsx(
+     MetadataForm,
+     {
+       isPending,
+@@ -66,7 +66,7 @@ var StoreMetadata = () => {
+       hook: mutateAsync,
+       metadata: store?.metadata
+     }
+-  ) });
++  );
+ };
+ export {
+   StoreMetadata as Component
+diff --git a/dist/tax-region-create-URZL6TFB.mjs b/dist/tax-region-create-URZL6TFB.mjs
+index c7529cbe67b4b99bd789ba9d99b54ee53bc07e2d..2ca30b25b2308eb30b6b81f341120fb640d34900 100644
+--- a/dist/tax-region-create-URZL6TFB.mjs
++++ b/dist/tax-region-create-URZL6TFB.mjs
+@@ -1,3 +1,4 @@
++import { jsxs as jsxs2 } from "react/jsx-runtime";
+ import {
+   PercentageInput
+ } from "./chunk-KEQOAJC2.mjs";
+@@ -295,7 +296,8 @@ var TaxRegionCreateForm = ({ parentId }) => {
+ // src/routes/tax-regions/tax-region-create/tax-region-create.tsx
+ import { jsx as jsx2 } from "react/jsx-runtime";
+ var TaxRegionCreate = () => {
+-  return /* @__PURE__ */ jsx2(RouteFocusModal, { children: /* @__PURE__ */ jsx2(TaxRegionCreateForm, {}) });
++  const { t } = useTranslation();
++  return /* @__PURE__ */ jsxs2(RouteFocusModal, { children: [jsx2(RouteFocusModal.Title, { className: "sr-only", children: t("taxRegions.create.header") }), jsx2(TaxRegionCreateForm, {})] });
+ };
+ export {
+   TaxRegionCreate as Component,
 diff --git a/dist/tax-region-detail-3IQOYPXE.mjs b/dist/tax-region-detail-3IQOYPXE.mjs
 index 1008fd0712114bc307bdfc55c93fb33f441206bb..d694a0c78dfa6971d68b2e48b898b28222e02cdc 100644
 --- a/dist/tax-region-detail-3IQOYPXE.mjs
@@ -7176,10 +8372,15 @@ index fdc33b942795ac811a66030844915ffb599154b9..fb9151e135f8621c5af180a183c0f6a7
      },
      {
 diff --git a/dist/tax-region-province-create-CPXYTVAN.mjs b/dist/tax-region-province-create-CPXYTVAN.mjs
-index 18ce4b93d74722e463523dc43ceaf19566ee351d..e665eed8b2f7ee16249b62f32a5fd4832d8d3e3a 100644
+index 18ce4b93d74722e463523dc43ceaf19566ee351d..f58cfa4ff6fc6a7e42194cb9c7592dc8ca80776d 100644
 --- a/dist/tax-region-province-create-CPXYTVAN.mjs
 +++ b/dist/tax-region-province-create-CPXYTVAN.mjs
-@@ -55,6 +55,11 @@ var ProvinceSelect = forwardRef(
+@@ -1,3 +1,4 @@
++import { jsxs as jsxs3 } from "react/jsx-runtime";
+ import {
+   getCountryProvinceObjectByIso2
+ } from "./chunk-EHAU7SOS.mjs";
+@@ -55,6 +56,11 @@ var ProvinceSelect = forwardRef(
      country_code,
      valueAs = "iso_2",
      onChange,
@@ -7191,7 +8392,7 @@ index 18ce4b93d74722e463523dc43ceaf19566ee351d..e665eed8b2f7ee16249b62f32a5fd483
      ...field
    }, ref) => {
      const { t } = useTranslation();
-@@ -86,7 +91,7 @@ var ProvinceSelect = forwardRef(
+@@ -86,7 +92,7 @@ var ProvinceSelect = forwardRef(
          onValueChange: onChange,
          disabled,
          children: [
@@ -7200,6 +8401,55 @@ index 18ce4b93d74722e463523dc43ceaf19566ee351d..e665eed8b2f7ee16249b62f32a5fd483
            /* @__PURE__ */ jsx(Select.Content, { children: options })
          ]
        }
+@@ -297,13 +303,14 @@ var TaxRegionProvinceCreateForm = ({
+ // src/routes/tax-regions/tax-region-province-create/tax-region-province-create.tsx
+ import { jsx as jsx3 } from "react/jsx-runtime";
+ var TaxProvinceCreate = () => {
++  const { t } = useTranslation();
+   const { id } = useParams();
+   const { tax_region, isPending, isError, error } = useTaxRegion(id);
+   const ready = !isPending && !!tax_region;
+   if (isError) {
+     throw error;
+   }
+-  return /* @__PURE__ */ jsx3(RouteFocusModal, { children: ready && /* @__PURE__ */ jsx3(TaxRegionProvinceCreateForm, { parent: tax_region }) });
++  return /* @__PURE__ */ jsxs3(RouteFocusModal, { children: [jsx3(RouteFocusModal.Title, { className: "sr-only", children: t(`taxRegions.${getCountryProvinceObjectByIso2(tax_region?.country_code || "")?.type || "sublevel"}.create.header`) }), ready && /* @__PURE__ */ jsx3(TaxRegionProvinceCreateForm, { parent: tax_region })] });
+ };
+ export {
+   TaxProvinceCreate as Component,
+diff --git a/dist/tax-region-tax-rate-create-KNUOXXFD.mjs b/dist/tax-region-tax-rate-create-KNUOXXFD.mjs
+index 801015b24a13f9fc5877bdde902753bf1db9cfca..d6c97f300ab5a481c2aa200e16b55f2d41032f0d 100644
+--- a/dist/tax-region-tax-rate-create-KNUOXXFD.mjs
++++ b/dist/tax-region-tax-rate-create-KNUOXXFD.mjs
+@@ -1,3 +1,4 @@
++import { jsxs as jsxs2 } from "react/jsx-runtime";
+ import {
+   PercentageInput
+ } from "./chunk-KEQOAJC2.mjs";
+@@ -173,6 +174,7 @@ var TaxRegionTaxRateCreateForm = ({
+ // src/routes/tax-regions/tax-region-tax-rate-create/tax-region-tax-rate-create.tsx
+ import { jsx as jsx2 } from "react/jsx-runtime";
+ var TaxRegionTaxRateCreate = () => {
++  const { t } = useTranslation();
+   const { id, province_id } = useParams();
+   const { tax_region, isPending, isError, error } = useTaxRegion(
+     province_id || id
+@@ -181,13 +183,13 @@ var TaxRegionTaxRateCreate = () => {
+   if (isError) {
+     throw error;
+   }
+-  return /* @__PURE__ */ jsx2(RouteFocusModal, { children: ready && /* @__PURE__ */ jsx2(
++  return /* @__PURE__ */ jsxs2(RouteFocusModal, { children: [jsx2(RouteFocusModal.Title, { className: "sr-only", children: t("taxRegions.taxRates.create.header") }), ready && /* @__PURE__ */ jsx2(
+     TaxRegionTaxRateCreateForm,
+     {
+       taxRegion: tax_region,
+       isSublevel: !!province_id
+     }
+-  ) });
++  )] });
+ };
+ export {
+   TaxRegionTaxRateCreate as Component
 diff --git a/dist/user-detail-2NP6KKH3.mjs b/dist/user-detail-2NP6KKH3.mjs
 index 00bd6fa30835c434be1b057b5118dbf7100f997b..0f300daf9672be4ebd8af693ea62780f07b5e6e9 100644
 --- a/dist/user-detail-2NP6KKH3.mjs
@@ -7222,6 +8472,19 @@ index 00bd6fa30835c434be1b057b5118dbf7100f997b..0f300daf9672be4ebd8af693ea62780f
        onSuccess: () => {
          toast.success(t("users.deleteUserSuccess", { name: user.email }));
          navigate("..");
+diff --git a/dist/user-edit-LT2TOFEJ.mjs b/dist/user-edit-LT2TOFEJ.mjs
+index 19bfa8737608b4add3c5772edd8644893c08ff8f..feb676134b7508803b5005568aab93ff87780f92 100644
+--- a/dist/user-edit-LT2TOFEJ.mjs
++++ b/dist/user-edit-LT2TOFEJ.mjs
+@@ -108,7 +108,7 @@ var UserEdit = () => {
+     throw error;
+   }
+   return /* @__PURE__ */ jsxs2(RouteDrawer, { children: [
+-    /* @__PURE__ */ jsx2(RouteDrawer.Header, { children: /* @__PURE__ */ jsx2(Heading, { children: t("users.editUser") }) }),
++    /* @__PURE__ */ jsx2(RouteDrawer.Header, { children: /* @__PURE__ */ jsx2(RouteDrawer.Title, { asChild: true, children: jsx2(Heading, { children: t("users.editUser") }) }) }),
+     !isLoading && user && /* @__PURE__ */ jsx2(EditUserForm, { user })
+   ] });
+ };
 diff --git a/dist/user-list-NEIF3D5L.mjs b/dist/user-list-NEIF3D5L.mjs
 index 34f46821b0237e540ec960af568f18e89e0edc60..0501fb6022e4a688e60a305fc2595825ce081464 100644
 --- a/dist/user-list-NEIF3D5L.mjs
@@ -7257,6 +8520,28 @@ index 34f46821b0237e540ec960af568f18e89e0edc60..0501fb6022e4a688e60a305fc2595825
          cell: ({ row }) => /* @__PURE__ */ jsx2(UserListTableActions, { user: row.original })
        })
      ],
+diff --git a/dist/user-metadata-DQ2OTOK7.mjs b/dist/user-metadata-DQ2OTOK7.mjs
+index e928793458989e63fc06cf33d994b1484e3bbfc4..d3c21f67b59ad82b87942e920703a713675d779d 100644
+--- a/dist/user-metadata-DQ2OTOK7.mjs
++++ b/dist/user-metadata-DQ2OTOK7.mjs
+@@ -60,7 +60,7 @@ var UserMetadata = () => {
+   if (isError) {
+     throw error;
+   }
+-  return /* @__PURE__ */ jsx(RouteDrawer, { children: /* @__PURE__ */ jsx(
++  return /* @__PURE__ */ jsx(
+     MetadataForm,
+     {
+       isPending,
+@@ -68,7 +68,7 @@ var UserMetadata = () => {
+       hook: mutateAsync,
+       metadata: user?.metadata
+     }
+-  ) });
++  );
+ };
+ export {
+   UserMetadata as Component
 diff --git a/src/components/authentication/route-permission-guard/route-permission-guard.tsx b/src/components/authentication/route-permission-guard/route-permission-guard.tsx
 index 71a74d9ecabc47ff7ddb83eba07722ca2557bfb7..be2506a03cb1e1345e692faa3ab633e767726156 100644
 --- a/src/components/authentication/route-permission-guard/route-permission-guard.tsx
@@ -7614,6 +8899,40 @@ index 20111880b52dc6de18727d963f3c6f274b6c791f..891bf6a09fdf58a0aa5056a347875d97
            <ArrowUpDown />
          </IconButton>
        </DropdownMenu.Trigger>
+diff --git a/src/components/forms/metadata-form/metadata-form.tsx b/src/components/forms/metadata-form/metadata-form.tsx
+index f44f9769ffa7f00531c8238dfb4da338b7992af2..610562b87a18e2fa94bafbb55fbc0b62a6833668 100644
+--- a/src/components/forms/metadata-form/metadata-form.tsx
++++ b/src/components/forms/metadata-form/metadata-form.tsx
+@@ -171,7 +171,7 @@ const InnerForm = <TRes,>({
+                   content={t("metadata.edit.complexRow.tooltip")}
+                   key={field.id}
+                 >
+-                  <div className="group/table relative">
++                  <div className="group/table relative rr-native-metadata-row">
+                     <div
+                       className={clx("grid grid-cols-2 divide-x", {
+                         "overflow-hidden rounded-b-lg":
+@@ -219,7 +219,7 @@ const InnerForm = <TRes,>({
+                     <DropdownMenu dir={direction}>
+                       <DropdownMenu.Trigger
+                         className={clx(
+-                          "invisible absolute inset-y-0 -end-2.5 my-auto group-hover/table:visible data-[state='open']:visible",
++                          "invisible absolute inset-y-0 -end-2.5 my-auto group-hover/table:visible data-[state='open']:visible rr-native-metadata-actions",
+                           {
+                             hidden: isDisabled,
+                           }
+@@ -227,7 +227,10 @@ const InnerForm = <TRes,>({
+                         disabled={isDisabled}
+                         asChild
+                       >
+-                        <IconButton size="2xsmall">
++                        <IconButton
++                          size="2xsmall"
++                          aria-label={`${t("fields.metadata")} ${index + 1}: ${t("fields.actions")}`}
++                        >
+                           <EllipsisVertical />
+                         </IconButton>
+                       </DropdownMenu.Trigger>
 diff --git a/src/components/inputs/combobox/combobox.tsx b/src/components/inputs/combobox/combobox.tsx
 index 3d1ab4e28c8e9bdd4c850e7829564db4c34aeaf7..a55f79fa543bfc65f0fb7dee6e846b704ad420a8 100644
 --- a/src/components/inputs/combobox/combobox.tsx
@@ -8569,10 +9888,10 @@ index 4981dee92d494e465d137682cd57eebe6fe00935..882629bfa835d550a0e77f636d6e7c18
              const content = adapter?.renderRowActions?.(row.original)
              if (!content) {
 diff --git a/src/index.css b/src/index.css
-index bc87c9f0be33d8c6a09356fe7c9aec57acba2ba0..ee228947433376443f0d58717df95283bbe3ff4b 100644
+index bc87c9f0be33d8c6a09356fe7c9aec57acba2ba0..5a058fe1f5b8397fadb2bb61ae83cc6665f73c66 100644
 --- a/src/index.css
 +++ b/src/index.css
-@@ -46,3 +46,29 @@
+@@ -46,3 +46,33 @@
    background-size: 40px 40px;
    background: repeat;
  }
@@ -8602,6 +9921,10 @@ index bc87c9f0be33d8c6a09356fe7c9aec57acba2ba0..ee228947433376443f0d58717df95283
 +  --button-inverted-hover: var(--contrast-bg-base-hover);
 +  --button-inverted-pressed: var(--contrast-bg-base);
 +}
++
++.rr-native-metadata-row:focus-within .rr-native-metadata-actions { visibility: visible; }
++.rr-native-metadata-actions { min-width: 24px; min-height: 24px; }
++.rr-native-metadata-actions:not(:disabled) { cursor: pointer; }
 diff --git a/src/lib/table/cell-renderers.tsx b/src/lib/table/cell-renderers.tsx
 index 853784033297ad31af3586ad8e64ac281409cff5..1489262e5b7c7871380056b02f4a14e9cbcfdc52 100644
 --- a/src/lib/table/cell-renderers.tsx
@@ -8645,6 +9968,232 @@ index d45e8e6924876dfa9ab934731bce5a2ec21eb9a1..7dceb3b270f423a27ca89d30cae7e260
                }}
                aria-label={displayName}
              />
+diff --git a/src/routes/categories/categories-metadata/categories-metadata.tsx b/src/routes/categories/categories-metadata/categories-metadata.tsx
+index c8c7037dc5fea8b3b53f480306b01154051f1848..a09a7f72e90f05a4ac1674c76a9bbfd5d4f42dad 100644
+--- a/src/routes/categories/categories-metadata/categories-metadata.tsx
++++ b/src/routes/categories/categories-metadata/categories-metadata.tsx
+@@ -5,7 +5,6 @@ import {
+   useUpdateProductCategory,
+ } from "../../../hooks/api"
+ import { MetadataForm } from "../../../components/forms/metadata-form"
+-import { RouteDrawer } from "../../../components/modals"
+ 
+ export const CategoriesMetadata = () => {
+   const { id } = useParams()
+@@ -22,13 +21,11 @@ export const CategoriesMetadata = () => {
+   }
+ 
+   return (
+-    <RouteDrawer>
+-      <MetadataForm
+-        isPending={isPending}
+-        isMutating={isMutating}
+-        hook={mutateAsync}
+-        metadata={product_category?.metadata}
+-      />
+-    </RouteDrawer>
++    <MetadataForm
++      isPending={isPending}
++      isMutating={isMutating}
++      hook={mutateAsync}
++      metadata={product_category?.metadata}
++    />
+   )
+ }
+diff --git a/src/routes/collections/collection-edit/collection-edit.tsx b/src/routes/collections/collection-edit/collection-edit.tsx
+index 7bdac8da5ca87e61b14de8822f48a7b8d87724e8..87a988ef43ad8d3575668c71ed7b28aac37fc519 100644
+--- a/src/routes/collections/collection-edit/collection-edit.tsx
++++ b/src/routes/collections/collection-edit/collection-edit.tsx
+@@ -17,7 +17,9 @@ export const CollectionEdit = () => {
+   return (
+     <RouteDrawer>
+       <RouteDrawer.Header>
+-        <Heading>{t("collections.editCollection")}</Heading>
++        <RouteDrawer.Title asChild>
++          <Heading>{t("collections.editCollection")}</Heading>
++        </RouteDrawer.Title>
+       </RouteDrawer.Header>
+       {!isLoading && collection && (
+         <EditCollectionForm collection={collection} />
+diff --git a/src/routes/customer-groups/customer-group-edit/customer-group-edit.tsx b/src/routes/customer-groups/customer-group-edit/customer-group-edit.tsx
+index 0b92d402b2f338f03ecc4fa6296868de74c0fe7f..373622b50f78a29129ed636d4f80fa06ea9c4409 100644
+--- a/src/routes/customer-groups/customer-group-edit/customer-group-edit.tsx
++++ b/src/routes/customer-groups/customer-group-edit/customer-group-edit.tsx
+@@ -18,7 +18,9 @@ export const CustomerGroupEdit = () => {
+   return (
+     <RouteDrawer>
+       <RouteDrawer.Header>
+-        <Heading>{t("customerGroups.edit.header")}</Heading>
++        <RouteDrawer.Title asChild>
++          <Heading>{t("customerGroups.edit.header")}</Heading>
++        </RouteDrawer.Title>
+       </RouteDrawer.Header>
+       {!isLoading && customer_group && (
+         <EditCustomerGroupForm group={customer_group} />
+diff --git a/src/routes/customers/customer-edit/customer-edit.tsx b/src/routes/customers/customer-edit/customer-edit.tsx
+index c77bec0a833f8d092e25a8e83b9cc8e849bb8a9c..871a01b14d656cdc663f5676b38da85e7df32c8a 100644
+--- a/src/routes/customers/customer-edit/customer-edit.tsx
++++ b/src/routes/customers/customer-edit/customer-edit.tsx
+@@ -18,7 +18,9 @@ export const CustomerEdit = () => {
+   return (
+     <RouteDrawer>
+       <RouteDrawer.Header>
+-        <Heading>{t("customers.edit.header")}</Heading>
++        <RouteDrawer.Title asChild>
++          <Heading>{t("customers.edit.header")}</Heading>
++        </RouteDrawer.Title>
+       </RouteDrawer.Header>
+       {!isLoading && customer && <EditCustomerForm customer={customer} />}
+     </RouteDrawer>
+diff --git a/src/routes/inventory/inventory-detail/components/adjust-inventory/adjust-inventory-drawer.tsx b/src/routes/inventory/inventory-detail/components/adjust-inventory/adjust-inventory-drawer.tsx
+index 8e2381c12731dc68a7e9af4336f3345c18838811..1706472fb9307de72b2e4e563c738e3b1cd7169b 100644
+--- a/src/routes/inventory/inventory-detail/components/adjust-inventory/adjust-inventory-drawer.tsx
++++ b/src/routes/inventory/inventory-detail/components/adjust-inventory/adjust-inventory-drawer.tsx
+@@ -39,7 +39,9 @@ export const AdjustInventoryDrawer = () => {
+   return (
+     <RouteDrawer>
+       <RouteDrawer.Header>
+-        <Heading>{t("inventory.manageLocationQuantity")}</Heading>
++        <RouteDrawer.Title asChild>
++          <Heading>{t("inventory.manageLocationQuantity")}</Heading>
++        </RouteDrawer.Title>
+       </RouteDrawer.Header>
+       {ready && (
+         <AdjustInventoryForm
+diff --git a/src/routes/inventory/inventory-detail/components/edit-inventory-item/edit-item-drawer.tsx b/src/routes/inventory/inventory-detail/components/edit-inventory-item/edit-item-drawer.tsx
+index 89635fbcd10a3205b20997eb20e98c4723457a5d..e103da4bef24a13208b1cb963443be689283db83 100644
+--- a/src/routes/inventory/inventory-detail/components/edit-inventory-item/edit-item-drawer.tsx
++++ b/src/routes/inventory/inventory-detail/components/edit-inventory-item/edit-item-drawer.tsx
+@@ -25,7 +25,9 @@ export const InventoryItemEdit = () => {
+   return (
+     <RouteDrawer>
+       <RouteDrawer.Header>
+-        <Heading>{t("inventory.editItemDetails")}</Heading>
++        <RouteDrawer.Title asChild>
++          <Heading>{t("inventory.editItemDetails")}</Heading>
++        </RouteDrawer.Title>
+       </RouteDrawer.Header>
+       {ready && <EditInventoryItemForm item={inventoryItem} />}
+     </RouteDrawer>
+diff --git a/src/routes/inventory/inventory-detail/components/edit-inventory-item-attributes/edit-item-attributes-drawer.tsx b/src/routes/inventory/inventory-detail/components/edit-inventory-item-attributes/edit-item-attributes-drawer.tsx
+index 9784783085598a22c72877dc0fcd2062355852e0..15fd9f44d38e2e9f47c85159be92bca063e04cbc 100644
+--- a/src/routes/inventory/inventory-detail/components/edit-inventory-item-attributes/edit-item-attributes-drawer.tsx
++++ b/src/routes/inventory/inventory-detail/components/edit-inventory-item-attributes/edit-item-attributes-drawer.tsx
+@@ -25,7 +25,9 @@ export const InventoryItemAttributesEdit = () => {
+   return (
+     <RouteDrawer>
+       <RouteDrawer.Header>
+-        <Heading>{t("products.editAttributes")}</Heading>
++        <RouteDrawer.Title asChild>
++          <Heading>{t("products.editAttributes")}</Heading>
++        </RouteDrawer.Title>
+       </RouteDrawer.Header>
+       {ready && <EditInventoryItemAttributesForm item={inventoryItem} />}
+     </RouteDrawer>
+diff --git a/src/routes/inventory/inventory-detail/components/manage-locations/manage-locations-drawer.tsx b/src/routes/inventory/inventory-detail/components/manage-locations/manage-locations-drawer.tsx
+index b5d0a149164354babd0475017f0bea27944bb1a2..338cb9c7afd682d9a59ecf9a87b6eee3ad592de5 100644
+--- a/src/routes/inventory/inventory-detail/components/manage-locations/manage-locations-drawer.tsx
++++ b/src/routes/inventory/inventory-detail/components/manage-locations/manage-locations-drawer.tsx
+@@ -30,7 +30,9 @@ export const ManageLocationsDrawer = () => {
+   return (
+     <RouteDrawer>
+       <RouteDrawer.Header>
+-        <Heading>{t("inventory.manageLocations")}</Heading>
++        <RouteDrawer.Title asChild>
++          <Heading>{t("inventory.manageLocations")}</Heading>
++        </RouteDrawer.Title>
+       </RouteDrawer.Header>
+       {ready && (
+         <ManageLocationsForm item={inventoryItem} locations={stock_locations} />
+diff --git a/src/routes/inventory/inventory-metadata/inventory-metadata.tsx b/src/routes/inventory/inventory-metadata/inventory-metadata.tsx
+index 4b28255b3e7cd6e07b7bf1de797e37229c0c9f15..741fb9e624af462f29df97169772f8c33575d17d 100644
+--- a/src/routes/inventory/inventory-metadata/inventory-metadata.tsx
++++ b/src/routes/inventory/inventory-metadata/inventory-metadata.tsx
+@@ -2,7 +2,6 @@ import { useParams } from "react-router-dom"
+ 
+ import { useInventoryItem, useUpdateInventoryItem } from "../../../hooks/api"
+ import { MetadataForm } from "../../../components/forms/metadata-form"
+-import { RouteDrawer } from "../../../components/modals"
+ 
+ export const InventoryItemMetadata = () => {
+   const { id } = useParams()
+@@ -19,13 +18,11 @@ export const InventoryItemMetadata = () => {
+   }
+ 
+   return (
+-    <RouteDrawer>
+-      <MetadataForm
+-        isPending={isPending}
+-        isMutating={isMutating}
+-        hook={mutateAsync}
+-        metadata={inventory_item?.metadata}
+-      />
+-    </RouteDrawer>
++    <MetadataForm
++      isPending={isPending}
++      isMutating={isMutating}
++      hook={mutateAsync}
++      metadata={inventory_item?.metadata}
++    />
+   )
+ }
+diff --git a/src/routes/locations/location-edit/location-edit.tsx b/src/routes/locations/location-edit/location-edit.tsx
+index 3fdc78e82c47c6e0f84407f0c249c9985ec44ed6..7d762ebdc77f4ff082dc96b83c13694caccd4860 100644
+--- a/src/routes/locations/location-edit/location-edit.tsx
++++ b/src/routes/locations/location-edit/location-edit.tsx
+@@ -25,7 +25,9 @@ export const LocationEdit = () => {
+   return (
+     <RouteDrawer>
+       <RouteDrawer.Header>
+-        <Heading className="capitalize">{t("locations.editLocation")}</Heading>
++        <RouteDrawer.Title asChild>
++          <Heading className="capitalize">{t("locations.editLocation")}</Heading>
++        </RouteDrawer.Title>
+       </RouteDrawer.Header>
+       {ready && <EditLocationForm location={stock_location} />}
+     </RouteDrawer>
+diff --git a/src/routes/locations/location-service-zone-edit/location-service-zone-edit.tsx b/src/routes/locations/location-service-zone-edit/location-service-zone-edit.tsx
+index a0d494e4fed24ab2a65c6fb7b6db89b1ad4a7dc8..62b393f111a13fb508f36f7448d07f2086099772 100644
+--- a/src/routes/locations/location-service-zone-edit/location-service-zone-edit.tsx
++++ b/src/routes/locations/location-service-zone-edit/location-service-zone-edit.tsx
+@@ -33,7 +33,9 @@ export const LocationServiceZoneEdit = () => {
+   return (
+     <RouteDrawer prev={`/settings/locations/${location_id}`}>
+       <RouteDrawer.Header>
+-        <Heading>{t("stockLocations.serviceZones.edit.header")}</Heading>
++        <RouteDrawer.Title asChild>
++          <Heading>{t("stockLocations.serviceZones.edit.header")}</Heading>
++        </RouteDrawer.Title>
+       </RouteDrawer.Header>
+       {serviceZone && (
+         <EditServiceZoneForm
+diff --git a/src/routes/locations/location-service-zone-shipping-option-edit/location-service-zone-shipping-option-edit.tsx b/src/routes/locations/location-service-zone-shipping-option-edit/location-service-zone-shipping-option-edit.tsx
+index 7b8e47ac4082123e03565ba5776f6270eb7b0258..eb5a0dbedceb6c2c7480d20b662ec02ada8fb241 100644
+--- a/src/routes/locations/location-service-zone-shipping-option-edit/location-service-zone-shipping-option-edit.tsx
++++ b/src/routes/locations/location-service-zone-shipping-option-edit/location-service-zone-shipping-option-edit.tsx
+@@ -38,13 +38,15 @@ export const LocationServiceZoneShippingOptionEdit = () => {
+   return (
+     <RouteDrawer>
+       <RouteDrawer.Header>
+-        <Heading>
+-          {t(
+-            `stockLocations.${
+-              isPickup ? "pickupOptions" : "shippingOptions"
+-            }.edit.header`
+-          )}
+-        </Heading>
++        <RouteDrawer.Title asChild>
++          <Heading>
++            {t(
++              `stockLocations.${
++                isPickup ? "pickupOptions" : "shippingOptions"
++              }.edit.header`
++            )}
++          </Heading>
++        </RouteDrawer.Title>
+       </RouteDrawer.Header>
+       {shippingOption && (
+         <EditShippingOptionForm
 diff --git a/src/routes/login/components/mfa-challenge-form.tsx b/src/routes/login/components/mfa-challenge-form.tsx
 index 31b1ef5119c82926023748dabe8aa624cd878088..840bce3a6a9666124d0caa3fb99f2532b4907c83 100644
 --- a/src/routes/login/components/mfa-challenge-form.tsx
@@ -10491,6 +12040,51 @@ index 805de140d4de367c6f44138cfc65a118e5dd92b5..c7814613392d619b7515e2a7854ef7b6
    "*payment_collections.payments.refunds",
    "*payment_collections.payments.refunds.refund_reason",
    "region.automatic_taxes",
+diff --git a/src/routes/orders/order-edit-billing-address/order-edit-billing-address.tsx b/src/routes/orders/order-edit-billing-address/order-edit-billing-address.tsx
+index 88327223bf3cb4ed194cc11879d550046d36d612..f151beaad632b903f9655b867db29784af299dbc 100644
+--- a/src/routes/orders/order-edit-billing-address/order-edit-billing-address.tsx
++++ b/src/routes/orders/order-edit-billing-address/order-edit-billing-address.tsx
+@@ -22,7 +22,9 @@ export const OrderEditBillingAddress = () => {
+   return (
+     <RouteDrawer>
+       <RouteDrawer.Header>
+-        <Heading>{t("orders.edit.billingAddress.title")}</Heading>
++        <RouteDrawer.Title asChild>
++          <Heading>{t("orders.edit.billingAddress.title")}</Heading>
++        </RouteDrawer.Title>
+       </RouteDrawer.Header>
+ 
+       {order && <EditOrderBillingAddressForm order={order} />}
+diff --git a/src/routes/orders/order-edit-email/order-edit-email.tsx b/src/routes/orders/order-edit-email/order-edit-email.tsx
+index 3411a91ac73fe46de58a11cc77f867823408925e..d0291ee32e8c99361647ef6a4b36a05cedbfca84 100644
+--- a/src/routes/orders/order-edit-email/order-edit-email.tsx
++++ b/src/routes/orders/order-edit-email/order-edit-email.tsx
+@@ -22,7 +22,9 @@ export const OrderEditEmail = () => {
+   return (
+     <RouteDrawer>
+       <RouteDrawer.Header>
+-        <Heading>{t("orders.edit.email.title")}</Heading>
++        <RouteDrawer.Title asChild>
++          <Heading>{t("orders.edit.email.title")}</Heading>
++        </RouteDrawer.Title>
+       </RouteDrawer.Header>
+ 
+       {order && <EditOrderEmailForm order={order} />}
+diff --git a/src/routes/orders/order-edit-shipping-address/order-edit-shipping-address.tsx b/src/routes/orders/order-edit-shipping-address/order-edit-shipping-address.tsx
+index dbb982a073fc563ded1694f5f5426c547bf1f8e6..2d6e4aa7fee95412559eaeff2a58fb285c1d4be4 100644
+--- a/src/routes/orders/order-edit-shipping-address/order-edit-shipping-address.tsx
++++ b/src/routes/orders/order-edit-shipping-address/order-edit-shipping-address.tsx
+@@ -22,7 +22,9 @@ export const OrderEditShippingAddress = () => {
+   return (
+     <RouteDrawer>
+       <RouteDrawer.Header>
+-        <Heading>{t("orders.edit.shippingAddress.title")}</Heading>
++        <RouteDrawer.Title asChild>
++          <Heading>{t("orders.edit.shippingAddress.title")}</Heading>
++        </RouteDrawer.Title>
+       </RouteDrawer.Header>
+ 
+       {order && <EditOrderShippingAddressForm order={order} />}
 diff --git a/src/routes/orders/order-receive-return/components/order-receive-return-form/dismissed-quantity.tsx b/src/routes/orders/order-receive-return/components/order-receive-return-form/dismissed-quantity.tsx
 index 3535fb5c89c7ce690567ba8ef87fff9ae0af733b..1868765d6a3e146165776a62b217e35778ca36c0 100644
 --- a/src/routes/orders/order-receive-return/components/order-receive-return-form/dismissed-quantity.tsx
@@ -10601,6 +12195,68 @@ index c0aa9569d0008a1039925cf45f7b3c438a6f410b..fa480e086fead0e87eeb3293d8d8156e
        </RouteDrawer.Header>
        {ready && (
          <OrderReceiveReturnForm
+diff --git a/src/routes/orders/order-request-transfer/order-request-transfer.tsx b/src/routes/orders/order-request-transfer/order-request-transfer.tsx
+index cf04a599024edfd4f607dc32c2b3a03e84fc48a9..5c340a097d7b43242b7e87a60caec455d16a063f 100644
+--- a/src/routes/orders/order-request-transfer/order-request-transfer.tsx
++++ b/src/routes/orders/order-request-transfer/order-request-transfer.tsx
+@@ -25,7 +25,9 @@ export const OrderRequestTransfer = () => {
+   return (
+     <RouteDrawer>
+       <RouteDrawer.Header>
+-        <Heading>{t("orders.transfer.title")}</Heading>
++        <RouteDrawer.Title asChild>
++          <Heading>{t("orders.transfer.title")}</Heading>
++        </RouteDrawer.Title>
+       </RouteDrawer.Header>
+ 
+       {order && <CreateOrderTransferForm order={order} />}
+diff --git a/src/routes/price-lists/price-list-edit/price-list-edit.tsx b/src/routes/price-lists/price-list-edit/price-list-edit.tsx
+index e7c2c6546865b131d83fda95cebc7c67dbdc2c04..cf35becb450a983361d70a851e36cbd4ee047b47 100644
+--- a/src/routes/price-lists/price-list-edit/price-list-edit.tsx
++++ b/src/routes/price-lists/price-list-edit/price-list-edit.tsx
+@@ -20,7 +20,9 @@ export const PriceListEdit = () => {
+   return (
+     <RouteDrawer>
+       <RouteDrawer.Header>
+-        <Heading>{t("priceLists.edit.header")}</Heading>
++        <RouteDrawer.Title asChild>
++          <Heading>{t("priceLists.edit.header")}</Heading>
++        </RouteDrawer.Title>
+       </RouteDrawer.Header>
+       {ready && <PriceListEditForm priceList={price_list} />}
+     </RouteDrawer>
+diff --git a/src/routes/product-options/product-option-metadata/product-option-metadata.tsx b/src/routes/product-options/product-option-metadata/product-option-metadata.tsx
+index 5757e173e4bece208ec212cca456a721f8ee2381..7261d81246e19150fbc967222fdea07844aeb2a9 100644
+--- a/src/routes/product-options/product-option-metadata/product-option-metadata.tsx
++++ b/src/routes/product-options/product-option-metadata/product-option-metadata.tsx
+@@ -2,7 +2,6 @@ import { useParams } from "react-router-dom"
+ 
+ import { useProductOption, useUpdateProductOption } from "../../../hooks/api"
+ import { MetadataForm } from "../../../components/forms/metadata-form"
+-import { RouteDrawer } from "../../../components/modals"
+ 
+ export const ProductOptionMetadata = () => {
+   const { id } = useParams()
+@@ -15,13 +14,11 @@ export const ProductOptionMetadata = () => {
+   }
+ 
+   return (
+-    <RouteDrawer>
+-      <MetadataForm
+-        isPending={isPending}
+-        isMutating={isMutating}
+-        hook={mutateAsync}
+-        metadata={product_option?.metadata}
+-      />
+-    </RouteDrawer>
++    <MetadataForm
++      isPending={isPending}
++      isMutating={isMutating}
++      hook={mutateAsync}
++      metadata={product_option?.metadata}
++    />
+   )
+ }
 diff --git a/src/routes/product-tags/product-tag-list/loader.ts b/src/routes/product-tags/product-tag-list/loader.ts
 index e1e9f58507eeeeb1ca418511b4d68d955116ce11..cf7422037956ae44cdc2f31cc1cdb685f627e57a 100644
 --- a/src/routes/product-tags/product-tag-list/loader.ts
@@ -10676,6 +12332,21 @@ index beb37eaeece293cbb4b9b0df84e1774d12d0ab07..694eebc277cb641fe5d4952aaa9bb4a3
              </div>
              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                <Form.Field
+diff --git a/src/routes/product-types/product-type-edit/product-type-edit.tsx b/src/routes/product-types/product-type-edit/product-type-edit.tsx
+index 61a1857b69f4a64bf660ba86ce1190b4457280da..f826e3abcaffaf324c2743af352ef2286a70abb6 100644
+--- a/src/routes/product-types/product-type-edit/product-type-edit.tsx
++++ b/src/routes/product-types/product-type-edit/product-type-edit.tsx
+@@ -20,7 +20,9 @@ export const ProductTypeEdit = () => {
+   return (
+     <RouteDrawer>
+       <RouteDrawer.Header>
+-        <Heading>{t("productTypes.edit.header")}</Heading>
++        <RouteDrawer.Title asChild>
++          <Heading>{t("productTypes.edit.header")}</Heading>
++        </RouteDrawer.Title>
+       </RouteDrawer.Header>
+       {ready && <EditProductTypeForm productType={product_type} />}
+     </RouteDrawer>
 diff --git a/src/routes/product-variants/product-variant-detail/components/variant-general-section/variant-general-section.tsx b/src/routes/product-variants/product-variant-detail/components/variant-general-section/variant-general-section.tsx
 index 4f02029ff0cb1378fc9be20fc5495b98dd2c5729..2fd28c4bddf552aa38e5fbade8b9b556606d762c 100644
 --- a/src/routes/product-variants/product-variant-detail/components/variant-general-section/variant-general-section.tsx
@@ -10746,6 +12417,21 @@ index 4f02029ff0cb1378fc9be20fc5495b98dd2c5729..2fd28c4bddf552aa38e5fbade8b9b556
              ]}
            />
          </div>
+diff --git a/src/routes/product-variants/product-variant-edit/product-variant-edit.tsx b/src/routes/product-variants/product-variant-edit/product-variant-edit.tsx
+index fd240a0f3c9142a1481225166309ce64f0ea0a76..ea4708c0a5f3b400c2a6413d91cd998419c4d7a4 100644
+--- a/src/routes/product-variants/product-variant-edit/product-variant-edit.tsx
++++ b/src/routes/product-variants/product-variant-edit/product-variant-edit.tsx
+@@ -54,7 +54,9 @@ export const ProductVariantEdit = () => {
+   return (
+     <RouteDrawer>
+       <RouteDrawer.Header>
+-        <Heading>{t("products.variant.edit.header")}</Heading>
++        <RouteDrawer.Title asChild>
++          <Heading>{t("products.variant.edit.header")}</Heading>
++        </RouteDrawer.Title>
+       </RouteDrawer.Header>
+       {ready && <ProductEditVariantForm variant={variant} product={product} />}
+     </RouteDrawer>
 diff --git a/src/routes/products/product-detail/components/product-general-section/product-general-section.tsx b/src/routes/products/product-detail/components/product-general-section/product-general-section.tsx
 index 17b276e2e45db3b8c891226c0a6ee77913c43f20..c0d74da288f74e761737cbe28d02b6c06b98707a 100644
 --- a/src/routes/products/product-detail/components/product-general-section/product-general-section.tsx
@@ -11048,6 +12734,51 @@ index 0d9c1b8b2602ef58fbfe66dc2a208f05622b092a..6adaac98b63fdbf5c26f816141fe0c54
          cell: ({ row }) => {
            return <ProductActions product={row.original} />
          },
+diff --git a/src/routes/promotions/common/edit-rules/edit-rules.tsx b/src/routes/promotions/common/edit-rules/edit-rules.tsx
+index e9ef0e1964de69372e50c30a70558bd5ca8015be..9c6a97bfef993fefc6432d5d37eefa8816bffc7a 100644
+--- a/src/routes/promotions/common/edit-rules/edit-rules.tsx
++++ b/src/routes/promotions/common/edit-rules/edit-rules.tsx
+@@ -48,7 +48,9 @@ export const EditRules = () => {
+   return (
+     <RouteDrawer>
+       <RouteDrawer.Header>
+-        <Heading>{t(`promotions.edit.${ruleType}.title`)}</Heading>
++        <RouteDrawer.Title asChild>
++          <Heading>{t(`promotions.edit.${ruleType}.title`)}</Heading>
++        </RouteDrawer.Title>
+       </RouteDrawer.Header>
+ 
+       {!isLoading && promotion && (
+diff --git a/src/routes/promotions/promotion-add-campaign/promotion-add-campaign.tsx b/src/routes/promotions/promotion-add-campaign/promotion-add-campaign.tsx
+index 1f53c37c96dd496666d87855e2dca6d2b69fb7de..bfbd9005e0dfddc9fec54e685a6fb719920dd71b 100644
+--- a/src/routes/promotions/promotion-add-campaign/promotion-add-campaign.tsx
++++ b/src/routes/promotions/promotion-add-campaign/promotion-add-campaign.tsx
+@@ -18,7 +18,9 @@ export const PromotionAddCampaign = () => {
+   return (
+     <RouteDrawer>
+       <RouteDrawer.Header>
+-        <Heading>{t("promotions.campaign.edit.header")}</Heading>
++        <RouteDrawer.Title asChild>
++          <Heading>{t("promotions.campaign.edit.header")}</Heading>
++        </RouteDrawer.Title>
+       </RouteDrawer.Header>
+ 
+       {!isPending && promotion && (
+diff --git a/src/routes/promotions/promotion-edit-details/promotion-edit-details.tsx b/src/routes/promotions/promotion-edit-details/promotion-edit-details.tsx
+index 94c2177a898371bf789ff6c5afc39f5e95c39241..ae7bbbea7ad7ef9e8387e9ab44f9f33b95536b1b 100644
+--- a/src/routes/promotions/promotion-edit-details/promotion-edit-details.tsx
++++ b/src/routes/promotions/promotion-edit-details/promotion-edit-details.tsx
+@@ -19,7 +19,9 @@ export const PromotionEditDetails = () => {
+   return (
+     <RouteDrawer>
+       <RouteDrawer.Header>
+-        <Heading>{t("promotions.edit.title")}</Heading>
++        <RouteDrawer.Title asChild>
++          <Heading>{t("promotions.edit.title")}</Heading>
++        </RouteDrawer.Title>
+       </RouteDrawer.Header>
+ 
+       {!isLoading && promotion && (
 diff --git a/src/routes/regions/region-add-countries/components/add-countries-form/add-countries-form.tsx b/src/routes/regions/region-add-countries/components/add-countries-form/add-countries-form.tsx
 index c2bbe16e580b6eb30ee7d92e56c14ead0faa92a5..0df0a59142b9755c970bb0f113e0790cc2257342 100644
 --- a/src/routes/regions/region-add-countries/components/add-countries-form/add-countries-form.tsx
@@ -11086,6 +12817,32 @@ index c2bbe16e580b6eb30ee7d92e56c14ead0faa92a5..0df0a59142b9755c970bb0f113e0790c
 +    [base, t]
    ) as ColumnDef<StaticCountry>[]
  }
+diff --git a/src/routes/regions/region-add-countries/region-add-countries.tsx b/src/routes/regions/region-add-countries/region-add-countries.tsx
+index 4f56b88d0ad94bfa4043ad60bd7a284b3307e012..d555237f73116273afeded8b5e3ae707475372e5 100644
+--- a/src/routes/regions/region-add-countries/region-add-countries.tsx
++++ b/src/routes/regions/region-add-countries/region-add-countries.tsx
+@@ -1,9 +1,11 @@
++import { useTranslation } from "react-i18next"
+ import { useParams } from "react-router-dom"
+ import { RouteFocusModal } from "../../../components/modals"
+ import { useRegion } from "../../../hooks/api/regions"
+ import { AddCountriesForm } from "./components/add-countries-form"
+ 
+ export const RegionAddCountries = () => {
++  const { t } = useTranslation()
+   const { id } = useParams()
+ 
+   const {
+@@ -21,6 +23,9 @@ export const RegionAddCountries = () => {
+ 
+   return (
+     <RouteFocusModal>
++      <RouteFocusModal.Title className="sr-only">
++        {t("regions.addCountries")}
++      </RouteFocusModal.Title>
+       {!isLoading && region && <AddCountriesForm region={region} />}
+     </RouteFocusModal>
+   )
 diff --git a/src/routes/regions/region-create/components/create-region-form/create-region-form.tsx b/src/routes/regions/region-create/components/create-region-form/create-region-form.tsx
 index f4ca47eab6c4eb32a639320762995e74bd20b56a..e4325f321e5defa8c5b02b00a717761c003345fb 100644
 --- a/src/routes/regions/region-create/components/create-region-form/create-region-form.tsx
@@ -11171,6 +12928,32 @@ index f4ca47eab6c4eb32a639320762995e74bd20b56a..e4325f321e5defa8c5b02b00a717761c
    )
  }
  
+diff --git a/src/routes/regions/region-create/region-create.tsx b/src/routes/regions/region-create/region-create.tsx
+index a83fe875ee0966de79bcd92b31ac2ac5b302789e..7834eefc1ef6901fc5bfa4e8ac01ca8c3fc3bb8a 100644
+--- a/src/routes/regions/region-create/region-create.tsx
++++ b/src/routes/regions/region-create/region-create.tsx
+@@ -1,9 +1,11 @@
++import { useTranslation } from "react-i18next"
+ import { RouteFocusModal } from "../../../components/modals/route-focus-modal"
+ import { useStore } from "../../../hooks/api/store"
+ import { currencies } from "../../../lib/data/currencies"
+ import { CreateRegionForm } from "./components/create-region-form"
+ 
+ export const RegionCreate = () => {
++  const { t } = useTranslation()
+   const { store, isPending: isLoading, isError, error } = useStore()
+ 
+   const storeCurrencies = (store?.supported_currencies ?? [])
+@@ -16,6 +18,9 @@ export const RegionCreate = () => {
+ 
+   return (
+     <RouteFocusModal>
++      <RouteFocusModal.Title className="sr-only">
++        {t("regions.createRegion")}
++      </RouteFocusModal.Title>
+       {!isLoading && store && <CreateRegionForm currencies={storeCurrencies} />}
+     </RouteFocusModal>
+   )
 diff --git a/src/routes/regions/region-detail/components/region-country-section/region-country-section.tsx b/src/routes/regions/region-detail/components/region-country-section/region-country-section.tsx
 index 6dc7d17389eaf954d2ff9d7719398617446a1955..ff1064b05a865cc54d24cab45aa0453412d5adba 100644
 --- a/src/routes/regions/region-detail/components/region-country-section/region-country-section.tsx
@@ -11314,6 +13097,134 @@ index ce9fad16fd2207bd51d8380a6b626e45d5194fe3..f5d48d9c2600be1ad1013805b9d8f27d
 +    [base, t]
    )
  }
+diff --git a/src/routes/regions/region-metadata/region-metadata.tsx b/src/routes/regions/region-metadata/region-metadata.tsx
+index 975bd0fc245d9c4aadd86d0a9cdc2e64f1c6a737..a5729b51d5dc89f9fc7974e8892947209de4dd7c 100644
+--- a/src/routes/regions/region-metadata/region-metadata.tsx
++++ b/src/routes/regions/region-metadata/region-metadata.tsx
+@@ -1,7 +1,7 @@
+ import { useParams } from "react-router-dom"
+ 
+ import { MetadataForm } from "../../../components/forms/metadata-form"
+-import { RouteDrawer } from "../../../components/modals"
++
+ import { useRegion, useUpdateRegion } from "../../../hooks/api"
+ 
+ export const RegionMetadata = () => {
+@@ -15,13 +15,11 @@ export const RegionMetadata = () => {
+   }
+ 
+   return (
+-    <RouteDrawer>
+-      <MetadataForm
+-        isPending={isPending}
+-        isMutating={isMutating}
+-        hook={mutateAsync}
+-        metadata={region?.metadata}
+-      />
+-    </RouteDrawer>
++    <MetadataForm
++      isPending={isPending}
++      isMutating={isMutating}
++      hook={mutateAsync}
++      metadata={region?.metadata}
++    />
+   )
+ }
+diff --git a/src/routes/reservations/reservation-detail/components/edit-reservation/edit-reservation-modal.tsx b/src/routes/reservations/reservation-detail/components/edit-reservation/edit-reservation-modal.tsx
+index 65029b58646a9edbcff816055300efbabdd4842f..f67f0682a0ccc37d79ef82eab1afb57d694e4bf8 100644
+--- a/src/routes/reservations/reservation-detail/components/edit-reservation/edit-reservation-modal.tsx
++++ b/src/routes/reservations/reservation-detail/components/edit-reservation/edit-reservation-modal.tsx
+@@ -37,7 +37,9 @@ export const ReservationEdit = () => {
+   return (
+     <RouteDrawer>
+       <RouteDrawer.Header>
+-        <Heading>{t("inventory.reservation.editItemDetails")}</Heading>
++        <RouteDrawer.Title asChild>
++          <Heading>{t("inventory.reservation.editItemDetails")}</Heading>
++        </RouteDrawer.Title>
+       </RouteDrawer.Header>
+       {ready && (
+         <EditReservationForm
+diff --git a/src/routes/reservations/reservation-metadata/reservation-metadata.tsx b/src/routes/reservations/reservation-metadata/reservation-metadata.tsx
+index 5d6d634e1ebad46243aaf236c4acfce3dc2bd2b6..b0d615b53d772e858593ba116c1253904208c1ae 100644
+--- a/src/routes/reservations/reservation-metadata/reservation-metadata.tsx
++++ b/src/routes/reservations/reservation-metadata/reservation-metadata.tsx
+@@ -5,7 +5,6 @@ import {
+   useUpdateReservationItem,
+ } from "../../../hooks/api"
+ import { MetadataForm } from "../../../components/forms/metadata-form"
+-import { RouteDrawer } from "../../../components/modals"
+ 
+ export const ReservationMetadata = () => {
+   const { id } = useParams()
+@@ -22,13 +21,11 @@ export const ReservationMetadata = () => {
+   }
+ 
+   return (
+-    <RouteDrawer>
+-      <MetadataForm
+-        isPending={isPending}
+-        isMutating={isMutating}
+-        hook={mutateAsync}
+-        metadata={reservation?.metadata}
+-      />
+-    </RouteDrawer>
++    <MetadataForm
++      isPending={isPending}
++      isMutating={isMutating}
++      hook={mutateAsync}
++      metadata={reservation?.metadata}
++    />
+   )
+ }
+diff --git a/src/routes/roles/role-add-users/role-add-users.tsx b/src/routes/roles/role-add-users/role-add-users.tsx
+index b3526392f7e0ea9997493c9203287d4c223c8d36..d809664bfdcef0715372a5c82887382b416635b3 100644
+--- a/src/routes/roles/role-add-users/role-add-users.tsx
++++ b/src/routes/roles/role-add-users/role-add-users.tsx
+@@ -1,13 +1,18 @@
++import { useTranslation } from "react-i18next"
+ import { useParams } from "react-router-dom"
+ 
+ import { RouteFocusModal } from "../../../components/modals"
+ import { AddUsersForm } from "./components/add-users-form"
+ 
+ export const RoleAddUsers = () => {
++  const { t } = useTranslation()
+   const { id } = useParams()
+ 
+   return (
+     <RouteFocusModal>
++      <RouteFocusModal.Title className="sr-only">
++        {t("users.domain")}
++      </RouteFocusModal.Title>
+       <AddUsersForm roleId={id!} />
+     </RouteFocusModal>
+   )
+diff --git a/src/routes/roles/role-create/role-create.tsx b/src/routes/roles/role-create/role-create.tsx
+index 82465d56c8e28afb7f7edc80b2bd62627fa2a37d..d8a085f61242994a56bfe7225ce7020e688dec34 100644
+--- a/src/routes/roles/role-create/role-create.tsx
++++ b/src/routes/roles/role-create/role-create.tsx
+@@ -1,8 +1,10 @@
++import { useTranslation } from "react-i18next"
+ import { RouteFocusModal } from "../../../components/modals"
+ import { useRequireRbacFeature } from "../../../hooks/use-require-rbac-feature"
+ import { CreateRoleForm } from "./components/create-role-form"
+ 
+ export const RoleCreate = () => {
++  const { t } = useTranslation()
+   const isRbacEnabled = useRequireRbacFeature()
+ 
+   if (!isRbacEnabled) {
+@@ -11,6 +13,9 @@ export const RoleCreate = () => {
+ 
+   return (
+     <RouteFocusModal>
++      <RouteFocusModal.Title className="sr-only">
++        {t("roles.create.header")}
++      </RouteFocusModal.Title>
+       <CreateRoleForm />
+     </RouteFocusModal>
+   )
 diff --git a/src/routes/roles/role-detail/components/role-general-section/role-general-section.tsx b/src/routes/roles/role-detail/components/role-general-section/role-general-section.tsx
 index cede800d7f358e0b182cb932abfcb02640c211aa..7421a3091b27dadf992e11b3f7a9fb77e2daa306 100644
 --- a/src/routes/roles/role-detail/components/role-general-section/role-general-section.tsx
@@ -11454,8 +13365,110 @@ index d4826d89b3b9f121f8b40583701f50ca947292c8..68ab3b967305d4f5b157520906484b13
              >
                {t("actions.save")}
              </Button>
+diff --git a/src/routes/roles/role-permissions/role-permissions.tsx b/src/routes/roles/role-permissions/role-permissions.tsx
+index c421dd8883ae4fcdc9907a26e81e20801059bb82..8231c000f63a8411e82811fe8615ce713e63c093 100644
+--- a/src/routes/roles/role-permissions/role-permissions.tsx
++++ b/src/routes/roles/role-permissions/role-permissions.tsx
+@@ -19,21 +19,17 @@ export const RolePermissions = () => {
+ 
+   return (
+     <RouteDrawer>
+-      {!isPending && role && (
+-        <>
+-          <RouteDrawer.Header>
+-            <RouteDrawer.Title asChild>
+-              <Heading>
+-                {t("roles.permissions.header", { name: role.name })}
+-              </Heading>
+-            </RouteDrawer.Title>
+-            <RouteDrawer.Description className="sr-only">
+-              {t("roles.permissions.hint")}
+-            </RouteDrawer.Description>
+-          </RouteDrawer.Header>
+-          <EditRolePermissionsForm role={role} />
+-        </>
+-      )}
++      <RouteDrawer.Header>
++        <RouteDrawer.Title asChild>
++          <Heading>
++            {t("roles.permissions.header", { name: role?.name })}
++          </Heading>
++        </RouteDrawer.Title>
++        <RouteDrawer.Description className="sr-only">
++          {t("roles.permissions.hint")}
++        </RouteDrawer.Description>
++      </RouteDrawer.Header>
++      {!isPending && role && <EditRolePermissionsForm role={role} />}
+     </RouteDrawer>
+   )
+ }
+diff --git a/src/routes/sales-channels/sales-channel-edit/sales-channel-edit.tsx b/src/routes/sales-channels/sales-channel-edit/sales-channel-edit.tsx
+index 38dd6e29a68854de7b5851b25e72fb30028c26cc..7e1798c292667a45bb11ae946c3aabaff9c190a0 100644
+--- a/src/routes/sales-channels/sales-channel-edit/sales-channel-edit.tsx
++++ b/src/routes/sales-channels/sales-channel-edit/sales-channel-edit.tsx
+@@ -24,9 +24,11 @@ export const SalesChannelEdit = () => {
+   return (
+     <RouteDrawer>
+       <RouteDrawer.Header>
+-        <Heading className="capitalize">
+-          {t("salesChannels.editSalesChannel")}
+-        </Heading>
++        <RouteDrawer.Title asChild>
++          <Heading className="capitalize">
++            {t("salesChannels.editSalesChannel")}
++          </Heading>
++        </RouteDrawer.Title>
+       </RouteDrawer.Header>
+       {!isLoading && !!sales_channel && (
+         <EditSalesChannelForm salesChannel={sales_channel} />
+diff --git a/src/routes/sales-channels/sales-channel-metadata/sales-channel-metadata.tsx b/src/routes/sales-channels/sales-channel-metadata/sales-channel-metadata.tsx
+index 6ea27036d088bad51805152be79557e22ba4c39d..8660169250621dbc175c678c7516ae46f4dbb356 100644
+--- a/src/routes/sales-channels/sales-channel-metadata/sales-channel-metadata.tsx
++++ b/src/routes/sales-channels/sales-channel-metadata/sales-channel-metadata.tsx
+@@ -1,6 +1,5 @@
+ import { useParams } from "react-router-dom"
+ 
+-import { RouteDrawer } from "../../../components/modals"
+ import { MetadataForm } from "../../../components/forms/metadata-form"
+ import { useSalesChannel, useUpdateSalesChannel } from "../../../hooks/api"
+ 
+@@ -20,13 +19,11 @@ export const SalesChannelMetadata = () => {
+   }
+ 
+   return (
+-    <RouteDrawer>
+-      <MetadataForm
+-        isPending={isPending}
+-        isMutating={isMutating}
+-        hook={mutateAsync}
+-        metadata={salesChannel?.metadata}
+-      />
+-    </RouteDrawer>
++    <MetadataForm
++      isPending={isPending}
++      isMutating={isMutating}
++      hook={mutateAsync}
++      metadata={salesChannel?.metadata}
++    />
+   )
+ }
+diff --git a/src/routes/shipping-option-types/shipping-option-type-edit/shipping-option-type-edit.tsx b/src/routes/shipping-option-types/shipping-option-type-edit/shipping-option-type-edit.tsx
+index 3b6d3cc9ec7767efe2cefb6df1f359aa4c98c831..3773ba833fb9b3888c009a51f843178a5342df88 100644
+--- a/src/routes/shipping-option-types/shipping-option-type-edit/shipping-option-type-edit.tsx
++++ b/src/routes/shipping-option-types/shipping-option-type-edit/shipping-option-type-edit.tsx
+@@ -21,7 +21,9 @@ export const ShippingOptionTypeEdit = () => {
+   return (
+     <RouteDrawer>
+       <RouteDrawer.Header>
+-        <Heading>{t("shippingOptionTypes.edit.header")}</Heading>
++        <RouteDrawer.Title asChild>
++          <Heading>{t("shippingOptionTypes.edit.header")}</Heading>
++        </RouteDrawer.Title>
+       </RouteDrawer.Header>
+       {ready && (
+         <EditShippingOptionTypeForm shippingOptionType={shipping_option_type} />
 diff --git a/src/routes/store/store-add-currencies/components/add-currencies-form/add-currencies-form.tsx b/src/routes/store/store-add-currencies/components/add-currencies-form/add-currencies-form.tsx
-index 7f6b4aca6630156eae3b646aaa8da65211de958d..442025f880e409e00853c2265444e57a83da6796 100644
+index 7f6b4aca6630156eae3b646aaa8da65211de958d..2421ee099606df880cd03e500df5a92934281fec 100644
 --- a/src/routes/store/store-add-currencies/components/add-currencies-form/add-currencies-form.tsx
 +++ b/src/routes/store/store-add-currencies/components/add-currencies-form/add-currencies-form.tsx
 @@ -250,6 +250,8 @@ const useColumns = (
@@ -11476,6 +13489,40 @@ index 7f6b4aca6630156eae3b646aaa8da65211de958d..442025f880e409e00853c2265444e57a
                checked={isSelected}
                disabled={isPreSelected}
                onCheckedChange={(value) => row.toggleSelected(!!value)}
+@@ -301,6 +305,7 @@ const useColumns = (
+           return (
+             <div className="flex items-center justify-end">
+               <Switch
++                aria-label={`${t("fields.taxInclusivePricing")}: ${row.original.code.toUpperCase()}`}
+                 dir="ltr"
+                 className="rtl:rotate-180"
+                 disabled={isPreSelected}
+diff --git a/src/routes/store/store-add-currencies/store-add-currencies.tsx b/src/routes/store/store-add-currencies/store-add-currencies.tsx
+index d51587d583ba49e74d19e9800ce222ac08ed09fe..daf1430f46409121379c02a4a13e6ee01ceffd84 100644
+--- a/src/routes/store/store-add-currencies/store-add-currencies.tsx
++++ b/src/routes/store/store-add-currencies/store-add-currencies.tsx
+@@ -1,9 +1,11 @@
++import { useTranslation } from "react-i18next"
+ import { RouteFocusModal } from "../../../components/modals"
+ import { usePricePreferences } from "../../../hooks/api/price-preferences"
+ import { useStore } from "../../../hooks/api/store"
+ import { AddCurrenciesForm } from "./components/add-currencies-form/add-currencies-form"
+ 
+ export const StoreAddCurrencies = () => {
++  const { t } = useTranslation()
+   const { store, isPending, isError, error } = useStore()
+ 
+   const {
+@@ -34,6 +36,9 @@ export const StoreAddCurrencies = () => {
+ 
+   return (
+     <RouteFocusModal>
++      <RouteFocusModal.Title className="sr-only">
++        {t("store.addCurrencies")}
++      </RouteFocusModal.Title>
+       {ready && (
+         <AddCurrenciesForm store={store} pricePreferences={pricePreferences} />
+       )}
 diff --git a/src/routes/store/store-detail/components/store-currency-section/store-currency-section.tsx b/src/routes/store/store-detail/components/store-currency-section/store-currency-section.tsx
 index e79afbbf7133e25e1258925c2daa9670cd34bf73..2a72ee9d1884dd9bcfec510f5fd352e7ec3579c4 100644
 --- a/src/routes/store/store-detail/components/store-currency-section/store-currency-section.tsx
@@ -11556,6 +13603,52 @@ index 2619b5eaeae331307bc0265590b12777b0962dd2..f5754b39d5ceb34eff6f7c92f654a63e
                    </Form.Item>
                  )
                }}
+diff --git a/src/routes/store/store-edit/store-edit.tsx b/src/routes/store/store-edit/store-edit.tsx
+index e337fbfd1040ad541364d0eee07452898208691e..654e4593ec744b36f46537fc8888511c8405780a 100644
+--- a/src/routes/store/store-edit/store-edit.tsx
++++ b/src/routes/store/store-edit/store-edit.tsx
+@@ -17,7 +17,9 @@ export const StoreEdit = () => {
+   return (
+     <RouteDrawer>
+       <RouteDrawer.Header>
+-        <Heading>{t("store.edit.header")}</Heading>
++        <RouteDrawer.Title asChild>
++          <Heading>{t("store.edit.header")}</Heading>
++        </RouteDrawer.Title>
+       </RouteDrawer.Header>
+       {ready && <EditStoreForm store={store} />}
+     </RouteDrawer>
+diff --git a/src/routes/store/store-metadata/store-metadata.tsx b/src/routes/store/store-metadata/store-metadata.tsx
+index 86b0715d43603e76d0ddb4383c6408b228f3324d..d6c5e6de4e7cbd257b690ac571f4b6a416d46307 100644
+--- a/src/routes/store/store-metadata/store-metadata.tsx
++++ b/src/routes/store/store-metadata/store-metadata.tsx
+@@ -1,5 +1,5 @@
+ import { MetadataForm } from "../../../components/forms/metadata-form"
+-import { RouteDrawer } from "../../../components/modals"
++
+ import { useStore, useUpdateStore } from "../../../hooks/api"
+ 
+ export const StoreMetadata = () => {
+@@ -12,13 +12,11 @@ export const StoreMetadata = () => {
+   }
+ 
+   return (
+-    <RouteDrawer>
+-      <MetadataForm
+-        isPending={isPending}
+-        isMutating={isMutating}
+-        hook={mutateAsync}
+-        metadata={store?.metadata}
+-      />
+-    </RouteDrawer>
++    <MetadataForm
++      isPending={isPending}
++      isMutating={isMutating}
++      hook={mutateAsync}
++      metadata={store?.metadata}
++    />
+   )
+ }
 diff --git a/src/routes/tax-regions/common/components/tax-region-card/tax-region-card.tsx b/src/routes/tax-regions/common/components/tax-region-card/tax-region-card.tsx
 index 554651806156c16b8b1d1c173f42f75138ecbc53..079e084a757e1e6d6d3b02c5244187600492f694 100644
 --- a/src/routes/tax-regions/common/components/tax-region-card/tax-region-card.tsx
@@ -11604,6 +13697,25 @@ index cb78a3af0901538ce5aeaf46896dec8305624b56..af8e49c78f16e46f009be8fa4a56cfbf
                  prefix={prefix}
                />
              </div>
+diff --git a/src/routes/tax-regions/tax-region-create/tax-region-create.tsx b/src/routes/tax-regions/tax-region-create/tax-region-create.tsx
+index 680cca3578fcd72d97b1e97f59e88be5fa3279e8..847d85f50278fc52a308a49420ba2cad762c433c 100644
+--- a/src/routes/tax-regions/tax-region-create/tax-region-create.tsx
++++ b/src/routes/tax-regions/tax-region-create/tax-region-create.tsx
+@@ -1,9 +1,14 @@
++import { useTranslation } from "react-i18next"
+ import { RouteFocusModal } from "../../../components/modals"
+ import { TaxRegionCreateForm } from "./components/tax-region-create-form"
+ 
+ export const TaxRegionCreate = () => {
++  const { t } = useTranslation()
+   return (
+     <RouteFocusModal>
++      <RouteFocusModal.Title className="sr-only">
++        {t("taxRegions.create.header")}
++      </RouteFocusModal.Title>
+       <TaxRegionCreateForm />
+     </RouteFocusModal>
+   )
 diff --git a/src/routes/tax-regions/tax-region-detail/components/tax-region-province-section/tax-region-province-section.tsx b/src/routes/tax-regions/tax-region-detail/components/tax-region-province-section/tax-region-province-section.tsx
 index 2c6fcfcbf0780365a018b268d1c038b13ca704a0..533220d080356bf5d4b6f053502bc5d13661dd7b 100644
 --- a/src/routes/tax-regions/tax-region-detail/components/tax-region-province-section/tax-region-province-section.tsx
@@ -11629,6 +13741,59 @@ index bf95a1eb0226d7194e7ed7e00c2396a5a526f9dd..18f7e5b70c2c080507731336b1156e4d
        parent_id: "null",
      },
      {
+diff --git a/src/routes/tax-regions/tax-region-province-create/tax-region-province-create.tsx b/src/routes/tax-regions/tax-region-province-create/tax-region-province-create.tsx
+index 25a88a625d289c94ae5be23fac501bd85c5c7157..6e7f183fff2ce28b497d2e2c5c5d877423eead83 100644
+--- a/src/routes/tax-regions/tax-region-province-create/tax-region-province-create.tsx
++++ b/src/routes/tax-regions/tax-region-province-create/tax-region-province-create.tsx
+@@ -1,9 +1,12 @@
++import { getCountryProvinceObjectByIso2 } from "../../../lib/data/country-states"
++import { useTranslation } from "react-i18next"
+ import { useParams } from "react-router-dom"
+ import { RouteFocusModal } from "../../../components/modals"
+ import { useTaxRegion } from "../../../hooks/api/tax-regions"
+ import { TaxRegionProvinceCreateForm } from "./components/tax-region-province-create-form"
+ 
+ export const TaxProvinceCreate = () => {
++  const { t } = useTranslation()
+   const { id } = useParams()
+ 
+   const { tax_region, isPending, isError, error } = useTaxRegion(id!)
+@@ -16,6 +19,9 @@ export const TaxProvinceCreate = () => {
+ 
+   return (
+     <RouteFocusModal>
++      <RouteFocusModal.Title className="sr-only">
++        {t(`taxRegions.${getCountryProvinceObjectByIso2(tax_region?.country_code || "")?.type || "sublevel"}.create.header`)}
++      </RouteFocusModal.Title>
+       {ready && <TaxRegionProvinceCreateForm parent={tax_region} />}
+     </RouteFocusModal>
+   )
+diff --git a/src/routes/tax-regions/tax-region-tax-rate-create/tax-region-tax-rate-create.tsx b/src/routes/tax-regions/tax-region-tax-rate-create/tax-region-tax-rate-create.tsx
+index 447337cc88f7342863ca2b39250a0568becc35b7..9c99655e3be27ed46c61a25658907554cc039e81 100644
+--- a/src/routes/tax-regions/tax-region-tax-rate-create/tax-region-tax-rate-create.tsx
++++ b/src/routes/tax-regions/tax-region-tax-rate-create/tax-region-tax-rate-create.tsx
+@@ -1,9 +1,11 @@
++import { useTranslation } from "react-i18next"
+ import { useParams } from "react-router-dom"
+ import { RouteFocusModal } from "../../../components/modals"
+ import { useTaxRegion } from "../../../hooks/api/tax-regions"
+ import { TaxRegionTaxRateCreateForm } from "./components/tax-region-tax-rate-create-form"
+ 
+ export const TaxRegionTaxRateCreate = () => {
++  const { t } = useTranslation()
+   const { id, province_id } = useParams()
+ 
+   const { tax_region, isPending, isError, error } = useTaxRegion(
+@@ -18,6 +20,9 @@ export const TaxRegionTaxRateCreate = () => {
+ 
+   return (
+     <RouteFocusModal>
++      <RouteFocusModal.Title className="sr-only">
++        {t("taxRegions.taxRates.create.header")}
++      </RouteFocusModal.Title>
+       {ready && (
+         <TaxRegionTaxRateCreateForm
+           taxRegion={tax_region}
 diff --git a/src/routes/users/user-detail/components/user-general-section/user-general-section.tsx b/src/routes/users/user-detail/components/user-general-section/user-general-section.tsx
 index 10de0efc58d6af35a7bd10ebd7651f38728d1f52..4ed1f01a8b30872a48f3eef43949680e1df099ff 100644
 --- a/src/routes/users/user-detail/components/user-general-section/user-general-section.tsx
@@ -11651,6 +13816,21 @@ index 10de0efc58d6af35a7bd10ebd7651f38728d1f52..4ed1f01a8b30872a48f3eef43949680e
        onSuccess: () => {
          toast.success(t("users.deleteUserSuccess", { name: user.email }))
          navigate("..")
+diff --git a/src/routes/users/user-edit/user-edit.tsx b/src/routes/users/user-edit/user-edit.tsx
+index f5fd2a28856b65bfc591e2c8116c5ffe3ccd33ea..ef5933386f9d669dd74a9b5edaf40aab1252b553 100644
+--- a/src/routes/users/user-edit/user-edit.tsx
++++ b/src/routes/users/user-edit/user-edit.tsx
+@@ -17,7 +17,9 @@ export const UserEdit = () => {
+   return (
+     <RouteDrawer>
+       <RouteDrawer.Header>
+-        <Heading>{t("users.editUser")}</Heading>
++        <RouteDrawer.Title asChild>
++          <Heading>{t("users.editUser")}</Heading>
++        </RouteDrawer.Title>
+       </RouteDrawer.Header>
+       {!isLoading && user && <EditUserForm user={user} />}
+     </RouteDrawer>
 diff --git a/src/routes/users/user-list/components/user-list-table/user-list-table.tsx b/src/routes/users/user-list/components/user-list-table/user-list-table.tsx
 index 449d2361a11c6e8d413281850881ad575e09306d..54032489bcc3f491e145211ba3e15be927209ba5 100644
 --- a/src/routes/users/user-list/components/user-list-table/user-list-table.tsx
@@ -11686,3 +13866,36 @@ index 449d2361a11c6e8d413281850881ad575e09306d..54032489bcc3f491e145211ba3e15be9
          cell: ({ row }) => <UserListTableActions user={row.original} />,
        }),
      ],
+diff --git a/src/routes/users/user-metadata/user-metadata.tsx b/src/routes/users/user-metadata/user-metadata.tsx
+index e88f49e798898a97a79d3cfec46ee3199f47be5f..0ed9ae2fb91b21c2fcbe27a8b55235a987765cf5 100644
+--- a/src/routes/users/user-metadata/user-metadata.tsx
++++ b/src/routes/users/user-metadata/user-metadata.tsx
+@@ -1,7 +1,7 @@
+ import { useParams } from "react-router-dom"
+ 
+ import { MetadataForm } from "../../../components/forms/metadata-form"
+-import { RouteDrawer } from "../../../components/modals"
++
+ import { useUpdateUser, useUser } from "../../../hooks/api"
+ 
+ export const UserMetadata = () => {
+@@ -15,13 +15,11 @@ export const UserMetadata = () => {
+   }
+ 
+   return (
+-    <RouteDrawer>
+-      <MetadataForm
+-        isPending={isPending}
+-        isMutating={isMutating}
+-        hook={mutateAsync}
+-        metadata={user?.metadata}
+-      />
+-    </RouteDrawer>
++    <MetadataForm
++      isPending={isPending}
++      isMutating={isMutating}
++      hook={mutateAsync}
++      metadata={user?.metadata}
++    />
+   )
+ }

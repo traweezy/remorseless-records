@@ -2,6 +2,147 @@
 
 Last reviewed: October 11, 2026 UTC
 
+October 11, 22:39 UTC native dialog/metadata correction passes local acceptance.
+Retain four Settings modes × 61 checkpoints from the independently cleaned
+combined run, then four News modes × 12 from the separate full-service run.
+An exact comparison proves all 1,695 application inputs, the compiled Admin
+identity and reviewed sandboxed Chrome are identical across runs; only four
+continuation documents change. All 292 screenshot/Axe hashes verify. Dialogs
+have one intended name, currency switches have contextual names, and metadata
+row actions are named, visible through keyboard focus, pointer-styled and at
+least 24 pixels. Light/dark desktop/phone PNGs are visually reviewed.
+
+The unchanged service command passes at 22:37:42 UTC: 158 native cases, 44
+payment cases and 38/8/2/1/3/6 remaining service cases, with no skips. Independent
+cleanup verifies 2,047 unchanged inputs, 599 closed relays, 746 known identities
+absent and owned resources/listeners absent. All four News browsers close
+naturally; no Root signal is sent for this run. Its separate process observer
+ends 143 after 24 snapshots, last at 22:34:34 UTC; signal origin is unproved.
+Join those finite observations to native browser and relay ledgers. Do not
+claim observation of the remaining interval or unobserved descendants.
+The prior combined timeout stays failed and its phone results stay absent.
+
+Shared lint/types, frozen installation, normal/fixture Admin and Storefront
+builds and fresh strict image scans pass. Normal commit/push hooks, exact
+staging CI and deployed acceptance are next; no new release is accepted yet.
+Metadata post-Escape focus restoration and missing News HTTP status remain
+explicit follow-ups. Batch 6 is open; client cloning remains paused.
+Evidence: `artifacts/end-to-end-audit-2026-10-11/native-dialog-metadata-local-accepted.json`
+and `native-news-service-dialog-metadata-full/independent-cleanup.json`.
+
+October 11, 22:31 UTC native Settings is verified locally; the combined run
+fails its original 900-second command limit at 22:28:50 UTC. All four Settings
+modes pass 61 checkpoints each, with zero title warnings and natural browser
+closure; two desktop News modes pass 12 each. Phone News results and chained
+service checks are absent and remain unaccepted. Independent timeout cleanup
+verifies 2,047 unchanged inputs, 547 closed relays, 1,098 known identities absent
+and owned resources/listeners absent. One exact orphaned phone News browser
+root needs PID/start-tick/executable/command-hash-bound pidfd SIGTERM. This is
+timeout cleanup, not a natural full-command pass. Preserve both rejected
+cleanup assertions and their corrected exact-identity/schema checks.
+
+Keep every original test and the 900/240-second limits. Run the original full
+service command with only the existing News browser opt-in, while retaining
+the independently cleaned four-mode Settings evidence above. Ordinary Settings
+HTTP tests stay enabled. No application patch changes are needed for this
+scheduling correction; repeat fresh image scans and freeze the new captured
+inputs through independent cleanup. Desktop and phone light/dark drawer PNGs
+show fitting layouts; currency labels and the 24-pixel keyboard row menu pass.
+Batch 6 is still open; no new push or deployment acceptance is claimed. All-nine
+observation continues in `all-nine-observation-2223/`; client cloning is paused.
+Evidence: `artifacts/end-to-end-audit-2026-10-11/native-settings-news-dialog-metadata-full/independent-timeout-cleanup.json`
+and `native-news-service-dialog-metadata-full/`.
+
+October 11, 22:13 UTC corrected local build gates pass; full acceptance is pending.
+Shared lint/types, frozen installation, normal and isolated Admin builds pass
+for Dashboard patch `a3095268cd18ae81d48462d0be29c5e1e14a2d89f72662f9b6227cdbcb54f558`.
+The normal Storefront webpack command passes against the GET-only loopback
+catalog fixture with distinct synthetic current/previous signing secrets.
+The 564 captured build inputs remain unchanged, the fixture closes naturally,
+and the client scan accepts 111 assets with no server-only secret or public
+Meilisearch input and both named Trusted Types policies. Preserve the initial
+local-secret rejection and the first fixture's invalid empty previous-receipt
+variable rejection; the retry changes only synthetic process configuration.
+Fresh strict Trivy 0.70.0 image scans pass. The complete original native/service
+command is next, with 61 Settings checkpoints in each of four modes and all
+four News modes. Freeze captured inputs until independent cleanup. No push or
+new deployment is accepted yet; all-nine observation continues.
+Evidence: `artifacts/end-to-end-audit-2026-10-11/native-dialog-metadata-admin-normal/`,
+`native-dialog-metadata-admin-fixture/`, `native-dialog-metadata-qa-lint.log`,
+`native-dialog-metadata-storefront-fixture-retry-build.json`, and
+`native-settings-news-dialog-metadata-full/`.
+
+October 11, 2026 UTC
+
+October 11, 20:53 UTC media lifecycle accepted on deployed `1da44f2`:
+fresh signed-in native owner identity and exact historical row hashes bind the
+three retained test assets. Read-only `app_runtime` snapshots prove no active
+references; exact S3 GETs verify all three stored checksums and byte lengths.
+Keyboard quarantine cancellation and Escape restore cancellation change no
+observed records. All six native quarantine/restore transitions independently
+join a single new succeeded operation to the exact asset, actor, expected
+version and canonical request digest. Each quarantine has a 30-day UTC retention
+interval; each restore clears quarantine fields. All three finish active,
+unlinked and version 4, with original creation dates visible after reload.
+File keys/URLs, bytes, historical links, all 1,175 other asset rows, 1,150 link
+rows and 61 other authoring-operation rows remain unchanged. The command UUIDs
+come from the persisted native ledger; no separate browser request/session
+export is claimed. Nothing is physically deleted or automatically relinked.
+
+Native 390×844 and 1280×720 views are visually inspected. Phone cards and restore
+confirmation fit; previews use `object-fit: cover`, action cursors are pointers,
+and the page has no horizontal overflow. No new media console warning/error is
+observed. A 20:42 UTC native User Edit warning remains open: its visible Heading
+is not wrapped in the dialog title primitive. Continue that accessibility
+correction and distinct remaining Admin controls; Batch 6 is still open and
+client cloning remains paused.
+Evidence: `artifacts/end-to-end-audit-2026-10-11/media-lifecycle/`, especially
+`media-lifecycle-accepted.json`, ten raw snapshots and six verified transitions.
+
+October 11, 20:37 UTC deployed correction accepted: staging revision
+`1da44f25a9c127158882103bd153ebd5a226a436` passes Root, Backend, Storefront
+and Runtime Images workflows and all 23 exact required checks. Both applications
+run that revision: Backend deployment `e36c08d1-befd-4221-9720-a802619c22f5`
+and Storefront `26b1038c-476c-4cd3-8e7e-7061b6eabc48`. The exact Migrations
+job exits successfully with its protected database receipt verified. Runtime
+Node/OS pins, restricted Resend key liveness, the deployed Next stream-abort
+backport, health/catalog checks, and a new ordinary 20:26 UTC reconciliation
+heartbeat pass. Bounded correlated application logs contain no unknown errors
+or HTTP 5xx. Twelve deployed missing-route browser cases pass after full
+readiness, with fresh readiness afterward; representative phone/desktop
+screenshots are visually reviewed. The earlier concurrent browser pass is
+retained but not credited for strict before-readiness ordering.
+
+Redis retains the same October 3 process/deployment identity at 20:28 UTC,
+with persistence healthy, zero OOM/eviction/rejection deltas and all 15 direct
+probe children waited and absent. The bounded supporting-service log window
+and all-nine identity checks pass. An independent raw-record/hash check
+confirms 26 native informational records; 14 PostgreSQL/Meilisearch records
+carry an outer Railway error label because they use stderr. No native error
+classification or guard is relaxed; the initial blanket-label rejection is
+retained. See [Railway log severity mapping](https://docs.railway.com/observability/logs).
+Empty Bucket/Console log windows are not standalone health proof.
+
+Recovery Backups has the exact revision deployed in CREATED/idle state; this
+is not proof of a new backup execution. Finite observation gaps at
+19:54–20:00 and 20:25:44–20:29:44 UTC remain recorded, and polling does not
+prove continuous uptime. Current open CodeQL alerts are only the three
+previously reviewed PGDG exceptions; the six new application findings are
+resolved without new exclusions. Native Product Tags filtering and keyboard
+clear are retested as the signed-in owner, with no data writes; an empty table
+does not cover populated CRUD or pagination.
+
+Batch 6 remains open. Continue fresh proof and native quarantine/restore for
+the three exact retained unlinked synthetic assets, then the remaining distinct
+Admin, content, inventory/shipping and checkout controls and final evidence
+ledger. Do not repeat completed orders #8–12 or completed Draft-gallery/repair
+mutations. The interrupted AOF Docker-creation ownership gap remains a separate
+engineering follow-up; the natural full-run pass does not fix cancellation.
+The client environment clone stays paused, and production/master is untouched.
+Evidence: `artifacts/end-to-end-audit-2026-10-11/release-1da44f2/`, especially
+`receipts/release-accepted.json`, `receipts/supporting-services-2033/`,
+`checks/readiness-ci.json`, and `browsers/launch-bracketed-screenshots/`.
+
 October 11, 19:47 UTC current local acceptance: the complete unchanged service
 command finishes naturally with exit 0 at 19:47:10 UTC (852.734 seconds overall;
 815.161 Jest seconds). All four native suites / 162 cases pass, including all
@@ -130,6 +271,113 @@ operating procedures remain in the linked runbooks and ADRs; this document
 tracks what is still required before production traffic is approved.
 
 ## Next-session delivery: eight separate staging batches
+
+October 11, 22:07 UTC local shared metadata accessibility correction is pending.
+Signed-in staging inspection reproduces an unnamed 20×20-pixel row-actions
+button. With the pointer on the heading, keyboard Tab reaches the Key input
+while that menu trigger remains visibility:hidden; cancel without saving.
+No independent database comparison is claimed for these read-only observations.
+Name each native metadata row menu with the existing localized Metadata and
+Actions strings and its row number. Keep it visible on row focus, with a
+24-pixel target and pointer cursor, in the source and shipped Dashboard CSS.
+Native insert/delete/save handlers and disabled-row behavior stay unchanged.
+The existing metadata checkpoint now checks Key → Value → Actions by keyboard,
+Enter opening the three native items, Escape returning to the same drawer,
+and the actual label, target and cursor before the original mutation flow.
+All 61 Settings checkpoints, four News modes and original limits remain intact.
+
+Dashboard patch SHA-256 is now
+`a3095268cd18ae81d48462d0be29c5e1e14a2d89f72662f9b6227cdbcb54f558`.
+Only that hash and two dependent peer identities change in the lockfile;
+registry versions and unrelated changes remain excluded. Fresh normal/fixture
+builds, full-run cleanup, exact CI and deployment acceptance are still pending.
+Batch 6 remains open; client cloning remains paused.
+Evidence: `artifacts/end-to-end-audit-2026-10-11/native-metadata-actions-transform.json`,
+`native-dialog-metadata-lock-comparison.json`, and `native-metadata-actions-readonly-reproduction.json`.
+
+October 11, 21:58 UTC local currency accessibility follow-up remains unaccepted.
+The repaired dialog imports render correctly, but all four Settings modes fail
+at the new currency checkpoint on Critical button-name violations: all 50
+visible tax-inclusive switches are unnamed. Four News modes / 12 checkpoints
+each pass. The full command exits naturally with failure at 21:55:43 UTC:
+158/162 native cases pass, four fail, and chained services are not credited.
+Independent cleanup at 21:56:42 UTC verifies 2,047 unchanged inputs, 553 closed
+relays, 833 known identities absent and owned resources/listeners absent.
+Every observed browser closes naturally; no Root signal is sent. The source
+freeze is released before applying the next correction.
+
+Name each currency switch using its existing localized tax-inclusive heading
+and currency code in source, CJS and lazy ESM. Native state, disabled behavior,
+handlers, styles and writes remain unchanged. The open-dialog gate also checks
+the actual per-currency names; no Axe exclusion or deadline changes. Signed-in
+staging read-only inspection confirms 50 unnamed switches; the first three
+already use pointer cursors. Cancel without saving; no independent database
+comparison is claimed for this observation. Dashboard patch SHA-256 is now
+`9065d6fe2a277d07e3cff4e1f4bcbf2b42e1e18d6bb997571659f42e4c4d8fcc`.
+Only its hash and two dependent peer identities may change in the lockfile;
+incidental third-party-web drift is rejected. Fresh corrected build, full-run,
+exact CI and deployed acceptance are pending. All-nine observation continues
+in `all-nine-observation-2153/`; Batch 6 is open and client cloning paused.
+Evidence: `artifacts/end-to-end-audit-2026-10-11/native-settings-news-dialog-runtime-full/`,
+`native-currency-switch-accessibility-failure.json`,
+`native-currency-switch-name-transform.json`, and `native-dialog-currency-lock-comparison.json`.
+
+October 11, 21:46 UTC local native-dialog correction remains unaccepted.
+The second candidate is deliberately stopped at 21:37 UTC after a real failed
+browser screenshot exposes `jsxs2 is not defined` in the currency route. Native
+lazy bundles need the matching JSX imports when a root gains another child.
+This is a patch defect, not a reason to relax the existing search selector.
+Two Settings modes fail after 13 cases; six mode results are absent and no
+chained service acceptance is credited. The exact owned runner and one proven
+orphaned browser root receive PID/start-tick-bound pidfd SIGTERM. Independent
+interrupted-run cleanup verifies unchanged inputs and absent owned resources,
+listeners, relays and known processes. This is controlled interruption cleanup,
+not a natural browser pass; the earlier unexplained SIGTERM stays distinct.
+
+Correct all eight missing ESM runtime imports and preserve the already-bound
+Role Permissions bundle. Add a shipped-bundle regression that independently
+fails on the bad installed candidate. The reviewed Dashboard patch hash is now
+`5a9be8b37e09b1c0c1cac3ce460edf1bb0b22aa83e4e87d345e6bdf303d0d0fa`.
+Reject incidental third-party-web drift again; all other lock bytes equal HEAD
+apart from the patch hash and two dependent peer identities. Frozen installation
+passes. Fresh normal/fixture builds, full browser/service verification, exact CI
+and deployment acceptance are still required. All-nine staging observation
+continues. An anonymous missing News slug renders recovery UI with HTTP 200;
+that newly reproduced status defect is a separate next correction, not accepted
+missing-route coverage. Batch 6 remains open and client cloning stays paused.
+Evidence: `artifacts/end-to-end-audit-2026-10-11/native-settings-news-dialog-ownership-full/`,
+`native-jsx-runtime-binding-repair.json`, `native-jsx-binding-before-install.log`,
+`native-dialog-runtime-lock-comparison.json`, and `missing-news-http-readonly.json`.
+
+October 11, 21:30 UTC local native-dialog correction remains unaccepted:
+the first candidate passes the Store drawer title check, then all four Settings
+modes reject four title warnings. The run ends SIGTERM/143 at 21:18 UTC; its
+signal origin is unproved. Four News results and chained service cases are not
+credited. Independent cleanup verifies 2,047 unchanged inputs, 532 closed
+relays, 707 known identities absent and owned resources/listeners absent.
+One proven orphaned isolated News browser root needs a PID-bound pidfd SIGTERM;
+no unrelated process is signaled. Failed cleanup evidence remains retained.
+
+Native signed-in staging inspection confirms the unnamed currency dialog and
+double Store metadata drawer, then cancels without saving. The corrected local
+Dashboard patch names 25 shipped edit headings, gives eight affected full-screen
+roots localized titles throughout loading/wizard steps, removes eight redundant
+metadata wrappers, and keeps the Role Permissions header named while loading.
+Unshipped Policy/Tax metadata sources stay excluded. Four open-dialog checks
+require the intended name, one root, Axe/layout and zero title warnings; all
+original cases and 900/240-second limits remain unchanged. Fresh corrected
+build, full-run, exact CI and deployment acceptance are still required.
+
+Live client navigation to the Catacombs News article and Wretched Inferno's
+Cacophony of Filth succeeds on deployed `1da44f2`, with actual descriptions,
+loaded images and no observed warning/error in the bounded tab log. Catalog
+search returns the two Wretched Inferno releases. Desktop/390-pixel phone views
+fit; gallery artwork uses contain and News uses cover. Keyboard Next reaches
+the final gallery image with correct pointer/disabled cursors. This bounded
+manual check is not search-index parity or complete rich-text feature coverage.
+All-nine observation continues; Batch 6 remains open and client cloning paused.
+Evidence: `artifacts/end-to-end-audit-2026-10-11/native-settings-news-drawer-titles-full/`,
+`native-dialog-followup-lock-comparison.json` and `all-nine-observation-2126/`.
 
 The user specified one substantial batch push per group, added client staging,
 then requested an exhaustive Storefront/Admin/Stripe audit before creating the

@@ -1392,11 +1392,13 @@ export const runNativeSettingsBrowserAcceptance = async ({
   const cases = []
   const deniedRemote = []
   const nativeErrors = []
+  const nativeDialogTitleErrors = []
+  let nativeDialogTitleErrorCount = 0
   const readOnlyControlFindings = []
   let error = null
   const checkpointTimingRows = []
   let checkpointTimingObserved = 0
-  const checkpointTimingLimits = { checkpoints: 57, phasesPerCheckpoint: 7 }
+  const checkpointTimingLimits = { checkpoints: 61, phasesPerCheckpoint: 7 }
   const checkpointTimingPhaseNames = [
     "tooltip",
     "axe",
@@ -1583,12 +1585,52 @@ export const runNativeSettingsBrowserAcceptance = async ({
     await navigationIdle.goto(`${proxy.origin}${path}`)
     await page.waitForSelector("main", { timeout: 15_000 })
   }
+  const readNativeDialogTitle = async ({ expectedName = null } = {}) => {
+    const title = await page.evaluate(() => {
+      const dialogs = [...document.querySelectorAll('[role="dialog"]')].filter(
+        (element) => element.getBoundingClientRect().width > 0
+      )
+      const dialog = dialogs[0]
+      const heading = dialog?.querySelector("h1, h2, h3")
+      const headingText = heading?.textContent?.trim() ?? ""
+      const labelledBy = dialog?.getAttribute("aria-labelledby") ?? ""
+      const accessibleName = labelledBy
+        .split(/\s+/u)
+        .filter(Boolean)
+        .map((id) => document.getElementById(id)?.textContent?.trim() ?? "")
+        .join(" ")
+      return { dialogCount: dialogs.length, headingText, accessibleName }
+    })
+    assert.equal(
+      title.dialogCount,
+      1,
+      "Native editor must have one dialog root"
+    )
+    assert.ok(title.headingText, "Native dialog heading is required")
+    assert.equal(
+      title.accessibleName,
+      expectedName ?? title.headingText,
+      "Native dialog must have its intended accessible name"
+    )
+    assert.equal(nativeDialogTitleErrorCount, 0, "Native dialog title warning")
+    return title
+  }
   const signIn = async (actor) => {
     await navigationIdle?.dispose()
     navigationIdle = null
     await context?.close()
     context = await browser.createBrowserContext()
     page = await context.newPage()
+    page.on("console", (message) => {
+      if (!/DialogContent.*requires.*DialogTitle/u.test(message.text())) return
+      nativeDialogTitleErrorCount += 1
+      if (nativeDialogTitleErrors.length < 32)
+        nativeDialogTitleErrors.push({
+          level: message.type(),
+          messageSha256: digest(message.text()),
+          afterCheckpoint: cases.at(-1)?.name ?? "before-first-checkpoint",
+        })
+    })
     navigationIdle = await createNativeSettingsNavigationIdle(
       page,
       observeNavigation(++navigationContextOrdinal)
@@ -2213,6 +2255,11 @@ export const runNativeSettingsBrowserAcceptance = async ({
     )
     const current = nativeStore.stores[0]
     assert.equal(current.id, fixture.store.id)
+    await page.waitForSelector('input[name="name"]', { visible: true })
+    await checkpoint("store-edit-dialog-native-accessible-name", {
+      nativeDialogTitle: await readNativeDialogTitle(),
+      storeId: current.id,
+    })
     const storeName = `Browser Store ${fixture.tag}`
     await fill(page, "Name", storeName)
     const beforeEnter = proxy.receipts.length
@@ -2264,6 +2311,35 @@ export const runNativeSettingsBrowserAcceptance = async ({
     })
 
     await navigate("/app/settings/store/currencies")
+    await page.waitForSelector('[role="dialog"] input[type="search"]', {
+      visible: true,
+    })
+    await page.waitForSelector('[role="dialog"] [role="switch"]', {
+      visible: true,
+    })
+    const nativeCurrencySwitchNames = await page.evaluate(() =>
+      [...document.querySelectorAll('[role="dialog"] [role="switch"]')].map(
+        (element) => ({
+          code: element
+            .closest("tr")
+            ?.querySelector("td:nth-child(2)")
+            ?.textContent?.trim(),
+          name: element.getAttribute("aria-label"),
+        })
+      )
+    )
+    assert(nativeCurrencySwitchNames.length > 0)
+    for (const { code, name } of nativeCurrencySwitchNames) {
+      assert(code)
+      assert.equal(name, `Tax inclusive pricing: ${code}`)
+    }
+    await checkpoint("store-currencies-dialog-native-accessible-name", {
+      nativeDialogTitle: await readNativeDialogTitle({
+        expectedName: "Add currencies",
+      }),
+      nativeCurrencySwitchNames,
+      storeId: current.id,
+    })
     const currencySearch = await page.$(
       '[role="dialog"] input[placeholder*="Search"]'
     )
@@ -2501,6 +2577,66 @@ export const runNativeSettingsBrowserAcceptance = async ({
     })
 
     await navigate("/app/settings/store/metadata/edit")
+    await page.waitForSelector('input[name="metadata.0.key"]', {
+      visible: true,
+    })
+    await page.focus('[role="dialog"] button[aria-label="Close dialog"]')
+    await page.keyboard.press("Tab")
+    assert.equal(
+      await page.evaluate(() => document.activeElement?.getAttribute("name")),
+      "metadata.0.key"
+    )
+    await page.keyboard.press("Tab")
+    assert.equal(
+      await page.evaluate(() => document.activeElement?.getAttribute("name")),
+      "metadata.0.value"
+    )
+    await page.keyboard.press("Tab")
+    const nativeMetadataRowActions = await page.evaluate(() => {
+      const element = document.activeElement
+      const rect = element.getBoundingClientRect()
+      const style = getComputedStyle(element)
+      return {
+        namedRowAction: element.matches(".rr-native-metadata-actions"),
+        name: element.getAttribute("aria-label"),
+        visibility: style.visibility,
+        cursor: style.cursor,
+        width: rect.width,
+        height: rect.height,
+      }
+    })
+    assert.equal(nativeMetadataRowActions.namedRowAction, true)
+    assert.equal(nativeMetadataRowActions.name, "Metadata 1: Actions")
+    assert.equal(nativeMetadataRowActions.visibility, "visible")
+    assert.equal(nativeMetadataRowActions.cursor, "pointer")
+    assert(nativeMetadataRowActions.width >= 24)
+    assert(nativeMetadataRowActions.height >= 24)
+    await page.keyboard.press("Enter")
+    await page.waitForSelector('[role="menu"] [role="menuitem"]', {
+      visible: true,
+    })
+    const nativeMetadataMenuActions = await page.evaluate(() =>
+      [...document.querySelectorAll('[role="menu"] [role="menuitem"]')].map(
+        (element) => element.textContent.trim()
+      )
+    )
+    assert.deepEqual(nativeMetadataMenuActions, [
+      "Insert row above",
+      "Insert row below",
+      "Delete row",
+    ])
+    await page.keyboard.press("Escape")
+    await page.waitForFunction(() => !document.querySelector('[role="menu"]'))
+    assert.equal(
+      new URL(page.url()).pathname,
+      "/app/settings/store/metadata/edit"
+    )
+    await checkpoint("store-metadata-single-dialog-native-accessible-name", {
+      nativeDialogTitle: await readNativeDialogTitle(),
+      nativeMetadataRowActions,
+      nativeMetadataMenuActions,
+      storeId: current.id,
+    })
     await page.type('input[name="metadata.0.key"]', "owned_audit")
     await page.type('input[name="metadata.0.value"]', "true")
     proxy.arm({
@@ -2519,6 +2655,11 @@ export const runNativeSettingsBrowserAcceptance = async ({
     })
 
     await navigate(`/app/settings/users/${fixture.actors.reader.id}/edit`)
+    await page.waitForSelector('input[name="first_name"]', { visible: true })
+    await checkpoint("user-edit-dialog-native-accessible-name", {
+      nativeDialogTitle: await readNativeDialogTitle(),
+      userId: fixture.actors.reader.id,
+    })
     await fill(page, "First Name", "Browser")
     await fill(page, "Last Name", "Owned")
     const userPath = `/admin/users/${fixture.actors.reader.id}`
@@ -3812,6 +3953,11 @@ export const runNativeSettingsBrowserAcceptance = async ({
       assert.equal(deniedRemote.length, 0, "Late native browser remote traffic")
       assert.equal(nativeErrors.length, 0, "Late native browser page errors")
       assert.equal(
+        nativeDialogTitleErrorCount,
+        0,
+        "Late native dialog title warning"
+      )
+      assert.equal(
         proxy.receipts.filter((entry) => entry.kind === "denied").length,
         0,
         "Final native request journal contains rejected traffic"
@@ -3883,6 +4029,8 @@ export const runNativeSettingsBrowserAcceptance = async ({
         : null,
       deniedRemote,
       nativeErrors,
+      nativeDialogTitleErrorCount,
+      nativeDialogTitleErrors,
       readOnlyControlFindings,
       requests: proxy.receipts,
       compiledFiles: compiled,
@@ -3918,7 +4066,7 @@ export const runNativeSettingsBrowserAcceptance = async ({
             checkpointTimingObserved > checkpointTimingLimits.checkpoints,
           checkpoints: checkpointTimingRows,
           recordedAfterOwnedCleanupAndOriginalResultWrite: true,
-          originalResultsSchemaChanged: false,
+          timingInstrumentationChangesResultSchema: false,
           rawUrlPathHeadersAuthenticationBodiesArgumentsAndDomExported: false,
           nativeAcceptance: false,
         },
