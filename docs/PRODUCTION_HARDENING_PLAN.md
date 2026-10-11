@@ -2,6 +2,16 @@
 
 Last reviewed: October 11, 2026 UTC
 
+October 11 staging correction: the cohesive `74e87db` push passes normal local
+gates, but both service secret scans flag a synthetic News route idempotency
+UUID. Pinned full-history scanning reproduces the sole finding. The active
+fixture and its exact immutable historical fingerprint are corrected; fresh
+checks, corrective staging CI and all-service/live acceptance remain pending.
+Root CI also rejects that same scan; Runtime Images passes. The corrected
+17 route cases and pinned staged/full-history scans pass (1,163 commits).
+The application pair waits for CI. Batch 6 stays open and client cloning stays
+paused; no detector, path scope or threshold is weakened.
+
 This is the authoritative launch-readiness backlog for Remorseless Records. It
 supersedes the local `tmp/HARDENING_NEXT_STEPS.md` working note. Detailed
 operating procedures remain in the linked runbooks and ADRs; this document

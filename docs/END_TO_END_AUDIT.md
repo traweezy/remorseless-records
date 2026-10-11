@@ -2,6 +2,16 @@
 
 ### Resumed audit and current corrections — October 11
 
+The cohesive `74e87db` staging push passes normal commit/push gates. Both
+service secret scans flag one synthetic News route UUID; pinned 8.30.1 local
+history scanning reproduces that sole finding. The active test fixture and
+only its exact immutable historical fingerprint are corrected. Fresh checks,
+the corrective push, exact CI and live acceptance remain pending. Both
+application deployments are waiting for CI. No detector or scan scope is
+weakened; Batch 6 and the client-clone hold remain open.
+
+Root CI subsequently fails the same scan; Runtime Images passes. The corrected
+17 route cases and pinned staged/full-history scans pass (1,163 commits).
 **Current local acceptance:** the full native/service gate passes all 162
 cases with every Settings/News checkpoint and cleanup in all four modes.
 The chained payment, PostgreSQL recovery, Redis, API and session tests pass.

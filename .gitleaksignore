@@ -41,3 +41,8 @@ d389a76a63b2e3b13f9526674ea7a9f0a99f72d9:storefront/src/features/checkout/server
 7788f908baf6260a27812048b112df38d1a5a3de:backend/src/admin/features/catalog-authoring/product-gallery-query.test.ts:generic-api-key:154
 7788f908baf6260a27812048b112df38d1a5a3de:backend/src/admin/features/catalog-authoring/product-gallery-query.test.ts:generic-api-key:173
 7788f908baf6260a27812048b112df38d1a5a3de:backend/src/admin/features/catalog-authoring/product-gallery-editor.test.tsx:generic-api-key:73
+
+# This News route UUID is a synthetic unit-test idempotency key, not a
+# credential. The active fixture now uses an obvious schema-valid test UUID.
+# Ignore only this immutable fingerprint; all future values and paths scan.
+1eade5f8b18a0bcca5a855871205f0025dbc7f1b:backend/src/api/admin/news/[id]/route.test.ts:generic-api-key:8

@@ -5,7 +5,7 @@ import { DELETE, PUT } from "./route"
 const updateBody = {
   expectedActorId: "user_admin",
   expectedVersion: 1,
-  idempotencyKey: "d8a102f4-c0da-4f50-b846-108503e26488",
+  idempotencyKey: "11111111-1111-4111-8111-111111111111",
   title: "Updated title",
 }
 

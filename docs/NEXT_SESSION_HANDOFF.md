@@ -4,6 +4,20 @@ Last updated: 2026-10-11 (America/New_York)
 
 ## October 11 continuation — resumed Batch 6 and current corrections
 
+The cohesive four-commit batch is pushed directly to staging as `74e87db` at
+17:37 UTC after normal commit/push gates pass. Its Backend and Storefront
+secret scans reject one synthetic News route idempotency UUID at the exact
+historical `1eade5f` fingerprint; the pinned local 8.30.1 history scan reproduces
+that sole finding. Both application deployments remain waiting for CI. The
+active fixture is replaced with an obvious schema-valid test UUID and only
+that immutable historical fingerprint is recorded. Fresh scan/test checks,
+a corrective staging push, exact CI and deployed acceptance remain required.
+Root CI subsequently rejects the same scan. All four original workflows finish:
+Root, Backend and Storefront fail; Runtime Images passes. The correction passes
+all 17 route cases and pinned staged/full-history scans (1,163 commits, 29.62 MB).
+No scan rule, path exclusion or security threshold changes. Batch 6 stays open;
+the client clone remains paused.
+
 The user redirects continuation back to Remorseless Records. Batch 6 resumes;
 the client environment clone remains paused. The current corrections form one
 cohesive direct staging push; exact CI and deployed acceptance remain required.

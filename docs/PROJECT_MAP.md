@@ -7,6 +7,15 @@ are recorded in the handoff linked below.
 
 ## October 11 continuation boundary
 
+The cohesive staging push `74e87db` passes normal local gates but both service
+secret scans flag one synthetic News route UUID. A pinned history scan
+reproduces only that finding. The active fixture and exact historical
+fingerprint are corrected; a verified corrective push and deployed acceptance
+remain pending. Both application deployments are waiting for CI. Batch 6 is
+open and client cloning stays paused; see the latest handoff.
+
+Root CI subsequently fails the same scan; Runtime Images passes. The corrected
+17 route tests and pinned staged/full-history scans pass (1,163 commits).
 The current full native/service gate passes: all 162 cases, four Settings
 modes (57 checkpoints each), four News modes (12 each), payment lifecycle,
 PostgreSQL recovery, Redis, API and session checks. Independent cleanup proves
