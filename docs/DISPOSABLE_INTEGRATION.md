@@ -90,6 +90,19 @@ within 900 seconds, and modal keyboard checks within 64 keys and five seconds.
 Retain source/build identities, raw Axe results, screenshot review and
 independent owned-resource/process cleanup with the acceptance evidence.
 
+The native Settings browser also has two independent opt-in families.
+`RR_NATIVE_SETTINGS_BROWSER=1` runs the complete Settings regression;
+`RR_NATIVE_SETTINGS_INVOKER_BROWSER=1` checks the original Store metadata
+invoker after pointer Cancel, keyboard Escape and the native Close button.
+Enabling both fails closed. Each requires explicit
+`RR_NATIVE_SETTINGS_ADMIN_ROOT` and `RR_NATIVE_SETTINGS_ARTIFACT_ROOT`, current
+compiled Admin assets and the reviewed sandboxed browser. The invoker family
+uses native owner authentication and verifies unchanged metadata through actual
+HTTP readback; it does not submit a Settings write. Keep the same 240-second
+case, 900-second service and bounded keyboard budgets. Retain the original
+element identity, all four viewport/theme results, screenshot/Axe review and
+independent cleanup; this narrow family does not complete the Settings audit.
+
 The PostgreSQL database uses synthetic credentials and tmpfs storage. Redis
 uses tmpfs with RDB/AOF disabled, a 64 MiB `noeviction` budget and no persistent
 volume. Both expose only loopback ports: PostgreSQL 55432 and Redis 56379 by

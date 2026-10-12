@@ -1924,3 +1924,27 @@ The opening handoff records eventual results. Raw modal-menu diagnostics
 remain retained with exact DOM and
 independent keyboard evidence; no contrast rule is excluded. Re-review/remove
 these patches in the coordinated Medusa upgrade.
+
+### October 12 native RouteDrawer original invoker correction
+
+The existing MIT Dashboard 2.18.0 patch reviewed locally is
+`6ca31c895a9fe78f0406007607000957d993fe2b198eb4d373eb0b9e9fd0dee8`.
+Its source, main bundle and lazy drawer bundle capture the actual invoking
+control before opening. After native close focus completes, the fallback
+restores only a connected, visible, enabled control outside inert/hidden
+ancestors when focus remains on BODY. Native explicit focus and prevented
+close callbacks keep priority. The original four-mode browser run establishes
+this specific missing behavior. All 24 positive invoker checkpoints and 244
+original Settings checkpoints pass in four modes. All 234 Dashboard contracts
+and both canonical builds pass. Exact source joins retain the UI evidence
+while the complete current service suite verifies the recovery corrections.
+Staging deployment acceptance is still pending.
+This follows the [W3C modal dialog focus guidance](https://www.w3.org/WAI/ARIA/apg/patterns/dialog-modal/).
+
+Pinned pnpm proposed unrelated third-party-web 0.29.2 to 0.30.0 drift during
+patch-commit. That proposal is removed; retain the reviewed original registry
+versions and integrity records. Only the Dashboard patch hash and its two
+derived Medusa peer graph keys change. Reviewed frozen installation passes.
+No cooling exception, license change, React-tree change or native RBAC change
+is introduced. Re-review this local compatibility patch during the planned
+coordinated Medusa upgrade.

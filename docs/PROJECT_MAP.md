@@ -5,7 +5,75 @@ and 98 documentation/reference files, excluding unrelated `Default/` and
 generated/dependency outputs. Current security work and release acceptance
 are recorded in the handoff linked below.
 
-## October 11 continuation boundary
+## October 12 continuation boundary
+
+October 12, 05:18 UTC the next drawer/exporter batch is accepted locally;
+accepted staging remains `0a96d5c` until the next direct push and live checks.
+The same-version Dashboard correction restores a connected, visible native
+drawer invoker after Cancel, Escape and Close while preserving native focus
+priority. All 24 new invoker checkpoints and 244 original Settings checkpoints
+pass in desktop/phone light/dark with no serious/critical Axe violations,
+native errors or missing dialog titles. Sixteen distinct new invoker frames
+and eight current metadata persistence frames are individually reviewed;
+byte-identical invoker frames are joined by hash. The wider screenshot set is
+retained without claiming a new review of every frame. All 234 Dashboard
+contracts, five snapshot cleanup tests and both canonical Admin builds pass.
+
+Normal snapshot cleanup now rolls back and awaits clean psql exit before
+publication. Cancellation keeps owned-child reaping and one sanitized failure
+record. The new actual server-disappearance observation uses a five-second
+bound, including each query timeout. The unchanged 900-second service command
+passes in 228.8 seconds: 156 native, 44 payment and 40/8/3/1/3/6 other cases.
+Independent cleanup verifies 2,056 unchanged inputs, 585 closed relays,
+610 known identities absent and no owned journal/resources/listeners. The
+browser run's later cancellation-observation failure, earlier interrupted run
+and Node startup crash remain retained with independent cleanup. Exact source
+joins preserve the passing UI evidence and cover changed recovery components
+in the fresh service run. The staging PostgreSQL disconnect peer remains
+unproved. Current Redis inspection retains the same 719,049-second process,
+healthy persistence, zero new OOM/eviction/rejection and no new init children.
+Evidence: `artifacts/end-to-end-audit-2026-10-11/drawer-postgres-current-source-acceptance.json`.
+
+The live native audit also records vague required Value errors in Product
+Types/Tags, row-menu editor cancellation returning focus to BODY in Property
+Labels, its unlabeled-grid-input candidates and its visually hidden model
+context. Keep these separate from the connected-link drawer correction, along
+with search Clear focus and remaining content, shipping/inventory, Settings
+persistence/RBAC and adverse checkout/refund work. These observations do not
+complete Batch 6. Client cloning stays paused; production is untouched.
+
+October 12, 04:23 UTC staging revision `0a96d5c` is accepted. All four
+exact push workflows and 23 checks pass; Backend, Storefront and Migrations
+deploy that revision. Runtime packages, native database role/migration receipt,
+restricted notification credential equality, new ordinary reconciliation
+heartbeat and nonempty Operations pass. Deep Redis before/after inspection
+retains the original process and healthy persistence. Native Owner input
+verifies the deployed rich-text toolbar, link field and dirty-discard flow;
+the unsaved test draft is discarded and News remains at six posts. All six
+published articles pass at 390/1440 pixels with loaded cover geometry, client
+history, Trusted Types and Axe. Six current frames match previously reviewed
+bytes; the other six are individually reviewed. All-nine identity and the
+separate fresh post-interaction supporting/application log windows pass.
+Recovery's ordinary 04:00 schedule completes an encrypted Railway snapshot
+with 4 database and 1,178 media objects (446,340,304 plaintext bytes). This is
+not off-site, version-history or a fresh restore proof. The earlier supporting
+window retains two PostgreSQL disconnect messages with an open transaction;
+peer identity is unproved. The snapshot exporter currently uses SIGKILL on
+ordinary close, a possible cause to investigate without waiving those logs.
+Evidence: `artifacts/end-to-end-audit-2026-10-11/release-0a96d5c/receipts/current-acceptance-summary.json`.
+
+The next local native drawer family reproduces original-invoker focus loss in
+all four modes: Cancel unmounts the drawer while the original visible link
+remains connected, but focus returns to BODY. The original-budget negative
+run retains 156 passing native cases and four intended failures; independent
+cleanup verifies 2,052 unchanged inputs, 534 closed relays, 596 known process
+identities absent and no owned journal/resources/listeners. An earlier run
+stopped on unsupported Shift+Tab syntax and is retained separately with scoped
+cleanup. The same-version Dashboard fallback candidate and three shipped
+representations are under verification; no next push is accepted yet. Preserve
+native close priority, removed/hidden/disabled/inert invoker guards and the
+240/900-second limits. Exhaustive Batch 6 continues; client cloning stays
+paused and production is untouched.
 
 October 12, 03:30 UTC the Redis AOF ownership and catalog task-conflict
 corrections pass local acceptance. A private parent journal precedes stopped

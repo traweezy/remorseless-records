@@ -20,6 +20,7 @@ import {
   startNativeSettingsLoopbackProxy,
   validateSettingsBrowserRoots,
 } from "./lib/native-settings-loopback-proxy.mjs"
+import { runNativeSettingsInvokerCommands } from "./native-settings-invoker-commands.mjs"
 
 const require = createRequire(new URL("../package.json", import.meta.url))
 const puppeteer = require("puppeteer")
@@ -728,7 +729,9 @@ export const runNativeSettingsBrowserAcceptance = async ({
   adminRoot,
   artifactRoot,
   mode,
+  family = "full",
 }) => {
+  assert.ok(["full", "invokers"].includes(family))
   assert.ok(isAbsolute(adminRoot) && isAbsolute(artifactRoot))
   await validateSettingsBrowserRoots({
     adminRoot,
@@ -761,7 +764,8 @@ export const runNativeSettingsBrowserAcceptance = async ({
     0,
     "Native Settings evidence output must be fresh"
   )
-  const tableFixtures = await fixture.prepareTableFixtures()
+  const tableFixtures =
+    family === "full" ? await fixture.prepareTableFixtures() : null
   const nativeOrigin = new URL(fixture.origin)
   nativeOrigin.hostname = "127.0.0.1"
   const policies = await fixture.rbac.listRbacPolicies({}, { take: 1000 })
@@ -1827,48 +1831,50 @@ export const runNativeSettingsBrowserAcceptance = async ({
       definition.tax === true
     )
   }
-  const tableDefinitions = [
-    {
-      name: "users",
-      ui: "/app/settings/users",
-      api: "/admin/users",
-      q: tableFixtures.userSearch,
-      order: "email",
-      sortLabel: "Email",
-      rows: tableFixtures.users,
-      label: "email",
-    },
-    {
-      name: "roles",
-      ui: "/app/settings/roles",
-      api: "/admin/rbac/roles",
-      q: tableFixtures.roleSearch,
-      order: "name",
-      sortLabel: "Name",
-      rows: tableFixtures.roles,
-      label: "name",
-    },
-    {
-      name: "regions",
-      ui: "/app/settings/regions",
-      api: "/admin/regions",
-      q: tableFixtures.regionSearch,
-      order: "name",
-      sortLabel: "Name",
-      legacy: true,
-      rows: tableFixtures.regions,
-      label: "name",
-    },
-    {
-      name: "tax-regions",
-      ui: "/app/settings/tax-regions",
-      api: "/admin/tax-regions",
-      order: "country_code",
-      tax: true,
-      rows: tableFixtures.taxRegions,
-      label: "id",
-    },
-  ]
+  const tableDefinitions = tableFixtures
+    ? [
+        {
+          name: "users",
+          ui: "/app/settings/users",
+          api: "/admin/users",
+          q: tableFixtures.userSearch,
+          order: "email",
+          sortLabel: "Email",
+          rows: tableFixtures.users,
+          label: "email",
+        },
+        {
+          name: "roles",
+          ui: "/app/settings/roles",
+          api: "/admin/rbac/roles",
+          q: tableFixtures.roleSearch,
+          order: "name",
+          sortLabel: "Name",
+          rows: tableFixtures.roles,
+          label: "name",
+        },
+        {
+          name: "regions",
+          ui: "/app/settings/regions",
+          api: "/admin/regions",
+          q: tableFixtures.regionSearch,
+          order: "name",
+          sortLabel: "Name",
+          legacy: true,
+          rows: tableFixtures.regions,
+          label: "name",
+        },
+        {
+          name: "tax-regions",
+          ui: "/app/settings/tax-regions",
+          api: "/admin/tax-regions",
+          order: "country_code",
+          tax: true,
+          rows: tableFixtures.taxRegions,
+          label: "id",
+        },
+      ]
+    : []
   const checkNativePagination = async (definition) => {
     const before = proxy.receipts.length
     await navigate(definition.ui)
@@ -2210,6 +2216,19 @@ export const runNativeSettingsBrowserAcceptance = async ({
       args: ["--disable-dev-shm-usage"],
     })
     await signIn(fixture.actors.owner)
+    if (family === "invokers") {
+      await runNativeSettingsInvokerCommands({
+        page,
+        checkpoint,
+        clickText,
+        readNativeDialogTitle,
+        waitRoute,
+        receipts: proxy.receipts,
+        fixture,
+        assertInteractiveControl,
+      })
+      return
+    }
     for (const [name, path] of [
       ["store-initial", "/app/settings/store"],
       ["users-native-table", "/app/settings/users"],
@@ -3926,6 +3945,9 @@ export const runNativeSettingsBrowserAcceptance = async ({
       ...(problem.nativeDialogSubmitProof
         ? { nativeDialogSubmitProof: problem.nativeDialogSubmitProof }
         : {}),
+      ...(problem.nativeInvokerProof
+        ? { nativeInvokerProof: problem.nativeInvokerProof }
+        : {}),
     }
     if (page && !page.isClosed())
       await page
@@ -4018,6 +4040,7 @@ export const runNativeSettingsBrowserAcceptance = async ({
       schemaVersion: 1,
       kind: "initialized-native-settings-compiled-browser",
       mode,
+      family,
       status:
         error || cleanupFailures.length || finalIntegrityError
           ? "failed"

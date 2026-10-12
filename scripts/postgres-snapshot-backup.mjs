@@ -57,6 +57,7 @@ const main = async () => {
   let phase = "arguments"
   let scope
   let exporter
+  let failureReported = false
   let outputDirectory
   let pendingDirectory
   const startedAt = Date.now()
@@ -186,12 +187,24 @@ const main = async () => {
     )
     pendingDirectory = undefined
   } catch {
+    failureReported = true
     process.stderr.write(
       `${JSON.stringify({ status: "failed", phase, durationMs: Date.now() - startedAt })}\n`
     )
     process.exitCode = 1
   } finally {
-    if (exporter) await exporter.close()
+    if (exporter)
+      try {
+        await exporter.close()
+      } catch {
+        // Close rejects only after reaping. Preserve an already reported
+        // command failure and continue private-directory cleanup.
+        if (!failureReported)
+          process.stderr.write(
+            '{"status":"failed","phase":"snapshot_release"}\n'
+          )
+        process.exitCode = 1
+      }
     if (pendingDirectory) {
       try {
         await rm(pendingDirectory, { force: true, recursive: true })

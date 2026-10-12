@@ -339,3 +339,29 @@ same-major target with the recorded row/schema invariants. It does not prove
 exact row values, role/extension fidelity, application startup, provider
 behavior, PITR, off-site retention, or production recovery time. The archive
 and local target remain temporary drill evidence.
+
+### October 12 snapshot exporter cleanup verification
+
+The ordinary exporter close now sends explicit `ROLLBACK` and quits psql,
+awaiting exit code zero before the snapshot workflow can publish success.
+Repeated close calls share one promise. A stalled normal close receives a
+five-second backstop limited to that owned child and fails acceptance after
+reaping; it is never reported as a clean shutdown. Cancellation and malformed
+exporter output retain the existing forced owned-child cleanup. This does not
+change the source snapshot isolation, matching-major clients, restricted
+backup role, private output inode checks, archive encryption or restore gates.
+
+Five focused cleanup tests pass, including the real five-second backstop.
+Two new disposable PostgreSQL cases inspect the owned exporter connection and
+its actual psql exit for normal close and cancellation. After child exit, a
+bounded five-second observation requires its unique database/application-name
+connection to disappear; individual query timeouts share that deadline.
+The full 40-case PostgreSQL matrix passes in the current unchanged service
+command. The CLI preserves the original sanitized failure and continues private
+output cleanup when a cancelled exporter close rejects after reaping.
+The earlier immediate server-row assertion race and duplicate cancellation
+failure are retained; neither is waived. Independent cleanup and source joins
+are recorded in `drawer-postgres-current-source-acceptance.json` under the
+October 11 private audit root. Staging deployment acceptance is pending. The
+earlier staging disconnect peer remains unproved; these local results do not
+retroactively classify those messages.

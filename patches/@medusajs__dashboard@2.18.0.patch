@@ -55,7 +55,7 @@ index 914b674205accf11063d4145e7b21dd53c783ba4..1159a5a0014e02bcdc4e38b10e65f090
 +.rr-native-metadata-actions { min-width: 24px; min-height: 24px; }
 +.rr-native-metadata-actions:not(:disabled) { cursor: pointer; }
 diff --git a/dist/app.js b/dist/app.js
-index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd4efecf79 100644
+index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..7bd04094f95fea95b0e40bc1632408f94499cedf 100644
 --- a/dist/app.js
 +++ b/dist/app.js
 @@ -1,3 +1,66 @@
@@ -902,10 +902,37 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
        if (!msg || msg === "undefined") {
          return null;
        }
-@@ -123956,6 +124019,10 @@ var init_route_drawer = __esm({
+@@ -123932,8 +123995,10 @@ var init_route_drawer = __esm({
+       const navigate = (0, import_react_router_dom33.useNavigate)();
+       const [open, setOpen] = (0, import_react84.useState)(false);
+       const [stackedModalOpen, onStackedModalOpen] = (0, import_react84.useState)(false);
++      const invoker = (0, import_react84.useRef)(null);
+       const to = useStateAwareTo(prev);
+       (0, import_react84.useEffect)(() => {
++        invoker.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+         setOpen(true);
+         return () => {
+           setOpen(false);
+@@ -123952,10 +124017,26 @@ var init_route_drawer = __esm({
+         }
+         setOpen(open2);
+       };
++      const handleCloseAutoFocus = (event) => {
++        if (event.defaultPrevented) return;
++        queueMicrotask(() => {
++          const target = invoker.current;
++          if (!target || target === document.body || !target.isConnected || !target.getClientRects().length || target.matches(":disabled, [aria-disabled='true']") || target.closest('[aria-hidden="true"], [inert]')) return;
++          const style = getComputedStyle(target);
++          if (style.visibility === "hidden" || style.display === "none") return;
++          if (document.activeElement !== document.body) return;
++          target.focus({ preventScroll: true });
++        });
++      };
+       return /* @__PURE__ */ (0, import_jsx_runtime85.jsx)(import_ui56.Drawer, { open, onOpenChange: handleOpenChange, children: /* @__PURE__ */ (0, import_jsx_runtime85.jsx)(RouteModalProvider, { prev: to, children: /* @__PURE__ */ (0, import_jsx_runtime85.jsx)(StackedModalProvider, { onOpenChange: onStackedModalOpen, children: /* @__PURE__ */ (0, import_jsx_runtime85.jsx)(
          import_ui56.Drawer.Content,
          {
            "aria-describedby": void 0,
++      onCloseAutoFocus: handleCloseAutoFocus,
 +      onEscapeKeyDown: (event) => {
 +        const selectorOpen = event.target instanceof Element && event.target.closest('[role="combobox"][aria-expanded="true"]');
 +        if (selectorOpen) event.preventDefault();
@@ -913,7 +940,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
            className: (0, import_ui56.clx)({
              "!bg-ui-bg-disabled !inset-y-5 !right-5": stackedModalOpen
            }),
-@@ -124034,9 +124101,11 @@ var init_route_focus_modal = __esm({
+@@ -124034,9 +124115,11 @@ var init_route_focus_modal = __esm({
        const navigate = (0, import_react_router_dom34.useNavigate)();
        const [open, setOpen] = (0, import_react86.useState)(false);
        const [stackedModalOpen, onStackedModalOpen] = (0, import_react86.useState)(false);
@@ -926,7 +953,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
          return () => {
            setOpen(false);
            onStackedModalOpen(false);
-@@ -124054,17 +124123,30 @@ var init_route_focus_modal = __esm({
+@@ -124054,17 +124137,30 @@ var init_route_focus_modal = __esm({
          }
          setOpen(open2);
        };
@@ -962,7 +989,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
            className: (0, import_ui57.clx)({
              "!bg-ui-bg-disabled !inset-x-5 !inset-y-3": stackedModalOpen
            }),
-@@ -124265,7 +124347,13 @@ var init_keybound_form = __esm({
+@@ -124265,7 +124361,13 @@ var init_keybound_form = __esm({
          onSubmit?.(event);
        };
        const handleKeyDown = (event) => {
@@ -976,7 +1003,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
            if (event.target instanceof HTMLTextAreaElement && !(event.metaKey || event.ctrlKey)) {
              return;
            }
-@@ -126016,7 +126104,16 @@ var init_combobox = __esm({
+@@ -126016,7 +126118,16 @@ var init_combobox = __esm({
                          "txt-compact-small text-ui-fg-base !placeholder:text-ui-fg-muted transition-fg size-full cursor-pointer bg-transparent pe-8 ps-1 outline-none focus:cursor-text"
                        ),
                        placeholder: Array.isArray(selectedValues) && selectedValues.length > 0 ? void 0 : placeholder,
@@ -994,7 +1021,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                      }
                    ) }),
                    /* @__PURE__ */ (0, import_jsx_runtime98.jsx)(
-@@ -126027,6 +126124,7 @@ var init_combobox = __esm({
+@@ -126027,6 +126138,7 @@ var init_combobox = __esm({
                            "button",
                            {
                              ...props,
@@ -1002,7 +1029,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                              type: "button",
                              className: "text-ui-fg-muted transition-fg hover:bg-ui-bg-field-hover absolute end-0 top-0 flex h-8 w-8 items-center justify-center rounded-r outline-none",
                              children: /* @__PURE__ */ (0, import_jsx_runtime98.jsx)(import_icons35.TrianglesMini, {})
-@@ -126112,7 +126210,16 @@ var init_combobox = __esm({
+@@ -126112,7 +126224,16 @@ var init_combobox = __esm({
                            }
                          ),
                          placeholder: hidePlaceholder ? void 0 : placeholder,
@@ -1020,7 +1047,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                        }
                      )
                    ] }),
-@@ -126136,6 +126243,7 @@ var init_combobox = __esm({
+@@ -126136,6 +126257,7 @@ var init_combobox = __esm({
                            "button",
                            {
                              ...props,
@@ -1028,7 +1055,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                              type: "button",
                              className: "text-ui-fg-muted transition-fg hover:bg-ui-bg-field-hover absolute end-0 flex size-8 items-center justify-center rounded-r outline-none",
                              children: /* @__PURE__ */ (0, import_jsx_runtime98.jsx)(import_icons35.TrianglesMini, {})
-@@ -126150,7 +126258,14 @@ var init_combobox = __esm({
+@@ -126150,7 +126272,14 @@ var init_combobox = __esm({
              /* @__PURE__ */ (0, import_jsx_runtime98.jsxs)(
                import_react98.ComboboxPopover,
                {
@@ -1044,7 +1071,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                  sameWidth: true,
                  ref: listboxRef,
                  role: "listbox",
-@@ -126162,7 +126277,7 @@ var init_combobox = __esm({
+@@ -126162,7 +126291,7 @@ var init_combobox = __esm({
                    "data-[side=bottom]:slide-in-from-top-2 data-[side=start]:slide-in-from-end-2 data-[side=end]:slide-in-from-start-2 data-[side=top]:slide-in-from-bottom-2"
                  ),
                  style: {
@@ -1053,7 +1080,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                  },
                  children: [
                    results.map(({ value, label, disabled }) => /* @__PURE__ */ (0, import_jsx_runtime98.jsxs)(
-@@ -134419,35 +134534,9 @@ var init_product_general_section = __esm({
+@@ -134419,35 +134548,9 @@ var init_product_general_section = __esm({
        product
      }) => {
        const { t: t5 } = (0, import_react_i18next88.useTranslation)();
@@ -1089,7 +1116,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
        return /* @__PURE__ */ (0, import_jsx_runtime136.jsxs)(import_ui99.Container, { className: "divide-y p-0", children: [
          /* @__PURE__ */ (0, import_jsx_runtime136.jsxs)("div", { className: "flex items-center justify-between px-6 py-4", children: [
            /* @__PURE__ */ (0, import_jsx_runtime136.jsx)(import_ui99.Heading, { children: product.title }),
-@@ -134476,16 +134565,7 @@ var init_product_general_section = __esm({
+@@ -134476,16 +134579,7 @@ var init_product_general_section = __esm({
                          }
                        ]
                      }
@@ -1107,7 +1134,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                  ]
                }
              )
-@@ -134649,7 +134729,7 @@ var init_product_media_section = __esm({
+@@ -134649,7 +134743,7 @@ var init_product_media_section = __esm({
                  children: t5("products.media.emptyState.header")
                }
              ),
@@ -1116,7 +1143,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
            ] }),
            /* @__PURE__ */ (0, import_jsx_runtime137.jsx)(import_ui100.Button, { size: "small", variant: "secondary", asChild: true, children: /* @__PURE__ */ (0, import_jsx_runtime137.jsx)(import_react_router_dom36.Link, { to: "media?view=edit", children: t5("products.media.emptyState.action") }) })
          ] }),
-@@ -135147,8 +135227,6 @@ var init_product_variant_section = __esm({
+@@ -135147,8 +135241,6 @@ var init_product_variant_section = __esm({
      useColumns4 = (product) => {
        const { t: t5 } = (0, import_react_i18next93.useTranslation)();
        const navigate = (0, import_react_router_dom38.useNavigate)();
@@ -1125,7 +1152,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
        const [searchParams] = (0, import_react_router_dom38.useSearchParams)();
        const tableSearchParams = (0, import_react140.useMemo)(() => {
          const filtered = new URLSearchParams();
-@@ -135159,23 +135237,6 @@ var init_product_variant_section = __esm({
+@@ -135159,23 +135251,6 @@ var init_product_variant_section = __esm({
          }
          return filtered;
        }, [searchParams]);
@@ -1149,7 +1176,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
        const optionColumns = (0, import_react140.useMemo)(() => {
          if (!product?.options) {
            return [];
-@@ -135232,13 +135293,6 @@ var init_product_variant_section = __esm({
+@@ -135232,13 +135307,6 @@ var init_product_variant_section = __esm({
                }
              }
            ];
@@ -1163,7 +1190,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
            const inventoryItemsCount = variant.inventory_items?.length || 0;
            switch (inventoryItemsCount) {
              case 0:
-@@ -135271,9 +135325,9 @@ var init_product_variant_section = __esm({
+@@ -135271,9 +135339,9 @@ var init_product_variant_section = __esm({
                });
              }
            }
@@ -1175,7 +1202,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
        );
        const getInventory = (0, import_react140.useCallback)(
          (variant) => {
-@@ -135309,7 +135363,7 @@ var init_product_variant_section = __esm({
+@@ -135309,7 +135377,7 @@ var init_product_variant_section = __esm({
        return (0, import_react140.useMemo)(() => {
          return [
            columnHelper7.accessor("thumbnail", {
@@ -1184,7 +1211,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
              headerAlign: "center",
              maxSize: 72,
              cell: ({ row }) => {
-@@ -136463,7 +136517,7 @@ var init_product_variant_edit = __esm({
+@@ -136463,7 +136531,7 @@ var init_product_variant_edit = __esm({
          throw productError;
        }
        return /* @__PURE__ */ (0, import_jsx_runtime150.jsxs)(RouteDrawer, { children: [
@@ -1193,7 +1220,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
          ready && /* @__PURE__ */ (0, import_jsx_runtime150.jsx)(ProductEditVariantForm, { variant, product })
        ] });
      };
-@@ -140356,7 +140410,7 @@ var init_metadata_form = __esm({
+@@ -140356,7 +140424,7 @@ var init_metadata_form = __esm({
                      {
                        showTooltip: isDisabled,
                        content: t5("metadata.edit.complexRow.tooltip"),
@@ -1202,7 +1229,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                          /* @__PURE__ */ (0, import_jsx_runtime178.jsxs)(
                            "div",
                            {
-@@ -140409,14 +140463,14 @@ var init_metadata_form = __esm({
+@@ -140409,14 +140477,14 @@ var init_metadata_form = __esm({
                              import_ui130.DropdownMenu.Trigger,
                              {
                                className: (0, import_ui130.clx)(
@@ -1219,7 +1246,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                              }
                            ),
                            /* @__PURE__ */ (0, import_jsx_runtime178.jsxs)(import_ui130.DropdownMenu.Content, { children: [
-@@ -141169,29 +141223,8 @@ var init_loader5 = __esm({
+@@ -141169,29 +141237,8 @@ var init_loader5 = __esm({
  // src/routes/product-variants/product-variant-detail/components/variant-general-section/variant-general-section.tsx
  function VariantGeneralSection({ variant }) {
    const { t: t5 } = (0, import_react_i18next124.useTranslation)();
@@ -1249,7 +1276,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
    return /* @__PURE__ */ (0, import_jsx_runtime183.jsxs)(import_ui133.Container, { className: "divide-y p-0", children: [
      /* @__PURE__ */ (0, import_jsx_runtime183.jsxs)("div", { className: "flex items-center justify-between px-6 py-4", children: [
        /* @__PURE__ */ (0, import_jsx_runtime183.jsxs)("div", { children: [
-@@ -141224,16 +141257,7 @@ function VariantGeneralSection({ variant }) {
+@@ -141224,16 +141271,7 @@ function VariantGeneralSection({ variant }) {
                    }
                  ]
                }
@@ -1267,7 +1294,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
            ]
          }
        ) })
-@@ -143833,10 +143857,11 @@ var init_country_cell = __esm({
+@@ -143833,10 +143871,11 @@ var init_country_cell = __esm({
          import_react_country_flag2.default,
          {
            countryCode: country.iso_2.toUpperCase(),
@@ -1281,7 +1308,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
            },
            "aria-label": country.display_name
          }
-@@ -145462,7 +145487,7 @@ var init_product_option_metadata = __esm({
+@@ -145462,7 +145501,7 @@ var init_product_option_metadata = __esm({
        if (isError) {
          throw error;
        }
@@ -1290,7 +1317,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
          MetadataForm,
          {
            isPending,
-@@ -145470,7 +145495,7 @@ var init_product_option_metadata = __esm({
+@@ -145470,7 +145509,7 @@ var init_product_option_metadata = __esm({
            hook: mutateAsync,
            metadata: product_option?.metadata
          }
@@ -1299,7 +1326,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
      };
    }
  });
-@@ -148766,7 +148791,7 @@ var init_categories_metadata = __esm({
+@@ -148766,7 +148805,7 @@ var init_categories_metadata = __esm({
        if (isError) {
          throw error;
        }
@@ -1308,7 +1335,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
          MetadataForm,
          {
            isPending,
-@@ -148774,7 +148799,7 @@ var init_categories_metadata = __esm({
+@@ -148774,7 +148813,7 @@ var init_categories_metadata = __esm({
            hook: mutateAsync,
            metadata: product_category?.metadata
          }
@@ -1317,7 +1344,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
      };
    }
  });
-@@ -149209,6 +149234,7 @@ var init_constants10 = __esm({
+@@ -149209,6 +149248,7 @@ var init_constants10 = __esm({
        "*payment_collections",
        "*payment_collections.payment_sessions",
        "*payment_collections.payments",
@@ -1325,7 +1352,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
        "*payment_collections.payments.refunds",
        "*payment_collections.payments.refunds.refund_reason",
        "region.automatic_taxes"
-@@ -152000,10 +152026,10 @@ var init_customer_info = __esm({
+@@ -152000,10 +152040,10 @@ var init_customer_info = __esm({
        return /* @__PURE__ */ (0, import_jsx_runtime294.jsxs)("div", { className: "text-ui-fg-subtle grid grid-cols-2 items-center px-6 py-4", children: [
          /* @__PURE__ */ (0, import_jsx_runtime294.jsx)(import_ui193.Text, { size: "small", leading: "compact", weight: "plus", children: t5("fields.id") }),
          /* @__PURE__ */ (0, import_jsx_runtime294.jsx)(
@@ -1340,7 +1367,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
              children: /* @__PURE__ */ (0, import_jsx_runtime294.jsxs)("div", { className: "flex items-center gap-x-2 overflow-hidden", children: [
                /* @__PURE__ */ (0, import_jsx_runtime294.jsx)(import_ui193.Avatar, { size: "2xsmall", fallback }),
                /* @__PURE__ */ (0, import_jsx_runtime294.jsx)(
-@@ -152038,7 +152064,7 @@ var init_customer_info = __esm({
+@@ -152038,7 +152078,7 @@ var init_customer_info = __esm({
        return /* @__PURE__ */ (0, import_jsx_runtime294.jsxs)("div", { className: "text-ui-fg-subtle grid grid-cols-2 items-start px-6 py-4", children: [
          /* @__PURE__ */ (0, import_jsx_runtime294.jsx)(import_ui193.Text, { size: "small", leading: "compact", weight: "plus", children: t5("orders.customer.contactLabel") }),
          /* @__PURE__ */ (0, import_jsx_runtime294.jsxs)("div", { className: "flex flex-col gap-y-2", children: [
@@ -1349,7 +1376,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
              /* @__PURE__ */ (0, import_jsx_runtime294.jsx)(
                import_ui193.Text,
                {
-@@ -152050,7 +152076,7 @@ var init_customer_info = __esm({
+@@ -152050,7 +152090,7 @@ var init_customer_info = __esm({
              ),
              /* @__PURE__ */ (0, import_jsx_runtime294.jsx)("div", { className: "flex justify-end", children: /* @__PURE__ */ (0, import_jsx_runtime294.jsx)(import_ui193.Copy, { content: email, className: "text-ui-fg-muted" }) })
            ] }),
@@ -1358,7 +1385,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
              /* @__PURE__ */ (0, import_jsx_runtime294.jsx)(
                import_ui193.Text,
                {
-@@ -152072,7 +152098,7 @@ var init_customer_info = __esm({
+@@ -152072,7 +152112,7 @@ var init_customer_info = __esm({
        const { t: t5 } = (0, import_react_i18next203.useTranslation)();
        return /* @__PURE__ */ (0, import_jsx_runtime294.jsxs)("div", { className: "text-ui-fg-subtle grid grid-cols-2 items-start px-6 py-4", children: [
          /* @__PURE__ */ (0, import_jsx_runtime294.jsx)(import_ui193.Text, { size: "small", leading: "compact", weight: "plus", children: type === "shipping" ? t5("addresses.shippingAddress.label") : t5("addresses.billingAddress.label") }),
@@ -1367,7 +1394,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
            /* @__PURE__ */ (0, import_jsx_runtime294.jsx)(import_ui193.Text, { size: "small", leading: "compact", children: getFormattedAddress({ address }).map((line, i) => {
              return /* @__PURE__ */ (0, import_jsx_runtime294.jsxs)("span", { className: "break-words", children: [
                line,
-@@ -153471,7 +153497,7 @@ var init_order_summary_section = __esm({
+@@ -153471,7 +153511,7 @@ var init_order_summary_section = __esm({
        );
        const { order: orderPreview } = useOrderPreview(order.id);
        const { returns = [] } = useReturns({
@@ -1376,7 +1403,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
          order_id: order.id,
          fields: "+received_at"
        });
-@@ -153690,24 +153716,24 @@ var init_order_summary_section = __esm({
+@@ -153690,24 +153730,24 @@ var init_order_summary_section = __esm({
          /* @__PURE__ */ (0, import_jsx_runtime303.jsxs)(
            "div",
            {
@@ -1410,7 +1437,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                    ] })
                  ] }),
                  appliedPromoCodes.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime303.jsx)(
-@@ -153795,7 +153821,7 @@ var init_order_summary_section = __esm({
+@@ -153795,7 +153835,7 @@ var init_order_summary_section = __esm({
        secondaryValue,
        tooltip
      }) => /* @__PURE__ */ (0, import_jsx_runtime303.jsxs)("div", { className: "grid grid-cols-3 items-center", children: [
@@ -1419,7 +1446,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
          label,
          " ",
          tooltip
-@@ -154649,12 +154675,14 @@ function OrderCreateFulfillmentItem({
+@@ -154649,12 +154689,14 @@ function OrderCreateFulfillmentItem({
                        /* @__PURE__ */ (0, import_jsx_runtime305.jsx)(Form.Control, { children: /* @__PURE__ */ (0, import_jsx_runtime305.jsx)(
                          import_ui203.Input,
                          {
@@ -1435,7 +1462,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                              if (val !== null && !isNaN(val)) {
                                if (val < minValue || val > maxValue) {
                                  form.setError(`quantity.${item.id}`, {
-@@ -154789,6 +154817,10 @@ function OrderCreateFulfillmentForm({
+@@ -154789,6 +154831,10 @@ function OrderCreateFulfillmentForm({
          ({ id: id2 }) => itemShippingProfileMap[id2] === selectedShippingProfileId
        );
      }
@@ -1446,7 +1473,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
      const payload = {
        location_id: selectedLocationId,
        shipping_option_id: shippingOptionId,
-@@ -154852,7 +154884,7 @@ function OrderCreateFulfillmentForm({
+@@ -154852,7 +154898,7 @@ function OrderCreateFulfillmentForm({
        onSubmit: handleSubmit,
        className: "flex h-full flex-col overflow-hidden",
        children: [
@@ -1455,7 +1482,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
          /* @__PURE__ */ (0, import_jsx_runtime306.jsx)(RouteFocusModal.Body, { className: "flex h-full w-full flex-col items-center divide-y overflow-y-auto", children: /* @__PURE__ */ (0, import_jsx_runtime306.jsx)("div", { className: "flex size-full flex-col items-center overflow-auto p-16", children: /* @__PURE__ */ (0, import_jsx_runtime306.jsx)("div", { className: "flex w-full max-w-[736px] flex-col justify-center px-2 pb-2", children: /* @__PURE__ */ (0, import_jsx_runtime306.jsxs)("div", { className: "flex flex-col divide-y divide-dashed", children: [
            /* @__PURE__ */ (0, import_jsx_runtime306.jsx)("div", { className: "pb-8", children: /* @__PURE__ */ (0, import_jsx_runtime306.jsx)(
              Form.Field,
-@@ -154906,7 +154938,8 @@ function OrderCreateFulfillmentForm({
+@@ -154906,7 +154952,8 @@ function OrderCreateFulfillmentForm({
                              /* @__PURE__ */ (0, import_jsx_runtime306.jsx)(
                                import_ui204.Select.Trigger,
                                {
@@ -1465,7 +1492,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                                  ref,
                                  children: isShippingOptionsLoading ? /* @__PURE__ */ (0, import_jsx_runtime306.jsxs)("span", { className: "text-right", children: [
                                    t5("labels.loading"),
-@@ -155171,11 +155204,12 @@ function DismissedQuantity({
+@@ -155171,11 +155218,12 @@ function DismissedQuantity({
      }
    };
    return /* @__PURE__ */ (0, import_jsx_runtime308.jsxs)(import_ui205.Popover, { open: isOpen, onOpenChange: setIsOpen, children: [
@@ -1480,7 +1507,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
        /* @__PURE__ */ (0, import_jsx_runtime308.jsx)("span", { className: "txt-small text-ui-fg-subtle mb-2 font-medium", children: t5("orders.returns.receive.writeOffInputLabel") }),
        /* @__PURE__ */ (0, import_jsx_runtime308.jsx)(
          Form.Field,
-@@ -155189,6 +155223,7 @@ function DismissedQuantity({
+@@ -155189,6 +155237,7 @@ function DismissedQuantity({
                  min: 0,
                  max: item.quantity,
                  type: "number",
@@ -1488,7 +1515,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                  value,
                  className: "bg-ui-bg-field-component text-right [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none",
                  onChange: (e) => {
-@@ -155333,6 +155368,7 @@ function OrderReceiveReturnForm({
+@@ -155333,6 +155382,7 @@ function OrderReceiveReturnForm({
        import_ui206.toast.error(t5("orders.returns.receive.toast.errorLargeValue"));
        return;
      }
@@ -1496,7 +1523,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
      try {
        if (action) {
          if (value === null || value === 0) {
-@@ -155402,7 +155438,7 @@ function OrderReceiveReturnForm({
+@@ -155402,7 +155452,7 @@ function OrderReceiveReturnForm({
                            ")"
                          ] })
                        ] }),
@@ -1505,7 +1532,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                      ] })
                    ] }),
                    /* @__PURE__ */ (0, import_jsx_runtime309.jsxs)("div", { className: "flex flex-1 flex-row items-center gap-2", children: [
-@@ -155428,6 +155464,7 @@ function OrderReceiveReturnForm({
+@@ -155428,6 +155478,7 @@ function OrderReceiveReturnForm({
                                min: 0,
                                max: item.quantity,
                                type: "number",
@@ -1513,7 +1540,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                                value: value ?? 0,
                                className: "bg-ui-bg-field-component text-right [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none",
                                onChange: (e) => {
-@@ -155480,7 +155517,7 @@ function OrderReceiveReturnForm({
+@@ -155480,7 +155531,7 @@ function OrderReceiveReturnForm({
                        import_ui206.Switch,
                        {
                          dir: "ltr",
@@ -1522,7 +1549,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                          checked: !!value,
                          onCheckedChange: onChange,
                          ...field
-@@ -155570,12 +155607,13 @@ function OrderReceiveReturn() {
+@@ -155570,12 +155621,13 @@ function OrderReceiveReturn() {
        IS_REQUEST_RUNNING = true;
        try {
          const { return: _return } = await initiateReceiveReturn({});
@@ -1542,7 +1569,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
        } catch (e) {
          import_ui207.toast.error(
            e instanceof Error ? e.message : t5("errorBoundary.defaultTitle")
-@@ -155587,9 +155625,9 @@ function OrderReceiveReturn() {
+@@ -155587,9 +155639,9 @@ function OrderReceiveReturn() {
    }, [preview]);
    const ready = order && orderReturn && preview;
    return /* @__PURE__ */ (0, import_jsx_runtime310.jsxs)(RouteDrawer, { children: [
@@ -1554,7 +1581,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
      ready && /* @__PURE__ */ (0, import_jsx_runtime310.jsx)(
        OrderReceiveReturnForm,
        {
-@@ -155693,13 +155731,13 @@ function OrderAllocateItemsItem({
+@@ -155693,13 +155745,13 @@ function OrderAllocateItemsItem({
      getFulfillableQuantity(item),
      availableQuantity || Number.MAX_SAFE_INTEGER
    );
@@ -1571,7 +1598,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
              /* @__PURE__ */ (0, import_jsx_runtime311.jsx)(import_ui208.Text, { className: "txt-small flex", as: "span", weight: "plus", children: item.product_title }),
              item.variant_sku && /* @__PURE__ */ (0, import_jsx_runtime311.jsxs)("span", { className: "text-ui-fg-subtle", children: [
                " ",
-@@ -155709,7 +155747,7 @@ function OrderAllocateItemsItem({
+@@ -155709,7 +155761,7 @@ function OrderAllocateItemsItem({
              ] }),
              hasInventoryKit && /* @__PURE__ */ (0, import_jsx_runtime311.jsx)(import_icons93.Component, { className: "text-ui-fg-muted ml-2 overflow-visible pt-[2px]" })
            ] }),
@@ -1580,7 +1607,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
          ] })
        ] }) }),
        /* @__PURE__ */ (0, import_jsx_runtime311.jsxs)(
-@@ -155726,7 +155764,7 @@ function OrderAllocateItemsItem({
+@@ -155726,7 +155778,7 @@ function OrderAllocateItemsItem({
                  /* @__PURE__ */ (0, import_jsx_runtime311.jsxs)("div", { className: "txt-small flex flex-col", children: [
                    /* @__PURE__ */ (0, import_jsx_runtime311.jsx)("span", { className: "text-ui-fg-subtle font-medium", children: t5("labels.available") }),
                    /* @__PURE__ */ (0, import_jsx_runtime311.jsxs)("span", { className: "text-ui-fg-muted", children: [
@@ -1589,7 +1616,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                      availableQuantity && !hasInventoryKit && quantityField[`${item.id}-${item.variant?.inventory?.[0].id}`] && /* @__PURE__ */ (0, import_jsx_runtime311.jsxs)("span", { className: "text-ui-fg-error txt-small ml-1", children: [
                        "-",
                        quantityField[`${item.id}-${item.variant?.inventory?.[0].id}`]
-@@ -155738,7 +155776,7 @@ function OrderAllocateItemsItem({
+@@ -155738,7 +155790,7 @@ function OrderAllocateItemsItem({
                  /* @__PURE__ */ (0, import_jsx_runtime311.jsx)("div", { className: "bg-ui-border-strong block h-[12px] w-[1px]" }),
                  /* @__PURE__ */ (0, import_jsx_runtime311.jsxs)("div", { className: "txt-small flex flex-col", children: [
                    /* @__PURE__ */ (0, import_jsx_runtime311.jsx)("span", { className: "text-ui-fg-subtle font-medium", children: t5("labels.inStock") }),
@@ -1598,7 +1625,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                  ] })
                ] })
              ] }),
-@@ -155761,6 +155799,7 @@ function OrderAllocateItemsItem({
+@@ -155761,6 +155813,7 @@ function OrderAllocateItemsItem({
                          {
                            className: "bg-ui-bg-base txt-small w-[46px] rounded-lg text-right [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none",
                            type: "number",
@@ -1606,7 +1633,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                            ...field,
                            disabled: !locationId,
                            onChange: (e) => {
-@@ -155793,10 +155832,12 @@ function OrderAllocateItemsItem({
+@@ -155793,10 +155846,12 @@ function OrderAllocateItemsItem({
        )
      ] }),
      hasInventoryKit && /* @__PURE__ */ (0, import_jsx_runtime311.jsx)("div", { className: "px-4 py-2", children: /* @__PURE__ */ (0, import_jsx_runtime311.jsxs)(
@@ -1621,7 +1648,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
          children: [
            /* @__PURE__ */ (0, import_jsx_runtime311.jsx)(
              import_icons93.TriangleDownMini,
-@@ -155816,7 +155857,7 @@ function OrderAllocateItemsItem({
+@@ -155816,7 +155871,7 @@ function OrderAllocateItemsItem({
          (l) => l.location_id === locationId
        );
        const hasQuantityError2 = !!quantityField[`${item.id}-${i.id}`] && quantityField[`${item.id}-${i.id}`] > (location?.available_quantity ?? 0);
@@ -1630,7 +1657,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
          /* @__PURE__ */ (0, import_jsx_runtime311.jsxs)("div", { className: "flex flex-1 flex-row items-center gap-3", children: [
            hasQuantityError2 && /* @__PURE__ */ (0, import_jsx_runtime311.jsx)(import_icons93.ExclamationCircleSolid, { className: "text-ui-fg-error" }),
            /* @__PURE__ */ (0, import_jsx_runtime311.jsxs)("div", { className: "flex flex-col", children: [
-@@ -155832,7 +155873,7 @@ function OrderAllocateItemsItem({
+@@ -155832,7 +155887,7 @@ function OrderAllocateItemsItem({
              /* @__PURE__ */ (0, import_jsx_runtime311.jsxs)("div", { className: "txt-small flex flex-col", children: [
                /* @__PURE__ */ (0, import_jsx_runtime311.jsx)("span", { className: "text-ui-fg-subtle font-medium", children: t5("labels.available") }),
                /* @__PURE__ */ (0, import_jsx_runtime311.jsxs)("span", { className: "text-ui-fg-muted", children: [
@@ -1639,7 +1666,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                  location?.available_quantity && quantityField[`${item.id}-${i.id}`] && /* @__PURE__ */ (0, import_jsx_runtime311.jsxs)("span", { className: "text-ui-fg-error txt-small ml-1", children: [
                    "-",
                    quantityField[`${item.id}-${i.id}`]
-@@ -155844,7 +155885,7 @@ function OrderAllocateItemsItem({
+@@ -155844,7 +155899,7 @@ function OrderAllocateItemsItem({
              /* @__PURE__ */ (0, import_jsx_runtime311.jsx)("div", { className: "bg-ui-border-strong block h-[12px] w-[1px]" }),
              /* @__PURE__ */ (0, import_jsx_runtime311.jsxs)("div", { className: "txt-small flex flex-col", children: [
                /* @__PURE__ */ (0, import_jsx_runtime311.jsx)("span", { className: "text-ui-fg-subtle font-medium", children: t5("labels.inStock") }),
@@ -1648,7 +1675,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
              ] })
            ] }),
            /* @__PURE__ */ (0, import_jsx_runtime311.jsxs)("div", { className: "flex items-center gap-3", children: [
-@@ -155866,6 +155907,7 @@ function OrderAllocateItemsItem({
+@@ -155866,6 +155921,7 @@ function OrderAllocateItemsItem({
                        {
                          className: "bg-ui-bg-base txt-small w-[46px] rounded-lg text-right [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none",
                          type: "number",
@@ -1656,7 +1683,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                          ...field,
                          disabled: !locationId,
                          onChange: (e) => {
-@@ -156033,8 +156075,9 @@ function OrderAllocateItemsForm({ order }) {
+@@ -156033,8 +156089,9 @@ function OrderAllocateItemsForm({ order }) {
        className: "flex h-full flex-col overflow-hidden",
        children: [
          /* @__PURE__ */ (0, import_jsx_runtime312.jsx)(RouteFocusModal.Header, {}),
@@ -1668,7 +1695,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
            /* @__PURE__ */ (0, import_jsx_runtime312.jsxs)("div", { className: "flex-1 divide-y divide-dashed pt-8", children: [
              /* @__PURE__ */ (0, import_jsx_runtime312.jsx)(
                Form.Field,
-@@ -156043,30 +156086,30 @@ function OrderAllocateItemsForm({ order }) {
+@@ -156043,30 +156100,30 @@ function OrderAllocateItemsForm({ order }) {
                  name: "location_id",
                  render: ({ field: { onChange, ref, ...field } }) => {
                    return /* @__PURE__ */ (0, import_jsx_runtime312.jsxs)(Form.Item, { children: [
@@ -1704,7 +1731,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                      ] }),
                      /* @__PURE__ */ (0, import_jsx_runtime312.jsx)(Form.ErrorMessage, {})
                    ] });
-@@ -156074,7 +156117,7 @@ function OrderAllocateItemsForm({ order }) {
+@@ -156074,7 +156131,7 @@ function OrderAllocateItemsForm({ order }) {
                }
              ),
              /* @__PURE__ */ (0, import_jsx_runtime312.jsxs)(Form.Item, { className: "mt-8 pt-8", children: [
@@ -1713,7 +1740,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                  /* @__PURE__ */ (0, import_jsx_runtime312.jsxs)("div", { className: "flex-1", children: [
                    /* @__PURE__ */ (0, import_jsx_runtime312.jsx)(Form.Label, { children: t5("orders.allocateItems.itemsToAllocate") }),
                    /* @__PURE__ */ (0, import_jsx_runtime312.jsx)(Form.Hint, { children: t5("orders.allocateItems.itemsToAllocateDesc") })
-@@ -156084,6 +156127,7 @@ function OrderAllocateItemsForm({ order }) {
+@@ -156084,6 +156141,7 @@ function OrderAllocateItemsForm({ order }) {
                    {
                      value: filterTerm,
                      onChange: (e) => setFilterTerm(e.target.value),
@@ -1721,7 +1748,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                      placeholder: t5("orders.allocateItems.search"),
                      autoComplete: "off",
                      type: "search"
-@@ -156169,6 +156213,7 @@ var init_order_create_fulfillment_form3 = __esm({
+@@ -156169,6 +156227,7 @@ var init_order_create_fulfillment_form3 = __esm({
  // src/routes/orders/order-allocate-items/order-allocate-items.tsx
  function OrderAllocateItems() {
    const { id: id2 } = (0, import_react_router_dom96.useParams)();
@@ -1729,7 +1756,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
    const { order, isLoading, isError, error } = useOrder(id2, {
      fields: "currency_code,*items,*items.variant,+items.variant.product.title,*items.variant.inventory,*items.variant.inventory.location_levels,*items.variant.inventory_items,*shipping_address"
    });
-@@ -156176,7 +156221,7 @@ function OrderAllocateItems() {
+@@ -156176,7 +156235,7 @@ function OrderAllocateItems() {
      throw error;
    }
    const ready = !isLoading && order;
@@ -1738,7 +1765,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
  }
  var import_react_router_dom96, import_jsx_runtime313;
  var init_order_allocate_items = __esm({
-@@ -156275,7 +156320,8 @@ function OrderCreateShipmentForm({
+@@ -156275,7 +156334,8 @@ function OrderCreateShipmentForm({
          /* @__PURE__ */ (0, import_jsx_runtime314.jsx)(RouteFocusModal.Header, {}),
          /* @__PURE__ */ (0, import_jsx_runtime314.jsx)(RouteFocusModal.Body, { className: "flex h-full w-full flex-col items-center divide-y overflow-y-auto", children: /* @__PURE__ */ (0, import_jsx_runtime314.jsx)("div", { className: "flex size-full flex-col items-center overflow-auto p-16", children: /* @__PURE__ */ (0, import_jsx_runtime314.jsx)("div", { className: "flex w-full max-w-[736px] flex-col justify-center px-2 pb-2", children: /* @__PURE__ */ (0, import_jsx_runtime314.jsxs)("div", { className: "flex flex-col divide-y", children: [
            /* @__PURE__ */ (0, import_jsx_runtime314.jsxs)("div", { className: "flex flex-1 flex-col", children: [
@@ -1748,7 +1775,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
              /* @__PURE__ */ (0, import_jsx_runtime314.jsx)("div", { className: "flex flex-col max-md:gap-y-2 max-md:divide-y", children: labels.map((label, index) => /* @__PURE__ */ (0, import_jsx_runtime314.jsxs)(
                "div",
                {
-@@ -156543,7 +156589,9 @@ var init_use_return_item_table_columns = __esm({
+@@ -156543,7 +156603,9 @@ var init_use_return_item_table_columns = __esm({
                return /* @__PURE__ */ (0, import_jsx_runtime317.jsx)(
                  import_ui211.Checkbox,
                  {
@@ -1759,7 +1786,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                    onCheckedChange: (value) => table.toggleAllPageRowsSelected(!!value)
                  }
                );
-@@ -156553,7 +156601,9 @@ var init_use_return_item_table_columns = __esm({
+@@ -156553,7 +156615,9 @@ var init_use_return_item_table_columns = __esm({
                return /* @__PURE__ */ (0, import_jsx_runtime317.jsx)(
                  import_ui211.Checkbox,
                  {
@@ -1770,7 +1797,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                    checked: row.getIsSelected(),
                    onCheckedChange: (value) => row.toggleSelected(!!value),
                    onClick: (e) => {
-@@ -156925,6 +156975,7 @@ function ReturnItem({
+@@ -156925,6 +156989,7 @@ function ReturnItem({
    index
  }) {
    const { t: t5 } = (0, import_react_i18next225.useTranslation)();
@@ -1778,7 +1805,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
    const { return_reasons = [] } = useReturnReasons({ fields: "+label" });
    const formItem = form.watch(`items.${index}`);
    const showReturnReason = typeof formItem.reason_id === "string";
-@@ -156936,7 +156987,7 @@ function ReturnItem({
+@@ -156936,7 +157001,7 @@ function ReturnItem({
          /* @__PURE__ */ (0, import_jsx_runtime319.jsxs)("div", { className: "flex flex-col", children: [
            /* @__PURE__ */ (0, import_jsx_runtime319.jsxs)("div", { children: [
              /* @__PURE__ */ (0, import_jsx_runtime319.jsxs)(import_ui212.Text, { className: "txt-small", as: "span", weight: "plus", children: [
@@ -1787,7 +1814,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                " "
              ] }),
              item.variant_sku && /* @__PURE__ */ (0, import_jsx_runtime319.jsxs)("span", { children: [
-@@ -156945,7 +156996,7 @@ function ReturnItem({
+@@ -156945,7 +157010,7 @@ function ReturnItem({
                ")"
              ] })
            ] }),
@@ -1796,7 +1823,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
          ] })
        ] }),
        /* @__PURE__ */ (0, import_jsx_runtime319.jsxs)("div", { className: "flex flex-1 justify-between", children: [
-@@ -156960,7 +157011,8 @@ function ReturnItem({
+@@ -156960,7 +157025,8 @@ function ReturnItem({
                    /* @__PURE__ */ (0, import_jsx_runtime319.jsx)(Form.Control, { children: /* @__PURE__ */ (0, import_jsx_runtime319.jsx)(
                      import_ui212.Input,
                      {
@@ -1806,7 +1833,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                        min: 1,
                        max: item.quantity,
                        type: "number",
-@@ -156969,7 +157021,7 @@ function ReturnItem({
+@@ -156969,7 +157035,7 @@ function ReturnItem({
                          const val = e.target.value;
                          const payload = val === "" ? null : Number(val);
                          field.onChange(payload);
@@ -1815,7 +1842,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                            onUpdate({ quantity: payload });
                          }
                        }
-@@ -157034,7 +157086,8 @@ function ReturnItem({
+@@ -157034,7 +157100,8 @@ function ReturnItem({
                    /* @__PURE__ */ (0, import_jsx_runtime319.jsx)(Form.Control, { children: /* @__PURE__ */ (0, import_jsx_runtime319.jsx)(
                      Combobox,
                      {
@@ -1825,7 +1852,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                        value,
                        onChange: (v) => {
                          onUpdate({ reason_id: v });
-@@ -157055,7 +157108,8 @@ function ReturnItem({
+@@ -157055,7 +157122,8 @@ function ReturnItem({
            /* @__PURE__ */ (0, import_jsx_runtime319.jsx)(
              import_ui212.IconButton,
              {
@@ -1835,7 +1862,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                className: "flex-shrink",
                variant: "transparent",
                onClick: () => {
-@@ -157085,8 +157139,9 @@ function ReturnItem({
+@@ -157085,8 +157153,9 @@ function ReturnItem({
                      {
                        onChange,
                        ...field,
@@ -1847,7 +1874,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                      }
                    ) }),
                    /* @__PURE__ */ (0, import_jsx_runtime319.jsx)(Form.ErrorMessage, {})
-@@ -157097,7 +157152,8 @@ function ReturnItem({
+@@ -157097,7 +157166,8 @@ function ReturnItem({
            /* @__PURE__ */ (0, import_jsx_runtime319.jsx)(
              import_ui212.IconButton,
              {
@@ -1857,7 +1884,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                className: "flex-shrink",
                variant: "transparent",
                onClick: () => {
-@@ -157210,7 +157266,7 @@ var init_return_create_form = __esm({
+@@ -157210,7 +157280,7 @@ var init_return_create_form = __esm({
          value: "0",
          float: 0
        });
@@ -1866,7 +1893,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
        const { stock_locations = [] } = useStockLocations({ limit: 999 });
        const { shipping_options = [] } = useShippingOptions({
          limit: 999,
-@@ -157360,57 +157416,31 @@ var init_return_create_form = __esm({
+@@ -157360,57 +157430,31 @@ var init_return_create_form = __esm({
        (0, import_react215.useEffect)(() => {
          form.setValue("location_id", activeReturn?.location_id || "");
        }, [activeReturn]);
@@ -1949,7 +1976,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
        const returnTotal = preview.return_requested_total;
        const shippingTotal = (0, import_react215.useMemo)(() => {
          const method = preview.shipping_methods.find(
-@@ -157433,13 +157463,14 @@ var init_return_create_form = __esm({
+@@ -157433,13 +157477,14 @@ var init_return_create_form = __esm({
            children: /* @__PURE__ */ (0, import_jsx_runtime320.jsxs)(KeyboundForm, { onSubmit: handleSubmit, className: "flex h-full flex-col", children: [
              /* @__PURE__ */ (0, import_jsx_runtime320.jsx)(RouteFocusModal.Header, {}),
              /* @__PURE__ */ (0, import_jsx_runtime320.jsx)(RouteFocusModal.Body, { className: "flex size-full justify-center overflow-y-auto", children: /* @__PURE__ */ (0, import_jsx_runtime320.jsxs)("div", { className: "mt-16 w-[720px] max-w-[100%] px-4 md:p-0", children: [
@@ -1967,7 +1994,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                      /* @__PURE__ */ (0, import_jsx_runtime320.jsx)(
                        AddReturnItemsTable,
                        {
-@@ -157541,6 +157572,7 @@ var init_return_create_form = __esm({
+@@ -157541,6 +157586,7 @@ var init_return_create_form = __esm({
                          return /* @__PURE__ */ (0, import_jsx_runtime320.jsx)(Form.Item, { children: /* @__PURE__ */ (0, import_jsx_runtime320.jsx)(Form.Control, { children: /* @__PURE__ */ (0, import_jsx_runtime320.jsx)(
                            Combobox,
                            {
@@ -1975,7 +2002,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                              value,
                              onChange: (v) => {
                                onChange(v);
-@@ -157588,6 +157620,7 @@ var init_return_create_form = __esm({
+@@ -157588,6 +157634,7 @@ var init_return_create_form = __esm({
                          return /* @__PURE__ */ (0, import_jsx_runtime320.jsx)(Form.Item, { children: /* @__PURE__ */ (0, import_jsx_runtime320.jsx)(Form.Control, { children: /* @__PURE__ */ (0, import_jsx_runtime320.jsx)(
                            Combobox,
                            {
@@ -1983,7 +2010,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                              allowClear: true,
                              value,
                              onChange: (v) => {
-@@ -157612,7 +157645,8 @@ var init_return_create_form = __esm({
+@@ -157612,7 +157659,8 @@ var init_return_create_form = __esm({
                    )
                  ] })
                ] }),
@@ -1993,7 +2020,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                  /* @__PURE__ */ (0, import_jsx_runtime320.jsx)("div", { className: "text-ui-fg-subtle txt-small pb-2 font-medium leading-[20px]", children: t5("orders.returns.noInventoryLevel") }),
                  /* @__PURE__ */ (0, import_jsx_runtime320.jsx)(import_ui213.Text, { className: "text-ui-fg-subtle txt-small leading-normal", children: t5("orders.returns.noInventoryLevelDesc") })
                ] }),
-@@ -157630,7 +157664,7 @@ var init_return_create_form = __esm({
+@@ -157630,7 +157678,7 @@ var init_return_create_form = __esm({
                      !isShippingPriceEdit && /* @__PURE__ */ (0, import_jsx_runtime320.jsx)(
                        import_ui213.IconButton,
                        {
@@ -2002,7 +2029,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                          variant: "transparent",
                          className: "text-ui-fg-muted",
                          disabled: showPlaceholder || !shippingOptionId,
-@@ -157689,7 +157723,7 @@ var init_return_create_form = __esm({
+@@ -157689,7 +157737,7 @@ var init_return_create_form = __esm({
                            import_ui213.Switch,
                            {
                              dir: "ltr",
@@ -2011,7 +2038,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                              checked: !!value,
                              onCheckedChange: onChange,
                              ...field
-@@ -157796,14 +157830,14 @@ var init_return_create = __esm({
+@@ -157796,14 +157844,14 @@ var init_return_create = __esm({
          }
          run();
        }, [preview]);
@@ -2028,7 +2055,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
      };
    }
  });
-@@ -157844,7 +157878,9 @@ var init_use_claim_item_table_columns = __esm({
+@@ -157844,7 +157892,9 @@ var init_use_claim_item_table_columns = __esm({
                return /* @__PURE__ */ (0, import_jsx_runtime322.jsx)(
                  import_ui215.Checkbox,
                  {
@@ -2039,7 +2066,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                    onCheckedChange: (value) => table.toggleAllPageRowsSelected(!!value)
                  }
                );
-@@ -157854,7 +157890,9 @@ var init_use_claim_item_table_columns = __esm({
+@@ -157854,7 +157904,9 @@ var init_use_claim_item_table_columns = __esm({
                return /* @__PURE__ */ (0, import_jsx_runtime322.jsx)(
                  import_ui215.Checkbox,
                  {
@@ -2050,7 +2077,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                    checked: row.getIsSelected(),
                    onCheckedChange: (value) => row.toggleSelected(!!value),
                    onClick: (e) => {
-@@ -158223,6 +158261,7 @@ function ClaimInboundItem({
+@@ -158223,6 +158275,7 @@ function ClaimInboundItem({
    index
  }) {
    const { t: t5 } = (0, import_react_i18next231.useTranslation)();
@@ -2058,7 +2085,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
    const { return_reasons = [] } = useReturnReasons({ fields: "+label" });
    const formItem = form.watch(`inbound_items.${index}`);
    const showReturnReason = typeof formItem.reason_id === "string";
-@@ -158234,7 +158273,7 @@ function ClaimInboundItem({
+@@ -158234,7 +158287,7 @@ function ClaimInboundItem({
          /* @__PURE__ */ (0, import_jsx_runtime324.jsxs)("div", { className: "flex flex-col", children: [
            /* @__PURE__ */ (0, import_jsx_runtime324.jsxs)("div", { children: [
              /* @__PURE__ */ (0, import_jsx_runtime324.jsxs)(import_ui216.Text, { className: "txt-small", as: "span", weight: "plus", children: [
@@ -2067,7 +2094,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                " "
              ] }),
              item.variant_sku && /* @__PURE__ */ (0, import_jsx_runtime324.jsxs)("span", { children: [
-@@ -158243,7 +158282,7 @@ function ClaimInboundItem({
+@@ -158243,7 +158296,7 @@ function ClaimInboundItem({
                ")"
              ] })
            ] }),
@@ -2076,7 +2103,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
          ] })
        ] }),
        /* @__PURE__ */ (0, import_jsx_runtime324.jsxs)("div", { className: "flex flex-1 justify-between", children: [
-@@ -158259,7 +158298,8 @@ function ClaimInboundItem({
+@@ -158259,7 +158312,8 @@ function ClaimInboundItem({
                      import_ui216.Input,
                      {
                        ...field,
@@ -2086,7 +2113,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                        min: 1,
                        max: item.quantity,
                        type: "number",
-@@ -158267,7 +158307,7 @@ function ClaimInboundItem({
+@@ -158267,7 +158321,7 @@ function ClaimInboundItem({
                          const val = e.target.value;
                          const payload = val === "" ? null : Number(val);
                          field.onChange(payload);
@@ -2095,7 +2122,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                            onUpdate({ quantity: payload });
                          }
                        }
-@@ -158332,7 +158372,8 @@ function ClaimInboundItem({
+@@ -158332,7 +158386,8 @@ function ClaimInboundItem({
                    /* @__PURE__ */ (0, import_jsx_runtime324.jsx)(Form.Control, { children: /* @__PURE__ */ (0, import_jsx_runtime324.jsx)(
                      Combobox,
                      {
@@ -2105,7 +2132,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                        value,
                        onChange: (v) => {
                          onUpdate({ reason_id: v });
-@@ -158353,7 +158394,8 @@ function ClaimInboundItem({
+@@ -158353,7 +158408,8 @@ function ClaimInboundItem({
            /* @__PURE__ */ (0, import_jsx_runtime324.jsx)(
              import_ui216.IconButton,
              {
@@ -2115,7 +2142,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                className: "flex-shrink",
                variant: "transparent",
                onClick: () => {
-@@ -158384,9 +158426,10 @@ function ClaimInboundItem({
+@@ -158384,9 +158440,10 @@ function ClaimInboundItem({
                        ...field,
                        onBlur: () => {
                          field.onChange(field.value);
@@ -2128,7 +2155,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                      }
                    ) }),
                    /* @__PURE__ */ (0, import_jsx_runtime324.jsx)(Form.ErrorMessage, {})
-@@ -158397,7 +158440,8 @@ function ClaimInboundItem({
+@@ -158397,7 +158454,8 @@ function ClaimInboundItem({
            /* @__PURE__ */ (0, import_jsx_runtime324.jsx)(
              import_ui216.IconButton,
              {
@@ -2138,7 +2165,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                className: "flex-shrink",
                variant: "transparent",
                onClick: () => {
-@@ -158483,7 +158527,9 @@ var init_use_claim_outbound_item_table_columns = __esm({
+@@ -158483,7 +158541,9 @@ var init_use_claim_outbound_item_table_columns = __esm({
                return /* @__PURE__ */ (0, import_jsx_runtime325.jsx)(
                  import_ui217.Checkbox,
                  {
@@ -2149,7 +2176,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                    onCheckedChange: (value) => table.toggleAllPageRowsSelected(!!value)
                  }
                );
-@@ -158493,7 +158539,9 @@ var init_use_claim_outbound_item_table_columns = __esm({
+@@ -158493,7 +158553,9 @@ var init_use_claim_outbound_item_table_columns = __esm({
                return /* @__PURE__ */ (0, import_jsx_runtime325.jsx)(
                  import_ui217.Checkbox,
                  {
@@ -2160,7 +2187,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                    checked: row.getIsSelected(),
                    onCheckedChange: (value) => row.toggleSelected(!!value),
                    onClick: (e) => {
-@@ -158615,7 +158663,7 @@ var init_add_claim_outbound_items_table = __esm({
+@@ -158615,7 +158677,7 @@ var init_add_claim_outbound_items_table = __esm({
          pageSize: PAGE_SIZE16,
          prefix: PREFIX7
        });
@@ -2169,7 +2196,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
          ...searchParams,
          fields: "*inventory_items.inventory.location_levels,+inventory_quantity"
        });
-@@ -158636,12 +158684,14 @@ var init_add_claim_outbound_items_table = __esm({
+@@ -158636,12 +158698,14 @@ var init_add_claim_outbound_items_table = __esm({
            updater
          }
        });
@@ -2185,7 +2212,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
            count,
            filters,
            pagination: true,
-@@ -158684,7 +158734,7 @@ function ClaimOutboundItem({
+@@ -158684,7 +158748,7 @@ function ClaimOutboundItem({
        /* @__PURE__ */ (0, import_jsx_runtime327.jsxs)("div", { className: "flex flex-col", children: [
          /* @__PURE__ */ (0, import_jsx_runtime327.jsxs)("div", { children: [
            /* @__PURE__ */ (0, import_jsx_runtime327.jsxs)(import_ui218.Text, { className: "txt-small", as: "span", weight: "plus", children: [
@@ -2194,7 +2221,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
              " "
            ] }),
            previewItem.variant_sku && /* @__PURE__ */ (0, import_jsx_runtime327.jsxs)("span", { children: [
-@@ -158693,7 +158743,7 @@ function ClaimOutboundItem({
+@@ -158693,7 +158757,7 @@ function ClaimOutboundItem({
              ")"
            ] })
          ] }),
@@ -2203,7 +2230,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
        ] })
      ] }),
      /* @__PURE__ */ (0, import_jsx_runtime327.jsxs)("div", { className: "flex flex-1 justify-between", children: [
-@@ -158709,14 +158759,15 @@ function ClaimOutboundItem({
+@@ -158709,14 +158773,15 @@ function ClaimOutboundItem({
                    import_ui218.Input,
                    {
                      ...field,
@@ -2221,7 +2248,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                          onUpdate({ quantity: payload });
                        }
                      }
-@@ -159042,9 +159093,9 @@ var init_claim_outbound_section = __esm({
+@@ -159042,9 +159107,9 @@ var init_claim_outbound_section = __esm({
          /* @__PURE__ */ (0, import_jsx_runtime329.jsxs)("div", { className: "mt-8 flex items-center justify-between", children: [
            /* @__PURE__ */ (0, import_jsx_runtime329.jsx)(import_ui219.Heading, { level: "h2", children: t5("orders.returns.outbound") }),
            /* @__PURE__ */ (0, import_jsx_runtime329.jsxs)(StackedFocusModal, { id: "outbound-items", children: [
@@ -2233,7 +2260,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                /* @__PURE__ */ (0, import_jsx_runtime329.jsx)(
                  AddClaimOutboundItemsTable,
                  {
-@@ -159129,6 +159180,7 @@ var init_claim_outbound_section = __esm({
+@@ -159129,6 +159194,7 @@ var init_claim_outbound_section = __esm({
                  return /* @__PURE__ */ (0, import_jsx_runtime329.jsx)(Form.Item, { children: /* @__PURE__ */ (0, import_jsx_runtime329.jsx)(Form.Control, { children: /* @__PURE__ */ (0, import_jsx_runtime329.jsx)(
                    Combobox,
                    {
@@ -2241,7 +2268,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                      allowClear: true,
                      value: value ?? void 0,
                      onChange: (val) => {
-@@ -159209,7 +159261,7 @@ var init_claim_create_form = __esm({
+@@ -159209,7 +159275,7 @@ var init_claim_create_form = __esm({
          value: "0",
          float: 0
        });
@@ -2250,7 +2277,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
        const { mutateAsync: confirmClaimRequest, isPending: isConfirming } = useClaimConfirmRequest(claim.id, order.id);
        const { mutateAsync: cancelClaimRequest, isPending: isCanceling } = useCancelClaimRequest(claim.id, order.id);
        const { mutateAsync: updateReturn, isPending: isUpdating } = useUpdateReturn(
-@@ -159506,44 +159558,31 @@ var init_claim_create_form = __esm({
+@@ -159506,44 +159572,31 @@ var init_claim_create_form = __esm({
            document.getElementById("js-shipping-outbound-input")?.focus();
          }
        }, [isShippingOutboundPriceEdit]);
@@ -2320,7 +2347,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
        (0, import_react222.useEffect)(() => {
          return () => {
            if (IS_CANCELING) {
-@@ -159577,13 +159616,14 @@ var init_claim_create_form = __esm({
+@@ -159577,13 +159630,14 @@ var init_claim_create_form = __esm({
        return /* @__PURE__ */ (0, import_jsx_runtime330.jsx)(RouteFocusModal.Form, { form, children: /* @__PURE__ */ (0, import_jsx_runtime330.jsxs)(KeyboundForm, { onSubmit: handleSubmit, className: "flex h-full flex-col", children: [
          /* @__PURE__ */ (0, import_jsx_runtime330.jsx)(RouteFocusModal.Header, {}),
          /* @__PURE__ */ (0, import_jsx_runtime330.jsx)(RouteFocusModal.Body, { className: "flex size-full justify-center overflow-y-auto", children: /* @__PURE__ */ (0, import_jsx_runtime330.jsxs)("div", { className: "mt-16 w-[720px] max-w-[100%] px-4 md:p-0", children: [
@@ -2338,7 +2365,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                  /* @__PURE__ */ (0, import_jsx_runtime330.jsx)(
                    AddClaimItemsTable,
                    {
-@@ -159685,6 +159725,7 @@ var init_claim_create_form = __esm({
+@@ -159685,6 +159739,7 @@ var init_claim_create_form = __esm({
                      return /* @__PURE__ */ (0, import_jsx_runtime330.jsx)(Form.Item, { children: /* @__PURE__ */ (0, import_jsx_runtime330.jsx)(Form.Control, { children: /* @__PURE__ */ (0, import_jsx_runtime330.jsx)(
                        Combobox,
                        {
@@ -2346,7 +2373,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                          ...field,
                          value: value ?? void 0,
                          onChange: (v) => {
-@@ -159732,6 +159773,7 @@ var init_claim_create_form = __esm({
+@@ -159732,6 +159787,7 @@ var init_claim_create_form = __esm({
                      return /* @__PURE__ */ (0, import_jsx_runtime330.jsx)(Form.Item, { children: /* @__PURE__ */ (0, import_jsx_runtime330.jsx)(Form.Control, { children: /* @__PURE__ */ (0, import_jsx_runtime330.jsx)(
                        Combobox,
                        {
@@ -2354,7 +2381,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                          allowClear: true,
                          value: value ?? void 0,
                          onChange: (val) => {
-@@ -159752,7 +159794,8 @@ var init_claim_create_form = __esm({
+@@ -159752,7 +159808,8 @@ var init_claim_create_form = __esm({
                )
              ] })
            ] }),
@@ -2364,7 +2391,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
              /* @__PURE__ */ (0, import_jsx_runtime330.jsx)("div", { className: "text-ui-fg-subtle txt-small pb-2 font-medium leading-[20px]", children: t5("orders.returns.noInventoryLevel") }),
              /* @__PURE__ */ (0, import_jsx_runtime330.jsx)(import_ui220.Text, { className: "text-ui-fg-subtle txt-small leading-normal", children: t5("orders.returns.noInventoryLevelDesc") })
            ] }),
-@@ -159798,7 +159841,7 @@ var init_claim_create_form = __esm({
+@@ -159798,7 +159855,7 @@ var init_claim_create_form = __esm({
                  !isShippingInboundPriceEdit && /* @__PURE__ */ (0, import_jsx_runtime330.jsx)(
                    import_ui220.IconButton,
                    {
@@ -2373,7 +2400,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                      variant: "transparent",
                      className: "text-ui-fg-muted",
                      disabled: showInboundItemsPlaceholder || !inboundShippingOptionId,
-@@ -159856,7 +159899,7 @@ var init_claim_create_form = __esm({
+@@ -159856,7 +159913,7 @@ var init_claim_create_form = __esm({
                  !isShippingOutboundPriceEdit && /* @__PURE__ */ (0, import_jsx_runtime330.jsx)(
                    import_ui220.IconButton,
                    {
@@ -2382,7 +2409,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                      variant: "transparent",
                      className: "text-ui-fg-muted",
                      disabled: showOutboundItemsPlaceholder || !outboundShippingOptionId,
-@@ -159928,7 +159971,7 @@ var init_claim_create_form = __esm({
+@@ -159928,7 +159985,7 @@ var init_claim_create_form = __esm({
                        import_ui220.Switch,
                        {
                          dir: "ltr",
@@ -2391,7 +2418,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                          checked: !!value,
                          onCheckedChange: async (checked) => {
                            onChange(checked);
-@@ -159974,7 +160017,7 @@ var init_claim_create_form = __esm({
+@@ -159974,7 +160031,7 @@ var init_claim_create_form = __esm({
                        import_ui220.Switch,
                        {
                          dir: "ltr",
@@ -2400,7 +2427,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                          checked: !!value,
                          onCheckedChange: onChange,
                          ...field
-@@ -160093,7 +160136,7 @@ var init_claim_create = __esm({
+@@ -160093,7 +160150,7 @@ var init_claim_create = __esm({
          }
          run();
        }, [preview]);
@@ -2409,7 +2436,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
          ClaimCreateForm,
          {
            order,
-@@ -160101,7 +160144,7 @@ var init_claim_create = __esm({
+@@ -160101,7 +160158,7 @@ var init_claim_create = __esm({
            preview,
            orderReturn
          }
@@ -2418,7 +2445,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
      };
    }
  });
-@@ -160174,7 +160217,9 @@ var init_use_exchange_item_table_columns = __esm({
+@@ -160174,7 +160231,9 @@ var init_use_exchange_item_table_columns = __esm({
                return /* @__PURE__ */ (0, import_jsx_runtime332.jsx)(
                  import_ui222.Checkbox,
                  {
@@ -2429,7 +2456,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                    onCheckedChange: (value) => table.toggleAllPageRowsSelected(!!value)
                  }
                );
-@@ -160184,7 +160229,9 @@ var init_use_exchange_item_table_columns = __esm({
+@@ -160184,7 +160243,9 @@ var init_use_exchange_item_table_columns = __esm({
                return /* @__PURE__ */ (0, import_jsx_runtime332.jsx)(
                  import_ui222.Checkbox,
                  {
@@ -2440,7 +2467,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                    checked: row.getIsSelected(),
                    onCheckedChange: (value) => row.toggleSelected(!!value),
                    onClick: (e) => {
-@@ -160451,6 +160498,7 @@ function ExchangeInboundItem({
+@@ -160451,6 +160512,7 @@ function ExchangeInboundItem({
    index
  }) {
    const { t: t5 } = (0, import_react_i18next242.useTranslation)();
@@ -2448,7 +2475,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
    const { return_reasons = [] } = useReturnReasons({ fields: "+label" });
    const formItem = form.watch(`inbound_items.${index}`);
    const showReturnReason = typeof formItem.reason_id === "string";
-@@ -160465,7 +160513,7 @@ function ExchangeInboundItem({
+@@ -160465,7 +160527,7 @@ function ExchangeInboundItem({
          /* @__PURE__ */ (0, import_jsx_runtime334.jsxs)("div", { className: "flex flex-grow flex-col", children: [
            /* @__PURE__ */ (0, import_jsx_runtime334.jsxs)("div", { children: [
              /* @__PURE__ */ (0, import_jsx_runtime334.jsxs)(import_ui223.Text, { className: "txt-small", as: "span", weight: "plus", children: [
@@ -2457,7 +2484,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                " "
              ] }),
              item.variant_sku && /* @__PURE__ */ (0, import_jsx_runtime334.jsxs)("span", { children: [
-@@ -160474,7 +160522,7 @@ function ExchangeInboundItem({
+@@ -160474,7 +160536,7 @@ function ExchangeInboundItem({
                ")"
              ] })
            ] }),
@@ -2466,7 +2493,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
          ] }),
          appliedPromoCodes.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime334.jsx)("div", { className: "flex flex-shrink", children: /* @__PURE__ */ (0, import_jsx_runtime334.jsx)(
            import_ui223.Tooltip,
-@@ -160497,7 +160545,8 @@ function ExchangeInboundItem({
+@@ -160497,7 +160559,8 @@ function ExchangeInboundItem({
                      import_ui223.Input,
                      {
                        ...field,
@@ -2476,7 +2503,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                        min: 1,
                        max: item.quantity,
                        type: "number",
-@@ -160505,7 +160554,7 @@ function ExchangeInboundItem({
+@@ -160505,7 +160568,7 @@ function ExchangeInboundItem({
                          const val = e.target.value;
                          const payload = val === "" ? null : Number(val);
                          field.onChange(payload);
@@ -2485,7 +2512,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                            onUpdate({ quantity: payload });
                          }
                        }
-@@ -160570,7 +160619,8 @@ function ExchangeInboundItem({
+@@ -160570,7 +160633,8 @@ function ExchangeInboundItem({
                    /* @__PURE__ */ (0, import_jsx_runtime334.jsx)(Form.Control, { children: /* @__PURE__ */ (0, import_jsx_runtime334.jsx)(
                      Combobox,
                      {
@@ -2495,7 +2522,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                        value,
                        onChange: (v) => {
                          onUpdate({ reason_id: v });
-@@ -160591,7 +160641,8 @@ function ExchangeInboundItem({
+@@ -160591,7 +160655,8 @@ function ExchangeInboundItem({
            /* @__PURE__ */ (0, import_jsx_runtime334.jsx)(
              import_ui223.IconButton,
              {
@@ -2505,7 +2532,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                className: "flex-shrink",
                variant: "transparent",
                onClick: () => {
-@@ -160622,9 +160673,10 @@ function ExchangeInboundItem({
+@@ -160622,9 +160687,10 @@ function ExchangeInboundItem({
                        ...field,
                        onBlur: () => {
                          field.onChange(field.value);
@@ -2518,7 +2545,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                      }
                    ) }),
                    /* @__PURE__ */ (0, import_jsx_runtime334.jsx)(Form.ErrorMessage, {})
-@@ -160635,7 +160687,8 @@ function ExchangeInboundItem({
+@@ -160635,7 +160701,8 @@ function ExchangeInboundItem({
            /* @__PURE__ */ (0, import_jsx_runtime334.jsx)(
              import_ui223.IconButton,
              {
@@ -2528,7 +2555,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                className: "flex-shrink",
                variant: "transparent",
                onClick: () => {
-@@ -160906,9 +160959,9 @@ var init_exchange_inbound_section = __esm({
+@@ -160906,9 +160973,9 @@ var init_exchange_inbound_section = __esm({
          /* @__PURE__ */ (0, import_jsx_runtime335.jsxs)("div", { className: "mt-8 flex items-center justify-between", children: [
            /* @__PURE__ */ (0, import_jsx_runtime335.jsx)(import_ui224.Heading, { level: "h2", children: t5("orders.returns.inbound") }),
            /* @__PURE__ */ (0, import_jsx_runtime335.jsxs)(StackedFocusModal, { id: "inbound-items", children: [
@@ -2540,7 +2567,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                /* @__PURE__ */ (0, import_jsx_runtime335.jsx)(
                  AddExchangeInboundItemsTable,
                  {
-@@ -161002,6 +161055,7 @@ var init_exchange_inbound_section = __esm({
+@@ -161002,6 +161069,7 @@ var init_exchange_inbound_section = __esm({
                    return /* @__PURE__ */ (0, import_jsx_runtime335.jsx)(Form.Item, { children: /* @__PURE__ */ (0, import_jsx_runtime335.jsx)(Form.Control, { children: /* @__PURE__ */ (0, import_jsx_runtime335.jsx)(
                      Combobox,
                      {
@@ -2548,7 +2575,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                        ...field,
                        value: value ?? void 0,
                        onChange: (v) => {
-@@ -161049,6 +161103,7 @@ var init_exchange_inbound_section = __esm({
+@@ -161049,6 +161117,7 @@ var init_exchange_inbound_section = __esm({
                    return /* @__PURE__ */ (0, import_jsx_runtime335.jsx)(Form.Item, { children: /* @__PURE__ */ (0, import_jsx_runtime335.jsx)(Form.Control, { children: /* @__PURE__ */ (0, import_jsx_runtime335.jsx)(
                      Combobox,
                      {
@@ -2556,7 +2583,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                        allowClear: true,
                        value: value ?? void 0,
                        onChange: (val) => {
-@@ -161100,7 +161155,9 @@ var init_use_exchange_outbound_item_table_columns = __esm({
+@@ -161100,7 +161169,9 @@ var init_use_exchange_outbound_item_table_columns = __esm({
                return /* @__PURE__ */ (0, import_jsx_runtime336.jsx)(
                  import_ui225.Checkbox,
                  {
@@ -2567,7 +2594,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                    onCheckedChange: (value) => table.toggleAllPageRowsSelected(!!value)
                  }
                );
-@@ -161110,7 +161167,9 @@ var init_use_exchange_outbound_item_table_columns = __esm({
+@@ -161110,7 +161181,9 @@ var init_use_exchange_outbound_item_table_columns = __esm({
                return /* @__PURE__ */ (0, import_jsx_runtime336.jsx)(
                  import_ui225.Checkbox,
                  {
@@ -2578,7 +2605,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                    checked: row.getIsSelected(),
                    onCheckedChange: (value) => row.toggleSelected(!!value),
                    onClick: (e) => {
-@@ -161232,7 +161291,7 @@ var init_add_exchange_outbound_items_table = __esm({
+@@ -161232,7 +161305,7 @@ var init_add_exchange_outbound_items_table = __esm({
          pageSize: PAGE_SIZE18,
          prefix: PREFIX9
        });
@@ -2587,7 +2614,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
          ...searchParams,
          fields: "*inventory_items.inventory.location_levels,+inventory_quantity"
        });
-@@ -161253,12 +161312,14 @@ var init_add_exchange_outbound_items_table = __esm({
+@@ -161253,12 +161326,14 @@ var init_add_exchange_outbound_items_table = __esm({
            updater
          }
        });
@@ -2603,7 +2630,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
            count,
            filters,
            pagination: true,
-@@ -161304,7 +161365,7 @@ function ExchangeOutboundItem({
+@@ -161304,7 +161379,7 @@ function ExchangeOutboundItem({
        /* @__PURE__ */ (0, import_jsx_runtime338.jsxs)("div", { className: "flex flex-grow flex-col", children: [
          /* @__PURE__ */ (0, import_jsx_runtime338.jsxs)("div", { children: [
            /* @__PURE__ */ (0, import_jsx_runtime338.jsxs)(import_ui226.Text, { className: "txt-small", as: "span", weight: "plus", children: [
@@ -2612,7 +2639,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
              " "
            ] }),
            previewItem.variant_sku && /* @__PURE__ */ (0, import_jsx_runtime338.jsxs)("span", { children: [
-@@ -161313,7 +161374,7 @@ function ExchangeOutboundItem({
+@@ -161313,7 +161388,7 @@ function ExchangeOutboundItem({
              ")"
            ] })
          ] }),
@@ -2621,7 +2648,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
        ] }),
        appliedPromoCodes.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime338.jsx)("div", { className: "flex flex-shrink", children: /* @__PURE__ */ (0, import_jsx_runtime338.jsx)(
          import_ui226.Tooltip,
-@@ -161336,14 +161397,15 @@ function ExchangeOutboundItem({
+@@ -161336,14 +161411,15 @@ function ExchangeOutboundItem({
                    import_ui226.Input,
                    {
                      ...field,
@@ -2639,7 +2666,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                          onUpdate({ quantity: payload });
                        }
                      }
-@@ -161611,9 +161673,9 @@ var init_exchange_outbound_section = __esm({
+@@ -161611,9 +161687,9 @@ var init_exchange_outbound_section = __esm({
          /* @__PURE__ */ (0, import_jsx_runtime339.jsxs)("div", { className: "mt-8 flex items-center justify-between", children: [
            /* @__PURE__ */ (0, import_jsx_runtime339.jsx)(import_ui227.Heading, { level: "h2", children: t5("orders.returns.outbound") }),
            /* @__PURE__ */ (0, import_jsx_runtime339.jsxs)(StackedFocusModal, { id: "outbound-items", children: [
@@ -2651,7 +2678,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                /* @__PURE__ */ (0, import_jsx_runtime339.jsx)(
                  AddExchangeOutboundItemsTable,
                  {
-@@ -161698,6 +161760,7 @@ var init_exchange_outbound_section = __esm({
+@@ -161698,6 +161774,7 @@ var init_exchange_outbound_section = __esm({
                  return /* @__PURE__ */ (0, import_jsx_runtime339.jsx)(Form.Item, { children: /* @__PURE__ */ (0, import_jsx_runtime339.jsx)(Form.Control, { children: /* @__PURE__ */ (0, import_jsx_runtime339.jsx)(
                    Combobox,
                    {
@@ -2659,7 +2686,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                      allowClear: true,
                      noResultsPlaceholder: /* @__PURE__ */ (0, import_jsx_runtime339.jsx)(OutboundShippingPlaceholder, {}),
                      value: value ?? void 0,
-@@ -161932,7 +161995,8 @@ var init_exchange_create_form = __esm({
+@@ -161932,7 +162009,8 @@ var init_exchange_create_form = __esm({
        return /* @__PURE__ */ (0, import_jsx_runtime340.jsx)(RouteFocusModal.Form, { form, children: /* @__PURE__ */ (0, import_jsx_runtime340.jsxs)(KeyboundForm, { onSubmit: handleSubmit, className: "flex h-full flex-col", children: [
          /* @__PURE__ */ (0, import_jsx_runtime340.jsx)(RouteFocusModal.Header, {}),
          /* @__PURE__ */ (0, import_jsx_runtime340.jsx)(RouteFocusModal.Body, { className: "flex size-full justify-center overflow-y-auto", children: /* @__PURE__ */ (0, import_jsx_runtime340.jsxs)("div", { className: "mt-16 w-[720px] max-w-[100%] px-4 md:p-0", children: [
@@ -2669,7 +2696,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
            /* @__PURE__ */ (0, import_jsx_runtime340.jsx)(
              ExchangeInboundSection,
              {
-@@ -161982,7 +162046,8 @@ var init_exchange_create_form = __esm({
+@@ -161982,7 +162060,8 @@ var init_exchange_create_form = __esm({
                  !isInboundShippingPriceEdit && /* @__PURE__ */ (0, import_jsx_runtime340.jsx)(
                    import_ui228.IconButton,
                    {
@@ -2679,7 +2706,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                      variant: "transparent",
                      className: "text-ui-fg-muted",
                      disabled: !inboundPreviewItems?.length || !inboundShippingOptionId,
-@@ -161993,6 +162058,7 @@ var init_exchange_create_form = __esm({
+@@ -161993,6 +162072,7 @@ var init_exchange_create_form = __esm({
                    import_ui228.CurrencyInput,
                    {
                      id: "js-inbound-shipping-input",
@@ -2687,7 +2714,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                      onBlur: () => {
                        let actionId;
                        preview.shipping_methods.forEach((s) => {
-@@ -162038,7 +162104,8 @@ var init_exchange_create_form = __esm({
+@@ -162038,7 +162118,8 @@ var init_exchange_create_form = __esm({
                  !isOutboundShippingPriceEdit && /* @__PURE__ */ (0, import_jsx_runtime340.jsx)(
                    import_ui228.IconButton,
                    {
@@ -2697,7 +2724,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                      variant: "transparent",
                      className: "text-ui-fg-muted",
                      disabled: !outboundPreviewItems?.length || !outboundShippingOptionId,
-@@ -162049,6 +162116,7 @@ var init_exchange_create_form = __esm({
+@@ -162049,6 +162130,7 @@ var init_exchange_create_form = __esm({
                    import_ui228.CurrencyInput,
                    {
                      id: "js-outbound-shipping-input",
@@ -2705,7 +2732,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                      onBlur: () => {
                        let actionId;
                        preview.shipping_methods.forEach((s) => {
-@@ -162108,7 +162176,7 @@ var init_exchange_create_form = __esm({
+@@ -162108,7 +162190,7 @@ var init_exchange_create_form = __esm({
                        import_ui228.Switch,
                        {
                          dir: "ltr",
@@ -2714,7 +2741,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                          checked: !!value,
                          onCheckedChange: async (checked) => {
                            onChange(checked);
-@@ -162154,7 +162222,7 @@ var init_exchange_create_form = __esm({
+@@ -162154,7 +162236,7 @@ var init_exchange_create_form = __esm({
                        import_ui228.Switch,
                        {
                          dir: "ltr",
@@ -2723,7 +2750,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                          checked: !!value,
                          onCheckedChange: onChange,
                          ...field
-@@ -162272,7 +162340,7 @@ var init_exchange_create = __esm({
+@@ -162272,7 +162354,7 @@ var init_exchange_create = __esm({
          }
          run();
        }, [preview]);
@@ -2732,7 +2759,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
          ExchangeCreateForm,
          {
            order,
-@@ -162280,7 +162348,7 @@ var init_exchange_create = __esm({
+@@ -162280,7 +162362,7 @@ var init_exchange_create = __esm({
            preview,
            orderReturn
          }
@@ -2741,7 +2768,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
      };
    }
  });
-@@ -162445,7 +162513,7 @@ var init_add_order_edit_items_table = __esm({
+@@ -162445,7 +162527,7 @@ var init_add_order_edit_items_table = __esm({
          pageSize: PAGE_SIZE19,
          prefix: PREFIX10
        });
@@ -2750,7 +2777,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
          ...searchParams,
          fields: "*inventory_items.inventory.location_levels,+inventory_quantity"
        });
-@@ -162466,12 +162534,14 @@ var init_add_order_edit_items_table = __esm({
+@@ -162466,12 +162548,14 @@ var init_add_order_edit_items_table = __esm({
            updater
          }
        });
@@ -2766,7 +2793,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
            count,
            filters,
            pagination: true,
-@@ -163482,7 +163552,9 @@ var init_create_refund_form = __esm({
+@@ -163482,7 +163566,9 @@ var init_create_refund_form = __esm({
        );
        const payments = getPaymentsFromOrder(order);
        const payment = payments.find((p) => p.id === paymentId);
@@ -2777,7 +2804,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
        const currency = (0, import_react238.useMemo)(
          () => currencies[order.currency_code.toUpperCase()],
          [order.currency_code]
-@@ -163505,16 +163577,21 @@ var init_create_refund_form = __esm({
+@@ -163505,16 +163591,21 @@ var init_create_refund_form = __esm({
        });
        (0, import_react238.useEffect)(() => {
          const pendingDifference = order.summary.pending_difference;
@@ -2802,7 +2829,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
          await mutateAsync(
            {
              amount: data.amount.float,
-@@ -163556,7 +163633,7 @@ var init_create_refund_form = __esm({
+@@ -163556,7 +163647,7 @@ var init_create_refund_form = __esm({
                    },
                    children: [
                      /* @__PURE__ */ (0, import_jsx_runtime349.jsx)(import_ui236.Label, { className: "txt-compact-small mb-[-6px] font-sans font-medium", children: t5("orders.payment.selectPaymentToRefund") }),
@@ -2811,7 +2838,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                        import_ui236.Select.Value,
                        {
                          placeholder: t5("orders.payment.selectPaymentToRefund")
-@@ -163633,10 +163710,10 @@ var init_create_refund_form = __esm({
+@@ -163633,10 +163724,10 @@ var init_create_refund_form = __esm({
                            symbol: currency.symbol_native,
                            code: currency.code,
                            value: field.value.value,
@@ -2826,7 +2853,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                            autoFocus: true
                          }
                        ) }),
-@@ -163660,7 +163737,7 @@ var init_create_refund_form = __esm({
+@@ -163660,7 +163751,7 @@ var init_create_refund_form = __esm({
                            value: field.value,
                            onValueChange: field.onChange,
                            children: [
@@ -2835,7 +2862,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                              /* @__PURE__ */ (0, import_jsx_runtime349.jsx)(import_ui236.Select.Content, { children: refund_reasons?.map((reason) => /* @__PURE__ */ (0, import_jsx_runtime349.jsx)(import_ui236.Select.Item, { value: reason.id, children: reason.label }, reason.id)) })
                            ]
                          }
-@@ -163738,7 +163815,7 @@ var init_order_create_refund = __esm({
+@@ -163738,7 +163829,7 @@ var init_order_create_refund = __esm({
        const { plugins = [] } = usePlugins();
        const loyaltyPlugin = getLoyaltyPlugin(plugins);
        return /* @__PURE__ */ (0, import_jsx_runtime350.jsxs)(RouteDrawer, { children: [
@@ -2844,7 +2871,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
          order && !loyaltyPlugin && /* @__PURE__ */ (0, import_jsx_runtime350.jsx)(CreateRefundForm, { order }),
          order && loyaltyPlugin && /* @__PURE__ */ (0, import_jsx_runtime350.jsx)(OrderBalanceSettlementForm, { order })
        ] });
-@@ -164394,7 +164471,7 @@ var init_order_request_transfer = __esm({
+@@ -164394,7 +164485,7 @@ var init_order_request_transfer = __esm({
          throw new Error("Order not found");
        }
        return /* @__PURE__ */ (0, import_jsx_runtime353.jsxs)(RouteDrawer, { children: [
@@ -2853,7 +2880,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
          order && /* @__PURE__ */ (0, import_jsx_runtime353.jsx)(CreateOrderTransferForm, { order })
        ] });
      };
-@@ -164525,7 +164602,7 @@ var init_order_edit_email = __esm({
+@@ -164525,7 +164616,7 @@ var init_order_edit_email = __esm({
          throw error;
        }
        return /* @__PURE__ */ (0, import_jsx_runtime355.jsxs)(RouteDrawer, { children: [
@@ -2862,7 +2889,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
          order && /* @__PURE__ */ (0, import_jsx_runtime355.jsx)(EditOrderEmailForm, { order })
        ] });
      };
-@@ -164801,7 +164878,7 @@ var init_order_edit_shipping_address = __esm({
+@@ -164801,7 +164892,7 @@ var init_order_edit_shipping_address = __esm({
          throw new Error("Order not found");
        }
        return /* @__PURE__ */ (0, import_jsx_runtime357.jsxs)(RouteDrawer, { children: [
@@ -2871,7 +2898,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
          order && /* @__PURE__ */ (0, import_jsx_runtime357.jsx)(EditOrderShippingAddressForm, { order })
        ] });
      };
-@@ -165080,7 +165157,7 @@ var init_order_edit_billing_address = __esm({
+@@ -165080,7 +165171,7 @@ var init_order_edit_billing_address = __esm({
          throw error;
        }
        return /* @__PURE__ */ (0, import_jsx_runtime359.jsxs)(RouteDrawer, { children: [
@@ -2880,7 +2907,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
          order && /* @__PURE__ */ (0, import_jsx_runtime359.jsx)(EditOrderBillingAddressForm, { order })
        ] });
      };
-@@ -169377,7 +169454,7 @@ var init_promotion_edit_details = __esm({
+@@ -169377,7 +169468,7 @@ var init_promotion_edit_details = __esm({
          throw error;
        }
        return /* @__PURE__ */ (0, import_jsx_runtime388.jsxs)(RouteDrawer, { children: [
@@ -2889,7 +2916,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
          !isLoading && promotion && /* @__PURE__ */ (0, import_jsx_runtime388.jsx)(EditPromotionDetailsForm, { promotion })
        ] });
      };
-@@ -169416,7 +169493,7 @@ var init_promotion_add_campaign = __esm({
+@@ -169416,7 +169507,7 @@ var init_promotion_add_campaign = __esm({
          throw error;
        }
        return /* @__PURE__ */ (0, import_jsx_runtime389.jsxs)(RouteDrawer, { children: [
@@ -2898,7 +2925,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
          !isPending && promotion && /* @__PURE__ */ (0, import_jsx_runtime389.jsx)(AddCampaignPromotionForm, { promotion })
        ] });
      };
-@@ -169690,7 +169767,7 @@ var init_edit_rules = __esm({
+@@ -169690,7 +169781,7 @@ var init_edit_rules = __esm({
          throw error;
        }
        return /* @__PURE__ */ (0, import_jsx_runtime392.jsxs)(RouteDrawer, { children: [
@@ -2907,7 +2934,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
          !isLoading && promotion && /* @__PURE__ */ (0, import_jsx_runtime392.jsx)(
            EditRulesWrapper,
            {
-@@ -172856,7 +172933,7 @@ var init_collection_edit = __esm({
+@@ -172856,7 +172947,7 @@ var init_collection_edit = __esm({
          throw error;
        }
        return /* @__PURE__ */ (0, import_jsx_runtime430.jsxs)(RouteDrawer, { children: [
@@ -2916,7 +2943,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
          !isLoading && collection && /* @__PURE__ */ (0, import_jsx_runtime430.jsx)(EditCollectionForm, { collection })
        ] });
      };
-@@ -177119,7 +177196,7 @@ var init_price_list_edit = __esm({
+@@ -177119,7 +177210,7 @@ var init_price_list_edit = __esm({
          throw error;
        }
        return /* @__PURE__ */ (0, import_jsx_runtime467.jsxs)(RouteDrawer, { children: [
@@ -2925,7 +2952,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
          ready && /* @__PURE__ */ (0, import_jsx_runtime467.jsx)(PriceListEditForm, { priceList: price_list })
        ] });
      };
-@@ -179907,7 +179984,7 @@ var init_customer_edit = __esm({
+@@ -179907,7 +179998,7 @@ var init_customer_edit = __esm({
          throw error;
        }
        return /* @__PURE__ */ (0, import_jsx_runtime494.jsxs)(RouteDrawer, { children: [
@@ -2934,7 +2961,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
          !isLoading && customer && /* @__PURE__ */ (0, import_jsx_runtime494.jsx)(EditCustomerForm, { customer })
        ] });
      };
-@@ -181657,7 +181734,7 @@ var init_customer_group_edit = __esm({
+@@ -181657,7 +181748,7 @@ var init_customer_group_edit = __esm({
          throw error;
        }
        return /* @__PURE__ */ (0, import_jsx_runtime513.jsxs)(RouteDrawer, { children: [
@@ -2943,7 +2970,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
          !isLoading && customer_group && /* @__PURE__ */ (0, import_jsx_runtime513.jsx)(EditCustomerGroupForm, { group: customer_group })
        ] });
      };
-@@ -183202,7 +183279,7 @@ var init_edit_reservation_modal = __esm({
+@@ -183202,7 +183293,7 @@ var init_edit_reservation_modal = __esm({
          throw error;
        }
        return /* @__PURE__ */ (0, import_jsx_runtime530.jsxs)(RouteDrawer, { children: [
@@ -2952,7 +2979,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
          ready && /* @__PURE__ */ (0, import_jsx_runtime530.jsx)(
            EditReservationForm,
            {
-@@ -183249,7 +183326,7 @@ var init_reservation_metadata = __esm({
+@@ -183249,7 +183340,7 @@ var init_reservation_metadata = __esm({
        if (isError) {
          throw error;
        }
@@ -2961,7 +2988,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
          MetadataForm,
          {
            isPending,
-@@ -183257,7 +183334,7 @@ var init_reservation_metadata = __esm({
+@@ -183257,7 +183348,7 @@ var init_reservation_metadata = __esm({
            hook: mutateAsync,
            metadata: reservation?.metadata
          }
@@ -2970,7 +2997,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
      };
    }
  });
-@@ -185604,7 +185681,7 @@ var init_edit_item_drawer = __esm({
+@@ -185604,7 +185695,7 @@ var init_edit_item_drawer = __esm({
          throw error;
        }
        return /* @__PURE__ */ (0, import_jsx_runtime557.jsxs)(RouteDrawer, { children: [
@@ -2979,7 +3006,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
          ready && /* @__PURE__ */ (0, import_jsx_runtime557.jsx)(EditInventoryItemForm, { item: inventoryItem })
        ] });
      };
-@@ -185907,7 +185984,7 @@ var init_edit_item_attributes_drawer = __esm({
+@@ -185907,7 +185998,7 @@ var init_edit_item_attributes_drawer = __esm({
          throw error;
        }
        return /* @__PURE__ */ (0, import_jsx_runtime559.jsxs)(RouteDrawer, { children: [
@@ -2988,7 +3015,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
          ready && /* @__PURE__ */ (0, import_jsx_runtime559.jsx)(EditInventoryItemAttributesForm, { item: inventoryItem })
        ] });
      };
-@@ -185947,7 +186024,7 @@ var init_inventory_metadata = __esm({
+@@ -185947,7 +186038,7 @@ var init_inventory_metadata = __esm({
        if (isError) {
          throw error;
        }
@@ -2997,7 +3024,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
          MetadataForm,
          {
            isPending,
-@@ -185955,7 +186032,7 @@ var init_inventory_metadata = __esm({
+@@ -185955,7 +186046,7 @@ var init_inventory_metadata = __esm({
            hook: mutateAsync,
            metadata: inventory_item?.metadata
          }
@@ -3006,7 +3033,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
      };
    }
  });
-@@ -186219,7 +186296,7 @@ var init_manage_locations_drawer = __esm({
+@@ -186219,7 +186310,7 @@ var init_manage_locations_drawer = __esm({
          throw error;
        }
        return /* @__PURE__ */ (0, import_jsx_runtime564.jsxs)(RouteDrawer, { children: [
@@ -3015,7 +3042,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
          ready && /* @__PURE__ */ (0, import_jsx_runtime564.jsx)(ManageLocationsForm, { item: inventoryItem, locations: stock_locations })
        ] });
      };
-@@ -186429,7 +186506,7 @@ var init_adjust_inventory_drawer = __esm({
+@@ -186429,7 +186520,7 @@ var init_adjust_inventory_drawer = __esm({
          throw error;
        }
        return /* @__PURE__ */ (0, import_jsx_runtime566.jsxs)(RouteDrawer, { children: [
@@ -3024,7 +3051,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
          ready && /* @__PURE__ */ (0, import_jsx_runtime566.jsx)(
            AdjustInventoryForm,
            {
-@@ -187323,18 +187400,20 @@ var init_region_list_table = __esm({
+@@ -187323,18 +187414,20 @@ var init_region_list_table = __esm({
      };
      columnHelper63 = (0, import_react_table51.createColumnHelper)();
      useColumns31 = () => {
@@ -3046,7 +3073,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
        );
      };
    }
-@@ -187822,14 +187901,14 @@ var init_create_region_form = __esm({
+@@ -187822,14 +187915,14 @@ var init_create_region_form = __esm({
                          render: ({ field: { onChange, ref, ...field } }) => {
                            return /* @__PURE__ */ (0, import_jsx_runtime583.jsxs)(Form.Item, { children: [
                              /* @__PURE__ */ (0, import_jsx_runtime583.jsx)(Form.Label, { children: t5("fields.currency") }),
@@ -3063,7 +3090,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                                    /* @__PURE__ */ (0, import_jsx_runtime583.jsx)(import_ui375.Select.Content, { children: currencies2.map((currency) => /* @__PURE__ */ (0, import_jsx_runtime583.jsx)(
                                      import_ui375.Select.Item,
                                      {
-@@ -187840,7 +187919,7 @@ var init_create_region_form = __esm({
+@@ -187840,7 +187933,7 @@ var init_create_region_form = __esm({
                                    )) })
                                  ]
                                }
@@ -3072,7 +3099,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                              /* @__PURE__ */ (0, import_jsx_runtime583.jsx)(Form.ErrorMessage, {})
                            ] });
                          }
-@@ -188005,6 +188084,7 @@ var init_create_region_form = __esm({
+@@ -188005,6 +188098,7 @@ var init_create_region_form = __esm({
      columnHelper65 = (0, import_react_table53.createColumnHelper)();
      useColumns32 = () => {
        const base = useCountryTableColumns();
@@ -3080,7 +3107,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
        return (0, import_react317.useMemo)(
          () => [
            columnHelper65.display({
-@@ -188013,7 +188093,9 @@ var init_create_region_form = __esm({
+@@ -188013,7 +188107,9 @@ var init_create_region_form = __esm({
                return /* @__PURE__ */ (0, import_jsx_runtime583.jsx)(
                  import_ui375.Checkbox,
                  {
@@ -3091,7 +3118,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                    onCheckedChange: (value) => table.toggleAllPageRowsSelected(!!value)
                  }
                );
-@@ -188023,7 +188105,9 @@ var init_create_region_form = __esm({
+@@ -188023,7 +188119,9 @@ var init_create_region_form = __esm({
                return /* @__PURE__ */ (0, import_jsx_runtime583.jsx)(
                  import_ui375.Checkbox,
                  {
@@ -3102,7 +3129,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                    disabled: isPreselected,
                    onCheckedChange: (value) => row.toggleSelected(!!value),
                    onClick: (e) => {
-@@ -188035,7 +188119,7 @@ var init_create_region_form = __esm({
+@@ -188035,7 +188133,7 @@ var init_create_region_form = __esm({
            }),
            ...base
          ],
@@ -3111,7 +3138,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
        );
      };
      CountryTag = ({
-@@ -188077,12 +188161,13 @@ var init_region_create = __esm({
+@@ -188077,12 +188175,13 @@ var init_region_create = __esm({
      init_create_region_form2();
      import_jsx_runtime584 = require("react/jsx-runtime");
      RegionCreate = () => {
@@ -3126,7 +3153,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
      };
    }
  });
-@@ -188347,6 +188432,7 @@ var init_region_country_section = __esm({
+@@ -188347,6 +188446,7 @@ var init_region_country_section = __esm({
      columnHelper66 = (0, import_react_table54.createColumnHelper)();
      useColumns33 = () => {
        const base = useCountryTableColumns();
@@ -3134,7 +3161,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
        return (0, import_react318.useMemo)(
          () => [
            columnHelper66.display({
-@@ -188355,7 +188441,9 @@ var init_region_country_section = __esm({
+@@ -188355,7 +188455,9 @@ var init_region_country_section = __esm({
                return /* @__PURE__ */ (0, import_jsx_runtime586.jsx)(
                  import_ui376.Checkbox,
                  {
@@ -3145,7 +3172,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                    onCheckedChange: (value) => table.toggleAllPageRowsSelected(!!value)
                  }
                );
-@@ -188364,7 +188452,9 @@ var init_region_country_section = __esm({
+@@ -188364,7 +188466,9 @@ var init_region_country_section = __esm({
                return /* @__PURE__ */ (0, import_jsx_runtime586.jsx)(
                  import_ui376.Checkbox,
                  {
@@ -3156,7 +3183,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                    onCheckedChange: (value) => row.toggleSelected(!!value),
                    onClick: (e) => {
                      e.stopPropagation();
-@@ -188376,13 +188466,14 @@ var init_region_country_section = __esm({
+@@ -188376,13 +188480,14 @@ var init_region_country_section = __esm({
            ...base,
            columnHelper66.display({
              id: "actions",
@@ -3172,7 +3199,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
        );
      };
    }
-@@ -188453,7 +188544,7 @@ var init_region_general_section = __esm({
+@@ -188453,7 +188558,7 @@ var init_region_general_section = __esm({
            SectionRow,
            {
              title: t5("fields.paymentProviders"),
@@ -3181,7 +3208,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                ListSummary,
                {
                  list: region.payment_providers.map((p) => formatProvider(p.id))
-@@ -188727,18 +188818,18 @@ var init_edit_region_form = __esm({
+@@ -188727,18 +188832,18 @@ var init_edit_region_form = __esm({
                      render: ({ field: { onChange, ref, ...field } }) => {
                        return /* @__PURE__ */ (0, import_jsx_runtime589.jsxs)(Form.Item, { children: [
                          /* @__PURE__ */ (0, import_jsx_runtime589.jsx)(Form.Label, { children: t5("fields.currency") }),
@@ -3203,7 +3230,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                          /* @__PURE__ */ (0, import_jsx_runtime589.jsx)(Form.ErrorMessage, {})
                        ] });
                      }
-@@ -188903,7 +188994,7 @@ var init_region_edit = __esm({
+@@ -188903,7 +189008,7 @@ var init_region_edit = __esm({
          throw preferenceError;
        }
        return /* @__PURE__ */ (0, import_jsx_runtime590.jsxs)(RouteDrawer, { children: [
@@ -3212,7 +3239,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
          !isLoading && region && /* @__PURE__ */ (0, import_jsx_runtime590.jsx)(
            EditRegionForm,
            {
-@@ -189065,6 +189156,7 @@ var init_add_countries_form = __esm({
+@@ -189065,6 +189170,7 @@ var init_add_countries_form = __esm({
      columnHelper67 = (0, import_react_table55.createColumnHelper)();
      useColumns34 = () => {
        const base = useCountryTableColumns();
@@ -3220,7 +3247,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
        return (0, import_react319.useMemo)(
          () => [
            columnHelper67.display({
-@@ -189073,7 +189165,9 @@ var init_add_countries_form = __esm({
+@@ -189073,7 +189179,9 @@ var init_add_countries_form = __esm({
                return /* @__PURE__ */ (0, import_jsx_runtime591.jsx)(
                  import_ui380.Checkbox,
                  {
@@ -3231,7 +3258,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                    onCheckedChange: (value) => table.toggleAllPageRowsSelected(!!value)
                  }
                );
-@@ -189083,7 +189177,9 @@ var init_add_countries_form = __esm({
+@@ -189083,7 +189191,9 @@ var init_add_countries_form = __esm({
                return /* @__PURE__ */ (0, import_jsx_runtime591.jsx)(
                  import_ui380.Checkbox,
                  {
@@ -3242,7 +3269,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                    disabled: isPreselected,
                    onCheckedChange: (value) => row.toggleSelected(!!value),
                    onClick: (e) => {
-@@ -189095,7 +189191,7 @@ var init_add_countries_form = __esm({
+@@ -189095,7 +189205,7 @@ var init_add_countries_form = __esm({
            }),
            ...base
          ],
@@ -3251,7 +3278,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
        );
      };
    }
-@@ -189120,6 +189216,7 @@ var init_region_add_countries = __esm({
+@@ -189120,6 +189230,7 @@ var init_region_add_countries = __esm({
      init_add_countries_form2();
      import_jsx_runtime592 = require("react/jsx-runtime");
      RegionAddCountries = () => {
@@ -3259,7 +3286,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
        const { id: id2 } = (0, import_react_router_dom190.useParams)();
        const {
          region,
-@@ -189132,7 +189229,7 @@ var init_region_add_countries = __esm({
+@@ -189132,7 +189243,7 @@ var init_region_add_countries = __esm({
        if (isError) {
          throw error;
        }
@@ -3268,7 +3295,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
      };
    }
  });
-@@ -189166,7 +189263,7 @@ var init_region_metadata = __esm({
+@@ -189166,7 +189277,7 @@ var init_region_metadata = __esm({
        if (isError) {
          throw error;
        }
@@ -3277,7 +3304,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
          MetadataForm,
          {
            isPending,
-@@ -189174,7 +189271,7 @@ var init_region_metadata = __esm({
+@@ -189174,7 +189285,7 @@ var init_region_metadata = __esm({
            hook: mutateAsync,
            metadata: region?.metadata
          }
@@ -3286,7 +3313,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
      };
    }
  });
-@@ -190076,7 +190173,9 @@ var init_store_currency_section = __esm({
+@@ -190076,7 +190187,9 @@ var init_store_currency_section = __esm({
                return /* @__PURE__ */ (0, import_jsx_runtime600.jsx)(
                  import_ui384.Checkbox,
                  {
@@ -3297,7 +3324,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                    onCheckedChange: (value) => table.toggleAllPageRowsSelected(!!value)
                  }
                );
-@@ -190085,7 +190184,9 @@ var init_store_currency_section = __esm({
+@@ -190085,7 +190198,9 @@ var init_store_currency_section = __esm({
                return /* @__PURE__ */ (0, import_jsx_runtime600.jsx)(
                  import_ui384.Checkbox,
                  {
@@ -3308,7 +3335,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                    onCheckedChange: (value) => row.toggleSelected(!!value),
                    onClick: (e) => {
                      e.stopPropagation();
-@@ -190104,6 +190205,7 @@ var init_store_currency_section = __esm({
+@@ -190104,6 +190219,7 @@ var init_store_currency_section = __esm({
            }),
            columnHelper70.display({
              id: "actions",
@@ -3316,7 +3343,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
              cell: ({ row, table }) => {
                const {
                  supportedCurrencies,
-@@ -190612,14 +190714,14 @@ var init_edit_store_form = __esm({
+@@ -190612,14 +190728,14 @@ var init_edit_store_form = __esm({
                    render: ({ field: { onChange, ...field } }) => {
                      return /* @__PURE__ */ (0, import_jsx_runtime604.jsxs)(Form.Item, { children: [
                        /* @__PURE__ */ (0, import_jsx_runtime604.jsx)(Form.Label, { children: t5("store.defaultCurrency") }),
@@ -3333,7 +3360,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                              /* @__PURE__ */ (0, import_jsx_runtime604.jsx)(import_ui386.Select.Content, { children: store.supported_currencies?.map((currency) => /* @__PURE__ */ (0, import_jsx_runtime604.jsx)(
                                import_ui386.Select.Item,
                                {
-@@ -190630,7 +190732,7 @@ var init_edit_store_form = __esm({
+@@ -190630,7 +190746,7 @@ var init_edit_store_form = __esm({
                              )) })
                            ]
                          }
@@ -3342,7 +3369,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                      ] });
                    }
                  }
-@@ -190732,7 +190834,7 @@ var init_store_edit = __esm({
+@@ -190732,7 +190848,7 @@ var init_store_edit = __esm({
        }
        const ready = !!store && !isLoading;
        return /* @__PURE__ */ (0, import_jsx_runtime605.jsxs)(RouteDrawer, { children: [
@@ -3351,7 +3378,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
          ready && /* @__PURE__ */ (0, import_jsx_runtime605.jsx)(EditStoreForm, { store })
        ] });
      };
-@@ -190943,7 +191045,9 @@ var init_add_currencies_form = __esm({
+@@ -190943,7 +191059,9 @@ var init_add_currencies_form = __esm({
                return /* @__PURE__ */ (0, import_jsx_runtime606.jsx)(
                  import_ui388.Checkbox,
                  {
@@ -3362,7 +3389,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                    onCheckedChange: (value) => table.toggleAllPageRowsSelected(!!value)
                  }
                );
-@@ -190954,7 +191058,9 @@ var init_add_currencies_form = __esm({
+@@ -190954,7 +191072,9 @@ var init_add_currencies_form = __esm({
                const Component5 = /* @__PURE__ */ (0, import_jsx_runtime606.jsx)(
                  import_ui388.Checkbox,
                  {
@@ -3373,7 +3400,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                    disabled: isPreSelected,
                    onCheckedChange: (value) => row.toggleSelected(!!value),
                    onClick: (e) => {
-@@ -190981,6 +191087,7 @@ var init_add_currencies_form = __esm({
+@@ -190981,6 +191101,7 @@ var init_add_currencies_form = __esm({
                    dir: "ltr",
                    className: "rtl:rotate-180",
                    disabled: isPreSelected,
@@ -3381,7 +3408,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                    checked: isTaxInclusive ?? false,
                    onCheckedChange: (val) => {
                      setPricePreferences({
-@@ -191013,6 +191120,7 @@ var init_store_add_currencies = __esm({
+@@ -191013,6 +191134,7 @@ var init_store_add_currencies = __esm({
      init_add_currencies_form();
      import_jsx_runtime607 = require("react/jsx-runtime");
      StoreAddCurrencies = () => {
@@ -3389,7 +3416,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
        const { store, isPending, isError, error } = useStore();
        const {
          price_preferences: pricePreferences,
-@@ -191035,7 +191143,7 @@ var init_store_add_currencies = __esm({
+@@ -191035,7 +191157,7 @@ var init_store_add_currencies = __esm({
        if (isPricePreferencesError) {
          throw pricePreferencesError;
        }
@@ -3398,7 +3425,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
      };
    }
  });
-@@ -191287,7 +191395,7 @@ var init_store_metadata = __esm({
+@@ -191287,7 +191409,7 @@ var init_store_metadata = __esm({
        if (isError) {
          throw error;
        }
@@ -3407,7 +3434,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
          MetadataForm,
          {
            isPending,
-@@ -191295,7 +191403,7 @@ var init_store_metadata = __esm({
+@@ -191295,7 +191417,7 @@ var init_store_metadata = __esm({
            hook: mutateAsync,
            metadata: store?.metadata
          }
@@ -3416,7 +3443,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
      };
    }
  });
-@@ -191365,12 +191473,22 @@ var init_user_list_table = __esm({
+@@ -191365,12 +191487,22 @@ var init_user_list_table = __esm({
      import_jsx_runtime612 = require("react/jsx-runtime");
      PAGE_SIZE52 = 20;
      UserListTable = () => {
@@ -3441,7 +3468,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
            limit: PAGE_SIZE52
          },
          {
-@@ -191448,6 +191566,7 @@ var init_user_list_table = __esm({
+@@ -191448,6 +191580,7 @@ var init_user_list_table = __esm({
            ...dateColumns,
            columnHelper75.display({
              id: "action",
@@ -3449,7 +3476,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
              cell: ({ row }) => /* @__PURE__ */ (0, import_jsx_runtime612.jsx)(UserListTableActions, { user: row.original })
            })
          ],
-@@ -192100,7 +192219,7 @@ var init_user_general_section = __esm({
+@@ -192100,7 +192233,7 @@ var init_user_general_section = __esm({
        const { t: t5 } = (0, import_react_i18next445.useTranslation)();
        const navigate = (0, import_react_router_dom198.useNavigate)();
        const prompt = (0, import_ui392.usePrompt)();
@@ -3458,7 +3485,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
        const name = [user.first_name, user.last_name].filter(Boolean).join(" ");
        const handleDeleteUser = async () => {
          const res = await prompt({
-@@ -192116,7 +192235,7 @@ var init_user_general_section = __esm({
+@@ -192116,7 +192249,7 @@ var init_user_general_section = __esm({
          if (!res) {
            return;
          }
@@ -3467,7 +3494,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
            onSuccess: () => {
              import_ui392.toast.success(t5("users.deleteUserSuccess", { name: user.email }));
              navigate("..");
-@@ -192348,7 +192467,7 @@ var init_user_edit = __esm({
+@@ -192348,7 +192481,7 @@ var init_user_edit = __esm({
          throw error;
        }
        return /* @__PURE__ */ (0, import_jsx_runtime622.jsxs)(RouteDrawer, { children: [
@@ -3476,7 +3503,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
          !isLoading && user && /* @__PURE__ */ (0, import_jsx_runtime622.jsx)(EditUserForm, { user })
        ] });
      };
-@@ -192384,7 +192503,7 @@ var init_user_metadata = __esm({
+@@ -192384,7 +192517,7 @@ var init_user_metadata = __esm({
        if (isError) {
          throw error;
        }
@@ -3485,7 +3512,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
          MetadataForm,
          {
            isPending,
-@@ -192392,7 +192511,7 @@ var init_user_metadata = __esm({
+@@ -192392,7 +192525,7 @@ var init_user_metadata = __esm({
            hook: mutateAsync,
            metadata: user?.metadata
          }
@@ -3494,7 +3521,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
      };
    }
  });
-@@ -193009,11 +193128,12 @@ var init_role_create = __esm({
+@@ -193009,11 +193142,12 @@ var init_role_create = __esm({
      init_create_role_form2();
      import_jsx_runtime627 = require("react/jsx-runtime");
      RoleCreate = () => {
@@ -3508,7 +3535,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
      };
    }
  });
-@@ -193186,21 +193306,21 @@ var init_role_general_section = __esm({
+@@ -193186,21 +193320,21 @@ var init_role_general_section = __esm({
        return /* @__PURE__ */ (0, import_jsx_runtime629.jsxs)(import_ui397.Container, { className: "divide-y p-0", children: [
          /* @__PURE__ */ (0, import_jsx_runtime629.jsxs)("div", { className: "flex items-center justify-between px-6 py-4", children: [
            /* @__PURE__ */ (0, import_jsx_runtime629.jsx)(import_ui397.Heading, { children: role.name }),
@@ -3533,7 +3560,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
            }
          )
        ] });
-@@ -193406,7 +193526,9 @@ var init_role_users_section = __esm({
+@@ -193406,7 +193540,9 @@ var init_role_users_section = __esm({
                return /* @__PURE__ */ (0, import_jsx_runtime630.jsx)(
                  import_ui398.Checkbox,
                  {
@@ -3544,7 +3571,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                    disabled: !isRoleAssignable,
                    onCheckedChange: (value) => table.toggleAllPageRowsSelected(!!value)
                  }
-@@ -193416,7 +193538,9 @@ var init_role_users_section = __esm({
+@@ -193416,7 +193552,9 @@ var init_role_users_section = __esm({
                return /* @__PURE__ */ (0, import_jsx_runtime630.jsx)(
                  import_ui398.Checkbox,
                  {
@@ -3555,7 +3582,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                    disabled: !row.getCanSelect(),
                    onCheckedChange: (value) => row.toggleSelected(!!value),
                    onClick: (e) => {
-@@ -193444,6 +193568,7 @@ var init_role_users_section = __esm({
+@@ -193444,6 +193582,7 @@ var init_role_users_section = __esm({
            }),
            columnHelper79.display({
              id: "actions",
@@ -3563,7 +3590,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
              cell: ({ row, table }) => {
                const { roleId, isRoleAssignable: rowisRoleAssignable } = table.options.meta;
                return /* @__PURE__ */ (0, import_jsx_runtime630.jsx)(
-@@ -193577,9 +193702,9 @@ var init_edit_role_form = __esm({
+@@ -193577,9 +193716,9 @@ var init_edit_role_form = __esm({
          },
          resolver: (0, import_zod115.zodResolver)(EditRoleSchema)
        });
@@ -3575,7 +3602,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
            {
              name: data.name.trim(),
              description: data.description?.trim() || null
-@@ -193676,7 +193801,7 @@ var init_role_edit = __esm({
+@@ -193676,7 +193815,7 @@ var init_role_edit = __esm({
          throw error;
        }
        return /* @__PURE__ */ (0, import_jsx_runtime633.jsxs)(RouteDrawer, { children: [
@@ -3584,7 +3611,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
          !isPending && role && /* @__PURE__ */ (0, import_jsx_runtime633.jsx)(EditRoleForm, { role })
        ] });
      };
-@@ -193947,8 +194072,9 @@ var init_role_add_users = __esm({
+@@ -193947,8 +194086,9 @@ var init_role_add_users = __esm({
      init_add_users_form2();
      import_jsx_runtime635 = require("react/jsx-runtime");
      RoleAddUsers = () => {
@@ -3595,7 +3622,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
      };
    }
  });
-@@ -194034,11 +194160,14 @@ var init_edit_role_permissions_form = __esm({
+@@ -194034,11 +194174,14 @@ var init_edit_role_permissions_form = __esm({
        );
        const visiblePolicies = pageData?.policies ?? [];
        const count = pageData?.count ?? 0;
@@ -3615,7 +3642,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
        const columns = usePolicyColumns2();
        const { mutateAsync: addPolicies, isPending: isAdding } = useAddRbacRolePolicies(role.id);
        const { mutateAsync: removePolicies, isPending: isRemoving } = (0, import_react_query97.useMutation)({
-@@ -194124,7 +194253,7 @@ var init_edit_role_permissions_form = __esm({
+@@ -194124,7 +194267,7 @@ var init_edit_role_permissions_form = __esm({
                    size: "small",
                    type: "submit",
                    isLoading: isAdding || isRemoving,
@@ -3624,7 +3651,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                    children: t5("actions.save")
                  }
                )
-@@ -194201,13 +194330,10 @@ var init_role_permissions = __esm({
+@@ -194201,13 +194344,10 @@ var init_role_permissions = __esm({
        if (isError) {
          throw error;
        }
@@ -3641,7 +3668,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
      };
    }
  });
-@@ -195753,7 +195879,7 @@ var init_sales_channel_edit = __esm({
+@@ -195753,7 +195893,7 @@ var init_sales_channel_edit = __esm({
          throw error;
        }
        return /* @__PURE__ */ (0, import_jsx_runtime656.jsxs)(RouteDrawer, { children: [
@@ -3650,7 +3677,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
          !isLoading && !!sales_channel && /* @__PURE__ */ (0, import_jsx_runtime656.jsx)(EditSalesChannelForm, { salesChannel: sales_channel })
        ] });
      };
-@@ -196030,7 +196156,7 @@ var init_sales_channel_metadata = __esm({
+@@ -196030,7 +196170,7 @@ var init_sales_channel_metadata = __esm({
        if (isError) {
          throw error;
        }
@@ -3659,7 +3686,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
          MetadataForm,
          {
            isPending,
-@@ -196038,7 +196164,7 @@ var init_sales_channel_metadata = __esm({
+@@ -196038,7 +196178,7 @@ var init_sales_channel_metadata = __esm({
            hook: mutateAsync,
            metadata: salesChannel?.metadata
          }
@@ -3668,7 +3695,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
      };
    }
  });
-@@ -198470,7 +198596,7 @@ var init_shipping_option_type_edit = __esm({
+@@ -198470,7 +198610,7 @@ var init_shipping_option_type_edit = __esm({
          throw error;
        }
        return /* @__PURE__ */ (0, import_jsx_runtime693.jsxs)(RouteDrawer, { children: [
@@ -3677,7 +3704,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
          ready && /* @__PURE__ */ (0, import_jsx_runtime693.jsx)(EditShippingOptionTypeForm, { shippingOptionType: shipping_option_type })
        ] });
      };
-@@ -199549,7 +199675,7 @@ var init_location_edit = __esm({
+@@ -199549,7 +199689,7 @@ var init_location_edit = __esm({
          throw error;
        }
        return /* @__PURE__ */ (0, import_jsx_runtime700.jsxs)(RouteDrawer, { children: [
@@ -3686,7 +3713,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
          ready && /* @__PURE__ */ (0, import_jsx_runtime700.jsx)(EditLocationForm, { location: stock_location })
        ] });
      };
-@@ -200588,7 +200714,7 @@ var init_location_service_zone_edit = __esm({
+@@ -200588,7 +200728,7 @@ var init_location_service_zone_edit = __esm({
          throw error;
        }
        return /* @__PURE__ */ (0, import_jsx_runtime711.jsxs)(RouteDrawer, { prev: `/settings/locations/${location_id}`, children: [
@@ -3695,7 +3722,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
          serviceZone && /* @__PURE__ */ (0, import_jsx_runtime711.jsx)(
            EditServiceZoneForm,
            {
-@@ -202640,9 +202766,9 @@ var init_location_service_zone_shipping_option_edit = __esm({
+@@ -202640,9 +202780,9 @@ var init_location_service_zone_shipping_option_edit = __esm({
        }
        const isPickup = shippingOption?.service_zone.fulfillment_set.type === "pickup" /* Pickup */;
        return /* @__PURE__ */ (0, import_jsx_runtime723.jsxs)(RouteDrawer, { children: [
@@ -3707,7 +3734,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
          shippingOption && /* @__PURE__ */ (0, import_jsx_runtime723.jsx)(
            EditShippingOptionForm,
            {
-@@ -203027,6 +203153,7 @@ var init_loader28 = __esm({
+@@ -203027,6 +203167,7 @@ var init_loader28 = __esm({
    "src/routes/product-tags/product-tag-list/loader.ts"() {
      "use strict";
      init_api();
@@ -3715,7 +3742,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
      init_client2();
      init_query_client();
      productTagListQuery = (query) => ({
-@@ -203036,11 +203163,34 @@ var init_loader28 = __esm({
+@@ -203036,11 +203177,34 @@ var init_loader28 = __esm({
      productTagListLoader = async ({ request }) => {
        const searchParams = new URL(request.url).searchParams;
        const queryObject = {};
@@ -3754,7 +3781,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
          }
        });
        const query = productTagListQuery(
-@@ -205582,8 +205732,8 @@ var init_create_product_type_form = __esm({
+@@ -205582,8 +205746,8 @@ var init_create_product_type_form = __esm({
        return /* @__PURE__ */ (0, import_jsx_runtime755.jsx)(RouteFocusModal.Form, { form, children: /* @__PURE__ */ (0, import_jsx_runtime755.jsxs)(KeyboundForm, { onSubmit: handleSubmit, className: "flex h-full flex-col", children: [
          /* @__PURE__ */ (0, import_jsx_runtime755.jsx)(RouteFocusModal.Body, { className: "flex flex-col items-center overflow-auto p-16", children: /* @__PURE__ */ (0, import_jsx_runtime755.jsxs)("div", { className: "flex w-full max-w-[720px] flex-col gap-y-8", children: [
            /* @__PURE__ */ (0, import_jsx_runtime755.jsxs)("div", { children: [
@@ -3765,7 +3792,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
            ] }),
            /* @__PURE__ */ (0, import_jsx_runtime755.jsx)("div", { className: "grid grid-cols-1 gap-4 md:grid-cols-2", children: /* @__PURE__ */ (0, import_jsx_runtime755.jsx)(
              Form.Field,
-@@ -206086,7 +206236,7 @@ var init_product_type_edit = __esm({
+@@ -206086,7 +206250,7 @@ var init_product_type_edit = __esm({
          throw error;
        }
        return /* @__PURE__ */ (0, import_jsx_runtime763.jsxs)(RouteDrawer, { children: [
@@ -3774,7 +3801,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
          ready && /* @__PURE__ */ (0, import_jsx_runtime763.jsx)(EditProductTypeForm, { productType: product_type })
        ] });
      };
-@@ -209317,8 +209467,8 @@ var init_tax_region_card = __esm({
+@@ -209317,8 +209481,8 @@ var init_tax_region_card = __esm({
                        import_react_country_flag3.default,
                        {
                          countryCode: country_code,
@@ -3785,7 +3812,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                          "aria-label": country?.display_name
                        }
                      )
-@@ -209418,11 +209568,12 @@ var init_tax_region_card2 = __esm({
+@@ -209418,11 +209582,12 @@ var init_tax_region_card2 = __esm({
  });
  
  // src/routes/tax-regions/common/components/tax-region-table/tax-region-table.tsx
@@ -3799,7 +3826,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
      import_react_router_dom263 = require("react-router-dom");
      init_empty_table_content2();
      init_skeleton2();
-@@ -209440,6 +209591,7 @@ var init_tax_region_table = __esm({
+@@ -209440,6 +209605,7 @@ var init_tax_region_table = __esm({
        prefix,
        children
      }) => {
@@ -3807,7 +3834,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
        if (isPending) {
          return /* @__PURE__ */ (0, import_jsx_runtime785.jsxs)("div", { className: "flex flex-col divide-y", children: [
            Array.from({ length: 3 }).map((_, index) => {
-@@ -209465,7 +209617,7 @@ var init_tax_region_table = __esm({
+@@ -209465,7 +209631,7 @@ var init_tax_region_table = __esm({
              !noRecords && /* @__PURE__ */ (0, import_jsx_runtime785.jsx)("div", { className: "flex w-full items-center gap-x-2 md:w-fit", children: /* @__PURE__ */ (0, import_jsx_runtime785.jsx)(
                DataTableOrderBy,
                {
@@ -3816,7 +3843,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                  prefix
                }
              ) }),
-@@ -209616,7 +209768,7 @@ var init_tax_region_list_view = __esm({
+@@ -209616,7 +209782,7 @@ var init_tax_region_list_view = __esm({
        const { tax_regions, count, isPending, isError, error } = useTaxRegions(
          {
            ...searchParams,
@@ -3825,7 +3852,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
            parent_id: "null"
          },
          {
-@@ -209950,7 +210102,8 @@ var init_tax_region_create = __esm({
+@@ -209950,7 +210116,8 @@ var init_tax_region_create = __esm({
      init_tax_region_create_form2();
      import_jsx_runtime789 = require("react/jsx-runtime");
      TaxRegionCreate = () => {
@@ -3835,7 +3862,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
      };
    }
  });
-@@ -210135,6 +210288,7 @@ var init_tax_region_province_section = __esm({
+@@ -210135,6 +210302,7 @@ var init_tax_region_province_section = __esm({
          TaxRegionTable,
          {
            variant: "province",
@@ -3843,7 +3870,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
            action: { to: `provinces/create`, label: t5("actions.create") },
            table,
            isPending,
-@@ -212188,6 +212342,11 @@ var init_province_select = __esm({
+@@ -212188,6 +212356,11 @@ var init_province_select = __esm({
          country_code,
          valueAs = "iso_2",
          onChange,
@@ -3855,7 +3882,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
          ...field
        }, ref) => {
          const { t: t5 } = (0, import_react_i18next573.useTranslation)();
-@@ -212219,7 +212378,7 @@ var init_province_select = __esm({
+@@ -212219,7 +212392,7 @@ var init_province_select = __esm({
              onValueChange: onChange,
              disabled,
              children: [
@@ -3864,7 +3891,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                /* @__PURE__ */ (0, import_jsx_runtime806.jsx)(import_ui498.Select.Content, { children: options })
              ]
            }
-@@ -212476,13 +212635,14 @@ var init_tax_region_province_create = __esm({
+@@ -212476,13 +212649,14 @@ var init_tax_region_province_create = __esm({
      init_tax_region_province_create_form2();
      import_jsx_runtime808 = require("react/jsx-runtime");
      TaxProvinceCreate = () => {
@@ -3880,7 +3907,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
      };
    }
  });
-@@ -213449,6 +213609,7 @@ var init_tax_region_tax_rate_create = __esm({
+@@ -213449,6 +213623,7 @@ var init_tax_region_tax_rate_create = __esm({
      init_tax_region_tax_rate_create_form2();
      import_jsx_runtime813 = require("react/jsx-runtime");
      TaxRegionTaxRateCreate = () => {
@@ -3888,7 +3915,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
        const { id: id2, province_id } = (0, import_react_router_dom273.useParams)();
        const { tax_region, isPending, isError, error } = useTaxRegion(
          province_id || id2
-@@ -213457,13 +213618,13 @@ var init_tax_region_tax_rate_create = __esm({
+@@ -213457,13 +213632,13 @@ var init_tax_region_tax_rate_create = __esm({
        if (isError) {
          throw error;
        }
@@ -3904,7 +3931,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
      };
    }
  });
-@@ -218597,14 +218758,6 @@ function getRouteMap({
+@@ -218597,14 +218772,6 @@ function getRouteMap({
                    path: "",
                    lazy: () => Promise.resolve().then(() => (init_product_list2(), product_list_exports)),
                    children: [
@@ -3919,7 +3946,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                      {
                        path: "export",
                        lazy: () => Promise.resolve().then(() => (init_product_export2(), product_export_exports))
-@@ -220782,9 +220935,9 @@ var init_settings_sidebar_layout_component = __esm({
+@@ -220782,9 +220949,9 @@ var init_settings_sidebar_layout_component = __esm({
        children
      }) => {
        return /* @__PURE__ */ (0, import_jsx_runtime865.jsxs)(import_radix_ui20.Collapsible.Root, { defaultOpen: true, className: "py-3", children: [
@@ -3931,7 +3958,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
          ] }) }),
          /* @__PURE__ */ (0, import_jsx_runtime865.jsx)(import_radix_ui20.Collapsible.Content, { children: /* @__PURE__ */ (0, import_jsx_runtime865.jsx)("div", { className: "flex flex-col gap-y-0.5 px-3 pt-0.5", children }) })
        ] });
-@@ -221160,9 +221313,10 @@ var init_dashboard_app = __esm({
+@@ -221160,9 +221327,10 @@ var init_dashboard_app = __esm({
        }
        /**
         * Returns widgets for a given base zone grouped by layout section.
@@ -3945,7 +3972,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
         */
        getWidgetsForSections(route, sections) {
          const result = {};
-@@ -221170,7 +221324,9 @@ var init_dashboard_app = __esm({
+@@ -221170,7 +221338,9 @@ var init_dashboard_app = __esm({
            if (!zone.startsWith(route)) {
              continue;
            }
@@ -3956,7 +3983,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
            const mainSection = sections.includes("main") ? "main" : sections[0];
            const section = suffix || mainSection;
            if (!result[section]) {
-@@ -221180,6 +221336,7 @@ var init_dashboard_app = __esm({
+@@ -221180,6 +221350,7 @@ var init_dashboard_app = __esm({
              const sourceId = ext.widgetId ?? `${zone}:${i}`;
              result[section].push({
                Component: ext.Component,
@@ -4897,7 +4924,7 @@ index 1f0ae3f83bfd827fe091e934bbcb62337dc0f998..d6c8d28ea3a9ab1bdbe89d107b4ad6ab
            // identity (and saved preference) when its zone moves to a different
            // section of the same route.
 diff --git a/dist/chunk-UEZBIZRM.mjs b/dist/chunk-UEZBIZRM.mjs
-index 0fca93812a81e5274ab745e4830d1dd4b73fbe78..883bcea2fff1e4fcc2f3bd926564801b09c55542 100644
+index 0fca93812a81e5274ab745e4830d1dd4b73fbe78..64084c7958c763ed845c73e7e88eedadefc19d25 100644
 --- a/dist/chunk-UEZBIZRM.mjs
 +++ b/dist/chunk-UEZBIZRM.mjs
 @@ -142,7 +142,7 @@ var InnerForm = ({
@@ -5056,13 +5083,52 @@ index 0d9b8625b2fe0c9fc4ff93ad348fdd5e157e554d..cada2782a7a1ca592ab7588ab3fdf92c
        "aria-label": country.display_name
      }
 diff --git a/dist/chunk-ZUBJF5QL.mjs b/dist/chunk-ZUBJF5QL.mjs
-index 1525bf1dd08a35e716eb99902fd19eec7bab7db1..de359ab59768db84230d1be6c95db244195f4d56 100644
+index 1525bf1dd08a35e716eb99902fd19eec7bab7db1..8b7f1b3868cb3079d6aaf2d400393821bab6e936 100644
 --- a/dist/chunk-ZUBJF5QL.mjs
 +++ b/dist/chunk-ZUBJF5QL.mjs
-@@ -39,6 +39,10 @@ var Root = ({ prev = "..", children }) => {
+@@ -8,16 +8,18 @@ import {
+ 
+ // src/components/modals/route-drawer/route-drawer.tsx
+ import { Drawer, clx } from "@medusajs/ui";
+-import { useEffect, useState } from "react";
++import { useEffect, useRef, useState } from "react";
+ import { useNavigate } from "react-router-dom";
+ import { jsx } from "react/jsx-runtime";
+ var Root = ({ prev = "..", children }) => {
+   const navigate = useNavigate();
+   const [open, setOpen] = useState(false);
+   const [stackedModalOpen, onStackedModalOpen] = useState(false);
+-  const to = useStateAwareTo(prev);
++  const invoker = useRef(null);
++      const to = useStateAwareTo(prev);
+   useEffect(() => {
+-    setOpen(true);
++    invoker.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
++        setOpen(true);
+     return () => {
+       setOpen(false);
+       onStackedModalOpen(false);
+@@ -35,10 +37,26 @@ var Root = ({ prev = "..", children }) => {
+     }
+     setOpen(open2);
+   };
+-  return /* @__PURE__ */ jsx(Drawer, { open, onOpenChange: handleOpenChange, children: /* @__PURE__ */ jsx(RouteModalProvider, { prev: to, children: /* @__PURE__ */ jsx(StackedModalProvider, { onOpenChange: onStackedModalOpen, children: /* @__PURE__ */ jsx(
++  const handleCloseAutoFocus = (event) => {
++        if (event.defaultPrevented) return;
++        queueMicrotask(() => {
++          const target = invoker.current;
++          if (!target || target === document.body || !target.isConnected || !target.getClientRects().length || target.matches(":disabled, [aria-disabled='true']") || target.closest('[aria-hidden="true"], [inert]')) return;
++          const style = getComputedStyle(target);
++          if (style.visibility === "hidden" || style.display === "none") return;
++          if (document.activeElement !== document.body) return;
++          target.focus({ preventScroll: true });
++        });
++      };
++      return /* @__PURE__ */ jsx(Drawer, { open, onOpenChange: handleOpenChange, children: /* @__PURE__ */ jsx(RouteModalProvider, { prev: to, children: /* @__PURE__ */ jsx(StackedModalProvider, { onOpenChange: onStackedModalOpen, children: /* @__PURE__ */ jsx(
      Drawer.Content,
      {
        "aria-describedby": void 0,
++      onCloseAutoFocus: handleCloseAutoFocus,
 +      onEscapeKeyDown: (event) => {
 +        const selectorOpen = event.target instanceof Element && event.target.closest('[role="combobox"][aria-expanded="true"]');
 +        if (selectorOpen) event.preventDefault();
@@ -8900,7 +8966,7 @@ index 20111880b52dc6de18727d963f3c6f274b6c791f..891bf6a09fdf58a0aa5056a347875d97
          </IconButton>
        </DropdownMenu.Trigger>
 diff --git a/src/components/forms/metadata-form/metadata-form.tsx b/src/components/forms/metadata-form/metadata-form.tsx
-index f44f9769ffa7f00531c8238dfb4da338b7992af2..610562b87a18e2fa94bafbb55fbc0b62a6833668 100644
+index f44f9769ffa7f00531c8238dfb4da338b7992af2..d8494c2cc702912ba5602cabaa991ee0fbc93ca2 100644
 --- a/src/components/forms/metadata-form/metadata-form.tsx
 +++ b/src/components/forms/metadata-form/metadata-form.tsx
 @@ -171,7 +171,7 @@ const InnerForm = <TRes,>({
@@ -9246,13 +9312,56 @@ index 46df4afa1bfdfd04a282cf54b40d401aa271365e..4cdbc3376933f41d35e0d21b6b924aff
  }
  export type SectionWidgetMap = Record<string, WidgetRenderEntry[]>
 diff --git a/src/components/modals/route-drawer/route-drawer.tsx b/src/components/modals/route-drawer/route-drawer.tsx
-index 33fc82e23eb6b5a6d837ec206e9c69f104572944..599b8b02b30bf82ff9193250dda7dd831c37d9d2 100644
+index 33fc82e23eb6b5a6d837ec206e9c69f104572944..e7848611f06321b388442c33e6a0a9558f5bcc72 100644
 --- a/src/components/modals/route-drawer/route-drawer.tsx
 +++ b/src/components/modals/route-drawer/route-drawer.tsx
-@@ -50,6 +50,10 @@ const Root = ({ prev = "..", children }: RouteDrawerProps) => {
+@@ -1,5 +1,5 @@
+ import { Drawer, clx } from "@medusajs/ui"
+-import { PropsWithChildren, useEffect, useState } from "react"
++import { PropsWithChildren, useEffect, useRef, useState } from "react"
+ import { Path, useNavigate } from "react-router-dom"
+ import { useStateAwareTo } from "../hooks/use-state-aware-to"
+ import { RouteModalForm } from "../route-modal-form"
+@@ -15,6 +15,8 @@ const Root = ({ prev = "..", children }: RouteDrawerProps) => {
+   const [open, setOpen] = useState(false)
+   const [stackedModalOpen, onStackedModalOpen] = useState(false)
+ 
++  const invoker = useRef<HTMLElement | null>(null)
++
+   const to = useStateAwareTo(prev)
+ 
+   /**
+@@ -22,6 +24,7 @@ const Root = ({ prev = "..", children }: RouteDrawerProps) => {
+    * ensures that the entry animation is played.
+    */
+   useEffect(() => {
++    invoker.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
+     setOpen(true)
+ 
+     return () => {
+@@ -44,12 +47,29 @@ const Root = ({ prev = "..", children }: RouteDrawerProps) => {
+     setOpen(open)
+   }
+ 
++  const handleCloseAutoFocus = (event: Event) => {
++    if (event.defaultPrevented) return
++    queueMicrotask(() => {
++      const target = invoker.current
++      if (!target || target === document.body || !target.isConnected || !target.getClientRects().length || target.matches(":disabled, [aria-disabled='true']") || target.closest('[aria-hidden="true"], [inert]')) return
++      const style = getComputedStyle(target)
++      if (style.visibility === "hidden" || style.display === "none") return
++      if (document.activeElement !== document.body) return
++      target.focus({ preventScroll: true })
++    })
++  }
++
+   return (
+     <Drawer open={open} onOpenChange={handleOpenChange}>
+       <RouteModalProvider prev={to}>
          <StackedModalProvider onOpenChange={onStackedModalOpen}>
            <Drawer.Content
              aria-describedby={undefined}
++            onCloseAutoFocus={handleCloseAutoFocus}
 +            onEscapeKeyDown={(event) => {
 +              const selectorOpen = event.target instanceof Element && event.target.closest('[role="combobox"][aria-expanded="true"]')
 +              if (selectorOpen) event.preventDefault()

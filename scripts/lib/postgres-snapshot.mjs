@@ -95,9 +95,13 @@ export const publishSnapshotDirectory = async ({
 
 // Keep the exporting transaction open until every reader has imported its
 // snapshot. No credentials, SQL errors, or server output escape this boundary.
-export const openPostgresSnapshot = async ({ environment, signal }) => {
+export const openPostgresSnapshot = async ({
+  environment,
+  signal,
+  spawnProcess = spawn,
+}) => {
   signal.throwIfAborted()
-  const child = spawn(
+  const child = spawnProcess(
     "psql",
     [
       "--no-psqlrc",
@@ -117,6 +121,9 @@ export const openPostgresSnapshot = async ({ environment, signal }) => {
 
   let closed = false
   let faulted = false
+  let closing
+  let exitCode
+  let exitSignal
   let output = ""
   let settled = false
   let resolveSnapshot
@@ -135,8 +142,10 @@ export const openPostgresSnapshot = async ({ environment, signal }) => {
     child.kill("SIGKILL")
   }
   const closePromise = new Promise((resolve) => {
-    child.once("close", () => {
+    child.once("close", (code, signal) => {
       closed = true
+      exitCode = code
+      exitSignal = signal
       if (!settled) {
         settled = true
         rejectSnapshot(new Error("PostgreSQL snapshot exporter closed."))
@@ -180,10 +189,35 @@ export const openPostgresSnapshot = async ({ environment, signal }) => {
     assert.ok(!closed && !faulted && !signal.aborted)
     return {
       snapshot,
-      assertOpen: () => assert.ok(!closed && !faulted && !signal.aborted),
-      close: async () => {
-        if (!closed) child.kill("SIGKILL")
-        await closePromise
+      assertOpen: () =>
+        assert.ok(!closed && !faulted && !closing && !signal.aborted),
+      close: () => {
+        closing ??= (async () => {
+          let deadline
+          try {
+            if (!closed && !faulted && !signal.aborted) {
+              deadline = setTimeout(() => {
+                faulted = true
+                child.kill("SIGKILL")
+              }, 5000)
+              child.stdin.end("ROLLBACK;\n\\q\n")
+            } else if (!closed) child.kill("SIGKILL")
+            await closePromise
+            if (faulted || signal.aborted || exitCode !== 0 || exitSignal)
+              throw new Error(
+                "PostgreSQL snapshot exporter did not close cleanly."
+              )
+          } catch {
+            if (!closed) child.kill("SIGKILL")
+            await closePromise
+            throw new Error(
+              "PostgreSQL snapshot exporter did not close cleanly."
+            )
+          } finally {
+            clearTimeout(deadline)
+          }
+        })()
+        return closing
       },
     }
   } catch {

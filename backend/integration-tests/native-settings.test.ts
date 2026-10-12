@@ -23,6 +23,46 @@ medusaIntegrationTestRunner({
     const browserMode = process.env.RR_NATIVE_SETTINGS_BROWSER
     if (browserMode !== undefined && browserMode !== "1")
       throw new Error("RR_NATIVE_SETTINGS_BROWSER must be omitted or exactly 1")
+    const invokerMode = process.env.RR_NATIVE_SETTINGS_INVOKER_BROWSER
+    if (invokerMode !== undefined && invokerMode !== "1")
+      throw new Error(
+        "RR_NATIVE_SETTINGS_INVOKER_BROWSER must be omitted or exactly 1"
+      )
+    if (invokerMode === "1" && browserMode === "1")
+      throw new Error("Native Settings browser families must run independently")
+    if (invokerMode === "1") {
+      describe("native Settings original invoker restoration", () => {
+        for (const mode of [
+          "desktop-light",
+          "desktop-dark",
+          "phone-light",
+          "phone-dark",
+        ]) {
+          it(`restores the original native drawer invoker in ${mode}`, async () => {
+            const adminRoot = process.env.RR_NATIVE_SETTINGS_ADMIN_ROOT
+            const artifactRoot = process.env.RR_NATIVE_SETTINGS_ARTIFACT_ROOT
+            if (!adminRoot || !artifactRoot)
+              throw new Error(
+                "Explicit compiled and private evidence roots are required"
+              )
+            const fixture = await createNativeSettingsFixture(
+              getContainer(),
+              api
+            )
+            const { runNativeSettingsBrowserAcceptance } = await import(
+              resolve(process.cwd(), "../qa/native-settings-browser.mjs")
+            )
+            await runNativeSettingsBrowserAcceptance({
+              fixture,
+              adminRoot,
+              artifactRoot,
+              mode,
+              family: "invokers",
+            })
+          }, 240_000)
+        }
+      })
+    }
     if (browserMode === "1") {
       describe("compiled native Settings against the same initialized database", () => {
         for (const mode of [

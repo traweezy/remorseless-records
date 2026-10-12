@@ -1,12 +1,16 @@
 import assert from "node:assert/strict"
+import { spawn } from "node:child_process"
 import { randomUUID } from "node:crypto"
 import { createRequire } from "node:module"
 import test, { after, afterEach, before, beforeEach } from "node:test"
+import { setTimeout as pause } from "node:timers/promises"
 import {
   RESTORE_TARGET_INVENTORY_SQL,
   RESTORE_TARGET_PREFLIGHT_SQL,
   parseRestoreInventory,
 } from "./lib/postgres-restore.mjs"
+import { createPostgresClientEnvironment } from "./lib/postgres-logical-backup.mjs"
+import { openPostgresSnapshot } from "./lib/postgres-snapshot.mjs"
 
 const url = new URL(process.env.DATABASE_URL ?? "postgresql://invalid")
 if (
@@ -77,6 +81,76 @@ const inspect = async () => {
   const result = await client.query(RESTORE_TARGET_INVENTORY_SQL)
   assert.equal(result.rows.length, 1)
   return parseRestoreInventory(JSON.stringify(result.rows[0].json_build_object))
+}
+
+for (const abort of [false, true]) {
+  test(`actual snapshot exporter ${abort ? "cancellation" : "normal close"} reaps its owned connection`, async () => {
+    const applicationName = `rr-exporter-close-${randomUUID()}`
+    const controller = new AbortController()
+    const connection = createPostgresClientEnvironment(
+      url.toString(),
+      "local fixture"
+    )
+    let child
+    let closure
+    const exporter = await openPostgresSnapshot({
+      environment: {
+        ...connection.environment,
+        PATH: process.env.PATH,
+        LANG: "C",
+        PGAPPNAME: applicationName,
+      },
+      signal: controller.signal,
+      spawnProcess: (...args) => {
+        child = spawn(...args)
+        child.once("close", (code, signal) => {
+          closure = { code, signal }
+        })
+        return child
+      },
+    })
+    try {
+      const activity = await administrator.query(
+        "SELECT pid, state, backend_xmin FROM pg_stat_activity WHERE datname=$1 AND application_name=$2",
+        [database, applicationName]
+      )
+      assert.equal(activity.rows.length, 1)
+      assert.equal(activity.rows[0].state, "idle in transaction")
+      assert.ok(activity.rows[0].backend_xmin)
+      exporter.assertOpen()
+      if (abort) {
+        controller.abort()
+        await assert.rejects(exporter.close(), /did not close cleanly/u)
+        assert.deepEqual(closure, { code: null, signal: "SIGKILL" })
+      } else {
+        const closing = exporter.close()
+        assert.equal(exporter.close(), closing)
+        await closing
+        assert.deepEqual(closure, { code: 0, signal: null })
+      }
+      assert.throws(() => exporter.assertOpen())
+      // Client exit and the server's disconnect processing are asynchronous,
+      // especially through the owned TCP relay. Require actual disappearance
+      // within five seconds after observing the child's exit.
+      const deadline = performance.now() + 5000
+      let remaining
+      do {
+        const activity = await administrator.query({
+          text: "SELECT count(*)::integer AS count FROM pg_stat_activity WHERE datname=$1 AND application_name=$2",
+          values: [database, applicationName],
+          query_timeout: Math.max(1, Math.floor(deadline - performance.now())),
+        })
+        remaining = activity.rows[0].count
+        if (remaining === 0) break
+        await pause(Math.min(50, Math.max(0, deadline - performance.now())))
+      } while (performance.now() < deadline)
+      assert.equal(remaining, 0, "Owned exporter connection must disappear")
+      assert.ok(performance.now() <= deadline, "Server release exceeded 5s")
+      assert.ok(child.exitCode === 0 || child.signalCode === "SIGKILL")
+    } finally {
+      await exporter.close().catch(() => {})
+    }
+  })
 }
 
 test("accepts a newly created template-zero disposable database", async () => {

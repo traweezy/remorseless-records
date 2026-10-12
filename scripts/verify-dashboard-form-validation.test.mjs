@@ -1957,6 +1957,7 @@ for (const entry of ["chunk-ZUBJF5QL.mjs", "app.js"]) {
       useStateAwareTo: () => "..",
       useState: () => [true, () => {}],
       useEffect: () => {},
+      useRef: () => ({ current: null }),
       RouteModalProvider: "route-provider",
       StackedModalProvider: "stacked-provider",
     }
@@ -1979,6 +1980,7 @@ for (const entry of ["chunk-ZUBJF5QL.mjs", "app.js"]) {
         context[token] = {
           useState: context.useState,
           useEffect: context.useEffect,
+          useRef: context.useRef,
         }
       if (/^import_react_router_dom\d*$/u.test(token))
         context[token] = { useNavigate: context.useNavigate }
@@ -2540,140 +2542,171 @@ for (const [entry, component] of [
   })
 }
 
+const assertNativeRouteInvokerFallback = (entry, kind) => {
+  const expression = nativeArrow(
+    entry,
+    kind === "drawer" ? "Root" : entry === "app.js" ? "Root2" : "Root"
+  )
+  class NativeHTMLElement {
+    isConnected = true
+    disabled = false
+    ariaDisabled = false
+    hidden = false
+    rects = [{}]
+    style = { visibility: "visible", display: "block" }
+    focused = 0
+    getClientRects() {
+      return this.rects
+    }
+    matches(selector) {
+      assert.equal(
+        selector,
+        kind === "drawer" ? ":disabled, [aria-disabled=\'true\']" : ":disabled"
+      )
+      return this.disabled || (kind === "drawer" && this.ariaDisabled)
+    }
+    closest(selector) {
+      assert.equal(selector, '[aria-hidden="true"], [inert]')
+      return this.hidden ? this : null
+    }
+    focus(options) {
+      assert.equal(options.preventScroll, true)
+      this.focused++
+    }
+  }
+  const jsx = (type, props) => ({ type, props })
+  const render = (captured = new NativeHTMLElement()) => {
+    const queued = []
+    const body = new NativeHTMLElement()
+    body.style.pointerEvents = "none"
+    const document = { body, activeElement: captured }
+    const navigation = []
+    const context = {
+      jsx4: jsx,
+      jsx,
+      Drawer: Object.assign("drawer", { Content: "content" }),
+      clx: () => "native",
+      FocusModal: "focus-modal",
+      Content: "content",
+      RouteModalProvider: "route-provider",
+      StackedModalProvider: "stacked-provider",
+      useNavigate2:
+        () =>
+        (...args) =>
+          navigation.push(args),
+      useNavigate:
+        () =>
+        (...args) =>
+          navigation.push(args),
+      useState: (value) => [value, () => {}],
+      useStateAwareTo: () => "..",
+      useState3: (value) => [value, () => {}],
+      useRef: () => ({ current: null }),
+      useEffect: (effect) => effect(),
+      queueMicrotask: (callback) => queued.push(callback),
+      getComputedStyle: (target) => target.style,
+      HTMLElement: NativeHTMLElement,
+      document,
+    }
+    for (const token of new Set(expression.match(/[A-Za-z_]\w*/gu))) {
+      if (/^import_jsx_runtime\d*$/u.test(token)) context[token] = { jsx }
+      if (/^import_ui\d*$/u.test(token))
+        context[token] = {
+          FocusModal: "focus-modal",
+          Drawer: context.Drawer,
+          clx: context.clx,
+        }
+      if (/^import_react\d*$/u.test(token))
+        context[token] = {
+          useState: context.useState3,
+          useRef: context.useRef,
+          useEffect: context.useEffect,
+        }
+      if (/^import_react_router_dom\d*$/u.test(token))
+        context[token] = { useNavigate: context.useNavigate2 }
+    }
+    const tree = vm.runInNewContext(
+      `(${expression})`,
+      context
+    )({ children: "native-form" })
+    return {
+      target: captured,
+      body,
+      document,
+      queued,
+      tree,
+      navigation,
+      callback: menuNodes(tree, "content")[0].props.onCloseAutoFocus,
+    }
+  }
+  const fallback = render()
+  fallback.document.activeElement = fallback.body
+  const event = { defaultPrevented: false }
+  fallback.callback(event)
+  assert.equal(fallback.target.focused, 0)
+  // Installed Radix prevents its close event after the supplied callback.
+  // That native default must not disable the already scheduled fallback.
+  event.defaultPrevented = true
+  fallback.queued.shift()()
+  assert.equal(fallback.target.focused, 1)
+  fallback.tree.props.onOpenChange(false)
+  assert.deepEqual(JSON.parse(JSON.stringify(fallback.navigation)), [
+    ["..", { replace: true }],
+  ])
+  assert.equal(fallback.body.style.pointerEvents, "auto")
+  const nativeTrigger = render()
+  nativeTrigger.document.activeElement = nativeTrigger.body
+  nativeTrigger.callback({ defaultPrevented: false })
+  nativeTrigger.document.activeElement = new NativeHTMLElement()
+  nativeTrigger.queued.shift()()
+  assert.equal(nativeTrigger.target.focused, 0)
+  const prevented = render()
+  prevented.callback({ defaultPrevented: true })
+  assert.equal(prevented.queued.length, 0)
+  for (const alter of [
+    (target) => {
+      target.isConnected = false
+    },
+    (target) => {
+      target.rects = []
+    },
+    (target) => {
+      target.disabled = true
+    },
+    (target) => {
+      target.hidden = true
+    },
+    (target) => {
+      target.style.visibility = "hidden"
+    },
+    (target) => {
+      target.style.display = "none"
+    },
+  ]) {
+    const invalid = render()
+    invalid.document.activeElement = invalid.body
+    invalid.callback({ defaultPrevented: false })
+    alter(invalid.target)
+    invalid.queued.shift()()
+    assert.equal(invalid.target.focused, 0)
+  }
+  if (kind === "drawer") {
+    const invalid = render()
+    invalid.document.activeElement = invalid.body
+    invalid.callback({ defaultPrevented: false })
+    invalid.target.ariaDisabled = true
+    invalid.queued.shift()()
+    assert.equal(invalid.target.focused, 0)
+  }
+  const unfocused = render({})
+  unfocused.document.activeElement = unfocused.body
+  unfocused.callback({ defaultPrevented: false })
+  unfocused.queued.shift()()
+}
+
 for (const entry of ["chunk-H7AAHR2V.mjs", "app.js"]) {
   test(`${entry}: routed modal fallback waits for native focus and rejects stale invokers`, () => {
-    const expression = nativeArrow(entry, entry === "app.js" ? "Root2" : "Root")
-    class NativeHTMLElement {
-      isConnected = true
-      disabled = false
-      hidden = false
-      rects = [{}]
-      style = { visibility: "visible", display: "block" }
-      focused = 0
-      getClientRects() {
-        return this.rects
-      }
-      matches(selector) {
-        assert.equal(selector, ":disabled")
-        return this.disabled
-      }
-      closest(selector) {
-        assert.equal(selector, '[aria-hidden="true"], [inert]')
-        return this.hidden ? this : null
-      }
-      focus(options) {
-        assert.equal(options.preventScroll, true)
-        this.focused++
-      }
-    }
-    const jsx = (type, props) => ({ type, props })
-    const render = (captured = new NativeHTMLElement()) => {
-      const queued = []
-      const body = new NativeHTMLElement()
-      body.style.pointerEvents = "none"
-      const document = { body, activeElement: captured }
-      const navigation = []
-      const context = {
-        jsx4: jsx,
-        FocusModal: "focus-modal",
-        Content: "content",
-        RouteModalProvider: "route-provider",
-        StackedModalProvider: "stacked-provider",
-        useNavigate2:
-          () =>
-          (...args) =>
-            navigation.push(args),
-        useStateAwareTo: () => "..",
-        useState3: (value) => [value, () => {}],
-        useRef: () => ({ current: null }),
-        useEffect: (effect) => effect(),
-        queueMicrotask: (callback) => queued.push(callback),
-        getComputedStyle: (target) => target.style,
-        HTMLElement: NativeHTMLElement,
-        document,
-      }
-      for (const token of new Set(expression.match(/[A-Za-z_]\w*/gu))) {
-        if (/^import_jsx_runtime\d*$/u.test(token)) context[token] = { jsx }
-        if (/^import_ui\d*$/u.test(token))
-          context[token] = { FocusModal: "focus-modal" }
-        if (/^import_react\d*$/u.test(token))
-          context[token] = {
-            useState: context.useState3,
-            useRef: context.useRef,
-            useEffect: context.useEffect,
-          }
-        if (/^import_react_router_dom\d*$/u.test(token))
-          context[token] = { useNavigate: context.useNavigate2 }
-      }
-      const tree = vm.runInNewContext(
-        `(${expression})`,
-        context
-      )({ children: "native-form" })
-      return {
-        target: captured,
-        body,
-        document,
-        queued,
-        tree,
-        navigation,
-        callback: menuNodes(tree, "content")[0].props.onCloseAutoFocus,
-      }
-    }
-    const fallback = render()
-    fallback.document.activeElement = fallback.body
-    const event = { defaultPrevented: false }
-    fallback.callback(event)
-    assert.equal(fallback.target.focused, 0)
-    // Installed Radix prevents its close event after the supplied callback.
-    // That native default must not disable the already scheduled fallback.
-    event.defaultPrevented = true
-    fallback.queued.shift()()
-    assert.equal(fallback.target.focused, 1)
-    fallback.tree.props.onOpenChange(false)
-    assert.deepEqual(JSON.parse(JSON.stringify(fallback.navigation)), [
-      ["..", { replace: true }],
-    ])
-    assert.equal(fallback.body.style.pointerEvents, "auto")
-    const nativeTrigger = render()
-    nativeTrigger.document.activeElement = nativeTrigger.body
-    nativeTrigger.callback({ defaultPrevented: false })
-    nativeTrigger.document.activeElement = new NativeHTMLElement()
-    nativeTrigger.queued.shift()()
-    assert.equal(nativeTrigger.target.focused, 0)
-    const prevented = render()
-    prevented.callback({ defaultPrevented: true })
-    assert.equal(prevented.queued.length, 0)
-    for (const alter of [
-      (target) => {
-        target.isConnected = false
-      },
-      (target) => {
-        target.rects = []
-      },
-      (target) => {
-        target.disabled = true
-      },
-      (target) => {
-        target.hidden = true
-      },
-      (target) => {
-        target.style.visibility = "hidden"
-      },
-      (target) => {
-        target.style.display = "none"
-      },
-    ]) {
-      const invalid = render()
-      invalid.document.activeElement = invalid.body
-      invalid.callback({ defaultPrevented: false })
-      alter(invalid.target)
-      invalid.queued.shift()()
-      assert.equal(invalid.target.focused, 0)
-    }
-    const unfocused = render({})
-    unfocused.document.activeElement = unfocused.body
-    unfocused.callback({ defaultPrevented: false })
-    unfocused.queued.shift()()
+    assertNativeRouteInvokerFallback(entry, "focus")
   })
 
   test(`${entry}: routed modal retains dirty-form Escape and supplied close callback`, () => {
@@ -6397,5 +6430,11 @@ for (const entry of ["app.js", "product-tag-list-MGHXTRBC.mjs"]) {
         assert.equal(h.schema.safeParse(query).success, false)
       }
     }
+  })
+}
+
+for (const entry of ["chunk-ZUBJF5QL.mjs", "app.js"]) {
+  test(`${entry}: routed drawer restores only the original valid invoker after native close`, () => {
+    assertNativeRouteInvokerFallback(entry, "drawer")
   })
 }
