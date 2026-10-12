@@ -23,6 +23,49 @@ medusaIntegrationTestRunner({
     const browserMode = process.env.RR_NATIVE_NEWS_BROWSER
     if (browserMode !== undefined && browserMode !== "1")
       throw new Error("RR_NATIVE_NEWS_BROWSER must be omitted or exactly 1")
+    const editorMode = process.env.RR_NATIVE_NEWS_EDITOR_BROWSER
+    if (editorMode !== undefined && editorMode !== "1")
+      throw new Error(
+        "RR_NATIVE_NEWS_EDITOR_BROWSER must be omitted or exactly 1"
+      )
+    if (browserMode === "1" && editorMode === "1")
+      throw new Error(
+        "Run native recovery and editor browser families separately"
+      )
+    if (editorMode === "1") {
+      describe("compiled native rich-text commands and persistence", () => {
+        for (const mode of [
+          "desktop-light",
+          "desktop-dark",
+          "phone-light",
+          "phone-dark",
+        ]) {
+          it(`exercises real editor controls and public readback in ${mode}`, async () => {
+            const adminRoot = process.env.RR_NATIVE_NEWS_ADMIN_ROOT
+            const artifactRoot = process.env.RR_NATIVE_NEWS_ARTIFACT_ROOT
+            if (!adminRoot || !artifactRoot)
+              throw new Error(
+                "Explicit compiled and private editor roots are required"
+              )
+            const fixture = await createNativeNewsFixture(getContainer(), api)
+            const browserEntry = resolve(
+              process.cwd(),
+              "../qa/native-news-browser.mjs"
+            )
+            const { runNativeNewsBrowserAcceptance } = await import(
+              browserEntry
+            )
+            await runNativeNewsBrowserAcceptance({
+              fixture,
+              adminRoot,
+              artifactRoot,
+              mode,
+              scenario: "editor",
+            })
+          }, 240_000)
+        }
+      })
+    }
     if (browserMode === "1") {
       describe("compiled native News against the same initialized database", () => {
         for (const mode of [

@@ -17,6 +17,7 @@ import {
   startNativeNewsLoopbackProxy,
 } from "./lib/native-news-loopback-proxy.mjs"
 import { trackNativeNewsBrowserProcess } from "./lib/native-news-browser-process.mjs"
+import { runNativeRichTextCommands } from "./native-rich-text-commands.mjs"
 
 const require = createRequire(new URL("../package.json", import.meta.url))
 const puppeteer = require("puppeteer")
@@ -133,6 +134,7 @@ const executionSourceHashes = async () => {
     new URL("./native-news-browser.mjs", import.meta.url),
     new URL("./lib/native-news-loopback-proxy.mjs", import.meta.url),
     new URL("./lib/native-news-browser-process.mjs", import.meta.url),
+    new URL("./native-rich-text-commands.mjs", import.meta.url),
   ]
   return Object.fromEntries(
     await Promise.all(
@@ -490,6 +492,7 @@ const inspectNativeNewsModal = (page, capturePaint = false) =>
       nativePortalAndPointerBlock: true,
       focusInside: dialog.contains(document.activeElement),
       focusKey: children.indexOf(document.activeElement),
+      focusType: document.activeElement?.getAttribute("type") ?? null,
       publicationPaint,
       headingPaint,
     }
@@ -505,6 +508,7 @@ const proveNativeNewsModalKeyboard = async (page, proxy, modal) => {
   const beforeCounts = counts()
   const started = Date.now()
   let keys = 0
+  let focusType = null
   const state = async () => {
     const current = await inspectNativeNewsModal(page)
     assert.equal(current?.selector, modal.selector, "Native News modal changed")
@@ -518,6 +522,7 @@ const proveNativeNewsModalKeyboard = async (page, proxy, modal) => {
       Date.now() - started <= 5000,
       "News modal keyboard proof timed out"
     )
+    focusType = current.focusType
     return current.focusKey
   }
   const tab = async () => {
@@ -529,23 +534,51 @@ const proveNativeNewsModalKeyboard = async (page, proxy, modal) => {
   let anchor = await state()
   if (anchor < 0) anchor = await tab()
   assert.ok(anchor >= 0, "Native News Tab must reach a dialog control")
-  const cycle = async () => {
+  const dateTimeSegments = []
+  const cycle = async (direction) => {
     const visited = []
+    let consecutiveDateTimeSegments = 0
     for (;;) {
       const key = await tab()
       assert.ok(key >= 0, "Native News Tab must stay on a dialog control")
       if (key === anchor) return [...visited, anchor]
-      assert.ok(!visited.includes(key), "Native News Tab loop lost its anchor")
+      if (visited.includes(key)) {
+        // Chromium's native datetime input has several internal editable
+        // fields. Their sequential keyboard focus resolves to the same
+        // document.activeElement host; a repeated host is not a DOM loop.
+        assert.equal(
+          visited.at(-1),
+          key,
+          "Native News Tab loop lost its anchor"
+        )
+        assert.equal(
+          focusType,
+          "datetime-local",
+          "Only native datetime subfields may repeat a focus host"
+        )
+        consecutiveDateTimeSegments += 1
+        assert.ok(
+          consecutiveDateTimeSegments <= 7,
+          "Native datetime field traversal exceeded its eight-position bound"
+        )
+        dateTimeSegments.push({
+          direction,
+          key,
+          additionalInternalPosition: consecutiveDateTimeSegments,
+        })
+        continue
+      }
+      consecutiveDateTimeSegments = 0
       visited.push(key)
     }
   }
-  const forward = await cycle()
+  const forward = await cycle("forward")
   assert.ok(keys < 62, "News reverse Tab proof needs its remaining key budget")
   keys += 1
   await page.keyboard.down("Shift")
   let reverse
   try {
-    reverse = await cycle()
+    reverse = await cycle("reverse")
   } finally {
     keys += 1
     await page.keyboard.up("Shift")
@@ -555,6 +588,18 @@ const proveNativeNewsModalKeyboard = async (page, proxy, modal) => {
     reverse,
     [...forward.slice(0, -1)].reverse().concat(anchor),
     "Native News reverse Tab must traverse the same contained controls"
+  )
+  const internalPositions = (direction) =>
+    dateTimeSegments
+      .filter((position) => position.direction === direction)
+      .map(({ key, additionalInternalPosition }) => ({
+        key,
+        additionalInternalPosition,
+      }))
+  assert.deepEqual(
+    internalPositions("reverse"),
+    internalPositions("forward"),
+    "Native datetime internal keyboard traversal must be symmetric"
   )
   assert.equal(
     commandHash(proxy.commandSnapshot()),
@@ -567,6 +612,7 @@ const proveNativeNewsModalKeyboard = async (page, proxy, modal) => {
     elapsedMs: Date.now() - started,
     forward,
     reverse,
+    nativeDateTimeInternalPositions: dateTimeSegments,
     exactCommandSha256: before,
     exactCommandUnchanged: true,
     putAndMutationCountsUnchanged: true,
@@ -895,7 +941,9 @@ export const runNativeNewsBrowserAcceptance = async ({
   adminRoot,
   artifactRoot,
   mode,
+  scenario = "recovery",
 }) => {
+  assert.ok(["recovery", "editor"].includes(scenario))
   ;({ adminRoot, artifactRoot } = await validateNewsBrowserDirectories(
     adminRoot,
     artifactRoot
@@ -972,6 +1020,7 @@ export const runNativeNewsBrowserAcceptance = async ({
   let browserProcessProof = null
   let finalSourceProof = null
   let failure = null
+  let nextOwnedWrite = null
   const cases = [],
     deniedRemote = [],
     pageErrors = [],
@@ -1174,9 +1223,19 @@ export const runNativeNewsBrowserAcceptance = async ({
         if (
           target.origin === proxy.origin ||
           ["data:", "blob:"].includes(target.protocol)
-        )
-          void request.continue()
-        else {
+        ) {
+          if (nextOwnedWrite && request.method() === "PUT") {
+            const inspect = nextOwnedWrite
+            nextOwnedWrite = null
+            void Promise.resolve()
+              .then(() => inspect(request))
+              .then(() => request.continue())
+              .catch((error) => {
+                pageErrors.push({ name: error.name, message: error.message })
+                void request.abort("blockedbyclient")
+              })
+          } else void request.continue()
+        } else {
           deniedRemote.push({
             method: request.method(),
             origin: target.origin,
@@ -1259,280 +1318,311 @@ export const runNativeNewsBrowserAcceptance = async ({
       nativePosts: Object.values(posts).map((post) => post.id),
     })
 
-    const publishEditorIdBindings = await openEditor(page, posts.publish)
-    arm(posts.publish, inputFor(posts.publish), 1)
-    const publishFocus = await keyboardActivate(page, "Publish changes")
-    await waitClosed(page)
-    const published = await fixture.entry(posts.publish.id)
-    const publishProof = await commandProof(posts.publish)
-    assert.equal(published.version, 2)
-    assert.equal(published.status, "published")
-    assert.ok(
-      published.publishedAt &&
-        Number.isFinite(Date.parse(published.publishedAt))
-    )
-    assert.equal(publishProof.command.dropped, 1)
-    assert.equal(publishProof.command.putCount, 2)
-    assert.equal(publishProof.command.body.publishedAt, null)
-    assert.equal(
-      await page.evaluate(() =>
-        localStorage.getItem("remorseless-records.news-update.v1")
-      ),
-      null
-    )
-    await page.waitForSelector('[aria-label="News confirmation"]', {
-      timeout: 15_000,
-    })
-    const confirmation = await page.evaluate(() => {
-      const status = document.querySelector('[aria-label="News confirmation"]')
-      const button = status?.querySelector(
-        'button[aria-label="Dismiss News confirmation"]'
-      )
-      const navigation = document.querySelector(
-        'nav[aria-label="Content workspaces"]'
-      )
-      const bounds = (element) => {
-        if (!element) return null
-        const rect = element.getBoundingClientRect()
-        return {
-          top: rect.top,
-          right: rect.right,
-          bottom: rect.bottom,
-          left: rect.left,
-          width: rect.width,
-          height: rect.height,
-        }
-      }
-      return {
-        role: status?.getAttribute("role"),
-        live: status?.getAttribute("aria-live"),
-        position: status && getComputedStyle(status).position,
-        text: status?.textContent,
-        statusBounds: bounds(status),
-        buttonBounds: bounds(button),
-        navigationBounds: bounds(navigation),
-      }
-    })
-    assert.equal(confirmation.role, "status")
-    assert.equal(confirmation.live, "polite")
-    assert.ok(!["absolute", "fixed"].includes(confirmation.position))
-    assert.match(confirmation.text, /News post published/u)
-    assert.match(confirmation.text, /current list may reflect later edits/u)
-    assert.ok(
-      confirmation.buttonBounds?.width >= 24 &&
-        confirmation.buttonBounds.height >= 24
-    )
-    assert.ok(confirmation.navigationBounds && confirmation.statusBounds)
-    assert.ok(
-      confirmation.statusBounds.top >= confirmation.navigationBounds.bottom,
-      "News confirmation must follow its workspace navigation in page flow"
-    )
-    await checkpoint("publish-lost-reply-exact-native-replay", {
-      ...publishProof,
-      current: published,
-      keyboardFocus: publishFocus,
-      confirmation,
-      editorIdBindings: publishEditorIdBindings,
-    })
-    await keyboardActivate(page, "Dismiss")
-    await page.waitForFunction(
-      () =>
-        !document.querySelector('[aria-label="News confirmation"]') &&
-        document.activeElement?.id === "news-search",
-      { timeout: 15_000 }
-    )
-    assert.equal(proxy.commandSnapshot().putCount, 2)
-    await checkpoint("dismiss-success-feedback-without-resending-command", {
-      ...publishProof,
-      feedbackDismissed: true,
-      focusRestoredToNewsSearch: true,
-    })
-    proxy.finishCommand()
-
-    await openEditor(page, posts.reload)
-    arm(posts.reload, inputFor(posts.reload), 2)
-    await keyboardActivate(page, "Publish changes")
-    await waitSaved(page, "News save unconfirmed")
-    const uncertain = await commandProof(posts.reload)
-    assert.equal(uncertain.command.putCount, 2)
-    assert.equal(uncertain.command.dropped, 2)
-    assert.equal(await visibleSavedId(page), uncertain.command.idempotencyKey)
-    await checkpoint(
-      "two-lost-replies-retain-visible-original-request",
-      uncertain
-    )
-    await page.reload({ waitUntil: "networkidle0" })
-    const reloadRecoveryLookup = await recoverSavedRequest(page)
-    await waitSaved(page, "News save unconfirmed")
-    assert.equal(await visibleSavedId(page), uncertain.command.idempotencyKey)
-    assert.equal(proxy.commandSnapshot().putCount, 2, "Reload must not resend")
-    const original = await fixture.entry(posts.reload.id)
-    const laterBody = fixture.body(
-      original,
-      inputFor(original, "published", `Later writer ${mode}`),
-      fixture.actors.second
-    )
-    assert.equal(
-      (
-        await fixture.request(
-          "PUT",
-          `/admin/news/${posts.reload.id}`,
-          laterBody,
-          fixture.actors.second
-        )
-      ).status,
-      200
-    )
-    const later = await fixture.entry(posts.reload.id)
-    assert.equal(later.version, 3)
-    await checkpoint("real-reload-keeps-original-version-and-uuid", {
-      ...uncertain,
-      laterCurrent: later,
-      recoveryLookup: reloadRecoveryLookup,
-    })
-    await keyboardActivate(page, "Retry saved News request")
-    await waitClosed(page)
-    const recovered = await commandProof(posts.reload)
-    assert.equal(recovered.command.putCount, 3)
-    assert.deepEqual(recovered.operation, uncertain.operation)
-    assert.deepEqual(await fixture.entry(posts.reload.id), later)
-    assert.equal(recovered.operation.result.entry.version, 2)
-    assert.ok(
-      text(await page.$eval("main", (node) => node.textContent)).includes(
-        later.title
-      ),
-      "Historical acknowledgement replaced current list"
-    )
-    await checkpoint(
-      "historical-command-confirmed-current-later-writer-retained",
-      { ...recovered, current: later }
-    )
-    proxy.finishCommand()
-
-    await openEditor(page, posts.switch)
-    arm(posts.switch, inputFor(posts.switch), 2)
-    await keyboardActivate(page, "Publish changes")
-    await waitSaved(page, "News save unconfirmed")
-    const switched = await commandProof(posts.switch)
-    const actorReadsBeforeSwitch = proxy.receipts.filter(
-      (row) => row.method === "GET" && row.path === "/admin/users/me"
-    ).length
-    await signIn(fixture.actors.second, true)
-    await page.waitForFunction(
-      () => document.body.textContent?.includes("original administrator"),
-      { timeout: 15_000 }
-    )
-    assert.equal(proxy.commandSnapshot().putCount, 2)
-    assert.ok(
-      proxy.receipts.filter(
-        (row) => row.method === "GET" && row.path === "/admin/users/me"
-      ).length > actorReadsBeforeSwitch,
-      "Session switch must read the native actor freshly"
-    )
-    const switchedControls = await page.evaluate(() => ({
-      warning: [...document.querySelectorAll('main [role="alert"]')].some(
-        (node) => node.textContent?.includes("original administrator")
-      ),
-      actionable: [...document.querySelectorAll("main button")]
-        .filter(
-          (node) =>
-            !node.disabled &&
-            [
-              "Edit",
-              "Recover saved News request",
-              "Retry saved News request",
-            ].includes(node.textContent?.trim())
-        )
-        .map((node) => node.textContent?.trim()),
-    }))
-    assert.equal(switchedControls.warning, true)
-    assert.deepEqual(switchedControls.actionable, [])
-    const retained = await page.evaluate(() => {
-      const raw = localStorage.getItem("remorseless-records.news-update.v1")
-      if (!raw) return null
-      const record = JSON.parse(raw)
-      return {
-        uuid: record.body.idempotencyKey,
-        version: record.body.expectedVersion,
-        actorId: record.body.expectedActorId,
-        status: record.status,
-      }
-    })
-    assert.deepEqual(retained, {
-      uuid: switched.command.idempotencyKey,
-      version: 1,
-      actorId: fixture.actors.first.id,
-      status: "uncertain",
-    })
-    await checkpoint("actual-session-switch-keeps-request-and-sends-no-put", {
-      retained,
-      originalOperation: switched.operation,
-      currentActorId: fixture.actors.second.id,
-    })
-    await signIn(fixture.actors.first, true)
-    const originalActorRecoveryLookup = await recoverSavedRequest(page)
-    await waitSaved(page, "News save unconfirmed")
-    assert.equal(await visibleSavedId(page), switched.command.idempotencyKey)
-    await keyboardActivate(page, "Retry saved News request")
-    await waitClosed(page)
-    const originalActorReply = await commandProof(posts.switch)
-    assert.deepEqual(originalActorReply.operation, switched.operation)
-    await checkpoint("original-native-session-recovers-identical-command", {
-      ...originalActorReply,
-      recoveryLookup: originalActorRecoveryLookup,
-    })
-    proxy.finishCommand()
-
-    for (const [post, status] of [
-      [posts.staleDraft, "draft"],
-      [posts.staleSchedule, "scheduled"],
-    ]) {
-      await openEditor(page, post)
-      const title = `Matching other writer ${status} ${mode}`
-      await replaceNewsTitle(page, title)
-      const input = inputFor(post, status, title)
-      const other = fixture.body(post, input, fixture.actors.second)
-      assert.equal(
-        (
-          await fixture.request(
-            "PUT",
-            `/admin/news/${post.id}`,
-            other,
-            fixture.actors.second
-          )
-        ).status,
-        200
-      )
-      const current = await fixture.entry(post.id)
-      arm(post, input, 0)
-      await keyboardActivate(
+    if (scenario === "editor") {
+      await runNativeRichTextCommands({
         page,
-        status === "draft" ? "Save draft" : "Schedule"
-      )
-      await waitSaved(page, "News request rejected")
-      const rejected = await commandProof(post, "rejected")
-      assert.equal(rejected.command.putCount, 1)
-      assert.deepEqual(rejected.command.statuses, [409])
-      assert.equal(rejected.command.attempts[0].dropped, false)
-      assert.deepEqual(await fixture.entry(post.id), current)
-      assert.equal(await visibleSavedId(page), rejected.command.idempotencyKey)
-      await checkpoint(`same-current-${status}-is-not-command-success`, {
-        ...rejected,
-        current,
+        fixture,
+        proxy,
+        post: posts.publish,
+        openEditor,
+        click,
+        keyboardActivate,
+        checkpoint,
+        waitClosed,
+        commandProof,
+        interceptNextWrite: (inspect) => {
+          assert.equal(nextOwnedWrite, null)
+          nextOwnedWrite = inspect
+        },
       })
-      await keyboardActivate(page, "Clear rejected request")
+    } else {
+      const publishEditorIdBindings = await openEditor(page, posts.publish)
+      arm(posts.publish, inputFor(posts.publish), 1)
+      const publishFocus = await keyboardActivate(page, "Publish changes")
       await waitClosed(page)
+      const published = await fixture.entry(posts.publish.id)
+      const publishProof = await commandProof(posts.publish)
+      assert.equal(published.version, 2)
+      assert.equal(published.status, "published")
+      assert.ok(
+        published.publishedAt &&
+          Number.isFinite(Date.parse(published.publishedAt))
+      )
+      assert.equal(publishProof.command.dropped, 1)
+      assert.equal(publishProof.command.putCount, 2)
+      assert.equal(publishProof.command.body.publishedAt, null)
       assert.equal(
         await page.evaluate(() =>
           localStorage.getItem("remorseless-records.news-update.v1")
         ),
         null
       )
-      await checkpoint(`clear-definitively-rejected-${status}-without-retry`, {
-        ...rejected,
-        current,
+      await page.waitForSelector('[aria-label="News confirmation"]', {
+        timeout: 15_000,
+      })
+      const confirmation = await page.evaluate(() => {
+        const status = document.querySelector(
+          '[aria-label="News confirmation"]'
+        )
+        const button = status?.querySelector(
+          'button[aria-label="Dismiss News confirmation"]'
+        )
+        const navigation = document.querySelector(
+          'nav[aria-label="Content workspaces"]'
+        )
+        const bounds = (element) => {
+          if (!element) return null
+          const rect = element.getBoundingClientRect()
+          return {
+            top: rect.top,
+            right: rect.right,
+            bottom: rect.bottom,
+            left: rect.left,
+            width: rect.width,
+            height: rect.height,
+          }
+        }
+        return {
+          role: status?.getAttribute("role"),
+          live: status?.getAttribute("aria-live"),
+          position: status && getComputedStyle(status).position,
+          text: status?.textContent,
+          statusBounds: bounds(status),
+          buttonBounds: bounds(button),
+          navigationBounds: bounds(navigation),
+        }
+      })
+      assert.equal(confirmation.role, "status")
+      assert.equal(confirmation.live, "polite")
+      assert.ok(!["absolute", "fixed"].includes(confirmation.position))
+      assert.match(confirmation.text, /News post published/u)
+      assert.match(confirmation.text, /current list may reflect later edits/u)
+      assert.ok(
+        confirmation.buttonBounds?.width >= 24 &&
+          confirmation.buttonBounds.height >= 24
+      )
+      assert.ok(confirmation.navigationBounds && confirmation.statusBounds)
+      assert.ok(
+        confirmation.statusBounds.top >= confirmation.navigationBounds.bottom,
+        "News confirmation must follow its workspace navigation in page flow"
+      )
+      await checkpoint("publish-lost-reply-exact-native-replay", {
+        ...publishProof,
+        current: published,
+        keyboardFocus: publishFocus,
+        confirmation,
+        editorIdBindings: publishEditorIdBindings,
+      })
+      await keyboardActivate(page, "Dismiss")
+      await page.waitForFunction(
+        () =>
+          !document.querySelector('[aria-label="News confirmation"]') &&
+          document.activeElement?.id === "news-search",
+        { timeout: 15_000 }
+      )
+      assert.equal(proxy.commandSnapshot().putCount, 2)
+      await checkpoint("dismiss-success-feedback-without-resending-command", {
+        ...publishProof,
+        feedbackDismissed: true,
+        focusRestoredToNewsSearch: true,
       })
       proxy.finishCommand()
+
+      await openEditor(page, posts.reload)
+      arm(posts.reload, inputFor(posts.reload), 2)
+      await keyboardActivate(page, "Publish changes")
+      await waitSaved(page, "News save unconfirmed")
+      const uncertain = await commandProof(posts.reload)
+      assert.equal(uncertain.command.putCount, 2)
+      assert.equal(uncertain.command.dropped, 2)
+      assert.equal(await visibleSavedId(page), uncertain.command.idempotencyKey)
+      await checkpoint(
+        "two-lost-replies-retain-visible-original-request",
+        uncertain
+      )
+      await page.reload({ waitUntil: "networkidle0" })
+      const reloadRecoveryLookup = await recoverSavedRequest(page)
+      await waitSaved(page, "News save unconfirmed")
+      assert.equal(await visibleSavedId(page), uncertain.command.idempotencyKey)
+      assert.equal(
+        proxy.commandSnapshot().putCount,
+        2,
+        "Reload must not resend"
+      )
+      const original = await fixture.entry(posts.reload.id)
+      const laterBody = fixture.body(
+        original,
+        inputFor(original, "published", `Later writer ${mode}`),
+        fixture.actors.second
+      )
+      assert.equal(
+        (
+          await fixture.request(
+            "PUT",
+            `/admin/news/${posts.reload.id}`,
+            laterBody,
+            fixture.actors.second
+          )
+        ).status,
+        200
+      )
+      const later = await fixture.entry(posts.reload.id)
+      assert.equal(later.version, 3)
+      await checkpoint("real-reload-keeps-original-version-and-uuid", {
+        ...uncertain,
+        laterCurrent: later,
+        recoveryLookup: reloadRecoveryLookup,
+      })
+      await keyboardActivate(page, "Retry saved News request")
+      await waitClosed(page)
+      const recovered = await commandProof(posts.reload)
+      assert.equal(recovered.command.putCount, 3)
+      assert.deepEqual(recovered.operation, uncertain.operation)
+      assert.deepEqual(await fixture.entry(posts.reload.id), later)
+      assert.equal(recovered.operation.result.entry.version, 2)
+      assert.ok(
+        text(await page.$eval("main", (node) => node.textContent)).includes(
+          later.title
+        ),
+        "Historical acknowledgement replaced current list"
+      )
+      await checkpoint(
+        "historical-command-confirmed-current-later-writer-retained",
+        { ...recovered, current: later }
+      )
+      proxy.finishCommand()
+
+      await openEditor(page, posts.switch)
+      arm(posts.switch, inputFor(posts.switch), 2)
+      await keyboardActivate(page, "Publish changes")
+      await waitSaved(page, "News save unconfirmed")
+      const switched = await commandProof(posts.switch)
+      const actorReadsBeforeSwitch = proxy.receipts.filter(
+        (row) => row.method === "GET" && row.path === "/admin/users/me"
+      ).length
+      await signIn(fixture.actors.second, true)
+      await page.waitForFunction(
+        () => document.body.textContent?.includes("original administrator"),
+        { timeout: 15_000 }
+      )
+      assert.equal(proxy.commandSnapshot().putCount, 2)
+      assert.ok(
+        proxy.receipts.filter(
+          (row) => row.method === "GET" && row.path === "/admin/users/me"
+        ).length > actorReadsBeforeSwitch,
+        "Session switch must read the native actor freshly"
+      )
+      const switchedControls = await page.evaluate(() => ({
+        warning: [...document.querySelectorAll('main [role="alert"]')].some(
+          (node) => node.textContent?.includes("original administrator")
+        ),
+        actionable: [...document.querySelectorAll("main button")]
+          .filter(
+            (node) =>
+              !node.disabled &&
+              [
+                "Edit",
+                "Recover saved News request",
+                "Retry saved News request",
+              ].includes(node.textContent?.trim())
+          )
+          .map((node) => node.textContent?.trim()),
+      }))
+      assert.equal(switchedControls.warning, true)
+      assert.deepEqual(switchedControls.actionable, [])
+      const retained = await page.evaluate(() => {
+        const raw = localStorage.getItem("remorseless-records.news-update.v1")
+        if (!raw) return null
+        const record = JSON.parse(raw)
+        return {
+          uuid: record.body.idempotencyKey,
+          version: record.body.expectedVersion,
+          actorId: record.body.expectedActorId,
+          status: record.status,
+        }
+      })
+      assert.deepEqual(retained, {
+        uuid: switched.command.idempotencyKey,
+        version: 1,
+        actorId: fixture.actors.first.id,
+        status: "uncertain",
+      })
+      await checkpoint("actual-session-switch-keeps-request-and-sends-no-put", {
+        retained,
+        originalOperation: switched.operation,
+        currentActorId: fixture.actors.second.id,
+      })
+      await signIn(fixture.actors.first, true)
+      const originalActorRecoveryLookup = await recoverSavedRequest(page)
+      await waitSaved(page, "News save unconfirmed")
+      assert.equal(await visibleSavedId(page), switched.command.idempotencyKey)
+      await keyboardActivate(page, "Retry saved News request")
+      await waitClosed(page)
+      const originalActorReply = await commandProof(posts.switch)
+      assert.deepEqual(originalActorReply.operation, switched.operation)
+      await checkpoint("original-native-session-recovers-identical-command", {
+        ...originalActorReply,
+        recoveryLookup: originalActorRecoveryLookup,
+      })
+      proxy.finishCommand()
+
+      for (const [post, status] of [
+        [posts.staleDraft, "draft"],
+        [posts.staleSchedule, "scheduled"],
+      ]) {
+        await openEditor(page, post)
+        const title = `Matching other writer ${status} ${mode}`
+        await replaceNewsTitle(page, title)
+        const input = inputFor(post, status, title)
+        const other = fixture.body(post, input, fixture.actors.second)
+        assert.equal(
+          (
+            await fixture.request(
+              "PUT",
+              `/admin/news/${post.id}`,
+              other,
+              fixture.actors.second
+            )
+          ).status,
+          200
+        )
+        const current = await fixture.entry(post.id)
+        arm(post, input, 0)
+        await keyboardActivate(
+          page,
+          status === "draft" ? "Save draft" : "Schedule"
+        )
+        await waitSaved(page, "News request rejected")
+        const rejected = await commandProof(post, "rejected")
+        assert.equal(rejected.command.putCount, 1)
+        assert.deepEqual(rejected.command.statuses, [409])
+        assert.equal(rejected.command.attempts[0].dropped, false)
+        assert.deepEqual(await fixture.entry(post.id), current)
+        assert.equal(
+          await visibleSavedId(page),
+          rejected.command.idempotencyKey
+        )
+        await checkpoint(`same-current-${status}-is-not-command-success`, {
+          ...rejected,
+          current,
+        })
+        await keyboardActivate(page, "Clear rejected request")
+        await waitClosed(page)
+        assert.equal(
+          await page.evaluate(() =>
+            localStorage.getItem("remorseless-records.news-update.v1")
+          ),
+          null
+        )
+        await checkpoint(
+          `clear-definitively-rejected-${status}-without-retry`,
+          {
+            ...rejected,
+            current,
+          }
+        )
+        proxy.finishCommand()
+      }
     }
     assert.equal(deniedRemote.length, 0)
     assert.equal(pageErrors.length, 0)
@@ -1647,6 +1737,7 @@ export const runNativeNewsBrowserAcceptance = async ({
       schemaVersion: 1,
       kind: "initialized-native-news-compiled-browser",
       mode,
+      scenario,
       status: failure || incompleteCleanup || lateFailure ? "failed" : "passed",
       cases,
       failure,
@@ -1663,7 +1754,9 @@ export const runNativeNewsBrowserAcceptance = async ({
       compiledFiles: compiled,
       nativeSecurityHeaders: securityHeaders,
       proofScope:
-        "real native session/RBAC/API/News transaction and immutable ledger; actual generated UI UUID, network response loss and same-origin browser reload",
+        scenario === "editor"
+          ? "actual rich-text controls, native session/RBAC/News save, exact UI-generated command and sanitized public HTTP readback"
+          : "real native session/RBAC/API/News transaction and immutable ledger; actual generated UI UUID, network response loss and same-origin browser reload",
       authorityScope:
         "isolated synthetic rr_disposable_news; no staging/provider/login export",
     }

@@ -7,6 +7,79 @@ are recorded in the handoff linked below.
 
 ## October 11 continuation boundary
 
+October 12, 02:13 UTC the current rich-text editor correction passes local
+acceptance. All four modes pass seven editor checkpoints each, including
+one exact native save and sanitized Store readback using only an owned local
+publishable key/channel. All 28 editor frames are visually reviewed. The
+separate original News recovery family passes twelve checkpoints per mode.
+Its unchanged 900-second service command completes in 296.979 seconds: all
+158 native, 44 payment and 38/8/2/1/3/6 remaining service cases pass. Independent
+cleanup verifies 2,049 unchanged inputs, 597 closed relays, 759 known process
+identities absent, natural browser/observer closure and no owned resources or
+listeners. The editor/recovery join matches 2,041 common application/build
+inputs; only four continuation documents differ. Preserve the earlier 143
+interruption as incomplete overall service evidence. Normal/fixture builds,
+integration types and shared lint/types pass. Backend coverage passes all
+3,123 tests in 318 suites (92.04% statements, 86.21% branches).
+Evidence: `artifacts/end-to-end-audit-2026-10-11/native-rich-text-current-source-acceptance-join.json`.
+The staging native-input limit still holds the next push; continue independent
+local audit work. Client cloning remains paused and production is untouched.
+
+October 12, 02:05 UTC all four current editor modes pass seven checkpoints
+including native formatting, links, history, one exact saved command, sanitized
+persistence and authenticated Store public readback. All 28 frames are visually
+reviewed. The wider service run receives SIGTERM before finishing; retain its
+143 result and do not call that full run passed. Independent cleanup verifies
+2,049 unchanged inputs, 386 closed relays, 497 known process identities absent,
+four natural browser closures and no owned resources/listeners. Root sends no
+signal; interruption origin is unestablished. The separate original News
+recovery family and full service chain will refresh for the same compiled UI.
+Evidence: `artifacts/end-to-end-audit-2026-10-11/native-rich-text-public-key-full/`.
+The staging native-input limit and next-push hold below remain in effect.
+
+October 12, 01:57 UTC the local editor candidate now preserves toolbar and
+link-input focus, supports one toolbar Tab stop with arrow/Home/End movement,
+and corrects light-theme link and News URL-preview contrast. The retained
+four-mode command run reaches six checkpoints and verifies one exact native
+save with version advancement; public readback then fails HTTP 400 because
+the disposable fixture supplied no Store publishable key. This is not a
+completed editor-family acceptance. Its 2,049 frozen inputs stay unchanged;
+523 relays, 634 known process identities, all four naturally closed browsers,
+and owned containers, networks, volumes and ports pass independent cleanup.
+The corrected fixture now creates only its own local publishable key and
+sales channel. Fresh normal/fixture builds and the original-budget full run
+are refreshing. Earlier failed focus, contrast and serializer assertions,
+raw screenshots and cleanup checks remain retained. The exact staging release
+below still needs successful live native Admin interaction before another push.
+
+October 12, 01:21 UTC the current staging push remains
+`b8d0c0dfaccee665907d79567b248728643239af`. All four exact push workflows
+and 23 checks pass; both applications and Migrations deploy that revision,
+and Recovery remains idle. Actual runtime, migration/role/credential checks,
+ordinary new-Backend heartbeat, nonempty Operations, all-nine supporting
+identity/log review and deep Redis before/after inspection pass. Redis keeps
+its original process with healthy persistence and no new OOM/eviction/rejection.
+All 14 missing-route browser checks pass. Six published News articles at
+390/1440 pixels pass strict Trusted Types, client history, Axe and fully loaded
+cover-image geometry; all 12 current article frames are visually reviewed.
+Retain the first two unloaded-cover screenshots and earlier unclassified
+GET 404 records; the later bounded correlated log window passes with no 5xx.
+The live owner drawer loads the new bundle and visible metadata action,
+but native Tab/Cancel still do nothing, including after showing the browser.
+No save or authentication export is attempted. Live Admin interaction remains
+unaccepted, so the next batch push is held; independent local work continues.
+
+The new isolated editor family retains failed runs and independently verified
+cleanup. Native datetime subfields require bounded symmetric host observation.
+The toolbar now has one Tab stop with arrow/Home/End navigation following W3C
+APG; fresh builds and four-mode command/persistence tests are pending. Keep
+64-key/5-second keyboard and 240/900-second browser/service budgets unchanged.
+The original recovery family remains separate and must be reverified for the
+final UI. Client cloning is paused; production is untouched. Evidence:
+`artifacts/end-to-end-audit-2026-10-11/release-b8d0c0d/`,
+`native-rich-text-commands-full/`, `native-rich-text-datetime-full/`, and
+`native-rich-text-toolbar-full/`.
+
 October 12, 00:22 UTC final News verification passes for the corrected lock identity.
 The normal webpack build verifies 564 unchanged inputs and closes its owned
 GET-only fixture. All 19 phone/desktop recovery, rich-text client-history and

@@ -10,6 +10,8 @@ import {
   useRef,
   useState,
   type ChangeEvent,
+  type FocusEvent,
+  type KeyboardEvent,
   type MouseEvent,
   type MutableRefObject,
   type ReactElement,
@@ -37,13 +39,18 @@ import {
 } from "@lexical/rich-text"
 import { $setBlocksType } from "@lexical/selection"
 import {
+  $addUpdateTag,
   $createParagraphNode,
   $getSelection,
+  $hasUpdateTag,
   $isRangeSelection,
   $isTextNode,
   configExtension,
+  COMMAND_PRIORITY_CRITICAL,
   defineExtension,
   FORMAT_TEXT_COMMAND,
+  SKIP_DOM_SELECTION_TAG,
+  SELECTION_CHANGE_COMMAND,
   type TextFormatType,
 } from "lexical"
 import { Button, Input, Label, Text } from "@medusajs/ui"
@@ -51,6 +58,7 @@ import { Button, Input, Label, Text } from "@medusajs/ui"
 import { $replaceRichTextRoot } from "./rich-text-import"
 
 const EXTERNAL_SYNC_TAG = "remorseless-external-html"
+const TOOLBAR_RETURN_FOCUS_TAG = "remorseless-toolbar-return-focus"
 
 const ToolbarFirstEditorChildrenView = memo<EditorChildrenComponentProps>(
   ({ children, contentEditable }) => (
@@ -86,7 +94,7 @@ const editorExtension = defineExtension({
       h2: "my-3 text-xl font-semibold",
       h3: "my-2 text-lg font-semibold",
     },
-    link: "text-ui-fg-interactive underline underline-offset-2",
+    link: "text-ui-fg-base underline underline-offset-2",
     list: {
       listitem: "ml-5",
       nested: { listitem: "ml-4" },
@@ -192,7 +200,10 @@ const HtmlSyncPlugin = memo<HtmlSyncPluginProps>(({ syncedHtmlRef, value }) => {
         const nodes = $generateNodesFromDOM(editor, document)
         $replaceRichTextRoot(nodes)
       },
-      { tag: EXTERNAL_SYNC_TAG }
+      {
+        tag: [EXTERNAL_SYNC_TAG, SKIP_DOM_SELECTION_TAG],
+        discrete: true,
+      }
     )
   }, [editor, syncedHtmlRef, value])
 
@@ -253,14 +264,36 @@ const normalizeLink = (value: string): string | null => {
 
 const EditorToolbar = memo<EditorToolbarProps>(({ disabled }) => {
   const [editor] = useLexicalComposerContext()
+  const toolbarRegionRef = useRef<HTMLDivElement>(null)
   const [linkOpen, setLinkOpen] = useState(false)
   const [linkUrl, setLinkUrl] = useState("")
   const [linkError, setLinkError] = useState<string | null>(null)
+  const [toolbarFocusIndex, setToolbarFocusIndex] = useState(0)
   const [formats, setFormats] = useState({
     bold: false,
     italic: false,
     underline: false,
   })
+
+  useEffect(
+    () =>
+      editor.registerCommand(
+        SELECTION_CHANGE_COMMAND,
+        () => {
+          // Selection reconciliation must not take focus from a toolbar
+          // control or link input; keep the editor range for formatting.
+          const region = toolbarRegionRef.current
+          if (
+            region?.contains(region.ownerDocument.activeElement) &&
+            !$hasUpdateTag(TOOLBAR_RETURN_FOCUS_TAG)
+          )
+            $addUpdateTag(SKIP_DOM_SELECTION_TAG)
+          return false
+        },
+        COMMAND_PRIORITY_CRITICAL
+      ),
+    [editor]
+  )
 
   useEffect(
     () =>
@@ -282,6 +315,43 @@ const EditorToolbar = memo<EditorToolbarProps>(({ disabled }) => {
   const handleToolbarMouseDown = useCallback(
     (event: MouseEvent<HTMLButtonElement>) => {
       event.preventDefault()
+    },
+    []
+  )
+  const handleToolbarFocus = useCallback(
+    (event: FocusEvent<HTMLDivElement>) => {
+      if (!(event.target instanceof HTMLButtonElement)) return
+      const controls = Array.from(
+        event.currentTarget.querySelectorAll<HTMLButtonElement>("button")
+      )
+      const index = controls.indexOf(event.target)
+      if (index >= 0) setToolbarFocusIndex(index)
+    },
+    []
+  )
+  const handleToolbarKeyDown = useCallback(
+    (event: KeyboardEvent<HTMLDivElement>) => {
+      if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key))
+        return
+      if (!(event.target instanceof HTMLButtonElement)) return
+      const controls = Array.from(
+        event.currentTarget.querySelectorAll<HTMLButtonElement>(
+          "button:not(:disabled)"
+        )
+      )
+      const index = controls.indexOf(event.target)
+      if (index < 0) return
+      const direction =
+        getComputedStyle(event.currentTarget).direction === "rtl" ? -1 : 1
+      const step = event.key === "ArrowLeft" ? -direction : direction
+      const next =
+        event.key === "Home"
+          ? 0
+          : event.key === "End"
+            ? controls.length - 1
+            : (index + step + controls.length) % controls.length
+      event.preventDefault()
+      controls[next]?.focus()
     },
     []
   )
@@ -349,28 +419,44 @@ const EditorToolbar = memo<EditorToolbarProps>(({ disabled }) => {
       setLinkError("Enter a complete http, https, or mailto URL.")
       return
     }
-    editor.dispatchCommand(TOGGLE_LINK_COMMAND, normalized)
+    editor.update(
+      () => editor.dispatchCommand(TOGGLE_LINK_COMMAND, normalized),
+      { discrete: true }
+    )
     setLinkUrl("")
     setLinkError(null)
     setLinkOpen(false)
-    editor.focus()
+    editor.update(() => editor.focus(), {
+      tag: TOOLBAR_RETURN_FOCUS_TAG,
+      discrete: true,
+    })
   }, [editor, linkUrl])
   const handleLinkRemove = useCallback(() => {
-    editor.dispatchCommand(TOGGLE_LINK_COMMAND, null)
+    editor.update(() => editor.dispatchCommand(TOGGLE_LINK_COMMAND, null), {
+      discrete: true,
+    })
     setLinkUrl("")
     setLinkError(null)
     setLinkOpen(false)
-    editor.focus()
+    editor.update(() => editor.focus(), {
+      tag: TOOLBAR_RETURN_FOCUS_TAG,
+      discrete: true,
+    })
   }, [editor])
 
   return (
-    <div className="border-b border-ui-border-base bg-ui-bg-subtle p-2">
+    <div
+      className="border-b border-ui-border-base bg-ui-bg-subtle p-2"
+      ref={toolbarRegionRef}
+    >
       <div
         aria-label="Text formatting"
         className="flex flex-wrap gap-1"
+        onFocusCapture={handleToolbarFocus}
+        onKeyDown={handleToolbarKeyDown}
         role="toolbar"
       >
-        {toolbarActions.map(({ action, label }) => (
+        {toolbarActions.map(({ action, label }, index) => (
           <Button
             aria-pressed={
               action === "bold" || action === "italic" || action === "underline"
@@ -383,6 +469,7 @@ const EditorToolbar = memo<EditorToolbarProps>(({ disabled }) => {
             onClick={handleToolbarAction}
             onMouseDown={handleToolbarMouseDown}
             size="small"
+            tabIndex={toolbarFocusIndex === index ? 0 : -1}
             type="button"
             variant="transparent"
           >
@@ -394,6 +481,7 @@ const EditorToolbar = memo<EditorToolbarProps>(({ disabled }) => {
           disabled={disabled}
           onClick={handleLinkToggle}
           size="small"
+          tabIndex={toolbarFocusIndex === toolbarActions.length ? 0 : -1}
           type="button"
           variant="transparent"
         >

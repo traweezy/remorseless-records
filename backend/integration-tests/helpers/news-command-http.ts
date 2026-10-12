@@ -1,8 +1,13 @@
-import { createUserAccountWorkflow } from "@medusajs/core-flows"
+import {
+  createApiKeysWorkflow,
+  createUserAccountWorkflow,
+  linkSalesChannelsToApiKeyWorkflow,
+} from "@medusajs/core-flows"
 import type {
   ConfigModule,
   IAuthModuleService,
   IRbacModuleService,
+  ISalesChannelModuleService,
   MedusaContainer,
 } from "@medusajs/framework/types"
 import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
@@ -27,6 +32,7 @@ import type { NewsService } from "../../src/api/admin/news/command"
 import { newsUpdateSchema } from "../../src/api/admin/news/contracts"
 import { hashCatalogCommand } from "../../src/modules/catalog/catalog-command"
 import { serializeNewsEntry } from "../../src/modules/news/serializers"
+import { sanitizeRichTextHtml } from "../../src/lib/content/rich-text"
 import { createNewsLostReplyTransport } from "./news-command-transport"
 
 type Reply = { status: number; data: unknown }
@@ -234,6 +240,42 @@ export const createNativeNewsFixture = async (
   })
   const operations = (key: string) =>
     service.listNewsOperations({ idempotency_key: key }, { take: 2 })
+  let publicReadKey: string | undefined
+  const publicEntry = async (id: string) => {
+    const post = await entry(id)
+    if (!publicReadKey) {
+      const channel = await container
+        .resolve<ISalesChannelModuleService>(Modules.SALES_CHANNEL)
+        .createSalesChannels({ name: `Owned News Store ${tag}` })
+      const { result: keys } = await createApiKeysWorkflow(container).run({
+        input: {
+          api_keys: [
+            {
+              type: "publishable",
+              title: `Owned News Store ${tag}`,
+              created_by: actors.first.id,
+            },
+          ],
+        },
+      })
+      expect(keys).toHaveLength(1)
+      const key = keys[0]!
+      await linkSalesChannelsToApiKeyWorkflow(container).run({
+        input: { id: key.id, add: [channel.id] },
+      })
+      publicReadKey = key.token
+    }
+    const response = await api.request({
+      method: "GET",
+      url: `/store/news/${encodeURIComponent(post.slug)}`,
+      headers: { "x-publishable-api-key": publicReadKey },
+      validateStatus: () => true,
+    })
+    expect(response.status).toBe(200)
+    const result = newsEntrySchema.parse(object(response.data).entry)
+    expect(result.id).toBe(id)
+    return result
+  }
   return {
     origin,
     actors,
@@ -245,6 +287,8 @@ export const createNativeNewsFixture = async (
     create,
     body,
     operations,
+    publicEntry,
+    sanitizeContent: sanitizeRichTextHtml,
   }
 }
 type Fixture = Awaited<ReturnType<typeof createNativeNewsFixture>>

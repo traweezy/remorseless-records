@@ -938,7 +938,7 @@ export const NewsEditor = memo<NewsEditorProps>(
                           Search preview
                         </Heading>
                         <Text
-                          className="mt-3 break-words text-ui-fg-interactive"
+                          className="mt-3 break-words text-ui-fg-base"
                           size="xsmall"
                         >
                           {routePreview}
