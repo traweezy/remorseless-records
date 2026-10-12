@@ -518,7 +518,7 @@ describe("catalog product media authoring", () => {
   })
 })
 
-describe("catalog media pending-audit conflict recovery", () => {
+describe("catalog media uncommitted transaction conflict recovery", () => {
   it.each(["40001", "40P01"])(
     "rolls back an early %s audit conflict before a fresh complete attempt",
     async (code) => {
@@ -659,7 +659,7 @@ describe("catalog media pending-audit conflict recovery", () => {
     expect(service.createCatalogProductMediaItems).not.toHaveBeenCalled()
   })
 
-  it("never retries an asset write failure after the pending audit flush", async () => {
+  it("stops after three uncommitted asset-write conflicts and preserves the error", async () => {
     const service = serviceFixture()
     const asset = assetFixture()
     service.retrieveCatalogMediaAsset.mockResolvedValue(asset)
@@ -675,9 +675,9 @@ describe("catalog media pending-audit conflict recovery", () => {
         ])
       )
     ).rejects.toBe(conflict)
-    expect(service.runCatalogTransaction).toHaveBeenCalledTimes(1)
-    expect(service.updateCatalogMediaAssets).toHaveBeenCalledTimes(1)
-    expect(service.createCatalogAuthoringOperations).toHaveBeenCalledTimes(1)
+    expect(service.runCatalogTransaction).toHaveBeenCalledTimes(3)
+    expect(service.updateCatalogMediaAssets).toHaveBeenCalledTimes(3)
+    expect(service.createCatalogAuthoringOperations).toHaveBeenCalledTimes(3)
     expect(service.createCatalogProductMediaItems).not.toHaveBeenCalled()
   })
 

@@ -26,6 +26,13 @@ authors also perform multi-module writes as unrelated HTTP requests.
   prior custom record and reverses any completed link or native-commerce
   operation.
 - Commands require an idempotency key and expected aggregate version.
+- Product-media writes allow at most three complete transaction attempts for
+  PostgreSQL `40001` or `40P01` failures raised inside the uncommitted catalog
+  task. The native transaction wrapper must finish rollback before the next
+  attempt, which repeats replay, version, lock and persistence checks with the
+  same command. A returned task closes this retry boundary: commit-stage
+  errors, native Product projection, compensation and ambiguous connection
+  failures are never retried by this loop.
 - Successful workflows enqueue search/media projections only after canonical
   writes succeed.
 - Errors use a stable problem shape with field, domain, conflict, and
@@ -53,5 +60,6 @@ still required.
 ## References
 
 - [Medusa read-only module links](https://docs.medusajs.com/learn/fundamentals/module-links/read-only)
+- [PostgreSQL serialization failure handling](https://www.postgresql.org/docs/18/mvcc-serialization-failure-handling.html)
 - [Medusa workflow compensation](https://docs.medusajs.com/learn/fundamentals/workflows/compensation-function)
 - [Extending the create-product flow](https://docs.medusajs.com/learn/customization/extend-features/extend-create-product)

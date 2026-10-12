@@ -7,6 +7,40 @@ are recorded in the handoff linked below.
 
 ## October 11 continuation boundary
 
+October 12, 03:30 UTC the Redis AOF ownership and catalog task-conflict
+corrections pass local acceptance. A private parent journal precedes stopped
+Docker creation, verifies the immutable full ID and isolation before start,
+and recovers a real lost stdout acknowledgement. Unresolved creation retains
+its evidence and fails cleanup. Product-media commands retry at most three
+complete rolled-back transactions for task SQLSTATE 40001/40P01, including
+staged SQL; returned-task commit errors and native projection remain outside
+that retry boundary. Two real PostgreSQL rollback probes and the original
+shared-asset compensation race pass. The unchanged 900-second command passes
+in 226.338 seconds: 156 native, 44 payment and 38/8/3/1/3/6 other cases.
+Independent cleanup verifies 1,712 unchanged inputs, 583 closed relays,
+607 known process identities absent and no owned journal, containers,
+resources or listeners. All 142 ownership/runner boundary tests pass; Backend
+coverage remains 318 suites/3,123 tests (92.04% statements, 86.21% branches).
+Integration types and the normal Backend build pass. Browser families were
+not selected; retain the separate accepted editor proof at local 5d64b1d.
+Earlier shortened-ID, serialization-race and wrong-table probe failures stay
+retained with scoped cleanup. Evidence:
+`artifacts/end-to-end-audit-2026-10-11/aof-and-media-current-source-acceptance.json`.
+
+Live native input now works in the existing signed-in staging Owner tab.
+On exact b8d0c0d, the metadata row action is named, visible, 24 pixels and
+keyboard reachable. Enter opens its native menu; Escape closes that menu and
+restores the original row trigger. Cancel closes the unchanged zero-key
+Store drawer. No save or credential export is attempted; console errors and
+warnings are absent. Fresh exact readiness brackets and all-nine identity
+inspection pass, joining the existing runtime, heartbeat, Redis, logs and
+Storefront evidence. This closes that release's native-input hold and accepts
+b8d0c0d. Closing the entire RouteDrawer still returns focus to BODY; record
+that separate wrapper gap for the remaining audit rather than claiming full
+modal coverage. Independent Batch 6 work and logical local commits continue;
+client cloning remains paused and production is untouched. Evidence:
+`artifacts/end-to-end-audit-2026-10-11/release-b8d0c0d/receipts/current-acceptance-summary-0329.json`.
+
 October 12, 02:13 UTC the current rich-text editor correction passes local
 acceptance. All four modes pass seven editor checkpoints each, including
 one exact native save and sanitized Store readback using only an owned local

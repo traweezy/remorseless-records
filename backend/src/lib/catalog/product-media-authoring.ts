@@ -302,7 +302,7 @@ export const assertCatalogProductMediaPrimaryShape = (
   return primaryByIndex
 }
 
-const isRetryableMediaAuditTransactionError = (error: unknown): boolean => {
+const isRetryableMediaTransactionError = (error: unknown): boolean => {
   let current = error
   for (let depth = 0; depth < 5; depth += 1) {
     if (!current || typeof current !== "object") return false
@@ -319,23 +319,26 @@ export const mutateCatalogProductMedia = async (
   protection?: { lockKeys: readonly string[] }
 ): Promise<CatalogProductMediaMutationResult> => {
   for (let attempt = 1; ; attempt += 1) {
-    let beforeMediaWrites = true
+    let transactionTaskCompleted = false
     try {
       return await mutateCatalogProductMediaAttempt(
         catalogService,
         input,
         protection,
         () => {
-          beforeMediaWrites = false
+          transactionTaskCompleted = true
         }
       )
     } catch (error) {
-      // A fresh transaction reruns version/replay/lock checks. Never retry
-      // media writes, native projection, compensation, or ambiguous failures.
+      // The native wrapper awaits rollback before rejecting a task conflict.
+      // Retry the complete uncommitted transaction with fresh version/replay
+      // checks, including staged SQL writes. A returned task may have reached
+      // commit, so its errors remain ambiguous and must never be retried.
+      // Native projection and compensation run outside this retry boundary.
       if (
-        !beforeMediaWrites ||
+        transactionTaskCompleted ||
         attempt >= 3 ||
-        !isRetryableMediaAuditTransactionError(error)
+        !isRetryableMediaTransactionError(error)
       ) {
         throw error
       }
@@ -347,7 +350,7 @@ const mutateCatalogProductMediaAttempt = async (
   catalogService: CatalogService,
   input: CatalogProductMediaMutationInput,
   protection: { lockKeys: readonly string[] } | undefined,
-  markMediaWriteBoundary: () => void
+  markTransactionTaskCompleted: () => void
 ): Promise<CatalogProductMediaMutationResult> =>
   catalogService.runCatalogTransaction(async (sharedContext) => {
     const operationExpectation: CatalogTransactionOperationExpectation = {
@@ -365,7 +368,7 @@ const mutateCatalogProductMediaAttempt = async (
       sharedContext
     )
     if (replay) {
-      markMediaWriteBoundary()
+      markTransactionTaskCompleted()
       return replay
     }
 
@@ -410,10 +413,9 @@ const mutateCatalogProductMediaAttempt = async (
       operationExpectation
     )
     // Persist the pending audit INSERT before changing shared assets or links.
-    // PostgreSQL rejects this transaction atomically on 40001/40P01; the native
-    // transaction wrapper awaits rollback before the next fresh attempt.
+    // A 40001/40P01 from any statement in this task aborts the whole transaction;
+    // the native wrapper finishes rollback before a fresh bounded attempt.
     await sharedContext.transactionManager!.flush()
-    markMediaWriteBoundary()
 
     const primaryByIndex = assertCatalogProductMediaPrimaryShape(input.media)
     const createdAssetIds = new Set<string>()
@@ -500,6 +502,7 @@ const mutateCatalogProductMediaAttempt = async (
       itemPayloads
     )
 
+    markTransactionTaskCompleted()
     return {
       createdAssetIds: [...createdAssetIds],
       operationId: operation.id,

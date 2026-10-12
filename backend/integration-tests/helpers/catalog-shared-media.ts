@@ -28,6 +28,119 @@ export const registerCatalogSharedMediaIntegration = (
     mediaAssetId: string
   }>
 ): void => {
+  it.each(["40001", "40P01"])(
+    "rolls back staged media SQL after %s before one fresh committed projection",
+    async (code) => {
+      const { catalog, container, mediaAssetId } = await creationFixture()
+      const products = container.resolve<IProductModuleService>(Modules.PRODUCT)
+      const product = await products.createProducts({
+        title: `Owned staged media rollback ${code}`,
+      })
+      const before = readCatalogMediaAsset(
+        await catalog.retrieveCatalogMediaAsset(mediaAssetId),
+        mediaAssetId
+      )
+      const input = {
+        actorId: "user_disposable_catalog_audit",
+        aggregateId: product.id,
+        command: "catalog.product-media.replace" as const,
+        expectedVersion: 0,
+        idempotencyKey: randomUUID(),
+        requestSha256: "d".repeat(64),
+        media: [
+          {
+            mediaAssetId,
+            altText: "Owned rolled-back then committed edit",
+            isPrimary: true,
+          },
+        ],
+      }
+      const original = catalog.updateCatalogMediaAssets.bind(catalog)
+      const managers: unknown[] = []
+      const stagedVersions: number[] = []
+      let aborted = false
+      const update = jest
+        .spyOn(catalog, "updateCatalogMediaAssets")
+        .mockImplementation(async (rows, context) => {
+          const payloads = Array.isArray(rows) ? rows : [rows]
+          if (!payloads.some((row) => "id" in row && row.id === mediaAssetId))
+            return original(rows, context)
+          const manager = context?.transactionManager
+          if (!manager)
+            throw new Error("Owned media rollback needs the actual transaction")
+          const result = await original(rows, context)
+          await manager.flush()
+          const staged = await manager.execute(
+            "select alt_text, version from catalog_media_assets where id = ?",
+            [mediaAssetId]
+          )
+          expect(staged).toEqual([
+            {
+              alt_text: input.media[0]!.altText,
+              version: before.version + 1,
+            },
+          ])
+          managers.push(manager)
+          stagedVersions.push(before.version + 1)
+          if (!aborted) {
+            aborted = true
+            // Raise a genuine PostgreSQL task error only after physical SQL
+            // writes; the native transaction wrapper must await rollback.
+            await manager.execute(
+              `DO $$ BEGIN RAISE EXCEPTION 'Owned media task abort' USING ERRCODE = '${code}'; END $$`
+            )
+            throw new Error("Owned PostgreSQL abort did not occur")
+          }
+          return result
+        })
+      try {
+        const { result } = await mutateCatalogProductMediaWorkflow(
+          container
+        ).run({ input })
+        expect(aborted).toBe(true)
+        expect(managers).toHaveLength(2)
+        expect(managers[0]).not.toBe(managers[1])
+        expect(stagedVersions).toEqual([before.version + 1, before.version + 1])
+        expect(result).toMatchObject({ replayed: false, version: 1 })
+        expect(
+          await catalog.retrieveCatalogMediaAsset(mediaAssetId)
+        ).toMatchObject({
+          alt_text: input.media[0]!.altText,
+          version: before.version + 1,
+        })
+        const items = await catalog.listCatalogProductMediaItems({
+          product_id: product.id,
+        })
+        expect(items).toHaveLength(1)
+        expect(items[0]!.media_asset_id).toBe(mediaAssetId)
+        const operations = await catalog.listCatalogAuthoringOperations(
+          {
+            idempotency_key: input.idempotencyKey,
+          },
+          { take: 2 }
+        )
+        expect(operations).toHaveLength(1)
+        expect(operations[0]).toMatchObject({
+          actor_id: input.actorId,
+          aggregate_id: product.id,
+          expected_version: 0,
+          request_sha256: input.requestSha256,
+          status: "succeeded",
+        })
+        expect(await products.retrieveProduct(product.id)).toMatchObject({
+          thumbnail: before.source_url,
+        })
+        const replay = await mutateCatalogProductMediaWorkflow(container).run({
+          input,
+        })
+        expect(replay.result).toMatchObject({ replayed: true, version: 1 })
+        expect(managers).toHaveLength(2)
+      } finally {
+        update.mockRestore()
+      }
+    }
+  )
+
   it("holds an implicitly selected source asset while cloning metadata for another Product", async () => {
     const { catalog, container, mediaAssetId } = await creationFixture()
     const products = container.resolve<IProductModuleService>(Modules.PRODUCT)
