@@ -1,6 +1,8 @@
 import type { Metadata } from "next"
+import { Suspense } from "react"
 
 import NewsFeed from "@/components/news/news-feed"
+import NewsLoading from "@/components/news/news-loading"
 import { PageHeader, PageShell } from "@/components/ui/page-shell"
 import { siteMetadata } from "@/config/site"
 import { getNewsEntries, NEWS_PAGE_SIZE } from "@/lib/data/news"
@@ -27,7 +29,7 @@ export const metadata: Metadata = {
   },
 }
 
-const NewsPage = async () => {
+const NewsContent = async () => {
   const { entries, count } = await getNewsEntries()
 
   return (
@@ -57,5 +59,11 @@ const NewsPage = async () => {
     </PageShell>
   )
 }
+
+const NewsPage = () => (
+  <Suspense fallback={<NewsLoading />}>
+    <NewsContent />
+  </Suspense>
+)
 
 export default NewsPage

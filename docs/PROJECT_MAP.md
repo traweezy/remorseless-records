@@ -7,6 +7,178 @@ are recorded in the handoff linked below.
 
 ## October 11 continuation boundary
 
+October 12, 00:22 UTC final News verification passes for the corrected lock identity.
+The normal webpack build verifies 564 unchanged inputs and closes its owned
+GET-only fixture. All 19 phone/desktop recovery, rich-text client-history and
+320-pixel News reflow cases pass without skips. The owned runner closes port
+4300 and its fixture, with 79 known process identities absent and no remaining
+known identities; unrelated port 3000 is untouched. Combined with the accepted
+244 native Settings checkpoints and full original-budget service result,
+the local corrective batch is ready for normal commit/push hooks and exact
+staging CI. Live native browser control remains a recorded acceptance limit;
+client cloning remains paused and no new batch is released on this evidence.
+Evidence: `artifacts/end-to-end-audit-2026-10-11/news-final-local-receipt.json`,
+`news-final-local-results.json`, and `native-metadata-visible-local-accepted.json`.
+
+October 12, 00:21 UTC the metadata focus correction passes local acceptance.
+All four initialized native Settings modes pass 61 checkpoints each, including
+native Escape restoration to the original connected, visible row trigger
+before Axe. All 488 screenshot/Axe hashes verify; affected Metadata frames
+are visually reviewed in both themes and at desktop/phone widths. There are
+no native errors or DialogTitle warnings. The unchanged service command
+passes in 870.247 seconds, within its original 900-second limit: 158 native,
+44 payment and 38/8/2/1/3/6 remaining service cases pass with no skips.
+Independent cleanup verifies 2,047 unchanged inputs, 610 closed relays,
+1,071 known process identities absent and no owned resources/listeners.
+All four browsers and the finite process observer close naturally; Root
+sends no signal. Normal/fixture Admin builds, frozen installation, shared
+lint/types and fresh strict image scans pass for Dashboard patch
+`6d201653d8d405d0459f790b700334a606339b09e26831ffde8b5c8387c691ec`.
+Registry versions/integrities remain identical to staging HEAD.
+
+Live News acceptance covers all six currently listed published articles at
+390/1440 pixels: keyboard/client navigation, back/forward history, strict
+Trusted Types, Axe, no console/page errors and 12 visually reviewed frames.
+Exact 0f58 readiness brackets that run. The first failed text comparison and
+root Playwright command rejection remain recorded. Final local News build
+and 19-case browser checks are refreshing for the corrected lock identity.
+
+Browser-control inputs fail on both the public News link and native owner
+drawer. A diagnostic text probe changes neither empty metadata field; the
+exposed menu Expand action also leaves state unchanged. No save, session
+export or credential read is attempted. Manual Cancel diagnosis is pending;
+no staging native interaction pass is inferred. The current corrective work
+repairs the known native focus failure in the same Batch 6 release; this is
+not permission to push a new batch while acceptance is unresolved. Follow
+the existing corrective-release exception, normal hooks, exact CI and all-nine
+rollout/live acceptance. Keep production untouched and client cloning paused.
+The interrupted AOF creation ownership gap and remaining distinct editor,
+Settings, inventory/shipping, checkout/Operations and final control-ledger
+work remain open. Grouped reconciliation is an inventory, not a coverage rate.
+Evidence: `artifacts/end-to-end-audit-2026-10-11/native-metadata-visible-local-accepted.json`,
+`release-0f58ff3/browsers/live-news-accepted.json`,
+`release-0f58ff3/browsers/native-input-cross-surface-diagnosis.json`, and
+`current-batch6-gap-reconciliation.json`.
+
+October 12, 00:01 UTC the visibility-only metadata candidate remains failed.
+All four Settings modes pass 18 checkpoints, then the unchanged 2-second
+native Escape observer proves a connected trigger without restored focus.
+Independent cleanup verifies 2,047 unchanged inputs, 532 closed relays and
+708 known process identities absent; owned resources/listeners are absent
+and all four browsers close naturally. No Root signal is sent. The compiled
+CSS places the equal-specificity invisible utility after the candidate rule.
+Remove the trigger's invisible/hover/open visibility classes in source and
+both shipped distributions, preserving disabled-row display and native menu
+handlers. Enabled row actions remain visible, named and at least 24 pixels.
+Patch SHA-256 is 6d201653d8d405d0459f790b700334a606339b09e26831ffde8b5c8387c691ec;
+only that hash and two derived peer identities change in the lockfile.
+This candidate still requires fresh builds and the original-budget full run.
+
+The existing News artifact passes 19 local recovery, rich-text navigation and
+320-pixel reflow checks, with 83 known identities absent and owned port 4300
+closed. Retain live News's first two failed history assertions: rendered
+uppercase text was compared to mixed-case textContent. Correct the test to
+compare the same DOM text representation; live re-verification is pending.
+The signed-in owner drawer still ignores browser-control inputs, and its
+manual Cancel diagnosis remains pending without any new login request.
+
+All-nine observation renewed with overlap in all-nine-observation-2359/.
+Retain the earlier 191.77-second gap between the 2249 and 2330 windows;
+finite polling is not continuous health proof. Supporting receipt's copied
+61737 observer identifier is stale; actual 2330 observer is session 71936.
+Exact staging 0f58 CI/deployment operations pass, but native interaction
+acceptance remains unresolved. Keep corrective work local for now. Batch 6
+stays open, client cloning paused and production untouched. Evidence:
+`artifacts/end-to-end-audit-2026-10-11/native-settings-metadata-focus-corrected-full/independent-cleanup.json`,
+`native-dialog-metadata-visible-lock-comparison.json`, and
+`all-nine-observation-2330/observation-window-join.json`.
+
+October 11, 23:51 UTC metadata focus correction build gates pass. Frozen
+installation and normal/fixture Admin builds accept Dashboard patch
+`d228e52b6edd7f108908ecd2a1f2842f8d345d66df55a0e8ba755cff75e44ae0`;
+both preserve 894 captured inputs and produce 336 Admin files. The normal
+Storefront webpack build passes against the owned GET-only fixture with 564
+unchanged inputs, natural fixture closure and 110 verified client assets.
+Only the Dashboard patch and its two derived peer identities change in the
+lockfile; all registry versions and integrities stay reviewed. Preserve the
+offline metadata-time rejection and online resolver's rejected incidental
+third-party-web change; no resolution-policy bypass is applied.
+
+The corrected original-budget full-service run with only the existing Settings
+browser opt-in is next. Keep all 61 checkpoints in all four modes, require
+native Escape focus restoration before Axe, and freeze the captured sources
+through independent cleanup. The existing 19 News/recovery/rich-text/reflow
+checks are rerunning against the fresh production artifact. Exact staging
+revision 0f58 remains deployed with CI/operational acceptance passing and
+native interaction acceptance unresolved. No new push is authorized by these
+local results alone; client cloning remains paused and Batch 6 stays open.
+Evidence: `artifacts/end-to-end-audit-2026-10-11/native-metadata-focus-admin-normal/`,
+`native-metadata-focus-admin-fixture/`, `news-focus-storefront-fixture-build.json`,
+and `native-settings-metadata-focus-corrected-full/`.
+
+October 11, 23:47 UTC all four initialized Settings modes reproduce the
+metadata post-Escape focus failure, before any Axe scan. Each passes the prior
+18 checkpoints then fails the original-trigger focus assertion. The full
+command ends with failure; no later chained services are credited. Independent
+cleanup verifies 2,047 unchanged inputs, 531 closed relays, 704 known process
+identities absent and owned resources/listeners absent. All four browsers
+close naturally, with no Root signal. Retain the initial observer argument
+mismatch and the corrected observer's finite coverage.
+
+Keep the row-action trigger visible while focus moves into its native portaled
+menu and returns after closure. This changes only source/distribution CSS;
+the named 24-pixel target, native handlers and disabled-row display remain.
+The regression records the closure observation before Axe and preserves it
+on failure. Dashboard patch SHA-256 is now
+`d228e52b6edd7f108908ecd2a1f2842f8d345d66df55a0e8ba755cff75e44ae0`.
+Only that hash and two dependent peer identities may change in the lockfile;
+retain third-party-web 0.29.2 and all other reviewed versions/integrities.
+Frozen installation, normal/fixture builds and a fresh original-budget
+four-mode Settings/service run are pending. This is local corrective work;
+revision 0f58's native interaction acceptance remains unresolved. Batch 6 stays
+open, client cloning paused and production untouched. Evidence:
+`artifacts/end-to-end-audit-2026-10-11/native-settings-metadata-focus-full/independent-cleanup.json`
+and `native-metadata-focus-lock-comparison.json`.
+
+October 11, 23:38 UTC exact staging CI and service acceptance pass; native
+interaction acceptance remains open. Revision
+`0f58ff34cc986bde337619a5299aa779338d1104` passes all four push workflows and
+23 required checks after the normal commit/push hooks. Backend, Storefront,
+Migrations and the idle Recovery runner deploy that revision through their CI
+wait. Protected migration receipt, enforced application role, actual-PID
+credential equality, ordinary exact scheduler heartbeat, authenticated
+non-empty catalog projections and bounded correlated app logs pass. Fresh
+all-nine identity checks and supporting logs pass; Redis retains its original
+process with healthy AOF/RDB, no OOM/evictions/rejections and unchanged historical
+237+1 failed jobs. Idle Recovery is not new archive execution proof.
+
+The deployed release's 12 existing missing-route browser cases pass at phone
+and desktop sizes. Signed-in native DOM confirms one named Metadata dialog,
+the new compiled asset and a named 24-pixel pointer row-action button. Automated
+Tab and Cancel inputs leave the page unchanged after a fresh same-browser tab
+and control reset. No save is attempted, session is not exported, and no app
+bug or live keyboard pass is inferred. Owner-assisted page/control diagnosis
+is pending. Do not accept this release or push the next batch while applicable
+native interaction acceptance remains unresolved.
+
+The next local correction moves News loading to the listing's own Suspense
+boundary; missing articles now return HTTP 404 while valid rich-text articles
+retain client navigation and browser history. Normal webpack build and 18
+strict browser cases pass against the owned GET-only fixture; actual desktop
+and phone PNGs are reviewed. The corrected runner verifies 564 unchanged
+inputs, 71 known identities absent, fixture closure and port 4300 closed.
+Preserve the first runner's cleanup identity assertion failure: Next changes
+its process title, and its later server exit cause is unproved. Tests from
+that failed runner are not used as cleanup acceptance. Port 3000's unrelated
+Docker service stays untouched. A native metadata post-Escape focus assertion
+is now local; its fresh original-budget isolated Settings run is next.
+
+All-nine observation continues in `all-nine-observation-2330/`. Batch 6 remains
+open, client cloning paused and production untouched. Evidence:
+`artifacts/end-to-end-audit-2026-10-11/release-0f58ff3/`,
+`news-http-local-retry-receipt.json`, and
+`release-0f58ff3/browsers/native-owner-input-limitation.json`.
+
 October 11, 22:39 UTC native dialog/metadata correction passes local acceptance.
 Retain four Settings modes × 61 checkpoints from the independently cleaned
 combined run, then four News modes × 12 from the separate full-service run.

@@ -5,6 +5,7 @@ import AxeBuilder from "@axe-core/playwright"
 import { expect, test } from "@playwright/test"
 
 const missingRoutes = [
+  "/news/ci-missing-news",
   "/music-release/ci-missing-release",
   "/bundle/ci-missing-bundle",
   "/merch/ci-missing-merch",
