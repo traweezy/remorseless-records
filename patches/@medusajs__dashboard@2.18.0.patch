@@ -1207,7 +1207,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..ea06412583bce96350682516c18247fd
                              {
                                className: (0, import_ui130.clx)(
 -                                "invisible absolute inset-y-0 -end-2.5 my-auto group-hover/table:visible data-[state='open']:visible",
-+                                "invisible absolute inset-y-0 -end-2.5 my-auto group-hover/table:visible data-[state='open']:visible rr-native-metadata-actions",
++                                "absolute inset-y-0 -end-2.5 my-auto rr-native-metadata-actions",
                                  {
                                    hidden: isDisabled
                                  }
@@ -4914,7 +4914,7 @@ index 0fca93812a81e5274ab745e4830d1dd4b73fbe78..883bcea2fff1e4fcc2f3bd926564801b
                          {
                            className: clx(
 -                            "invisible absolute inset-y-0 -end-2.5 my-auto group-hover/table:visible data-[state='open']:visible",
-+                            "invisible absolute inset-y-0 -end-2.5 my-auto group-hover/table:visible data-[state='open']:visible rr-native-metadata-actions",
++                            "absolute inset-y-0 -end-2.5 my-auto rr-native-metadata-actions",
                              {
                                hidden: isDisabled
                              }
@@ -8917,7 +8917,7 @@ index f44f9769ffa7f00531c8238dfb4da338b7992af2..610562b87a18e2fa94bafbb55fbc0b62
                        <DropdownMenu.Trigger
                          className={clx(
 -                          "invisible absolute inset-y-0 -end-2.5 my-auto group-hover/table:visible data-[state='open']:visible",
-+                          "invisible absolute inset-y-0 -end-2.5 my-auto group-hover/table:visible data-[state='open']:visible rr-native-metadata-actions",
++                          "absolute inset-y-0 -end-2.5 my-auto rr-native-metadata-actions",
                            {
                              hidden: isDisabled,
                            }

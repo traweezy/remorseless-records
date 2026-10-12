@@ -466,6 +466,10 @@ const observeNativeActionMenuClosure = async (handle) =>
             originalTriggerConnected: trigger.isConnected,
             menuUnmounted: !document.querySelector('[role="menu"]'),
             originalTriggerFocused: document.activeElement === trigger,
+            originalTriggerVisibility: getComputedStyle(trigger).visibility,
+            activeElementTag: document.activeElement?.tagName ?? null,
+            activeElementRole:
+              document.activeElement?.getAttribute("role") ?? null,
           }
           samples.push(observation)
           if (
@@ -2611,6 +2615,10 @@ export const runNativeSettingsBrowserAcceptance = async ({
     assert.equal(nativeMetadataRowActions.cursor, "pointer")
     assert(nativeMetadataRowActions.width >= 24)
     assert(nativeMetadataRowActions.height >= 24)
+    const nativeMetadataRowTrigger = (
+      await page.evaluateHandle(() => document.activeElement)
+    ).asElement()
+    assert.ok(nativeMetadataRowTrigger)
     await page.keyboard.press("Enter")
     await page.waitForSelector('[role="menu"] [role="menuitem"]', {
       visible: true,
@@ -2627,6 +2635,20 @@ export const runNativeSettingsBrowserAcceptance = async ({
     ])
     await page.keyboard.press("Escape")
     await page.waitForFunction(() => !document.querySelector('[role="menu"]'))
+    const nativeMetadataMenuClosure = await observeNativeActionMenuClosure(
+      nativeMetadataRowTrigger
+    )
+    await nativeMetadataRowTrigger.dispose()
+    try {
+      assert.equal(
+        nativeMetadataMenuClosure.passed,
+        true,
+        "Metadata menu Escape must restore the original row trigger focus"
+      )
+    } catch (problem) {
+      problem.nativeMenuClosureProof = nativeMetadataMenuClosure
+      throw problem
+    }
     assert.equal(
       new URL(page.url()).pathname,
       "/app/settings/store/metadata/edit"
@@ -2635,6 +2657,7 @@ export const runNativeSettingsBrowserAcceptance = async ({
       nativeDialogTitle: await readNativeDialogTitle(),
       nativeMetadataRowActions,
       nativeMetadataMenuActions,
+      nativeMetadataMenuClosure,
       storeId: current.id,
     })
     await page.type('input[name="metadata.0.key"]', "owned_audit")

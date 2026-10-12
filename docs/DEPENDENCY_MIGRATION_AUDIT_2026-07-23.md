@@ -1,5 +1,61 @@
 # Dependency Migration Audit — 2026-07-23
 
+## Metadata menu focus correction — October 11, 2026
+
+October 12, 00:21 UTC the metadata focus correction passes local acceptance.
+All four initialized native Settings modes pass 61 checkpoints each, including
+native Escape restoration to the original connected, visible row trigger
+before Axe. All 488 screenshot/Axe hashes verify; affected Metadata frames
+are visually reviewed in both themes and at desktop/phone widths. There are
+no native errors or DialogTitle warnings. The unchanged service command
+passes in 870.247 seconds, within its original 900-second limit: 158 native,
+44 payment and 38/8/2/1/3/6 remaining service cases pass with no skips.
+Independent cleanup verifies 2,047 unchanged inputs, 610 closed relays,
+1,071 known process identities absent and no owned resources/listeners.
+All four browsers and the finite process observer close naturally; Root
+sends no signal. Normal/fixture Admin builds, frozen installation, shared
+lint/types and fresh strict image scans pass for Dashboard patch
+`6d201653d8d405d0459f790b700334a606339b09e26831ffde8b5c8387c691ec`.
+Registry versions/integrities remain identical to staging HEAD.
+
+October 12, 00:01 UTC the visibility-only metadata candidate remains failed.
+All four Settings modes pass 18 checkpoints, then the unchanged 2-second
+native Escape observer proves a connected trigger without restored focus.
+Independent cleanup verifies 2,047 unchanged inputs, 532 closed relays and
+708 known process identities absent; owned resources/listeners are absent
+and all four browsers close naturally. No Root signal is sent. The compiled
+CSS places the equal-specificity invisible utility after the candidate rule.
+Remove the trigger's invisible/hover/open visibility classes in source and
+both shipped distributions, preserving disabled-row display and native menu
+handlers. Enabled row actions remain visible, named and at least 24 pixels.
+Patch SHA-256 is 6d201653d8d405d0459f790b700334a606339b09e26831ffde8b5c8387c691ec;
+only that hash and two derived peer identities change in the lockfile.
+This candidate still requires fresh builds and the original-budget full run.
+
+October 11, 23:47 UTC all four initialized Settings modes reproduce the
+metadata post-Escape focus failure, before any Axe scan. Each passes the prior
+18 checkpoints then fails the original-trigger focus assertion. The full
+command ends with failure; no later chained services are credited. Independent
+cleanup verifies 2,047 unchanged inputs, 531 closed relays, 704 known process
+identities absent and owned resources/listeners absent. All four browsers
+close naturally, with no Root signal. Retain the initial observer argument
+mismatch and the corrected observer's finite coverage.
+
+Keep the row-action trigger visible while focus moves into its native portaled
+menu and returns after closure. This changes only source/distribution CSS;
+the named 24-pixel target, native handlers and disabled-row display remain.
+The regression records the closure observation before Axe and preserves it
+on failure. Dashboard patch SHA-256 is now
+`d228e52b6edd7f108908ecd2a1f2842f8d345d66df55a0e8ba755cff75e44ae0`.
+Only that hash and two dependent peer identities may change in the lockfile;
+retain third-party-web 0.29.2 and all other reviewed versions/integrities.
+Frozen installation, normal/fixture builds and a fresh original-budget
+four-mode Settings/service run are pending. This is local corrective work;
+revision 0f58's native interaction acceptance remains unresolved. Batch 6 stays
+open, client cloning paused and production untouched. Evidence:
+`artifacts/end-to-end-audit-2026-10-11/native-settings-metadata-focus-full/independent-cleanup.json`
+and `native-metadata-focus-lock-comparison.json`.
+
 ## Native dialog titles and metadata ownership — October 11, 2026
 
 The signed-in staging User Edit form emits Radix's missing DialogTitle error.
