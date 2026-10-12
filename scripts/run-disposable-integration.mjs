@@ -2,6 +2,11 @@ import { spawn } from "node:child_process"
 import { dirname, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import { normalizeScriptArguments } from "./lib/cli-arguments.mjs"
+import {
+  cleanupDisposableContainers,
+  createDisposableContainerOwner,
+  disposableContainerEnvironment,
+} from "./lib/disposable-container-ownership.mjs"
 
 const repositoryRoot = dirname(dirname(fileURLToPath(import.meta.url)))
 const projectName = "remorseless-records-integration"
@@ -222,6 +227,8 @@ export const runDisposableIntegration = async ({
       ...options,
     })
   let startupAttempted = false
+  let containerOwner
+  let ownershipCleanupError
   let failure
   try {
     // Pre-existing resources are not ours to replace or remove.
@@ -328,9 +335,11 @@ export const runDisposableIntegration = async ({
           "Disposable fixture loopback port was not published as configured."
         )
     }
+    containerOwner = await createDisposableContainerOwner(imageIds.redis)
     await run("pnpm", ["run", "qa:disposable-integration:services"], {
       environment: {
         ...fixtureEnvironment,
+        ...disposableContainerEnvironment(containerOwner),
         RR_REDIS_AGGREGATE_TEST_IMAGE_ID: imageIds.redis,
       },
       timeoutMs: 900_000,
@@ -338,6 +347,17 @@ export const runDisposableIntegration = async ({
   } catch (error) {
     failure = error
   } finally {
+    if (containerOwner) {
+      try {
+        await cleanupDisposableContainers(containerOwner, {
+          commandRunner,
+          environment,
+        })
+      } catch (cleanupError) {
+        ownershipCleanupError = cleanupError
+        failure ??= cleanupError
+      }
+    }
     if (startupAttempted) {
       try {
         await commandRunner(
@@ -359,6 +379,7 @@ export const runDisposableIntegration = async ({
     signals.off("SIGINT", handleInterrupt)
     signals.off("SIGTERM", handleTermination)
   }
+  if (ownershipCleanupError) throw ownershipCleanupError
   if (receivedSignal) return receivedSignal === "SIGINT" ? 130 : 143
   if (failure) throw failure
   return 0

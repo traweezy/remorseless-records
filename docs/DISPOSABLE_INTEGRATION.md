@@ -65,6 +65,18 @@ Run local invocations serially: the fixed-project preflight is not a
 cross-process mutex. CI already serializes overlapping runs through its
 workflow concurrency group.
 
+The isolated Redis AOF fixtures also belong to this parent runner. Before a
+Docker request, each fixture durably registers its exact image, unique name,
+labels, Unix-socket mounts and isolation settings in a private ownership
+journal. `docker create` makes a stopped container; its immutable full ID and
+actual configuration are acknowledged before `docker start`. Cleanup can
+recover a committed creation whose stdout reply was lost, after verifying the
+same identity and mounts. It requests untruncated IDs and removes only those
+verified containers. An absent unacknowledged creation remains unresolved:
+cleanup retains its journal and directories and fails, even on cancellation,
+because a quiet interval cannot rule out a late daemon commit. Compose cleanup
+still runs. Never broadly prune containers or remove that retained evidence.
+
 The initialized native News browser families are optional and run separately.
 `RR_NATIVE_NEWS_BROWSER=1` selects command recovery; the new
 `RR_NATIVE_NEWS_EDITOR_BROWSER=1` selects toolbar keyboard movement, formatting,

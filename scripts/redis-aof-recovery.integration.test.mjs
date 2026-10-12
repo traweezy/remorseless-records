@@ -22,6 +22,13 @@ import {
   verifyRedisAofArchive,
 } from "./lib/redis-aof-recovery.mjs"
 import { runIntegrationCommand } from "./run-disposable-integration.mjs"
+import {
+  acknowledgeDisposableAofCreation,
+  cleanupDisposableContainerClaim,
+  createDisposableAofDirectory,
+  disposableAofCreateArguments,
+  preregisterDisposableAofContainer,
+} from "./lib/disposable-container-ownership.mjs"
 import { runIsolatedRedisReplay } from "./redis-aof-isolated-replay.mjs"
 import { collectRedisQueueAggregate } from "./lib/redis-queue-aggregate.mjs"
 import { classifyIsolatedFailedJobs } from "./lib/redis-failed-job-classifier.mjs"
@@ -372,70 +379,36 @@ const isolatedServer = async ({
   gid,
   ownedContainers,
 }) => {
+  const claim = await preregisterDisposableAofContainer({
+    imageId,
+    data,
+    socketDirectory,
+    uid,
+    gid,
+  })
   const id = await runIntegrationCommand(
     "docker",
-    [
-      "run",
-      "--detach",
-      "--pull",
-      "never",
-      "--network",
-      "none",
-      "--read-only",
-      "--cap-drop",
-      "ALL",
-      "--security-opt",
-      "no-new-privileges",
-      "--cpus",
-      "1",
-      "--memory",
-      "256m",
-      "--memory-swap",
-      "256m",
-      "--pids-limit",
-      "64",
-      "--user",
-      `${uid}:${gid}`,
-      "--mount",
-      `type=bind,source=${data},target=/data`,
-      "--mount",
-      `type=bind,source=${socketDirectory},target=/socket`,
-      "--entrypoint",
-      "redis-server",
-      imageId,
-      "--port",
-      "0",
-      "--unixsocket",
-      "/socket/redis.sock",
-      "--unixsocketperm",
-      "700",
-      "--dir",
-      "/data",
-      "--appendonly",
-      "yes",
-      "--appendfilename",
-      "appendonly.aof",
-      "--appenddirname",
-      "appendonlydir",
-      "--appendfsync",
-      "always",
-      "--auto-aof-rewrite-percentage",
-      "0",
-      "--aof-use-rdb-preamble",
-      "yes",
-      "--aof-load-truncated",
-      "no",
-      "--save",
-      "",
-      "--maxmemory",
-      "128mb",
-      "--maxmemory-policy",
-      "noeviction",
-    ],
+    disposableAofCreateArguments(claim),
     { capture: true, timeoutMs: 15_000 }
   )
   assert.match(id, containerIdPattern)
+  const record = JSON.parse(
+    await runIntegrationCommand(
+      "docker",
+      ["inspect", "--format", "{{json .}}", id],
+      { capture: true, timeoutMs: 15_000 }
+    )
+  )
+  assert.equal(record.Id, id)
+  await acknowledgeDisposableAofCreation(claim, record)
   ownedContainers.push(id)
+  assert.equal(
+    await runIntegrationCommand("docker", ["start", id], {
+      capture: true,
+      timeoutMs: 15_000,
+    }),
+    id
+  )
   const isolation = await runIntegrationCommand(
     "docker",
     [
@@ -506,20 +479,18 @@ test("an isolated Redis 8.10.2 startup replays synthetic BullMQ states from mult
   const uid = process.getuid()
   const gid = process.getgid()
   const imageId = await pinnedImageId()
-  const sourceData = await mkdtemp(join(tmpdir(), "redis-aof-source-"))
-  const sourceSocket = await mkdtemp(join(tmpdir(), "redis-aof-source-socket-"))
-  const archive = await mkdtemp(join(tmpdir(), "redis-aof-queue-archive-"))
-  const targetData = await mkdtemp(join(tmpdir(), "redis-aof-target-"))
-  const targetSocket = await mkdtemp(join(tmpdir(), "redis-aof-target-socket-"))
-  const tools = await mkdtemp(join(tmpdir(), "redis-aof-queue-checker-"))
-  const ownedDirectories = [
-    sourceData,
-    sourceSocket,
-    archive,
-    targetData,
-    targetSocket,
-    tools,
-  ]
+  // The parent retains this root until every creation intent is resolved.
+  const fixtureRoot = await createDisposableAofDirectory()
+  const sourceData = await mkdtemp(join(fixtureRoot, "redis-aof-source-"))
+  const sourceSocket = await mkdtemp(
+    join(fixtureRoot, "redis-aof-source-socket-")
+  )
+  const archive = await mkdtemp(join(fixtureRoot, "redis-aof-queue-archive-"))
+  const targetData = await mkdtemp(join(fixtureRoot, "redis-aof-target-"))
+  const targetSocket = await mkdtemp(
+    join(fixtureRoot, "redis-aof-target-socket-")
+  )
+  const tools = await mkdtemp(join(fixtureRoot, "redis-aof-queue-checker-"))
   const ownedContainers = []
   let worker
   let scheduledWorker
@@ -965,16 +936,9 @@ test("an isolated Redis 8.10.2 startup replays synthetic BullMQ states from mult
         })
       )
     )
-    const directoryCleanup = await Promise.allSettled(
-      ownedDirectories.map((directory) =>
-        rm(directory, { recursive: true, force: true })
-      )
-    )
-    const failedCount = [
-      ...clientCleanup,
-      ...cleanup,
-      ...directoryCleanup,
-    ].filter(({ status }) => status === "rejected").length
+    const failedCount = [...clientCleanup, ...cleanup].filter(
+      ({ status }) => status === "rejected"
+    ).length
     if (failedCount > 0) {
       const cleanupError = new Error(
         `Disposable Redis fixture cleanup failed for ${failedCount} resources.`
@@ -988,4 +952,55 @@ test("an isolated Redis 8.10.2 startup replays synthetic BullMQ states from mult
     }
   }
   if (testFailure) throw testFailure
+})
+
+test("the parent claim recovers a real stopped Redis creation without a stdout acknowledgement", {
+  timeout: 30_000,
+}, async () => {
+  assert.equal(fixtureEnvironment.INTEGRATION_TESTS_ENABLED, "1")
+  const imageId = await pinnedImageId()
+  const root = await createDisposableAofDirectory()
+  const data = join(root, "data")
+  const socketDirectory = join(root, "socket")
+  await mkdir(data, { mode: 0o700 })
+  await mkdir(socketDirectory, { mode: 0o700 })
+  const claim = await preregisterDisposableAofContainer({
+    imageId,
+    data,
+    socketDirectory,
+    uid: process.getuid(),
+    gid: process.getgid(),
+  })
+  const options = {
+    commandRunner: runIntegrationCommand,
+    environment: process.env,
+  }
+  try {
+    // Deliberately discard stdout without writing the created acknowledgement.
+    await runIntegrationCommand("docker", disposableAofCreateArguments(claim), {
+      capture: true,
+      timeoutMs: 15_000,
+    })
+    await assert.rejects(
+      stat(join(claim.owner.directory, `created-${claim.intent.id}.json`)),
+      { code: "ENOENT" }
+    )
+    const receipt = await cleanupDisposableContainerClaim(claim, options)
+    assert.equal(receipt.pendingCreationRecovered, true)
+    assert.match(receipt.removedId, containerIdPattern)
+    assert.equal(
+      await runIntegrationCommand(
+        "docker",
+        ["ps", "--all", "--quiet", "--filter", `name=^/${claim.intent.name}$`],
+        {
+          capture: true,
+          timeoutMs: 5_000,
+        }
+      ),
+      ""
+    )
+  } finally {
+    // The parent removes the retained fixture root after all claims resolve.
+    await cleanupDisposableContainerClaim(claim, options)
+  }
 })
